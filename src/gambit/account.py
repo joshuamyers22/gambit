@@ -25,7 +25,7 @@ NAT = np.datetime64("NaT", "ns")
 def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
     for column in columns:
         vals = df[column].to_numpy().copy()
-        non_nan_indices = np.ravel(np.nonzero(~np.isnan(vals)))  # type: ignore
+        non_nan_indices: NDArray[np.intp] = np.flatnonzero(~np.isnan(vals))
         first_non_nan_index = int(non_nan_indices[0]) if len(non_nan_indices) else -1
 
         if first_non_nan_index > 0 and first_non_nan_index < len(vals):
@@ -137,7 +137,7 @@ class ContractPNL:
                 self.contract.multiplier,
             )
 
-            open_qty = np.sum(open_qtys)
+            open_qty = int(np.sum(open_qtys))
             if open_qty == 0:
                 weighted_avg_price = 0
             else:
