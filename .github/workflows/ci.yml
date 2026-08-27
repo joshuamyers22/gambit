@@ -68,8 +68,11 @@ jobs:
       - name: Run native boundary tests
         env:
           ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          GAMBIT_SANITIZER_RUN: "1"
+          PYTHONFAULTHANDLER: "1"
+          PYTHONUNBUFFERED: "1"
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
-        run: python -m pytest -q tests/test_native_io_hardening.py
+        run: python -m pytest -vv -s tests/test_native_io_hardening.py
 
   package:
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import random
 import subprocess
 import sys
@@ -134,12 +135,12 @@ def test_seeded_malformed_inputs_do_not_crash_native_reader(tmp_path: Path) -> N
     result = subprocess.run(
         [sys.executable, str(PROBE), *(str(path) for path in case_files)],
         check=False,
-        capture_output=True,
+        capture_output=os.environ.get("GAMBIT_SANITIZER_RUN") != "1",
         timeout=10,
     )
     assert result.returncode == 0, (
         "native reader terminated for fuzz seed 20260827: "
-        f"stderr={result.stderr.decode(errors='replace')}"
+        f"stderr={(result.stderr or b'').decode(errors='replace')}"
     )
 
 
