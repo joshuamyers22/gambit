@@ -81,6 +81,24 @@ structural stage protocols, so plain functions and callable classes remain valid
 diagnostics. ``strategy.run()`` validates the graph first and reports missing
 dependencies or cycles before any backtest computation begins.
 
+Execution costs and liquidity
+-----------------------------
+
+``SimpleMarketSimulator`` retains its original ``slippage_pct`` and
+``commission`` arguments and also accepts interchangeable models. Included
+models cover percentage slippage, bid/ask spread, square-root market impact,
+per-unit and per-order charges, and notional fees::
+
+   simulator = gambit.SimpleMarketSimulator(
+       price_function,
+       slippage_model=gambit.BidAskSpreadSlippage(0.02),
+       commission_model=gambit.PerOrderCharge(1.00),
+       fee_model=gambit.NotionalCharge(0.00001),
+   )
+
+Use ``MaxVolumeParticipation`` as a pre-trade risk policy when an order should be
+rejected rather than assigned impact beyond a configured share of market volume.
+
 
 
 

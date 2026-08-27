@@ -2,6 +2,7 @@
 # include functions for easy reference from pq prefix
 from gambit.pq_utils import *
 from gambit.configuration import *
+from gambit.execution_costs import *
 from gambit.pq_types import *
 from gambit.pq_io import *
 from gambit.holiday_calendars import *

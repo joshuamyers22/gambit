@@ -14,6 +14,7 @@ from typing import Callable, Sequence
 import numpy as np
 
 from gambit.account import Account
+from gambit.execution_costs import ChargeModel, FixedPercentageSlippage, PerUnitCharge, SlippageModel
 from gambit.pq_types import Contract, ContractGroup, LimitOrder, MarketOrder, Order, TimeInForce, Trade, VWAPOrder
 from gambit.pq_utils import assert_, get_child_logger, np_indexof_sorted
 from gambit.strategy import PriceFunctionType, StrategyContextType
@@ -238,6 +239,9 @@ class SimpleMarketSimulator:
     commission: float
     price_rounding: int
     post_trade_func: Callable[[Trade, StrategyContextType], None] | None
+    slippage_model: SlippageModel
+    commission_model: ChargeModel
+    fee_model: ChargeModel
 
     def __init__(
         self,
@@ -246,6 +250,9 @@ class SimpleMarketSimulator:
         commission: float = 0,
         price_rounding: int = 3,
         post_trade_func: Callable[[Trade, StrategyContextType], None] | None = None,
+        slippage_model: SlippageModel | None = None,
+        commission_model: ChargeModel | None = None,
+        fee_model: ChargeModel | None = None,
     ) -> None:
         """
         Args:
@@ -259,6 +266,9 @@ class SimpleMarketSimulator:
         self.commission = commission
         self.price_rounding = price_rounding
         self.post_trade_func = post_trade_func
+        self.slippage_model = slippage_model or FixedPercentageSlippage(slippage_pct)
+        self.commission_model = commission_model or PerUnitCharge(commission)
+        self.fee_model = fee_model or PerUnitCharge()
 
     def __call__(
         self,
@@ -286,9 +296,7 @@ class SimpleMarketSimulator:
                         break
             if np.isnan(raw_price):
                 continue
-            slippage = self.slippage_pct * raw_price
-            if order.qty < 0:
-                slippage = -slippage
+            slippage = self.slippage_model.adjustment(order, raw_price)
             price = raw_price + slippage
             price = round(price, self.price_rounding)
             if isinstance(order, LimitOrder) and np.isfinite(order.limit_price):
@@ -297,13 +305,15 @@ class SimpleMarketSimulator:
                 )
                 if not is_marketable:
                     continue
-            commission = self.commission * abs(order.qty)
+            commission = self.commission_model.charge(order, price)
+            fee = self.fee_model.charge(order, price)
             trade = Trade(
                 contract=order.contract,
                 order=order,
                 timestamp=timestamp,
                 qty=order.qty,
                 price=price,
+                fee=fee,
                 commission=commission,
             )
             order.fill()

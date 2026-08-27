@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol, Sequence
+from typing import Callable, Protocol, Sequence
 
 import numpy as np
 
@@ -99,6 +99,32 @@ class MaxPositionQuantity:
                 False,
                 "position_quantity_exceeded",
                 f"projected position {projected:g} exceeds {self.maximum:g}",
+            )
+        return PolicyResult(True)
+
+
+@dataclass(frozen=True)
+class MaxVolumeParticipation:
+    """Reject orders exceeding a fraction of externally supplied market volume."""
+
+    maximum_fraction: float
+    volume: Callable[[Order, np.datetime64], float]
+    name: str = "max_volume_participation"
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.maximum_fraction) or not 0 < self.maximum_fraction <= 1:
+            raise ValueError("maximum volume participation must be in (0, 1]")
+
+    def evaluate(self, order: Order, context: RiskContext) -> PolicyResult:
+        available = self.volume(order, context.timestamp)
+        if not math.isfinite(available) or available <= 0:
+            return PolicyResult(False, "volume_unavailable", "available volume must be finite and positive")
+        participation = abs(order.qty) / available
+        if participation > self.maximum_fraction:
+            return PolicyResult(
+                False,
+                "volume_participation_exceeded",
+                f"participation {participation:.6g} exceeds {self.maximum_fraction:.6g}",
             )
         return PolicyResult(True)
 
