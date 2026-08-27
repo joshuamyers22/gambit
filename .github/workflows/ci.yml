@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libzip on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - name: Install libzip on macOS
+        if: runner.os == 'macOS'
+        run: brew install libzip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest --cov=gambit --cov-report=term-missing
+      - run: python -m ruff check src tests
+      - run: python -m mypy
+
+  notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev,notebooks]"
+      - run: python -m ipykernel install --user --name gambit-ci
+      - run: jupyter execute examples/notebooks/getting_started.ipynb --kernel_name gambit-ci --timeout 300
+      - run: jupyter execute examples/notebooks/multiple_contracts.ipynb --kernel_name gambit-ci --timeout 300
+      - run: jupyter execute examples/notebooks/reporting.ipynb --kernel_name gambit-ci --timeout 300
+      - run: jupyter execute examples/notebooks/options_trading.ipynb --kernel_name gambit-ci --timeout 300
+      - run: jupyter execute examples/notebooks/optimizing_strategies.ipynb --kernel_name gambit-ci --timeout 300
+      - run: jupyter execute examples/notebooks/data/create_data.ipynb --kernel_name gambit-ci --timeout 300
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check dist/*

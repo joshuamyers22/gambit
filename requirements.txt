@@ -1,0 +1,10 @@
+# Runtime dependencies. pyproject.toml is authoritative for package metadata.
+h5py>=3.10
+numpy>=1.26
+polars>=1.8
+pandas-market-calendars>=4.4
+plotly>=5.18
+pyyaml>=6.0
+scipy>=1.11
+sortedcontainers>=2.4
+statsmodels>=0.14

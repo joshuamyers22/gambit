@@ -1,0 +1,6 @@
+include LICENSE.txt README.rst pyproject.toml
+recursive-include src/gambit *.pyx *.cpp *.hpp *.h
+global-exclude *.py[cod] .DS_Store
+prune documentation/generated
+prune examples
+prune tests

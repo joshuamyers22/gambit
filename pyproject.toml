@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=75", "wheel", "Cython>=3.0", "numpy>=1.26", "pybind11>=2.13"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gambit"
+version = "1.0.2"
+description = "Fast, extensible quantitative strategy backtesting"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "BSD-2-Clause"
+license-files = ["LICENSE.txt"]
+authors = [{ name = "Gambit contributors" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+  "h5py>=3.10",
+  "numpy>=1.26",
+  "polars>=1.8",
+  "pandas-market-calendars>=4.4",
+  "plotly>=5.18",
+  "pyyaml>=6.0",
+  "scipy>=1.11",
+  "sortedcontainers>=2.4",
+  "statsmodels>=0.14",
+]
+
+[project.optional-dependencies]
+notebooks = ["h5py>=3.11", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10"]
+dev = [
+  "build>=1.2",
+  "mypy>=1.11",
+  "pytest>=8.3",
+  "pytest-cov>=5.0",
+  "ruff>=0.6",
+  "twine>=5.1",
+  "types-PyYAML>=6.0",
+  "types-python-dateutil>=2.9",
+]
+docs = ["sphinx>=7.4", "sphinx-autodoc-typehints>=2.2"]
+
+[project.urls]
+Repository = "https://github.com/joshuamyers22/gambit"
+Issues = "https://github.com/joshuamyers22/gambit/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "--strict-config --strict-markers"
+markers = [
+  "native: requires compiled native extensions",
+  "notebook: executes notebook examples",
+  "slow: takes more than a few seconds",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "E701", "E741"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["setup.py", "tests/test_regressions.py"]
+mypy_path = "src"
+ignore_missing_imports = true
+follow_imports = "skip"
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
