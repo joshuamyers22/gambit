@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from gambit.account import Account
+from gambit.calculation import CalculationContext
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
@@ -140,17 +141,20 @@ class Strategy:
 
     def risk_report(
         self,
-        timestamp: np.datetime64,
-        scenarios: Sequence[StressScenario] = (),
+        timestamp: np.datetime64 | CalculationContext,
+        scenarios: Sequence[StressScenario] | None = None,
         attribution_by: Sequence[str] = ("contract_group",),
     ) -> PortfolioRiskReport:
         """Return a read-only exposure and stress report for this strategy account."""
         return analyze_account_risk(self.account, timestamp, scenarios, attribution_by)
 
-    def calculate_risk(self, timestamp: np.datetime64, measures: Sequence[RiskMeasure]) -> RiskResult:
+    def calculate_risk(
+        self, timestamp: np.datetime64 | CalculationContext, measures: Sequence[RiskMeasure]
+    ) -> RiskResult:
         """Calculate typed measures into a common long-form Polars result."""
-        report = analyze_account_risk(self.account, timestamp)
-        return calculate_risk(report.exposures, measures, timestamp)
+        context = CalculationContext.coerce(timestamp)
+        report = analyze_account_risk(self.account, context)
+        return calculate_risk(report.exposures, measures, context)
 
     def add_indicator(
         self,

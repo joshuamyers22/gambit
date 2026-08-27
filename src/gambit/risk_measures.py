@@ -8,6 +8,7 @@ from typing import Protocol, Sequence
 import numpy as np
 import polars as pl
 
+from gambit.calculation import CalculationContext
 from gambit.risk_reporting import StressScenario
 
 
@@ -83,15 +84,22 @@ class RiskResult:
 def calculate_risk(
     exposures: pl.DataFrame,
     measures: Sequence[RiskMeasure],
-    timestamp: np.datetime64,
+    timestamp: np.datetime64 | CalculationContext,
 ) -> RiskResult:
     if not measures:
         raise ValueError("at least one risk measure is required")
+    context = CalculationContext.coerce(timestamp)
     frames = [measure.calculate(exposures) for measure in measures]
-    data = pl.concat(frames).with_columns(pl.lit(timestamp.astype("datetime64[ns]")).alias("timestamp"))
+    data = pl.concat(frames).with_columns(
+        pl.lit(context.valuation_time).alias("timestamp"),
+        pl.lit(context.market_data_as_of).alias("market_data_as_of"),
+        pl.lit(context.base_currency).alias("base_currency"),
+    )
     return RiskResult(
         data.select(
             "timestamp",
+            "market_data_as_of",
+            "base_currency",
             "symbol",
             "contract_group",
             "asset_class",

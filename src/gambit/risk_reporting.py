@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
@@ -12,6 +13,7 @@ import numpy as np
 import polars as pl
 
 from gambit.account import Account
+from gambit.calculation import CalculationContext, MissingDataPolicy
 
 
 class ShockType(str, Enum):
@@ -113,13 +115,24 @@ class PortfolioRiskReport:
         )
 
 
-def account_exposures(account: Account, timestamp: np.datetime64) -> pl.DataFrame:
+def account_exposures(
+    account: Account,
+    timestamp: np.datetime64,
+    missing_data_policy: MissingDataPolicy = MissingDataPolicy.ERROR,
+) -> pl.DataFrame:
     """Create contract-level marked exposure from an account without mutating positions."""
     account.calc(timestamp)
     rows: list[dict[str, object]] = []
     for symbol, contract in account.contracts.items():
         position, price, *_rest = account.symbol_pnls[symbol].pnl(timestamp)
-        if math.isclose(position, 0) or not math.isfinite(price):
+        if math.isclose(position, 0):
+            continue
+        if not math.isfinite(price):
+            message = f"missing finite price for open position: {symbol} at {timestamp}"
+            if missing_data_policy is MissingDataPolicy.ERROR:
+                raise ValueError(message)
+            if missing_data_policy is MissingDataPolicy.WARN:
+                warnings.warn(message, RuntimeWarning, stacklevel=2)
             continue
         net_exposure = position * price * contract.multiplier
         spec = contract.instrument_spec
@@ -187,14 +200,16 @@ def run_stress_scenarios(exposures: pl.DataFrame, scenarios: Sequence[StressScen
 
 def analyze_account_risk(
     account: Account,
-    timestamp: np.datetime64,
-    scenarios: Sequence[StressScenario] = (),
+    timestamp: np.datetime64 | CalculationContext,
+    scenarios: Sequence[StressScenario] | None = None,
     attribution_by: Sequence[str] = ("contract_group",),
 ) -> PortfolioRiskReport:
-    exposures = account_exposures(account, timestamp)
+    context = CalculationContext.coerce(timestamp)
+    selected_scenarios = context.scenarios if scenarios is None else scenarios
+    exposures = account_exposures(account, context.valuation_time, context.missing_data_policy)
     return PortfolioRiskReport(
-        timestamp,
+        context.valuation_time,
         exposures,
         attribute_exposure(exposures, attribution_by),
-        run_stress_scenarios(exposures, scenarios),
+        run_stress_scenarios(exposures, selected_scenarios),
     )

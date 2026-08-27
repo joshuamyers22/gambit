@@ -169,6 +169,27 @@ Pattern scenarios support symbol, contract-group, asset-class, and currency
 matching. Multiple matching absolute and relative shocks are composable, while
 the original concise dictionary syntax remains supported.
 
+Calculation context
+-------------------
+
+``CalculationContext`` explicitly carries calculation assumptions instead of
+relying on mutable global state. Timestamp-only APIs remain supported::
+
+   context = gambit.CalculationContext(
+       valuation_time=timestamp,
+       market_data_as_of=timestamp,
+       calendar="NYSE",
+       base_currency="USD",
+       scenarios=(scenario,),
+       missing_data_policy=gambit.MissingDataPolicy.ERROR,
+       provenance_reference=strategy.provenance.run_fingerprint,
+   )
+   result = strategy.calculate_risk(context, [gambit.NetExposureMeasure()])
+
+Market-data look-ahead is rejected unless explicitly enabled. Historical mode
+requires a start and end range. Risk results retain valuation time, market-data
+as-of time, and base currency as queryable Polars columns.
+
 
 
 

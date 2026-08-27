@@ -27,7 +27,8 @@ def _exposures():
 def test_typed_measures_share_a_long_form_result() -> None:
     result = calculate_risk(_exposures(), [NetExposureMeasure(), GrossExposureMeasure()], TIMESTAMP)
 
-    assert result.data.shape == (4, 8)
+    assert result.data.shape == (4, 10)
+    assert result.data["market_data_as_of"].unique().to_numpy()[0] == TIMESTAMP
     assert result.filter(measure="net_exposure").aggregate()["value"][0] == -1300.0
     assert result.filter(measure="gross_exposure").aggregate(by=())["value"][0] == 1700.0
 
