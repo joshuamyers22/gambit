@@ -5,9 +5,12 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace py = pybind11;
@@ -25,6 +28,58 @@ struct TickRecord {
 };
 
 static_assert(sizeof(TickRecord) == 64, "TickRecord must occupy one cache line");
+
+class TickFactorProcessor {
+public:
+    void process(const TickRecord& record) {
+        if (has_expected_sequence_ && record.sequence != expected_sequence_) {
+            ++sequence_errors_;
+        }
+        expected_sequence_ = record.sequence + 1;
+        has_expected_sequence_ = true;
+        ++processed_;
+        total_quantity_ += record.quantity;
+        total_notional_ += record.price * record.quantity;
+        spread_sum_ += record.ask - record.bid;
+        mid_sum_ += (record.ask + record.bid) * 0.5;
+        const auto latency = record.receive_time_ns - record.event_time_ns;
+        if (latency > maximum_latency_ns_) {
+            maximum_latency_ns_ = latency;
+        }
+        const auto previous = last_prices_.find(record.instrument_id);
+        if (previous != last_prices_.end() && previous->second != 0.0) {
+            absolute_return_sum_ += std::abs(record.price / previous->second - 1.0);
+        }
+        last_prices_[record.instrument_id] = record.price;
+    }
+
+    py::dict snapshot() const {
+        py::dict result;
+        result["processed"] = processed_;
+        result["sequence_errors"] = sequence_errors_;
+        result["instrument_count"] = last_prices_.size();
+        result["total_quantity"] = total_quantity_;
+        result["total_notional"] = total_notional_;
+        result["mean_spread"] = processed_ ? spread_sum_ / processed_ : 0.0;
+        result["mean_mid"] = processed_ ? mid_sum_ / processed_ : 0.0;
+        result["mean_absolute_return"] = processed_ ? absolute_return_sum_ / processed_ : 0.0;
+        result["maximum_latency_ns"] = maximum_latency_ns_;
+        return result;
+    }
+
+private:
+    std::uint64_t processed_{0};
+    std::uint64_t sequence_errors_{0};
+    std::uint64_t expected_sequence_{0};
+    bool has_expected_sequence_{false};
+    double total_quantity_{0.0};
+    double total_notional_{0.0};
+    double spread_sum_{0.0};
+    double mid_sum_{0.0};
+    double absolute_return_sum_{0.0};
+    std::int64_t maximum_latency_ns_{std::numeric_limits<std::int64_t>::min()};
+    std::unordered_map<std::uint32_t, double> last_prices_;
+};
 
 class TickRing {
 public:
@@ -93,6 +148,50 @@ public:
             }
         }
         return pop_batch(maximum);
+    }
+
+    std::uint64_t process_batch(TickFactorProcessor& processor, std::uint64_t maximum) {
+        const auto available = depth();
+        const auto count = available < maximum ? available : maximum;
+        {
+            py::gil_scoped_release release;
+            const auto tail = tail_.value.load(std::memory_order_relaxed);
+            for (std::uint64_t index = 0; index < count; ++index) {
+                processor.process(slots_[(tail + index) & mask_]);
+            }
+            tail_.value.store(tail + count, std::memory_order_release);
+            popped_.fetch_add(count, std::memory_order_relaxed);
+        }
+        return count;
+    }
+
+    std::uint64_t wait_process_batch(
+        TickFactorProcessor& processor,
+        std::uint64_t maximum,
+        std::uint64_t spin_count,
+        double timeout_seconds
+    ) {
+        if (timeout_seconds < 0) {
+            throw std::invalid_argument("timeout_seconds must be non-negative");
+        }
+        {
+            py::gil_scoped_release release;
+            for (std::uint64_t attempt = 0; attempt < spin_count; ++attempt) {
+                spins_.fetch_add(1, std::memory_order_relaxed);
+                if (depth() != 0) {
+                    break;
+                }
+                if ((attempt & 63U) == 63U) {
+                    std::this_thread::yield();
+                }
+            }
+            if (depth() == 0 && timeout_seconds > 0) {
+                parks_.fetch_add(1, std::memory_order_relaxed);
+                std::unique_lock<std::mutex> lock(wait_mutex_);
+                wakeup_.wait_for(lock, std::chrono::duration<double>(timeout_seconds), [this] { return depth() != 0; });
+            }
+        }
+        return process_batch(processor, maximum);
     }
 
     std::uint64_t capacity() const { return capacity_; }
@@ -171,6 +270,9 @@ void init_tick_ring(py::module_& module) {
         instrument_id,
         flags
     );
+    py::class_<TickFactorProcessor>(module, "TickFactorProcessor")
+        .def(py::init<>())
+        .def_property_readonly("snapshot", &TickFactorProcessor::snapshot);
     py::class_<TickRing>(module, "TickRing")
         .def(py::init<std::uint64_t>(), py::arg("capacity"))
         .def("push_batch", &TickRing::push_batch, py::arg("records"))
@@ -178,6 +280,15 @@ void init_tick_ring(py::module_& module) {
         .def(
             "wait_pop_batch",
             &TickRing::wait_pop_batch,
+            py::arg("maximum"),
+            py::arg("spin_count") = 256,
+            py::arg("timeout_seconds") = 0.001
+        )
+        .def("process_batch", &TickRing::process_batch, py::arg("processor"), py::arg("maximum"))
+        .def(
+            "wait_process_batch",
+            &TickRing::wait_process_batch,
+            py::arg("processor"),
             py::arg("maximum"),
             py::arg("spin_count") = 256,
             py::arg("timeout_seconds") = 0.001

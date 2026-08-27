@@ -57,3 +57,10 @@ Waiting consumers spin for a bounded number of attempts, periodically yield, the
 park on a condition variable with a timeout. The GIL is released during native
 transfer and waiting. This first prototype supports exactly one producer and one
 consumer; additional concurrent callers violate its contract.
+
+`TickFactorProcessor` is the first in-place consumer. It reads ring slots directly
+before advancing the consumer cursor and maintains per-instrument previous prices,
+sequence continuity, quantity/notional totals, mid/spread aggregates, absolute
+returns, and maximum feed latency. Python receives only an aggregate snapshot; tick
+records are not copied out of the ring. This is an experimental processor rather
+than the final factor API.

@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
-from gambit.factor_cache import TICK_DTYPE, TickRing
+from gambit.factor_cache import TICK_DTYPE, TickFactorProcessor, TickRing
 
 
 @dataclass(frozen=True)
@@ -101,6 +101,62 @@ def benchmark_native(records: np.ndarray, batch_size: int, capacity: int) -> Pip
     )
 
 
+def benchmark_native_in_place(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
+    if TickRing is None or TickFactorProcessor is None:
+        raise RuntimeError("native tick processor extension is not built")
+    ring = TickRing(capacity)
+    processor = TickFactorProcessor()
+    consumed = 0
+
+    def produce() -> None:
+        offset = 0
+        while offset < len(records):
+            end = min(offset + batch_size, len(records))
+            count = end - offset
+            while ring.capacity - ring.depth < count:
+                time.sleep(0)
+            pushed = ring.push_batch(records[offset:end])
+            if pushed != count:
+                raise RuntimeError("producer capacity invariant failed")
+            offset = end
+
+    def consume() -> None:
+        nonlocal consumed
+        while consumed < len(records):
+            consumed += ring.wait_process_batch(
+                processor,
+                batch_size,
+                spin_count=256,
+                timeout_seconds=0.01,
+            )
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    producer = threading.Thread(target=produce)
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    wall = time.perf_counter() - wall_start
+    cpu = time.process_time() - cpu_start
+    metrics = ring.metrics
+    snapshot = processor.snapshot
+    return PipelineMeasurement(
+        "native_spsc_in_place_factors",
+        len(records),
+        batch_size,
+        capacity,
+        wall,
+        cpu,
+        len(records) / wall,
+        snapshot["sequence_errors"],
+        metrics["dropped"],
+        metrics["spins"],
+        metrics["parks"],
+    )
+
+
 def benchmark_python_queue(records: np.ndarray, capacity: int) -> PipelineMeasurement:
     bounded_queue: queue.Queue[int] = queue.Queue(maxsize=capacity)
     sequence_errors = 0
@@ -143,18 +199,28 @@ def benchmark_python_queue(records: np.ndarray, capacity: int) -> PipelineMeasur
 def benchmark_python_batch_queue(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
     bounded_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=max(1, capacity // batch_size))
     sequence_errors = 0
+    calculation_guard = 0.0
 
     def produce() -> None:
         for offset in range(0, len(records), batch_size):
             bounded_queue.put(records[offset : offset + batch_size])
 
     def consume() -> None:
-        nonlocal sequence_errors
+        nonlocal calculation_guard, sequence_errors
         expected = 0
+        previous_price: float | None = None
         while expected < len(records):
             batch = bounded_queue.get()
             expected_values = np.arange(expected, expected + len(batch), dtype=np.uint64)
             sequence_errors += int(np.count_nonzero(batch["sequence"] != expected_values))
+            calculation_guard += float(np.dot(batch["price"], batch["quantity"]))
+            calculation_guard += float((batch["ask"] - batch["bid"]).sum())
+            calculation_guard += float(((batch["ask"] + batch["bid"]) * 0.5).sum())
+            if previous_price is not None:
+                calculation_guard += abs(float(batch["price"][0]) / previous_price - 1)
+            if len(batch) > 1:
+                calculation_guard += float(np.abs(batch["price"][1:] / batch["price"][:-1] - 1).sum())
+            previous_price = float(batch["price"][-1])
             expected += len(batch)
 
     cpu_start = time.process_time()
@@ -192,6 +258,8 @@ def run_benchmark(ticks: int, batch_size: int, capacity: int) -> dict[str, objec
     ]
     if TickRing is not None:
         measurements.append(benchmark_native(records, batch_size, capacity))
+    if TickRing is not None and TickFactorProcessor is not None:
+        measurements.append(benchmark_native_in_place(records, batch_size, capacity))
     return {
         "environment": {
             "platform": platform.platform(),

@@ -4,7 +4,7 @@ import time
 import numpy as np
 import pytest
 
-from gambit.factor_cache import TICK_DTYPE, TickRing
+from gambit.factor_cache import TICK_DTYPE, TickFactorProcessor, TickRing
 
 pytestmark = pytest.mark.native
 
@@ -16,6 +16,8 @@ def _ticks(start: int, count: int):
     ticks["receive_time_ns"] = ticks["event_time_ns"] + 2
     ticks["price"] = 100 + ticks["sequence"]
     ticks["quantity"] = 1
+    ticks["bid"] = ticks["price"] - 0.01
+    ticks["ask"] = ticks["price"] + 0.01
     ticks["instrument_id"] = 7
     return ticks
 
@@ -69,3 +71,40 @@ def test_wait_releases_gil_then_parks_until_producer_arrives() -> None:
 
     assert result["sequence"].tolist() == [42]
     assert ring.metrics["parks"] == 1
+
+
+def test_processor_consumes_ring_slots_in_place() -> None:
+    if TickRing is None or TickFactorProcessor is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(8)
+    processor = TickFactorProcessor()
+    ring.push_batch(_ticks(10, 4))
+
+    processed = ring.process_batch(processor, 4)
+    snapshot = processor.snapshot
+
+    assert processed == 4
+    assert ring.depth == 0
+    assert snapshot["processed"] == 4
+    assert snapshot["sequence_errors"] == 0
+    assert snapshot["total_quantity"] == 4
+    assert snapshot["total_notional"] == pytest.approx(446.0)
+    assert snapshot["mean_spread"] == pytest.approx(0.02)
+    assert snapshot["mean_mid"] == pytest.approx(111.5)
+    assert snapshot["maximum_latency_ns"] == 2
+    expected_mean_absolute_return = (111 / 110 - 1 + 112 / 111 - 1 + 113 / 112 - 1) / 4
+    assert snapshot["mean_absolute_return"] == pytest.approx(expected_mean_absolute_return)
+
+
+def test_processor_detects_sequence_gaps() -> None:
+    if TickRing is None or TickFactorProcessor is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(4)
+    processor = TickFactorProcessor()
+    ticks = _ticks(0, 2)
+    ticks["sequence"][1] = 3
+    ring.push_batch(ticks)
+
+    ring.process_batch(processor, 2)
+
+    assert processor.snapshot["sequence_errors"] == 1
