@@ -355,7 +355,7 @@ Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are 
 
 - [x] Return an immutable `BacktestResult` snapshot from `Strategy.run`, including detached Polars trade, order, decision, and P&L frames plus provenance.
 - [x] Capture per-phase wall/CPU timings and order/trade lifecycle counters without coupling the production path to the experimental native cache.
-- [ ] Add deterministic result-bundle serialization using atomic manifest publication and schema-versioned Polars IPC files.
+- [x] Add deterministic result-bundle serialization using atomic directory publication, a canonical manifest, and schema-versioned Polars IPC files.
 - [ ] Attach explicitly requested risk/stress results and market-data validation findings to result bundles.
 - [ ] Establish explicit exports, semantic versioning, deprecation, and changelog policy.
 - [ ] Separate unit, integration, native, notebook, plotting, and performance suites.

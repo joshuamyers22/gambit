@@ -54,6 +54,14 @@ gambit.strategy module
     :undoc-members:
     :show-inheritance:
 
+gambit.backtest\_result module
+-------------------------------
+
+.. automodule:: gambit.backtest_result
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 gambit.portfolio module
 -------------------------
 

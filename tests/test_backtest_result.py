@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Sequence
 
 import numpy as np
 import polars as pl
+import pytest
 
-from gambit.backtest_result import BacktestResult
+from gambit.backtest_result import BacktestBundleError, BacktestResult
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Order, Trade
 from gambit.strategy import Strategy, StrategyContextType
 
@@ -89,3 +92,49 @@ def test_result_captures_rejected_order_decision() -> None:
     assert result.telemetry.trades_executed == 0
     assert result.decisions.row(0, named=True)["code"] == "order_quantity_exceeded"
     assert result.orders["status"].to_list() == ["cancelled"]
+
+
+def test_result_bundle_round_trip(tmp_path: Path) -> None:
+    destination = tmp_path / "run.gambit"
+    result = _strategy().run()
+
+    assert result.save(destination) == destination
+    restored = BacktestResult.load(destination)
+
+    assert restored.provenance.snapshot() == result.provenance.snapshot()
+    assert restored.telemetry == result.telemetry
+    for name, frame in result.frames.items():
+        assert restored.frames[name].equals(frame)
+    with pytest.raises(FileExistsError):
+        result.save(destination)
+
+
+def test_result_bundle_is_byte_deterministic(tmp_path: Path) -> None:
+    result = _strategy().run()
+    first = result.save(tmp_path / "first")
+    second = result.save(tmp_path / "second")
+
+    for filename in ["manifest.json", "trades.arrow", "orders.arrow", "decisions.arrow", "pnl.arrow"]:
+        assert (first / filename).read_bytes() == (second / filename).read_bytes()
+
+
+def test_result_bundle_rejects_corrupted_frame(tmp_path: Path) -> None:
+    destination = tmp_path / "run.gambit"
+    _strategy().run().save(destination)
+    with (destination / "trades.arrow").open("ab") as output:
+        output.write(b"corrupt")
+
+    with pytest.raises(BacktestBundleError, match="checksum mismatch"):
+        BacktestResult.load(destination)
+
+
+def test_result_bundle_rejects_manifest_filename_substitution(tmp_path: Path) -> None:
+    destination = tmp_path / "run.gambit"
+    _strategy().run().save(destination)
+    manifest_path = destination / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["frames"]["trades"]["file"] = "../outside.arrow"
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(BacktestBundleError, match="invalid filename"):
+        BacktestResult.load(destination)

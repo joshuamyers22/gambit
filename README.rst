@@ -79,7 +79,18 @@ Indicators, signals, rules, execution simulators, and accounting implement
 structural stage protocols, so plain functions and callable classes remain valid.
 ``strategy.stage_graph()`` exposes their declared dependencies for tooling and
 diagnostics. ``strategy.run()`` validates the graph first and reports missing
-dependencies or cycles before any backtest computation begins.
+dependencies or cycles before any backtest computation begins. It returns an
+immutable ``BacktestResult`` containing detached Polars snapshots and run
+telemetry. Results can be persisted as an atomic, versioned bundle::
+
+   result = strategy.run()
+   result.save("research/run-001.gambit")
+   restored = gambit.BacktestResult.load("research/run-001.gambit")
+
+Bundles contain uncompressed Polars IPC tables and a canonical JSON manifest.
+The loader verifies each table's SHA-256 digest, row count, schema, and the run
+provenance fingerprint before returning data. Saving refuses to overwrite an
+existing bundle.
 
 Execution costs and liquidity
 -----------------------------
