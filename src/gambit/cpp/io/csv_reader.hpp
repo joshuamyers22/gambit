@@ -19,6 +19,9 @@ bool read_csv(const std::string& filename,
               int max_rows,
               std::vector<void*>& output);
 
+void delete_vector(const std::string& dtype, void* data);
+void delete_output(const std::vector<std::string>& dtypes, std::vector<void*>& output);
+
 void test_csv_reader();
 void test_csv_reader2();
 void test_csv_reader_zip();

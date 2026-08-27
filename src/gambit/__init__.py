@@ -1,28 +1,143 @@
-# flake8: noqa
-# include functions for easy reference from pq prefix
-from gambit.pq_utils import *
-from gambit.calculation import *
-from gambit.backtest_result import *
-from gambit.configuration import *
-from gambit.execution_costs import *
-from gambit.factor_cache import *
-from gambit.instruments import *
-from gambit.pq_types import *
-from gambit.pq_io import *
-from gambit.holiday_calendars import *
-from gambit.market_data import *
-from gambit.risk import *
-from gambit.risk_reporting import *
-from gambit.risk_measures import *
-from gambit.stages import *
-from gambit.markets import *
-from gambit.account import *
-from gambit.strategy import *
-from gambit.strategy_builder import *
-from gambit.strategy_components import *
-from gambit.portfolio import *
-from gambit.optimize import *
-from gambit.interactive_plot import *
-from gambit.evaluator import *
-from gambit._options import *
-from gambit._io import *
+"""Stable public API for Gambit."""
+
+from gambit._options import black_scholes_price, cdf, d1, d2, delta, gamma, implied_vol, rho, theta, vega
+from gambit.account import Account, ContractPNL, df_roundtrip_trade, roundtrip_trades
+from gambit.backtest_result import BacktestBundleError, BacktestResult, BacktestTelemetry, StageTelemetry
+from gambit.calculation import CalculationContext, CalculationMode, MissingDataPolicy
+from gambit.configuration import RunConfiguration, RunProvenance, fingerprint_polars_frame, load_run_configuration
+from gambit.evaluator import Evaluator, compute_return_metrics, display_return_metrics, plot_return_metrics
+from gambit.execution_costs import (
+    BidAskSpreadSlippage,
+    ChargeModel,
+    FixedPercentageSlippage,
+    NotionalCharge,
+    PerOrderCharge,
+    PerUnitCharge,
+    SlippageModel,
+    SquareRootMarketImpact,
+)
+from gambit.factor_cache import (
+    TICK_DTYPE,
+    MappedFloat64Column,
+    TickFactorProcessor,
+    TickRing,
+    factor_node_key,
+    read_reference_float64,
+    write_reference_float64,
+)
+from gambit.holiday_calendars import Calendar, get_date_from_weekday
+from gambit.instruments import AssetClass, InstrumentSpec, Tradability
+from gambit.interactive_plot import InteractivePlot, LineConfig, LineGraphWithDetailDisplay
+from gambit.market_data import MarketDataValidationReport, ValidationFinding, ValidationSeverity, validate_market_data
+from gambit.markets import EminiFuture, EminiOption, future_code_to_month, future_code_to_month_number, get_future_code
+from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
+from gambit.portfolio import Portfolio
+from gambit.pq_io import df_to_hdf5, hdf5_to_df, hdf5_to_np_arrays, np_arrays_to_hdf5
+from gambit.pq_types import (
+    Contract,
+    ContractGroup,
+    LimitOrder,
+    MarketOrder,
+    Order,
+    OrderStatus,
+    Price,
+    RollOrder,
+    RoundTripTrade,
+    StopLimitOrder,
+    TimeInForce,
+    Trade,
+    VWAPOrder,
+)
+from gambit.pq_utils import Paths, PQException, assert_, find_in_subdir, get_child_logger, get_main_logger
+from gambit.risk import (
+    DecisionStatus,
+    InstrumentTradabilityPolicy,
+    MaxOrderQuantity,
+    MaxPositionQuantity,
+    MaxVolumeParticipation,
+    OrderDecision,
+    PolicyResult,
+    RiskContext,
+    RiskPolicy,
+    decide_order,
+)
+from gambit.risk_measures import (
+    GrossExposureMeasure,
+    NetExposureMeasure,
+    PriceMeasure,
+    RiskMeasure,
+    RiskResult,
+    ScenarioPnlMeasure,
+    calculate_risk,
+)
+from gambit.risk_reporting import (
+    MarketDataPattern,
+    MarketDataShock,
+    PortfolioRiskReport,
+    ShockType,
+    StressScenario,
+    account_exposures,
+    analyze_account_risk,
+    attribute_exposure,
+    run_stress_scenarios,
+)
+from gambit.stages import AccountingStage, ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
+from gambit.strategy import (
+    DateRangeType,
+    IndicatorType,
+    MarketSimulatorType,
+    PriceFunctionType,
+    RuleType,
+    SignalType,
+    Strategy,
+    StrategyContextType,
+)
+from gambit.strategy_builder import StrategyBuilder
+from gambit.strategy_components import (
+    BracketOrderEntryRule,
+    ClosePositionExitRule,
+    PercentOfEquityTradingRule,
+    PriceFuncArrayDict,
+    PriceFuncArrays,
+    PriceFuncDict,
+    SimpleMarketSimulator,
+    StopReturnExitRule,
+    VectorIndicator,
+    VectorSignal,
+    VWAPCloseRule,
+    VWAPEntryRule,
+    VWAPMarketSimulator,
+    get_contract_price_from_array_dict,
+    get_contract_price_from_dict,
+)
+
+__all__ = [
+    "Account", "AccountingStage", "AssetClass", "BacktestBundleError", "BacktestResult",
+    "BacktestTelemetry", "BidAskSpreadSlippage", "BracketOrderEntryRule", "CalculationContext",
+    "CalculationMode", "Calendar", "ChargeModel", "ClosePositionExitRule", "Contract", "ContractGroup",
+    "ContractPNL", "DateRangeType", "DecisionStatus", "EminiFuture", "EminiOption", "Evaluator",
+    "ExecutionStage", "Experiment", "FixedPercentageSlippage", "GrossExposureMeasure", "IndicatorStage",
+    "IndicatorType", "InstrumentSpec", "InstrumentTradabilityPolicy", "InteractivePlot", "LimitOrder",
+    "LineConfig", "LineGraphWithDetailDisplay", "MappedFloat64Column", "MarketDataPattern", "MarketDataShock",
+    "MarketDataValidationReport", "MarketOrder", "MarketSimulatorType", "MaxOrderQuantity",
+    "MaxPositionQuantity", "MaxVolumeParticipation", "MissingDataPolicy", "NetExposureMeasure",
+    "NotionalCharge", "Optimizer", "OptimizerWorkerError", "Order", "OrderDecision", "OrderStatus",
+    "PQException", "Paths", "PerOrderCharge", "PerUnitCharge", "PercentOfEquityTradingRule", "PolicyResult",
+    "Portfolio", "PortfolioRiskReport", "Price", "PriceFuncArrayDict", "PriceFuncArrays", "PriceFuncDict",
+    "PriceFunctionType", "PriceMeasure", "RiskContext", "RiskMeasure", "RiskPolicy", "RiskResult", "RollOrder",
+    "RoundTripTrade", "RuleStage", "RuleType", "RunConfiguration", "RunProvenance", "ScenarioPnlMeasure",
+    "ShockType", "SignalStage", "SignalType", "SimpleMarketSimulator", "SlippageModel",
+    "SquareRootMarketImpact", "StageGraph", "StageNode", "StageTelemetry", "StopLimitOrder",
+    "StopReturnExitRule", "Strategy", "StrategyBuilder", "StrategyContextType", "StressScenario", "TICK_DTYPE",
+    "TickFactorProcessor", "TickRing", "TimeInForce", "Tradability", "Trade", "VWAPCloseRule",
+    "VWAPEntryRule", "VWAPMarketSimulator", "VWAPOrder", "ValidationFinding", "ValidationSeverity",
+    "VectorIndicator", "VectorSignal", "account_exposures", "analyze_account_risk", "assert_",
+    "attribute_exposure", "black_scholes_price", "calculate_risk", "cdf", "compute_return_metrics", "d1", "d2",
+    "decide_order", "delta", "df_roundtrip_trade", "df_to_hdf5", "display_return_metrics", "factor_node_key",
+    "find_in_subdir", "fingerprint_polars_frame", "future_code_to_month", "future_code_to_month_number", "gamma",
+    "get_child_logger", "get_contract_price_from_array_dict", "get_contract_price_from_dict",
+    "get_date_from_weekday", "get_future_code", "get_main_logger", "hdf5_to_df", "hdf5_to_np_arrays",
+    "implied_vol", "load_run_configuration", "np_arrays_to_hdf5", "plot_return_metrics",
+    "read_reference_float64", "rho", "roundtrip_trades", "run_stress_scenarios", "theta",
+    "validate_market_data", "vega", "write_reference_float64",
+]

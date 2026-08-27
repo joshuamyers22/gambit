@@ -74,7 +74,19 @@ jobs:
           PYTHONFAULTHANDLER: "1"
           PYTHONUNBUFFERED: "1"
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
-        run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python -m pytest -vv -s tests/test_native_io_hardening.py
+        run: >-
+          LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY"
+          python -m pytest -vv -s
+          tests/test_native_io_hardening.py
+          tests/test_factor_cache.py
+          tests/test_tick_ring.py
+          tests/test_public_api.py
+      - name: Run native leak stress probe
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          PYTHONFAULTHANDLER: "1"
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python tests/native_memory_probe.py
 
   dependency-audit:
     runs-on: ubuntu-latest

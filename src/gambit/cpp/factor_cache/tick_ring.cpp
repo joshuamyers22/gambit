@@ -77,18 +77,14 @@ private:
     double spread_sum_{0.0};
     double mid_sum_{0.0};
     double absolute_return_sum_{0.0};
-    std::int64_t maximum_latency_ns_{std::numeric_limits<std::int64_t>::min()};
+    std::int64_t maximum_latency_ns_{0};
     std::unordered_map<std::uint32_t, double> last_prices_;
 };
 
 class TickRing {
 public:
     explicit TickRing(std::uint64_t capacity)
-        : capacity_(capacity), mask_(capacity - 1), slots_(capacity) {
-        if (capacity < 2 || (capacity & (capacity - 1)) != 0) {
-            throw std::invalid_argument("tick ring capacity must be a power of two and at least two");
-        }
-    }
+        : capacity_(checked_capacity(capacity)), mask_(capacity_ - 1), slots_(capacity_) {}
 
     std::uint64_t push_batch(py::array_t<TickRecord, py::array::c_style> records) {
         const auto info = records.request();
@@ -113,6 +109,9 @@ public:
     py::array_t<TickRecord> pop_batch(std::uint64_t maximum) {
         const auto available = depth();
         const auto count = available < maximum ? available : maximum;
+        if (count > static_cast<std::uint64_t>(std::numeric_limits<py::ssize_t>::max())) {
+            throw std::overflow_error("requested tick batch is too large");
+        }
         py::array_t<TickRecord> output(static_cast<py::ssize_t>(count));
         auto* destination = static_cast<TickRecord*>(output.request().ptr);
         {
@@ -127,8 +126,8 @@ public:
     }
 
     py::array_t<TickRecord> wait_pop_batch(std::uint64_t maximum, std::uint64_t spin_count, double timeout_seconds) {
-        if (timeout_seconds < 0) {
-            throw std::invalid_argument("timeout_seconds must be non-negative");
+        if (!std::isfinite(timeout_seconds) || timeout_seconds < 0) {
+            throw std::invalid_argument("timeout_seconds must be finite and non-negative");
         }
         {
             py::gil_scoped_release release;
@@ -171,8 +170,8 @@ public:
         std::uint64_t spin_count,
         double timeout_seconds
     ) {
-        if (timeout_seconds < 0) {
-            throw std::invalid_argument("timeout_seconds must be non-negative");
+        if (!std::isfinite(timeout_seconds) || timeout_seconds < 0) {
+            throw std::invalid_argument("timeout_seconds must be finite and non-negative");
         }
         {
             py::gil_scoped_release release;
@@ -215,6 +214,14 @@ public:
     }
 
 private:
+    static std::uint64_t checked_capacity(std::uint64_t capacity) {
+        if (capacity < 2 || (capacity & (capacity - 1)) != 0 ||
+            capacity > std::vector<TickRecord>().max_size()) {
+            throw std::invalid_argument("tick ring capacity must be a supported power of two and at least two");
+        }
+        return capacity;
+    }
+
     struct alignas(64) Cursor {
         std::atomic<std::uint64_t> value{0};
     };

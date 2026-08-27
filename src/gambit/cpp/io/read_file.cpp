@@ -11,6 +11,7 @@
 #include <string>
 #include <memory>
 #include <iostream>
+#include <limits>
 #include <time.h>
 #include "structmember.h"
 #include "csv_reader.hpp"
@@ -49,7 +50,13 @@ static int read_list(PyObject* list, vector<int>& vec) {
             PyErr_SetString(PyExc_TypeError, "list items must be integers.");
             return 0;
         }
-        int elem = static_cast<int>(PyLong_AsLong(item));
+        long value = PyLong_AsLong(item);
+        if (value == -1 && PyErr_Occurred()) return 0;
+        if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
+            PyErr_SetString(PyExc_OverflowError, "column index does not fit in a C int");
+            return 0;
+        }
+        int elem = static_cast<int>(value);
         vec.push_back(elem);
     }
     return -1;
@@ -65,7 +72,12 @@ static int read_list(PyObject* list, vector<string>& vec) {
             return 0;
         }
         PyObject* ascii = PyUnicode_AsASCIIString(item);
+        if (!ascii) return 0;
         char* ret_string = PyBytes_AsString(ascii);
+        if (!ret_string) {
+            Py_DECREF(ascii);
+            return 0;
+        }
         vec.push_back(std::string(ret_string));
         Py_DECREF(ascii);
     }
@@ -74,6 +86,10 @@ static int read_list(PyObject* list, vector<string>& vec) {
 
 static PyObject* create_np_str_array(const std::vector<std::string>& vals, size_t itemsize){
 
+    if (itemsize != 0 && vals.size() > std::numeric_limits<size_t>::max() / itemsize) {
+        PyErr_SetString(PyExc_OverflowError, "string array allocation size overflow");
+        return NULL;
+    }
     size_t mem_size = vals.size() * itemsize;
 
     void * mem = PyDataMem_NEW(mem_size);
@@ -138,20 +154,31 @@ template<typename T> PyObject* create_np_array(PyArray_Descr* descr, void* data)
 static PyObject* create_np_array(const std::string& dtype, void* data) {
 
     PyObject* _dtype = Py_BuildValue("s", dtype.c_str());
-    PyArray_Descr* descr;
-    PyArray_DescrConverter(_dtype, &descr);
+    if (!_dtype) {
+        delete_vector(dtype, data);
+        return NULL;
+    }
+    PyArray_Descr* descr = NULL;
+    if (!PyArray_DescrConverter(_dtype, &descr)) {
+        Py_DECREF(_dtype);
+        delete_vector(dtype, data);
+        return NULL;
+    }
     Py_XDECREF(_dtype);
 
     PyObject* arr = NULL;
     if (dtype[0] == 'S') {
         size_t itemsize = atoi(dtype.substr(1).c_str());
         if (itemsize <= 0) {
+            Py_DECREF(descr);
+            delete static_cast<vector<string>*>(data);
             PyErr_SetString(PyExc_TypeError, "item size must be a positive int");
             return NULL;
         }
         auto col = static_cast<vector<string>*>(data);
         arr = create_np_str_array(*col, itemsize);
         delete col;
+        Py_DECREF(descr);
     } else if (dtype.substr(0, 3) == "M8[") {
         arr = create_np_array<int64_t>(descr, data);
     } else if (dtype == "i1") {
@@ -175,7 +202,7 @@ read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
     char* filename = NULL;
     PyObject* _col_indices = NULL;
     PyObject* _dtypes = NULL;
-    char* separator = NULL;
+    char* separator = const_cast<char*>(",");
     int skip_rows = 1;
     int max_rows = 0;
 
@@ -207,6 +234,10 @@ read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
 
     if (!PyList_Check(_dtypes)) {
         PyErr_SetString(PyExc_RuntimeError, "dtypes must be a list");
+        return NULL;
+    }
+    if (!separator || ::strlen(separator) != 1) {
+        PyErr_SetString(PyExc_ValueError, "separator must contain exactly one byte");
         return NULL;
     }
     vector<string> dtypes;
@@ -251,16 +282,26 @@ read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
         PyEval_RestoreThread(_save);
         PyErr_SetString(PyExc_RuntimeError, ex.what());
         return NULL;
+    } catch (...) {
+        PyEval_RestoreThread(_save);
+        PyErr_SetString(PyExc_RuntimeError, "unknown native CSV reader failure");
+        return NULL;
     }
     //reaquire the gil
     PyEval_RestoreThread(_save);
 
     auto arrays = PyList_New(dtypes.size());
+    if (!arrays) {
+        delete_output(dtypes, data);
+        return NULL;
+    }
 
     int i = 0;
     for (auto _dtype: dtypes) {
         PyObject* arr = create_np_array(_dtype, data[i]);
+        data[i] = nullptr;
         if (arr == NULL) {
+            delete_output(dtypes, data);
             Py_XDECREF(arrays);
             return NULL;
         }
@@ -312,6 +353,7 @@ parse_datetimes(PyObject* self, PyObject* args) {
         }
         ::time_t event_time = ::time_to_epoch(&tm);
         if (event_time == static_cast<::time_t>(-1)) {
+            Py_DECREF(item);
             delete output;
             PyErr_SetString(PyExc_ValueError, "datetime is outside the supported UTC range");
             return NULL;

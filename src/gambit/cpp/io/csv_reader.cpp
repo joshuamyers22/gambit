@@ -12,12 +12,9 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-#include <queue>
-#include <mutex>
 #include <zip.h>
 #include <math.h>
 #include <string.h>
-#include <unordered_map>
 #include "utils.hpp"
 
 
@@ -317,57 +314,6 @@ void delete_output(const vector<string>& dtypes, vector<void*>& output) {
     }
 }
 
-class ZipArchive {
-public:
-    static ZipArchive& get_instance() {
-        static ZipArchive  instance; // Guaranteed to be destroyed.
-        return instance;
-    }
-    ZipArchive(const ZipArchive&) = delete;
-    void operator=(const ZipArchive&) = delete;
-
-    ~ZipArchive() {
-        if (_zip_archives.size()) {
-            for (auto zip_archive: _zip_archives) {
-                zip_close(zip_archive.second);
-            }
-        }
-    }
-
-    zip_t* get_archive(const std::string& zip_filename) {
-        zip_t* zip_archive = nullptr;
-        {
-            std::lock_guard<std::mutex> guard(_zip_archives_mutex);
-            auto it = _zip_archives.find(zip_filename);
-            if (it == _zip_archives.end()) {
-                if (_zip_archives.size() > 100) {
-                    auto it = _zip_archives.find(_fifo.front());
-                    zip_close(it->second);
-                    _zip_archives.erase(it);
-                    _fifo.pop();
-                }
-                int zip_error_code = 0;
-                zip_archive = zip_open(zip_filename.c_str(), ZIP_RDONLY, &zip_error_code);
-                if (!zip_archive) {
-                    char zip_error_message[255];
-                    zip_error_to_str(zip_error_message, sizeof(zip_error_message), zip_error_code, errno);
-                    error("can't read: " << zip_filename << " : " << zip_error_message);
-                }
-                _zip_archives.insert(make_pair(zip_filename, zip_archive));
-                _fifo.push(zip_filename);
-            } else {
-                zip_archive = it->second;
-            }
-        }
-        return zip_archive;
-    }
-private:
-    ZipArchive() {}
-    unordered_map<string, zip_t*> _zip_archives;
-    queue<string> _fifo;
-    mutex _zip_archives_mutex;
-};
-
 struct Reader {
     virtual ssize_t getline(char** line) = 0;
     virtual string filename() = 0;
@@ -442,6 +388,7 @@ class ZipReader: public Reader {
 public:
     ZipReader(const std::string& filename):
     _filename(filename),
+    _zip_archive(nullptr),
     _zip_file(nullptr),
     _buf(nullptr),
     _buf_idx(0),
@@ -449,19 +396,34 @@ public:
         std::size_t i = filename.find(':');
         auto zip_filename = filename.substr(0, i);
         auto inner_filename = filename.substr(i + 1);
-        ZipArchive& archive = ZipArchive::get_instance();
-        zip_t* zip_archive = archive.get_archive(zip_filename);
+        int zip_error_code = 0;
+        _zip_archive = zip_open(zip_filename.c_str(), ZIP_RDONLY, &zip_error_code);
+        if (!_zip_archive) {
+            zip_error_t zip_error;
+            zip_error_init_with_code(&zip_error, zip_error_code);
+            const string message = zip_error_strerror(&zip_error);
+            zip_error_fini(&zip_error);
+            error("can't read: " << zip_filename << " : " << message);
+        }
         zip_stat_t member_stat;
         zip_stat_init(&member_stat);
-        if (zip_stat(zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS, &member_stat) != 0) {
-            error("can't inspect " << inner_filename << " from " << filename << " : " << zip_strerror(zip_archive));
+        if (zip_stat(_zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS, &member_stat) != 0) {
+            const string message = zip_strerror(_zip_archive);
+            zip_close(_zip_archive);
+            _zip_archive = nullptr;
+            error("can't inspect " << inner_filename << " from " << filename << " : " << message);
         }
         if ((member_stat.valid & ZIP_STAT_SIZE) && member_stat.size > MAX_ZIP_MEMBER_SIZE) {
+            zip_close(_zip_archive);
+            _zip_archive = nullptr;
             error(inner_filename << " from " << filename << " exceeds the 1 GiB decompressed member limit");
         }
-        _zip_file = zip_fopen(zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS);
+        _zip_file = zip_fopen(_zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS);
         if (!_zip_file) {
-            error("can't read " << inner_filename << " from " << filename << " : " << zip_strerror(zip_archive));
+            const string message = zip_strerror(_zip_archive);
+            zip_close(_zip_archive);
+            _zip_archive = nullptr;
+            error("can't read " << inner_filename << " from " << filename << " : " << message);
         }
     }
 
@@ -480,11 +442,14 @@ public:
     ~ZipReader() {
         if (_zip_file) zip_fclose(_zip_file);
         _zip_file = nullptr;
+        if (_zip_archive) zip_close(_zip_archive);
+        _zip_archive = nullptr;
         if (_buf) ::free(_buf);
     }
 
 private:
     string _filename;
+    zip_t* _zip_archive;
     zip_file_t* _zip_file;
     char* _buf;
     size_t _buf_idx;
@@ -542,6 +507,7 @@ bool read_csv_file(Reader* reader,
                    vector<void*>& output) {
 
     int row_num = 0;
+    int data_row_count = 0;
     output.resize(dtypes.size());
     for (size_t i = 0; i < dtypes.size(); ++i) {
         output[i] = create_vector(dtypes[i], max_rows);
@@ -561,7 +527,7 @@ bool read_csv_file(Reader* reader,
 
         if (row_num <= skip_rows) continue;
 
-        if ((max_rows != 0) && (row_num > max_rows)) break;
+        if ((max_rows != 0) && (data_row_count >= max_rows)) break;
         auto fields = tokenize_line(line, separator, col_indices);
         if (!fields.size()) continue; // empty line
         if (fields.size() != dtypes.size()) {
@@ -572,6 +538,7 @@ bool read_csv_file(Reader* reader,
                   << " line: " << _line << " but dtypes arg length was " << dtypes.size() << endl)
         }
         add_line(fields, dtypes, output);
+        data_row_count++;
     }
     return more_to_read;
 }

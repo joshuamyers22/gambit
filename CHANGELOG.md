@@ -1,0 +1,28 @@
+# Changelog
+
+This project follows [Semantic Versioning](https://semver.org/). Changes that
+have not yet been released are collected below.
+
+## Unreleased
+
+### Added
+
+- Immutable, telemetry-bearing backtest results and verified result bundles.
+- Typed risk, stress, validation, provenance, execution-cost, and instrument APIs.
+- Experimental native mapped-column and tick-processing prototypes.
+
+### Changed
+
+- Replaced accidental wildcard root exports with an explicit public API.
+- Replaced Pandas data-frame processing with Polars in the backtest path.
+
+### Fixed
+
+- Hardened native CSV/ZIP ownership, allocation failure, and Python reference
+  cleanup paths.
+- Bound the native `rho` function to the correct implementation.
+
+### Deprecated
+
+- None.
+

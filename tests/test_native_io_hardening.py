@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import os
 import random
 import subprocess
@@ -26,6 +27,41 @@ def test_native_reader_rejects_missing_file_without_crashing(tmp_path: Path) -> 
 def test_native_reader_rejects_empty_schema() -> None:
     with pytest.raises(RuntimeError, match="must not be empty"):
         _io.read_file(str(CORPUS / "invalid_numeric.csv"), [], [], ",", 0, 0)
+
+
+def test_native_reader_has_safe_default_separator(tmp_path: Path) -> None:
+    csv_file = tmp_path / "values.csv"
+    csv_file.write_text("42\n")
+
+    (values,) = _io.read_file(str(csv_file), [0], ["i8"], skip_rows=0)
+
+    assert values.tolist() == [42]
+
+
+def test_native_reader_cleans_up_invalid_string_width(tmp_path: Path) -> None:
+    csv_file = tmp_path / "values.csv"
+    csv_file.write_text("value\n")
+
+    for _ in range(100):
+        with pytest.raises(TypeError, match="item size"):
+            _io.read_file(str(csv_file), [0], ["S0"], ",", 0, 0)
+
+
+def test_native_reader_rejects_invalid_separator(tmp_path: Path) -> None:
+    csv_file = tmp_path / "values.csv"
+    csv_file.write_text("42\n")
+
+    with pytest.raises(ValueError, match="exactly one byte"):
+        _io.read_file(str(csv_file), [0], ["i8"], "", 0, 0)
+
+
+def test_native_reader_max_rows_excludes_skipped_header(tmp_path: Path) -> None:
+    csv_file = tmp_path / "values.csv"
+    csv_file.write_text("value\n1\n2\n3\n")
+
+    (values,) = _io.read_file(str(csv_file), [0], ["i8"], ",", 1, 2)
+
+    assert values.tolist() == [1, 2]
 
 
 def test_native_reader_rejects_missing_selected_field() -> None:
@@ -94,6 +130,22 @@ def test_native_reader_reads_zip_member(tmp_path: Path) -> None:
 
     assert symbols.tolist() == [b"AAPL"]
     assert prices.tolist() == [100.5]
+
+
+def test_native_zip_reader_does_not_retain_archive_descriptors(tmp_path: Path) -> None:
+    descriptor_directory = Path("/dev/fd")
+    if not descriptor_directory.is_dir():
+        pytest.skip("platform does not expose process file descriptors")
+    baseline = len(list(descriptor_directory.iterdir()))
+
+    for index in range(110):
+        archive = tmp_path / f"prices-{index}.zip"
+        with zipfile.ZipFile(archive, "w") as zip_file:
+            zip_file.writestr("prices.csv", "AAPL,100.5")
+        _io.read_file(f"{archive}:prices.csv", [0, 1], ["S16", "f8"], ",", 0, 0)
+
+    gc.collect()
+    assert len(list(descriptor_directory.iterdir())) <= baseline + 3
 
 
 @pytest.mark.parametrize("truncate_bytes", [0, 12])

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
@@ -52,9 +53,17 @@ class MappedFloat64Column {
 public:
     static MappedFloat64Column* create(const std::string& path, py::array_t<double, py::array::c_style | py::array::forcecast> values) {
         const auto info = values.request();
+        if (info.size < 0 || static_cast<std::uint64_t>(info.size) >
+                std::numeric_limits<std::uint64_t>::max() / sizeof(double)) {
+            throw std::overflow_error("factor cache row count is too large");
+        }
         const auto rows = static_cast<std::uint64_t>(info.size);
-        const auto data_bytes = static_cast<std::uint64_t>(info.size * sizeof(double));
-        const auto mapping_bytes = HEADER_BYTES + data_bytes;
+        const auto data_bytes = rows * sizeof(double);
+        if (data_bytes > std::numeric_limits<std::size_t>::max() - HEADER_BYTES ||
+            data_bytes > static_cast<std::uint64_t>(std::numeric_limits<off_t>::max()) - HEADER_BYTES) {
+            throw std::overflow_error("factor cache mapping size is too large");
+        }
+        const auto mapping_bytes = static_cast<std::size_t>(HEADER_BYTES + data_bytes);
         int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_EXCL, 0600);
         if (fd == -1) {
             throw system_error("open factor cache segment");
@@ -98,12 +107,14 @@ public:
                 const auto error = system_error("publish factor cache header");
                 ::munmap(mapping, mapping_bytes);
                 ::close(fd);
+                ::unlink(path.c_str());
                 throw error;
             }
             if (::mprotect(mapping, mapping_bytes, PROT_READ) == -1) {
                 const auto error = system_error("protect factor cache segment");
                 ::munmap(mapping, mapping_bytes);
                 ::close(fd);
+                ::unlink(path.c_str());
                 throw error;
             }
         }
@@ -180,7 +191,9 @@ private:
         if (__atomic_load_n(&header->state, __ATOMIC_ACQUIRE) != STATE_COMMITTED) {
             throw std::runtime_error("factor cache segment is not committed");
         }
-        if (header->data_offset != HEADER_BYTES || header->data_bytes != header->row_count * sizeof(double) ||
+        if (header->row_count > std::numeric_limits<std::uint64_t>::max() / sizeof(double) ||
+            header->data_offset != HEADER_BYTES || header->data_bytes != header->row_count * sizeof(double) ||
+            header->data_bytes > mapping_bytes - HEADER_BYTES ||
             header->data_offset + header->data_bytes != mapping_bytes) {
             throw std::runtime_error("factor cache segment bounds are invalid");
         }

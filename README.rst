@@ -110,6 +110,13 @@ without retaining the source frame::
 Requested analytics have their own telemetry phase and are included in persisted
 result bundles. Gambit does not calculate unrequested risk or stress reports.
 
+API stability
+-------------
+
+The supported root namespace is declared by ``gambit.__all__``. Compatibility,
+deprecation, experimental-native, and persisted-format guarantees are documented
+in ``API_STABILITY.md``; release-facing changes are recorded in ``CHANGELOG.md``.
+
 Execution costs and liquidity
 -----------------------------
 

@@ -175,7 +175,7 @@ void init_pybind_options(py::module &m) {
               float: Option vega
           )pqdoc");
 
-    m.def("rho", py::vectorize(theta),
+    m.def("rho", py::vectorize(rho),
           "call"_a,
           "S"_a,
           "K"_a,
@@ -194,7 +194,7 @@ void init_pybind_options(py::module &m) {
               sigma (float): Annualized volatility.  Use 0.01 for 1%
               q (float, optional): Annualized dividend yield.  Use 0.01 for 1%.  Default 0
           Returns:
-              float: Option theta
+              float: Option rho
           )pqdoc");
 
     m.def("implied_vol", py::vectorize(implied_vol),
