@@ -38,8 +38,10 @@ string get_error(int err_num) {
     char errmsg[255];
 #ifdef _MSC_VER
     ::strerror_s(errmsg, 255, err_num);
+#elif defined(__GLIBC__) && defined(_GNU_SOURCE)
+    return string(::strerror_r(err_num, errmsg, 255));
 #else
-    ::strerror_r(err_num, errmsg, 255);
+    if (::strerror_r(err_num, errmsg, 255) != 0) return "unknown system error";
 #endif
     return string(errmsg);
 }
@@ -344,8 +346,13 @@ public:
                     _zip_archives.erase(it);
                     _fifo.pop();
                 }
-                zip_archive = zip_open(zip_filename.c_str(), ZIP_RDONLY, NULL);
-                if (!zip_archive) error("can't read: " << zip_filename << " : " << get_error(errno));
+                int zip_error_code = 0;
+                zip_archive = zip_open(zip_filename.c_str(), ZIP_RDONLY, &zip_error_code);
+                if (!zip_archive) {
+                    char zip_error_message[255];
+                    zip_error_to_str(zip_error_message, sizeof(zip_error_message), zip_error_code, errno);
+                    error("can't read: " << zip_filename << " : " << zip_error_message);
+                }
                 _zip_archives.insert(make_pair(zip_filename, zip_archive));
                 _fifo.push(zip_filename);
             } else {
