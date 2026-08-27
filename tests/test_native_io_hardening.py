@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import random
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +11,7 @@ import pytest
 from gambit import _io
 
 CORPUS = Path(__file__).parent / "corpus" / "native_io"
+PROBE = Path(__file__).parent / "native_io_probe.py"
 
 
 def test_native_reader_rejects_missing_file_without_crashing(tmp_path: Path) -> None:
@@ -46,6 +50,48 @@ def test_native_reader_invalid_numeric_value_has_documented_nan_semantics() -> N
     assert symbols.tolist() == [b"AAPL"]
     assert prices.shape == (1,)
     assert np.isnan(prices[0])
+
+
+def test_native_reader_preserves_long_unterminated_final_row(tmp_path: Path) -> None:
+    csv_file = tmp_path / "long-final-row.csv"
+    symbol = "A" * (64 * 1024)
+    csv_file.write_text(f"{symbol},100.5", encoding="ascii")
+
+    symbols, prices = _io.read_file(str(csv_file), [0, 1], ["S65536", "f8"], ",", 0, 0)
+
+    assert symbols.tolist() == [symbol.encode()]
+    assert prices.tolist() == [100.5]
+
+
+def test_native_reader_rejects_rows_over_input_limit(tmp_path: Path) -> None:
+    csv_file = tmp_path / "oversized.csv"
+    csv_file.write_bytes(b"A" * (16 * 1024 * 1024 + 1))
+
+    with pytest.raises(RuntimeError, match="16 MiB input limit"):
+        _io.read_file(str(csv_file), [0], ["S1"], ",", 0, 0)
+
+
+def test_seeded_malformed_inputs_do_not_crash_native_reader(tmp_path: Path) -> None:
+    rng = random.Random(20260827)
+    alphabet = b"ABCDEF0123456789,\r\n\x00\xff"
+    case_files = []
+
+    for case_number in range(24):
+        payload = bytes(rng.choice(alphabet) for _ in range(rng.randrange(0, 4096)))
+        case_file = tmp_path / f"fuzz-{case_number:02d}.csv"
+        case_file.write_bytes(payload)
+        case_files.append(case_file)
+
+    result = subprocess.run(
+        [sys.executable, str(PROBE), *(str(path) for path in case_files)],
+        check=False,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, (
+        "native reader terminated for fuzz seed 20260827: "
+        f"stderr={result.stderr.decode(errors='replace')}"
+    )
 
 
 @pytest.mark.parametrize(

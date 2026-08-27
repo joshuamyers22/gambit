@@ -8,6 +8,7 @@ Please read README.rst in the main directory to get started
    :caption: Contents:
 
    modules
+   native_io
 
 Indices and tables
 ==================

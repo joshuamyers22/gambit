@@ -344,6 +344,7 @@ struct Reader {
 };
 
 static const size_t BUF_SIZE = 64 * 1024;
+static const size_t MAX_LINE_SIZE = 16 * 1024 * 1024;
 
 ssize_t get_index(char* buf, size_t n, char c) {
     for (size_t i = 0; i < n; ++i) {
@@ -353,51 +354,53 @@ ssize_t get_index(char* buf, size_t n, char c) {
 }
 
 ssize_t read_line(char** buf, size_t* buf_size, size_t* begin_idx, char** line, Reader* reader) {
-    //if buffer is empty read up to buf size into it
-    //if cannot read then return -1
-    //if buf has data then try to read a line from last position
-    //if no line read then we have a partial line
-    //copy into
-    //read up to buf size
-    ssize_t bytes_read = 0;
-    size_t line_size = 0;
-    ssize_t end_idx = 0;
     if (!*buf) {
         *buf = static_cast<char*>(::malloc(BUF_SIZE));
-        //first time only
-        bytes_read = reader->fread(*buf, BUF_SIZE);
-        if (bytes_read <= 0) return bytes_read;
+        if (!*buf) error("could not allocate CSV read buffer");
         *begin_idx = 0;
-        *buf_size = bytes_read;
-    }
-    //buf has data already, try to read a line
-    end_idx = get_index(*buf + *begin_idx, *buf_size - *begin_idx, '\n');
-    int begin_inc = 1;
-    if (end_idx > 0 && (*buf + *begin_idx)[end_idx - 1] == '\r') { // windows cr/lf
-        end_idx -= 1;  // end_idx now points to \r in \r\n
-        begin_inc = 2;  // next line begins after end_idx + 2 (for \r\n)
+        *buf_size = 0;
     }
 
-    if (end_idx >= 0) {
-        //found a line. update begin index and set line ptr to beginning of this line
-        line_size = end_idx;
-        (*buf)[*begin_idx + end_idx] = '\0';  // replace \r or \n with \0 to end line
-        *line = *buf + *begin_idx;
-        *begin_idx += (end_idx + begin_inc);
-        return line_size;
-    } else {
-        //we read a partial line
-        //copy partial line to new buffer
-        char* tmp = static_cast<char*>(::malloc(BUF_SIZE));
-        size_t partial_str_size = BUF_SIZE - *begin_idx;
-        strncpy(tmp, *buf + *begin_idx, partial_str_size);
-        ::free(*buf);
-        *buf = tmp;
+    for (;;) {
+        size_t available = *buf_size - *begin_idx;
+        ssize_t newline_idx = get_index(*buf + *begin_idx, available, '\n');
+        if (newline_idx >= 0) {
+            size_t line_size = static_cast<size_t>(newline_idx);
+            size_t next_line_idx = *begin_idx + line_size + 1;
+            if (line_size > 0 && (*buf)[*begin_idx + line_size - 1] == '\r') {
+                line_size--;
+            }
+            (*buf)[*begin_idx + line_size] = '\0';
+            *line = *buf + *begin_idx;
+            *begin_idx = next_line_idx;
+            return static_cast<ssize_t>(line_size);
+        }
+
+        if (*begin_idx > 0 && available > 0) {
+            ::memmove(*buf, *buf + *begin_idx, available);
+        }
         *begin_idx = 0;
-        bytes_read = reader->fread(*buf + partial_str_size, BUF_SIZE - partial_str_size);
-        if (bytes_read <= 0) return bytes_read;
-        *buf_size = bytes_read + partial_str_size;
-        return read_line(buf, buf_size, begin_idx, line, reader);
+        *buf_size = available;
+
+        if (available >= MAX_LINE_SIZE) {
+            error(reader->filename() << " contains a row larger than the 16 MiB input limit");
+        }
+
+        size_t read_size = std::min(BUF_SIZE, MAX_LINE_SIZE - available);
+        char* resized = static_cast<char*>(::realloc(*buf, available + read_size + 1));
+        if (!resized) error("could not grow CSV read buffer");
+        *buf = resized;
+
+        ssize_t bytes_read = reader->fread(*buf + available, read_size);
+        if (bytes_read < 0) return bytes_read;
+        if (bytes_read == 0) {
+            if (available == 0) return -1;
+            (*buf)[available] = '\0';
+            *line = *buf;
+            *begin_idx = available;
+            return static_cast<ssize_t>(available);
+        }
+        *buf_size = available + static_cast<size_t>(bytes_read);
     }
 }
 
@@ -464,9 +467,8 @@ public:
     }
 
     ssize_t fread(char* buf, size_t buf_size) override {
-        if (feof(_file)) return -1;
-        if (ferror(_file)) error("error reading file");
         size_t elems_read = ::fread(buf, sizeof(char), ::floor(buf_size / sizeof(char)), _file);
+        if (elems_read == 0 && ferror(_file)) error("error reading file");
         return elems_read * sizeof(char);
     }
 
