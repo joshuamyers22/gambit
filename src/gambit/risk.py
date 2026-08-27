@@ -10,6 +10,7 @@ from typing import Callable, Protocol, Sequence
 import numpy as np
 
 from gambit.account import Account
+from gambit.instruments import Tradability
 from gambit.pq_types import Order
 
 
@@ -127,6 +128,35 @@ class MaxVolumeParticipation:
                 f"participation {participation:.6g} exceeds {self.maximum_fraction:.6g}",
             )
         return PolicyResult(True)
+
+
+@dataclass(frozen=True)
+class InstrumentTradabilityPolicy:
+    """Enforce instrument state and expiry before an order reaches execution."""
+
+    allow_risk_reducing: bool = True
+    name: str = "instrument_tradability"
+
+    def evaluate(self, order: Order, context: RiskContext) -> PolicyResult:
+        spec = order.contract.instrument_spec
+        if order.contract.expiry is not None and context.timestamp > order.contract.expiry:
+            return PolicyResult(False, "contract_expired", f"{order.contract.symbol} is expired")
+        if spec.tradability is Tradability.ACTIVE:
+            return PolicyResult(True)
+
+        projected = context.projected_position(order)
+        position_before_order = projected - order.qty
+        reduces_risk = abs(projected) < abs(position_before_order)
+        if self.allow_risk_reducing and reduces_risk and spec.tradability in {
+            Tradability.IGNORED,
+            Tradability.UNTRADEABLE,
+        }:
+            return PolicyResult(True)
+        return PolicyResult(
+            False,
+            f"instrument_{spec.tradability.value}",
+            f"{order.contract.symbol} is marked {spec.tradability.value}",
+        )
 
 
 def decide_order(order: Order, context: RiskContext, policies: Sequence[RiskPolicy]) -> OrderDecision:

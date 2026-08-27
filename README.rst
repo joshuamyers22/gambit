@@ -99,6 +99,25 @@ per-unit and per-order charges, and notional fees::
 Use ``MaxVolumeParticipation`` as a pre-trade risk policy when an order should be
 rejected rather than assigned impact beyond a configured share of market volume.
 
+Instrument metadata and tradability
+-----------------------------------
+
+Contracts can carry an immutable ``InstrumentSpec`` describing asset class,
+currency, tick size, exchange calendar, trading timezone, liquidity group, and
+tradability state. Duplicate instruments must identify their canonical symbol::
+
+   spec = gambit.InstrumentSpec(
+       asset_class=gambit.AssetClass.FUTURE,
+       currency="USD",
+       tick_size=0.25,
+       exchange_calendar="CME_Equity",
+   )
+   contract = gambit.Contract.create("ESH4", multiplier=50, instrument_spec=spec)
+
+Add ``InstrumentTradabilityPolicy`` to reject expired, bad, duplicate, ignored,
+or untradeable instruments before execution. By default, ignored and untradeable
+positions may still accept orders that reduce existing exposure.
+
 
 
 

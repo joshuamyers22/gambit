@@ -13,6 +13,7 @@ from typing import Any, ClassVar
 
 import numpy as np
 
+from gambit.instruments import InstrumentSpec
 from gambit.pq_utils import assert_, get_child_logger
 
 _logger = get_child_logger(__name__)
@@ -93,6 +94,7 @@ class Contract:
     multiplier: float
     components: list[tuple[Contract, float]]
     properties: SimpleNamespace
+    instrument_spec: InstrumentSpec
 
     """A contract such as a stock, option or a future that can be traded"""
 
@@ -104,6 +106,7 @@ class Contract:
         multiplier: float = 1.0,
         components: list[tuple[Contract, float]] | None = None,
         properties: SimpleNamespace | None = None,
+        instrument_spec: InstrumentSpec | None = None,
     ) -> "Contract":
         """
         Args:
@@ -129,7 +132,9 @@ class Contract:
             components = []
         if properties is None:
             properties = types.SimpleNamespace()
-        contract = Contract(symbol, contract_group, expiry, multiplier, components, properties)
+        if instrument_spec is None:
+            instrument_spec = InstrumentSpec()
+        contract = Contract(symbol, contract_group, expiry, multiplier, components, properties, instrument_spec)
         contract_group.add_contract(contract)
         contract.contract_group = contract_group
         Contract._instances[symbol] = contract
@@ -157,11 +162,14 @@ class Contract:
         multiplier: float = 1.0,
         components: list[tuple[Contract, float]] | None = None,
         properties: SimpleNamespace | None = None,
+        instrument_spec: InstrumentSpec | None = None,
     ) -> Contract:
         if symbol in Contract._instances:
             contract = Contract._instances.get(symbol)
         else:
-            contract = Contract.create(symbol, contract_group, expiry, multiplier, components, properties)
+            contract = Contract.create(
+                symbol, contract_group, expiry, multiplier, components, properties, instrument_spec
+            )
         return contract  # type: ignore
 
     @staticmethod

@@ -14,6 +14,7 @@ from typing import Any, Sequence
 import numpy as np
 import polars as pl
 
+from gambit.instruments import InstrumentSpec
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup
 from gambit.pq_utils import assert_, get_child_logger
 from gambit.risk import RiskPolicy
@@ -126,12 +127,14 @@ class StrategyBuilder:
     def set_log_orders(self, log_orders: bool) -> None:
         self.log_orders = log_orders
 
-    def add_contract(self, symbol: str) -> Contract:
+    def add_contract(self, symbol: str, instrument_spec: InstrumentSpec | None = None) -> Contract:
         if Contract.exists(symbol):
             contract = Contract.get(symbol)
             assert contract is not None  # keep mypy happy
+            if instrument_spec is not None and contract.instrument_spec != instrument_spec:
+                raise ValueError(f"contract {symbol} already exists with different instrument metadata")
         else:
-            contract = Contract.create(symbol)
+            contract = Contract.create(symbol, instrument_spec=instrument_spec)
         return contract
 
     def set_price_function(self, price_function: PriceFunctionType) -> None:
