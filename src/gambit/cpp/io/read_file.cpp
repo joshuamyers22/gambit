@@ -175,7 +175,7 @@ read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      kwargs,
-                                     "sOO|siOi",
+                                     "sOO|sii",
                                      const_cast<char**>(kwlist),
                                      &filename,
                                      &_col_indices,
@@ -208,6 +208,10 @@ read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
     }
 
     if (!read_list(_dtypes, dtypes)) return NULL;
+    if (col_indices.empty()) {
+        PyErr_SetString(PyExc_RuntimeError, "col_indices and dtypes must not be empty");
+        return NULL;
+    }
     if (skip_rows < 0) {
         PyErr_SetString(PyExc_RuntimeError, "skip_rows must be >= 0");
         return NULL;

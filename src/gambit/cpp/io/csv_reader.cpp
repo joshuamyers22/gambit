@@ -451,7 +451,9 @@ public:
         _buf(nullptr),
         _buf_idx(0),
         _buf_size(0)
-    {}
+    {
+        if (!_file) error("can't read: " << filename << " : " << get_error(errno));
+    }
 
     string filename() override {
         return _filename;
