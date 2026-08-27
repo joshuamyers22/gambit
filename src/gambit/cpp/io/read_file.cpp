@@ -77,6 +77,10 @@ static PyObject* create_np_str_array(const std::vector<std::string>& vals, size_
     size_t mem_size = vals.size() * itemsize;
 
     void * mem = PyDataMem_NEW(mem_size);
+    if (!mem && mem_size != 0) {
+        PyErr_NoMemory();
+        return NULL;
+    }
 
     size_t cur_index=0;
 
@@ -92,6 +96,10 @@ static PyObject* create_np_str_array(const std::vector<std::string>& vals, size_
 
     PyObject* arr = PyArray_New(&PyArray_Type, 1, &dim, NPY_STRING, NULL, mem,
                                 static_cast<int>(itemsize), NPY_ARRAY_CARRAY | NPY_ARRAY_OWNDATA, NULL);
+    if (arr == NULL) {
+        PyDataMem_FREE(mem);
+        return NULL;
+    }
     PyArray_ENABLEFLAGS((PyArrayObject*)arr, NPY_ARRAY_OWNDATA);
     return arr;
 }
@@ -100,22 +108,27 @@ template<typename T> PyObject* create_np_array(PyArray_Descr* descr, void* data)
     npy_intp dims[1];
     auto vec = static_cast<vector<T>*>(data);
     dims[0] = vec->size();
-    auto _data = new T[vec->size()];
+    size_t mem_size = vec->size() * sizeof(T);
+    auto _data = static_cast<T*>(PyDataMem_NEW(mem_size));
+    if (!_data && mem_size != 0) {
+        delete vec;
+        PyErr_NoMemory();
+        return NULL;
+    }
     ::memcpy(
       _data,
       vec->data(),
-      vec->size() * sizeof(T));
+      mem_size);
     delete vec;
 
 
     PyObject* arr = PyArray_NewFromDescr(&PyArray_Type, descr, 1, dims, NULL, _data,
                                          NPY_ARRAY_CARRAY | NPY_ARRAY_OWNDATA , NULL);
-    PyArray_ENABLEFLAGS((PyArrayObject*)arr, NPY_ARRAY_OWNDATA);
-
     if (arr == NULL) {
-        PyErr_SetString(PyExc_TypeError, "could not allocate numpy array");
+        PyDataMem_FREE(_data);
         return NULL;
     }
+    PyArray_ENABLEFLAGS((PyArrayObject*)arr, NPY_ARRAY_OWNDATA);
     return arr;
 }
 
