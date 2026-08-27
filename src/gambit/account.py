@@ -378,7 +378,7 @@ def roundtrip_trades(trades: list[Trade]) -> list[RoundTripTrade]:
             open_trade.order,
             None,
             open_trade.timestamp,
-            np.datetime64("NaT"),
+            np.datetime64("NaT", "ns"),
             open_trade.qty,
             open_trade.price,
             np.nan,
@@ -595,7 +595,7 @@ class Account:
         if not np.isnat(start_date):
             trades = [trade for trade in trades if trade.timestamp >= start_date]
         if not np.isnat(end_date):
-            trades = [trade for trade in trades if trade.timestamp >= start_date]
+            trades = [trade for trade in trades if trade.timestamp <= end_date]
         return roundtrip_trades(trades)
 
     def df_pnl(self, contract_groups: Sequence[str] | None = None) -> pl.DataFrame:
