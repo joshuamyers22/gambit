@@ -43,3 +43,17 @@ directory/file synchronization before this becomes production storage.
 No ring lock or slot claim may cover mapping, page faults, writes, checksum work,
 flushes, or validation. A future ring transports only committed descriptors. The
 first supported topology will be SPSC with bounded spin/backoff/park behavior.
+
+## Tick transport prototype
+
+The native extension also contains an in-memory SPSC tick ring. This ring is not
+part of the mapped storage format and performs no storage operations. Each 64-byte
+record contains sequence and event/receive times, price, quantity, bid, ask,
+instrument id, and flags. Capacity is a power of two; producer and consumer cursors
+are cache-line separated and use release/acquire publication.
+
+Batch push rejects newest records once full and increments an explicit drop count.
+Waiting consumers spin for a bounded number of attempts, periodically yield, then
+park on a condition variable with a timeout. The GIL is released during native
+transfer and waiting. This first prototype supports exactly one producer and one
+consumer; additional concurrent callers violate its contract.

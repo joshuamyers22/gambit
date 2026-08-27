@@ -11,15 +11,30 @@ import numpy as np
 from numpy.typing import NDArray
 
 try:
-    from gambit._factor_cache import MappedFloat64Column
+    from gambit._factor_cache import MappedFloat64Column, TickRing
 except ImportError:  # pragma: no cover - supported fallback on platforms without the native extension
     MappedFloat64Column = None
+    TickRing = None
 
 MAGIC = b"GAMBITFC"
 VERSION = 1
 COMMITTED = 1
 HEADER_BYTES = 4096
 HEADER = struct.Struct("<8sIIQQQQ")
+TICK_DTYPE = np.dtype(
+    [
+        ("sequence", "<u8"),
+        ("event_time_ns", "<i8"),
+        ("receive_time_ns", "<i8"),
+        ("price", "<f8"),
+        ("quantity", "<f8"),
+        ("bid", "<f8"),
+        ("ask", "<f8"),
+        ("instrument_id", "<u4"),
+        ("flags", "<u4"),
+    ],
+    align=True,
+)
 
 
 def factor_node_key(*, parents: tuple[str, ...], transform: str, parameters: str, input_fingerprint: str) -> str:

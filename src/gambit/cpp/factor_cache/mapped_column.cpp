@@ -14,6 +14,8 @@
 
 namespace py = pybind11;
 
+void init_tick_ring(py::module_& module);
+
 namespace {
 
 constexpr std::size_t HEADER_BYTES = 4096;
@@ -204,4 +206,5 @@ PYBIND11_MODULE(_factor_cache, module) {
         .def_property_readonly("row_count", &MappedFloat64Column::row_count)
         .def_property_readonly("checksum", &MappedFloat64Column::checksum)
         .def_property_readonly("path", &MappedFloat64Column::path);
+    init_tick_ring(module);
 }

@@ -81,7 +81,10 @@ def _extensions() -> list[Extension]:
         native_extensions.append(
             Extension(
                 "gambit._factor_cache",
-                sources=[str(CPP_DIR / "factor_cache" / "mapped_column.cpp")],
+                sources=[
+                    str(CPP_DIR / "factor_cache" / "mapped_column.cpp"),
+                    str(CPP_DIR / "factor_cache" / "tick_ring.cpp"),
+                ],
                 include_dirs=[pybind11.get_include(), np.get_include()],
                 language="c++",
                 extra_compile_args=cpp_args,

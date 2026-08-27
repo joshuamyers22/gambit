@@ -367,7 +367,8 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - [ ] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
-- [ ] Prototype a descriptor-only SPSC ring with a blocking reference implementation; current IPC/native baselines do not justify starting this work.
+- [ ] Prototype descriptor-only persistence transport with a blocking reference implementation. A separate in-memory tick SPSC prototype now exists; factor-cache baselines still do not justify using a ring for persistence.
+- [x] Benchmark the in-memory tick prototype against per-tick and batched Python bounded queues; copied native batches beat per-tick handoff but lose materially to passing NumPy batch views.
 - [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.

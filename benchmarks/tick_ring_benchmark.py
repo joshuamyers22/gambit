@@ -1,0 +1,224 @@
+"""Compare the native batch SPSC tick ring with Python's bounded queue."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import platform
+import queue
+import threading
+import time
+from dataclasses import asdict, dataclass
+
+import numpy as np
+
+from gambit.factor_cache import TICK_DTYPE, TickRing
+
+
+@dataclass(frozen=True)
+class PipelineMeasurement:
+    name: str
+    ticks: int
+    batch_size: int
+    capacity: int
+    wall_seconds: float
+    cpu_seconds: float
+    ticks_per_second: float
+    sequence_errors: int
+    rejected_pushes: int
+    spins: int
+    parks: int
+
+
+def make_ticks(count: int) -> np.ndarray:
+    records = np.zeros(count, dtype=TICK_DTYPE)
+    records["sequence"] = np.arange(count, dtype=np.uint64)
+    records["event_time_ns"] = records["sequence"].astype(np.int64) * 100
+    records["receive_time_ns"] = records["event_time_ns"] + 10
+    records["price"] = 100 + np.sin(np.arange(count) / 1000)
+    records["quantity"] = 1
+    records["bid"] = records["price"] - 0.01
+    records["ask"] = records["price"] + 0.01
+    records["instrument_id"] = 1
+    return records
+
+
+def benchmark_native(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
+    if TickRing is None:
+        raise RuntimeError("native tick ring extension is not built")
+    ring = TickRing(capacity)
+    sequence_errors = 0
+    consumed = 0
+
+    def produce() -> None:
+        offset = 0
+        while offset < len(records):
+            end = min(offset + batch_size, len(records))
+            count = end - offset
+            while ring.capacity - ring.depth < count:
+                time.sleep(0)
+            pushed = ring.push_batch(records[offset:end])
+            if pushed != count:
+                raise RuntimeError("producer capacity invariant failed")
+            offset = end
+
+    def consume() -> None:
+        nonlocal consumed, sequence_errors
+        expected = 0
+        while consumed < len(records):
+            batch = ring.wait_pop_batch(batch_size, spin_count=256, timeout_seconds=0.01)
+            if not len(batch):
+                continue
+            sequences = batch["sequence"]
+            expected_values = np.arange(expected, expected + len(batch), dtype=np.uint64)
+            sequence_errors += int(np.count_nonzero(sequences != expected_values))
+            expected += len(batch)
+            consumed += len(batch)
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    producer = threading.Thread(target=produce)
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    wall = time.perf_counter() - wall_start
+    cpu = time.process_time() - cpu_start
+    metrics = ring.metrics
+    return PipelineMeasurement(
+        "native_spsc_batch",
+        len(records),
+        batch_size,
+        capacity,
+        wall,
+        cpu,
+        len(records) / wall,
+        sequence_errors,
+        metrics["dropped"],
+        metrics["spins"],
+        metrics["parks"],
+    )
+
+
+def benchmark_python_queue(records: np.ndarray, capacity: int) -> PipelineMeasurement:
+    bounded_queue: queue.Queue[int] = queue.Queue(maxsize=capacity)
+    sequence_errors = 0
+
+    def produce() -> None:
+        for sequence in records["sequence"]:
+            bounded_queue.put(int(sequence))
+
+    def consume() -> None:
+        nonlocal sequence_errors
+        for expected in range(len(records)):
+            sequence = bounded_queue.get()
+            sequence_errors += int(sequence != expected)
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    producer = threading.Thread(target=produce)
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    wall = time.perf_counter() - wall_start
+    cpu = time.process_time() - cpu_start
+    return PipelineMeasurement(
+        "python_queue_per_tick",
+        len(records),
+        1,
+        capacity,
+        wall,
+        cpu,
+        len(records) / wall,
+        sequence_errors,
+        0,
+        0,
+        0,
+    )
+
+
+def benchmark_python_batch_queue(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
+    bounded_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=max(1, capacity // batch_size))
+    sequence_errors = 0
+
+    def produce() -> None:
+        for offset in range(0, len(records), batch_size):
+            bounded_queue.put(records[offset : offset + batch_size])
+
+    def consume() -> None:
+        nonlocal sequence_errors
+        expected = 0
+        while expected < len(records):
+            batch = bounded_queue.get()
+            expected_values = np.arange(expected, expected + len(batch), dtype=np.uint64)
+            sequence_errors += int(np.count_nonzero(batch["sequence"] != expected_values))
+            expected += len(batch)
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    producer = threading.Thread(target=produce)
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    wall = time.perf_counter() - wall_start
+    cpu = time.process_time() - cpu_start
+    return PipelineMeasurement(
+        "python_queue_batch",
+        len(records),
+        batch_size,
+        capacity,
+        wall,
+        cpu,
+        len(records) / wall,
+        sequence_errors,
+        0,
+        0,
+        0,
+    )
+
+
+def run_benchmark(ticks: int, batch_size: int, capacity: int) -> dict[str, object]:
+    if capacity < batch_size:
+        raise ValueError("capacity must be at least batch_size")
+    records = make_ticks(ticks)
+    measurements = [
+        benchmark_python_queue(records, capacity),
+        benchmark_python_batch_queue(records, batch_size, capacity),
+    ]
+    if TickRing is not None:
+        measurements.append(benchmark_native(records, batch_size, capacity))
+    return {
+        "environment": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+        },
+        "measurements": [asdict(measurement) for measurement in measurements],
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ticks", type=int, default=1_000_000)
+    parser.add_argument("--batch-size", type=int, default=1024)
+    parser.add_argument("--capacity", type=int, default=65536)
+    parser.add_argument("--output")
+    arguments = parser.parse_args()
+    if arguments.ticks <= 0 or arguments.batch_size <= 0:
+        parser.error("ticks and batch-size must be positive")
+    result = run_benchmark(arguments.ticks, arguments.batch_size, arguments.capacity)
+    output = json.dumps(result, indent=2)
+    if arguments.output:
+        with open(arguments.output, "w") as file:
+            file.write(output + "\n")
+    else:
+        print(output)
+
+
+if __name__ == "__main__":
+    main()
