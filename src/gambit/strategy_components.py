@@ -252,7 +252,7 @@ class SimpleMarketSimulator:
             price_func: A function that we use to get the price to execute at
             slippage_pct: Slippage per dollar transacted.
                 Meant to simulate the difference between bid/ask mid and execution price
-            commission: Fee paid to broker per trade
+            commission: Fee paid to broker per unit traded
         """
         self.price_func = price_func
         self.slippage_pct = slippage_pct
@@ -292,14 +292,20 @@ class SimpleMarketSimulator:
             price = raw_price + slippage
             price = round(price, self.price_rounding)
             if isinstance(order, LimitOrder) and np.isfinite(order.limit_price):
-                if (abs(order.qty > 0) and order.limit_price > price) or (
-                    abs(order.qty < 0) and order.limit_price < price
-                ):
+                is_marketable = (order.qty > 0 and price <= order.limit_price) or (
+                    order.qty < 0 and price >= order.limit_price
+                )
+                if not is_marketable:
                     continue
-            commission = self.commission * order.qty
-            if order.qty < 0:
-                commission = -commission
-            trade = Trade(order.contract, order, timestamp, order.qty, price, self.commission)
+            commission = self.commission * abs(order.qty)
+            trade = Trade(
+                contract=order.contract,
+                order=order,
+                timestamp=timestamp,
+                qty=order.qty,
+                price=price,
+                commission=commission,
+            )
             order.fill()
             trades.append(trade)
             if self.post_trade_func is not None:

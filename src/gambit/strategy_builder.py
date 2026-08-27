@@ -92,7 +92,7 @@ class StrategyBuilder:
         self.contract_groups = {}
         self.pnl_calc_time = 16 * 60 + 1
         self.starting_equity = 1.0e6
-        self.trade_lag = True
+        self.trade_lag = 1
         self.strategy_context = SimpleNamespace()
         self.indicators = []
         self.signals = []
