@@ -363,16 +363,16 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 
 ### Phase 5 — factor DAG and NVMe-mapped column cache research
 
-- [ ] Capture representative factor-tree workloads and a no-cache performance baseline.
+- [x] Add representative branching factor-tree workloads and a reproducible no-cache/cache benchmark harness; committed machine baselines remain pending.
 - [ ] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
-- [ ] Prototype a descriptor-only SPSC ring with a blocking reference implementation.
+- [ ] Prototype a descriptor-only SPSC ring with a blocking reference implementation; current IPC/native baselines do not justify starting this work.
 - [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
 - [ ] Run sanitizer, concurrency, fault-injection, and forced-process-termination tests.
-- [ ] Record an architecture decision to adopt, revise, or reject the design.
+- [x] Record the initial benchmark decision: use mapped Polars IPC as the baseline and defer the native ring until descriptor coordination is shown to be a bottleneck.
 
 Exit criteria: cached and uncached factor trees produce identical schemas, values,
 nulls, and ordering; interrupted writes cannot become visible; resource usage is
