@@ -21,24 +21,16 @@ from gambit.evaluator import compute_return_metrics, display_return_metrics, plo
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
+from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
 
 StrategyContextType = SimpleNamespace
 
 PriceFunctionType = Callable[[Contract, np.ndarray, int, StrategyContextType], float]
 
-IndicatorType = Callable[[ContractGroup, np.ndarray, SimpleNamespace, StrategyContextType], np.ndarray]
-
-SignalType = Callable[[ContractGroup, np.ndarray, SimpleNamespace, SimpleNamespace, StrategyContextType], np.ndarray]
-
-RuleType = Callable[
-    [ContractGroup, int, np.ndarray, SimpleNamespace, np.ndarray, Account, Sequence[Order], StrategyContextType],
-    list[Order],
-]
-
-MarketSimulatorType = Callable[
-    [Sequence[Order], int, np.ndarray, dict[str, SimpleNamespace], dict[str, SimpleNamespace], SimpleNamespace],
-    list[Trade],
-]
+IndicatorType = IndicatorStage
+SignalType = SignalStage
+RuleType = RuleStage
+MarketSimulatorType = ExecutionStage
 
 DateRangeType = Union[tuple[str, str], tuple[np.datetime64, np.datetime64]]
 
@@ -236,6 +228,37 @@ class Strategy:
     def add_risk_policy(self, risk_policy: RiskPolicy) -> None:
         """Add a pre-trade policy, evaluated in registration order."""
         self.risk_policies.append(risk_policy)
+
+    def stage_graph(self) -> StageGraph:
+        """Return the declared computation pipeline as a dependency graph."""
+        nodes: list[StageNode] = []
+        for name in self.indicators:
+            nodes.append(
+                StageNode(
+                    f"indicator:{name}",
+                    "indicator",
+                    tuple(f"indicator:{dependency}" for dependency in self.indicator_deps[name]),
+                )
+            )
+        for name in self.signals:
+            dependencies = [f"indicator:{dependency}" for dependency in self.signal_indicator_deps[name]]
+            dependencies.extend(f"signal:{dependency}" for dependency in self.signal_deps[name])
+            nodes.append(StageNode(f"signal:{name}", "signal", tuple(dependencies)))
+        for name in self.rule_names:
+            signal_name = self.rule_signals[name][0]
+            nodes.append(StageNode(f"rule:{name}", "rule", (f"signal:{signal_name}",)))
+        rule_dependencies = tuple(f"rule:{name}" for name in self.rule_names)
+        for index, _market_simulator in enumerate(self.market_sims):
+            nodes.append(StageNode(f"execution:{index}", "execution", rule_dependencies))
+        accounting_dependencies = tuple(f"execution:{index}" for index in range(len(self.market_sims)))
+        if not accounting_dependencies:
+            accounting_dependencies = rule_dependencies
+        nodes.append(StageNode("accounting:main", "accounting", accounting_dependencies))
+        return StageGraph(nodes)
+
+    def validate_stage_graph(self) -> tuple[str, ...]:
+        """Validate dependencies and return deterministic execution order metadata."""
+        return self.stage_graph().topological_order()
 
     def run_indicators(
         self,
@@ -523,6 +546,7 @@ class Strategy:
         # _logger.info(f'after update: {self._current_orders}')
 
     def run(self) -> None:
+        self.validate_stage_graph()
         self.run_indicators()
         self.run_signals()
         self.run_rules()

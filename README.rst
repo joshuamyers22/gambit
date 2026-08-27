@@ -72,6 +72,15 @@ Configuration files are optional and can be layered with explicit overrides by
 calling ``load_run_configuration``. Unknown fields and invalid values are
 rejected at load time.
 
+Typed strategy stages
+---------------------
+
+Indicators, signals, rules, execution simulators, and accounting implement
+structural stage protocols, so plain functions and callable classes remain valid.
+``strategy.stage_graph()`` exposes their declared dependencies for tooling and
+diagnostics. ``strategy.run()`` validates the graph first and reports missing
+dependencies or cycles before any backtest computation begins.
+
 
 
 
