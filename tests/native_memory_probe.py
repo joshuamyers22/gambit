@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import gc
+import os
 import tempfile
 import zipfile
 from pathlib import Path
@@ -64,6 +65,15 @@ def main() -> None:
                 assert ring.process_batch(processor, 128) == 128
 
     gc.collect()
+
+    # Check while the interpreter and extension modules are still live. CPython
+    # intentionally retains allocator arenas and free lists; tearing the
+    # interpreter down before LeakSanitizer runs makes those look unreachable.
+    leak_check = getattr(sanitizer_runtime, "__lsan_do_recoverable_leak_check", None)
+    if leak_check is not None:
+        leak_check.restype = ctypes.c_int
+        leaks_detected = leak_check()
+        os._exit(1 if leaks_detected else 0)
 
 
 if __name__ == "__main__":

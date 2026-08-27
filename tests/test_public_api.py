@@ -17,7 +17,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
     }
 
     assert expected <= set(gambit.__all__)
-    assert not {"Any", "Callable", "np", "pl", "math", "dataclass", "foo"} & set(gambit.__all__)
+    assert not {"Any", "Callable", "SimpleNamespace", "np", "pl", "math", "dataclass", "foo"} & set(gambit.__all__)
     assert all(not name.startswith("test_") for name in gambit.__all__)
     assert sorted(gambit.__all__) == sorted(set(gambit.__all__))
 
