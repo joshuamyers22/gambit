@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import math
 import sys
+import time
 import types
 from collections import defaultdict
 from pprint import pformat
@@ -16,6 +17,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from gambit.account import Account
+from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
 from gambit.calculation import CalculationContext
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
@@ -565,11 +567,71 @@ class Strategy:
             self._current_orders = [order for order in self._current_orders if order.is_open()]
         # _logger.info(f'after update: {self._current_orders}')
 
-    def run(self) -> None:
-        self.validate_stage_graph()
-        self.run_indicators()
-        self.run_signals()
-        self.run_rules()
+    def run(self) -> BacktestResult:
+        """Execute the strategy and return an immutable result snapshot."""
+        stages: list[StageTelemetry] = []
+
+        def measure(name: str, units: int, operation: Callable[[], Any]) -> None:
+            elapsed_start = time.perf_counter()
+            cpu_start = time.process_time()
+            operation()
+            stages.append(
+                StageTelemetry(
+                    name=name,
+                    elapsed_seconds=time.perf_counter() - elapsed_start,
+                    cpu_seconds=time.process_time() - cpu_start,
+                    units=units,
+                )
+            )
+
+        measure("validation", len(self.stage_graph().nodes), self.validate_stage_graph)
+        measure("indicators", len(self.indicators) * len(self.contract_groups), self.run_indicators)
+        measure("signals", len(self.signals) * len(self.contract_groups), self.run_signals)
+        measure("rules_execution_accounting", len(self.timestamps), self.run_rules)
+        return self._backtest_result(tuple(stages))
+
+    def _backtest_result(self, stages: tuple[StageTelemetry, ...]) -> BacktestResult:
+        accepted = sum(decision.status is DecisionStatus.ACCEPTED for decision in self.order_decisions)
+        rejected = len(self.order_decisions) - accepted
+        filled = sum(order.status is OrderStatus.FILLED for order in self._orders)
+        cancelled = sum(order.status is OrderStatus.CANCELLED for order in self._orders)
+        open_orders = sum(order.is_open() for order in self._orders)
+        telemetry = BacktestTelemetry(
+            stages=stages,
+            timestamps_processed=len(self.timestamps),
+            orders_proposed=len(self._orders),
+            orders_accepted=accepted,
+            orders_rejected=rejected,
+            orders_filled=filled,
+            orders_cancelled=cancelled,
+            orders_open=open_orders,
+            trades_executed=len(self._trades),
+        )
+        orders = self.df_orders().with_columns(
+            pl.Series("status", [order.status.name.lower() for order in self._orders], dtype=pl.String)
+        )
+        decisions = pl.DataFrame(
+            {
+                "symbol": [decision.order.contract.symbol for decision in self.order_decisions],
+                "timestamp": np.asarray(
+                    [decision.timestamp for decision in self.order_decisions], dtype="datetime64[ns]"
+                ),
+                "status": [decision.status.value for decision in self.order_decisions],
+                "policy": [decision.policy for decision in self.order_decisions],
+                "code": [decision.code for decision in self.order_decisions],
+                "message": [decision.message for decision in self.order_decisions],
+                "proposed_qty": [decision.proposed_qty for decision in self.order_decisions],
+            },
+            schema_overrides={"timestamp": pl.Datetime("ns")},
+        )
+        return BacktestResult(
+            provenance=self.provenance,
+            telemetry=telemetry,
+            trades=self.df_trades(),
+            orders=orders,
+            decisions=decisions,
+            pnl=self.df_pnl(),
+        )
 
     def _get_orders(
         self, idx: int, rule_function: RuleType, contract_group: ContractGroup, params: dict[str, Any]
@@ -807,26 +869,24 @@ class Strategy:
         start date and end date
         if they are specified. If contract_group is None orders for all contract_groups are returned"""
         orders = self.orders(contract_group, start_date, end_date)
-        order_records = [
-            (
-                order.contract.symbol if order.contract else "",
-                type(order).__name__,
-                order.timestamp,
-                order.qty,
-                order.reason_code,
-                (str(order.properties.__dict__) if order.properties.__dict__ else ""),
-                (
+        df_orders = pl.DataFrame(
+            {
+                "symbol": [order.contract.symbol if order.contract else "" for order in orders],
+                "type": [type(order).__name__ for order in orders],
+                "timestamp": np.asarray([order.timestamp for order in orders], dtype="datetime64[ns]"),
+                "qty": np.asarray([order.qty for order in orders], dtype=float),
+                "reason_code": [order.reason_code for order in orders],
+                "order_props": [
+                    str(order.properties.__dict__) if order.properties.__dict__ else "" for order in orders
+                ],
+                "contract_props": [
                     str(order.contract.properties.__dict__)
                     if order.contract and order.contract.properties.__dict__
                     else ""
-                ),
-            )
-            for order in orders
-        ]
-        df_orders = pl.DataFrame(
-            order_records,
-            schema=["symbol", "type", "timestamp", "qty", "reason_code", "order_props", "contract_props"],
-            orient="row",
+                    for order in orders
+                ],
+            },
+            schema_overrides={"timestamp": pl.Datetime("ns")},
         )
         return df_orders
 

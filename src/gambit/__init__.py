@@ -2,6 +2,7 @@
 # include functions for easy reference from pq prefix
 from gambit.pq_utils import *
 from gambit.calculation import *
+from gambit.backtest_result import *
 from gambit.configuration import *
 from gambit.execution_costs import *
 from gambit.factor_cache import *
