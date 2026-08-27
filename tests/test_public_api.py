@@ -12,6 +12,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
         "MarketOrder",
         "Strategy",
         "StrategyBuilder",
+        "has_display",
         "validate_market_data",
     }
 

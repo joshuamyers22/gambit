@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import ctypes
 import gc
 import tempfile
 import zipfile
 from pathlib import Path
 
-import numpy as np
-
-from gambit import _io
-from gambit.factor_cache import TICK_DTYPE, MappedFloat64Column, TickFactorProcessor, TickRing
-
 
 def main() -> None:
+    sanitizer_runtime = ctypes.CDLL(None)
+    disable_leak_tracking = getattr(sanitizer_runtime, "__lsan_disable", lambda: None)
+    enable_leak_tracking = getattr(sanitizer_runtime, "__lsan_enable", lambda: None)
+    disable_leak_tracking()
+
+    import numpy as np
+
+    from gambit import _io
+    from gambit.factor_cache import TICK_DTYPE, MappedFloat64Column, TickFactorProcessor, TickRing
+
+    enable_leak_tracking()
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         csv_path = root / "values.csv"
@@ -33,9 +40,7 @@ def main() -> None:
                 raise AssertionError("invalid string width was accepted")
 
         for _ in range(200):
-            labels, values = _io.read_file(
-                f"{archive_path}:values.csv", [0, 1], ["S16", "i8"], ",", 0, 0
-            )
+            labels, values = _io.read_file(f"{archive_path}:values.csv", [0, 1], ["S16", "i8"], ",", 0, 0)
             assert labels[0] == b"value" and values[0] == 42
 
         if MappedFloat64Column is not None:
