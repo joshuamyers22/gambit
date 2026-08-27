@@ -43,6 +43,19 @@ decide whether to reject a run::
    )
    report.raise_if_invalid()
 
+Pre-trade risk policies
+-----------------------
+
+Risk policies run after a rule proposes an order and before a market simulator
+can fill it. Policies are composable and every proposal produces an immutable
+``OrderDecision`` for later audit::
+
+   builder.add_risk_policy(gambit.MaxOrderQuantity(100))
+   builder.add_risk_policy(gambit.MaxPositionQuantity(500))
+
+Rejected orders remain in strategy order history with cancelled status, while
+``strategy.order_decisions`` records the responsible policy and reason code.
+
 
 
 

@@ -19,6 +19,7 @@ from gambit.account import Account
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
+from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
 
 StrategyContextType = SimpleNamespace
 
@@ -113,6 +114,8 @@ class Strategy:
         # a list of all orders created used for display
         self._orders: list[Order] = []
         self._current_orders: list[Order] = []
+        self.risk_policies: list[RiskPolicy] = []
+        self.order_decisions: list[OrderDecision] = []
         self.indicator_deps: dict[str, list[str]] = {}
         self.indicator_cgroups: dict[str, list[ContractGroup]] = {}
         self.indicator_values: dict[str, SimpleNamespace] = defaultdict(types.SimpleNamespace)
@@ -211,6 +214,10 @@ class Strategy:
     def add_market_sim(self, market_sim_function: MarketSimulatorType) -> None:
         """Add a market simulator.  A market simulator is a function that takes orders as input and returns trades."""
         self.market_sims.append(market_sim_function)
+
+    def add_risk_policy(self, risk_policy: RiskPolicy) -> None:
+        """Add a pre-trade policy, evaluated in registration order."""
+        self.risk_policies.append(risk_policy)
 
     def run_indicators(
         self,
@@ -466,8 +473,18 @@ class Strategy:
                 else:
                     _logger.info(f"ORDER: {orders[0]}")
 
+            accepted_orders: list[Order] = []
+            for order in orders:
+                context = RiskContext(self.account, self.timestamps[i], [*self._current_orders, *accepted_orders])
+                decision = decide_order(order, context, self.risk_policies)
+                self.order_decisions.append(decision)
+                if decision.status is DecisionStatus.ACCEPTED:
+                    accepted_orders.append(order)
+                else:
+                    order.cancel()
+
             self._orders += orders
-            self._current_orders += orders
+            self._current_orders += accepted_orders
             # _logger.info(f'current_orders: {self._current_orders}')
 
             if self.trade_lag == 0:

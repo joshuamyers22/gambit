@@ -16,6 +16,7 @@ import polars as pl
 
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup
 from gambit.pq_utils import assert_, get_child_logger
+from gambit.risk import RiskPolicy
 from gambit.strategy import (
     IndicatorType,
     MarketSimulatorType,
@@ -80,6 +81,7 @@ class StrategyBuilder:
     signals: list[tuple[str, SignalType, Sequence[ContractGroup] | None, Sequence[str] | None, Sequence[str] | None]]
     rules: list[tuple[str, RuleType, str, Sequence[Any] | None, str | None]]
     market_sims: list[MarketSimulatorType]
+    risk_policies: list[RiskPolicy]
     log_trades: bool
     log_orders: bool
 
@@ -98,6 +100,7 @@ class StrategyBuilder:
         self.signals = []
         self.rules = []
         self.market_sims = []
+        self.risk_policies = []
         self.log_trades = True
         self.log_orders = False
 
@@ -173,6 +176,9 @@ class StrategyBuilder:
     def add_market_sim(self, market_sim_function: MarketSimulatorType) -> None:
         self.market_sims.append(market_sim_function)
 
+    def add_risk_policy(self, risk_policy: RiskPolicy) -> None:
+        self.risk_policies.append(risk_policy)
+
     def add_series_rule(
         self,
         column_name: str,
@@ -232,6 +238,9 @@ class StrategyBuilder:
 
         for name, rule_function, signal_name, sig_true_values, position_filter in self.rules:
             strat.add_rule(name, rule_function, signal_name, sig_true_values, position_filter)
+
+        for risk_policy in self.risk_policies:
+            strat.add_risk_policy(risk_policy)
 
         if not len(self.market_sims):
             strat.add_market_sim(SimpleMarketSimulator(self.price_function))  # type: ignore
