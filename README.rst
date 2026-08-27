@@ -138,6 +138,37 @@ and preserves the sign of long and short positions::
 Scenario keys are resolved from most to least specific: symbol, contract group,
 asset class, then ``*`` as the portfolio-wide default.
 
+Typed risk measures
+-------------------
+
+Risk calculations share a long-form Polars ``RiskResult`` with timestamp,
+instrument dimensions, measure, optional scenario, and value columns. Results
+can be filtered and aggregated consistently across measures::
+
+   scenario = gambit.StressScenario(
+       "equity-down",
+       market_shocks=(
+           gambit.MarketDataShock(
+               gambit.MarketDataPattern(asset_class="equity"),
+               -0.10,
+               gambit.ShockType.RELATIVE,
+           ),
+       ),
+   )
+   result = strategy.calculate_risk(
+       timestamp,
+       [
+           gambit.NetExposureMeasure(),
+           gambit.GrossExposureMeasure(),
+           gambit.ScenarioPnlMeasure(scenario),
+       ],
+   )
+   result.filter(measure="scenario_pnl").aggregate(by=("scenario",))
+
+Pattern scenarios support symbol, contract-group, asset-class, and currency
+matching. Multiple matching absolute and relative shocks are composable, while
+the original concise dictionary syntax remains supported.
+
 
 
 

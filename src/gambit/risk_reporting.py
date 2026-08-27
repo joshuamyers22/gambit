@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from enum import Enum
 from types import MappingProxyType
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 import polars as pl
@@ -13,12 +14,52 @@ import polars as pl
 from gambit.account import Account
 
 
+class ShockType(str, Enum):
+    RELATIVE = "relative"
+    ABSOLUTE = "absolute"
+
+
+@dataclass(frozen=True)
+class MarketDataPattern:
+    symbol: str | None = None
+    contract_group: str | None = None
+    asset_class: str | None = None
+    currency: str | None = None
+
+    def __post_init__(self) -> None:
+        if not any((self.symbol, self.contract_group, self.asset_class, self.currency)):
+            raise ValueError("market data pattern must define at least one field")
+
+    def matches(self, row: Mapping[str, Any]) -> bool:
+        return all(
+            expected is None or row[field] == expected
+            for field, expected in (
+                ("symbol", self.symbol),
+                ("contract_group", self.contract_group),
+                ("asset_class", self.asset_class),
+                ("currency", self.currency),
+            )
+        )
+
+
+@dataclass(frozen=True)
+class MarketDataShock:
+    pattern: MarketDataPattern
+    value: float
+    shock_type: ShockType = ShockType.RELATIVE
+
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.value):
+            raise ValueError("market data shock must be finite")
+
+
 @dataclass(frozen=True)
 class StressScenario:
     """Named percentage shocks keyed by symbol, group, asset class, or ``*``."""
 
     name: str
-    shocks: Mapping[str, float]
+    shocks: Mapping[str, float] = MappingProxyType({})
+    market_shocks: tuple[MarketDataShock, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -27,12 +68,28 @@ class StressScenario:
         if not all(math.isfinite(shock) for shock in shocks.values()):
             raise ValueError("scenario shocks must be finite")
         object.__setattr__(self, "shocks", MappingProxyType(shocks))
+        object.__setattr__(self, "market_shocks", tuple(self.market_shocks))
 
     def shock_for(self, symbol: str, group: str, asset_class: str) -> float:
         for key in (symbol, group, asset_class, "*"):
             if key in self.shocks:
                 return self.shocks[key]
         return 0.0
+
+    def pnl_for(self, row: Mapping[str, Any]) -> float:
+        relative_shocks = [self.shock_for(str(row["symbol"]), str(row["contract_group"]), str(row["asset_class"]))]
+        absolute_shocks: list[float] = []
+        for shock in self.market_shocks:
+            if not shock.pattern.matches(row):
+                continue
+            if shock.shock_type is ShockType.RELATIVE:
+                relative_shocks.append(shock.value)
+            else:
+                absolute_shocks.append(shock.value)
+        shocked_price = (float(row["price"]) + sum(absolute_shocks)) * math.prod(
+            1 + shock for shock in relative_shocks
+        )
+        return float(row["quantity"]) * float(row["multiplier"]) * (shocked_price - float(row["price"]))
 
 
 @dataclass(frozen=True)
@@ -118,8 +175,7 @@ def run_stress_scenarios(exposures: pl.DataFrame, scenarios: Sequence[StressScen
         stressed_pnl = 0.0
         shocked_gross = 0.0
         for row in cached_rows:
-            shock = scenario.shock_for(row["symbol"], row["contract_group"], row["asset_class"])
-            contribution = row["net_exposure"] * shock
+            contribution = scenario.pnl_for(row)
             stressed_pnl += contribution
             shocked_gross += abs(contribution)
         rows.append({"scenario": scenario.name, "stressed_pnl": stressed_pnl, "shocked_gross": shocked_gross})

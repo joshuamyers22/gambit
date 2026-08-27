@@ -10,6 +10,7 @@ from gambit.holiday_calendars import *
 from gambit.market_data import *
 from gambit.risk import *
 from gambit.risk_reporting import *
+from gambit.risk_measures import *
 from gambit.stages import *
 from gambit.markets import *
 from gambit.account import *

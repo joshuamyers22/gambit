@@ -21,6 +21,7 @@ from gambit.evaluator import compute_return_metrics, display_return_metrics, plo
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
+from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 from gambit.risk_reporting import PortfolioRiskReport, StressScenario, analyze_account_risk
 from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
 
@@ -145,6 +146,11 @@ class Strategy:
     ) -> PortfolioRiskReport:
         """Return a read-only exposure and stress report for this strategy account."""
         return analyze_account_risk(self.account, timestamp, scenarios, attribution_by)
+
+    def calculate_risk(self, timestamp: np.datetime64, measures: Sequence[RiskMeasure]) -> RiskResult:
+        """Calculate typed measures into a common long-form Polars result."""
+        report = analyze_account_risk(self.account, timestamp)
+        return calculate_risk(report.exposures, measures, timestamp)
 
     def add_indicator(
         self,
