@@ -139,7 +139,7 @@ class ContractPNL:
 
             open_qty = int(np.sum(open_qtys))
             if open_qty == 0:
-                weighted_avg_price = 0
+                weighted_avg_price = 0.0
             else:
                 weighted_avg_price = np.sum(open_qtys * open_prices) / open_qty
 
