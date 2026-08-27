@@ -228,6 +228,8 @@ class StrategyBuilder:
             self.log_orders,
             self.strategy_context,
         )
+        if self.data is not None:
+            strat.record_polars_input("strategy_builder.data", self.data)
 
         assert_(self.rules is not None and len(self.rules) > 0, "rules cannot be empty or None")
         for name, indicator, contract_groups, depends_on in self.indicators:

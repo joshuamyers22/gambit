@@ -56,6 +56,22 @@ can fill it. Policies are composable and every proposal produces an immutable
 Rejected orders remain in strategy order history with cancelled status, while
 ``strategy.order_decisions`` records the responsible policy and reason code.
 
+Reproducible runs
+-----------------
+
+Every strategy captures its resolved, immutable ``RunConfiguration`` and a
+``RunProvenance`` record. The provenance fingerprint incorporates configuration,
+package and Git versions, and explicitly registered inputs, but excludes capture
+time. ``StrategyBuilder`` automatically fingerprints its Polars input::
+
+   strategy = builder()
+   strategy.record_polars_input("features", feature_frame)
+   snapshot = strategy.provenance.snapshot()  # JSON-serializable
+
+Configuration files are optional and can be layered with explicit overrides by
+calling ``load_run_configuration``. Unknown fields and invalid values are
+rejected at load time.
+
 
 
 

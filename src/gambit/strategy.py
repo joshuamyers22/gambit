@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import polars as pl
 
 from gambit.account import Account
+from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
@@ -85,6 +86,15 @@ class Strategy:
             log_orders: If set, we log trades as they are created
         """
         self.name = "main"  # Set by portfolio when running multiple strategies
+        self.run_configuration = RunConfiguration(
+            starting_equity=starting_equity,
+            pnl_calc_time=pnl_calc_time,
+            trade_lag=trade_lag,
+            run_final_calc=run_final_calc,
+            log_trades=log_trades,
+            log_orders=log_orders,
+        )
+        self.provenance = RunProvenance(self.run_configuration)
         increasing_ts: bool = bool(np.all(np.diff(timestamps.astype(int)) > 0))
         # print(increasing_ts, type(increasing_ts))
         assert_(increasing_ts, f"timestamps must be monotonically increasing: {timestamps[:100]} ...")
@@ -125,6 +135,14 @@ class Strategy:
         self.trades_iter: list[list] = [
             [] for x in range(len(timestamps))
         ]  # For debugging, we don't really need this as a member variable
+
+    def record_input_fingerprint(self, name: str, fingerprint: str) -> None:
+        """Attach an immutable input identity to this strategy's provenance."""
+        self.provenance = self.provenance.with_input(name, fingerprint)
+
+    def record_polars_input(self, name: str, frame: pl.DataFrame) -> None:
+        """Fingerprint and attach a Polars input without retaining its data."""
+        self.provenance = self.provenance.with_polars_input(name, frame)
 
     def add_indicator(
         self,
