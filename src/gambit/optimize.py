@@ -3,12 +3,10 @@
 # $$_ %%checkall
 from __future__ import annotations
 
-import concurrent
 import concurrent.futures
 import itertools
 import multiprocessing as mp
 import os
-import sys
 from collections.abc import Sequence
 from typing import Any, Callable, Generator
 
@@ -67,6 +65,10 @@ class Experiment:
         return f"suggestion: {self.suggestion} cost: {self.cost} other costs: {self.other_costs}"
 
 
+class OptimizerWorkerError(RuntimeError):
+    """A cost function failed in a worker process."""
+
+
 class Optimizer:
     """Optimizer is used to optimize parameters for a strategy."""
 
@@ -76,6 +78,8 @@ class Optimizer:
         generator: Generator[dict[str, Any], tuple[float, dict[str, float]], None],
         cost_func: Callable[[dict[str, Any]], tuple[float, dict[str, float]]],
         max_processes: int | None = None,
+        process_start_method: str = "spawn",
+        max_pending_tasks: int | None = None,
     ) -> None:
         """
         Args:
@@ -83,17 +87,22 @@ class Optimizer:
             generator: A generator (see Python Generators) that takes no inputs and yields a dictionary with parameter name -> parameter value.
             cost_func: A function that takes a dictionary of parameter name -> parameter value as input and outputs cost for that set of parameters.
             max_processes: If not set, the Optimizer will look at the number of CPU cores on your machine to figure out how many processes to run.
+            process_start_method: Multiprocessing start method. Defaults to portable ``spawn``.
+            max_pending_tasks: Maximum submitted tasks awaiting completion. Defaults to twice the worker count.
         """
         self.name = name
         self.generator = generator
         self.cost_func = cost_func
-        import sys
-
-        if sys.platform in ["win32", "cygwin"]:
-            if max_processes is not None and max_processes != 1:
-                raise Exception("max_processes must be 1 on Microsoft Windows")
-            max_processes = 1
+        if max_processes is not None and max_processes < 1:
+            raise ValueError("max_processes must be positive")
         self.max_processes = max_processes
+        if process_start_method not in mp.get_all_start_methods():
+            raise ValueError(f"unsupported multiprocessing start method: {process_start_method}")
+        self.process_start_method = process_start_method
+        worker_count = max_processes or (os.cpu_count() or 1)
+        self.max_pending_tasks = max_pending_tasks or worker_count * 2
+        if self.max_pending_tasks < 1:
+            raise ValueError("max_pending_tasks must be positive")
         self.experiments: list[Experiment] = []
 
     def _run_single_process(self) -> None:
@@ -108,33 +117,39 @@ class Optimizer:
             # Exhausted generator
             return
 
-    # TODO: Needs to be rewritten to send costs back to generator when we do parallel gradient descent, etc.
+    # Adaptive generators that consume cost feedback remain a single-process feature.
     def _run_multi_process(self, raise_on_error: bool) -> None:
-        fut_map = {}
+        pending: dict[concurrent.futures.Future, dict[str, Any]] = {}
+        suggestions = iter(self.generator)
+        exhausted = False
 
-        # on mac m1 the default start method is set to spawn so change to fork instead
-        with concurrent.futures.ProcessPoolExecutor(self.max_processes, mp_context=mp.get_context("fork")) as executor:
-            for suggestion in self.generator:
-                if suggestion is None:
-                    continue
-                future = executor.submit(self.cost_func, suggestion)
-                fut_map[future] = suggestion
+        with concurrent.futures.ProcessPoolExecutor(
+            self.max_processes, mp_context=mp.get_context(self.process_start_method)
+        ) as executor:
+            while pending or not exhausted:
+                while not exhausted and len(pending) < self.max_pending_tasks:
+                    try:
+                        suggestion = next(suggestions)
+                    except StopIteration:
+                        exhausted = True
+                        break
+                    if suggestion is not None:
+                        pending[executor.submit(self.cost_func, suggestion)] = suggestion
 
-            for future in concurrent.futures.as_completed(fut_map):
-                try:
-                    cost, other_costs = future.result()
-                except Exception as e:
-                    _suggestion = fut_map.get(future)
-                    new_exc = type(e)(f"Exception: {str(e)} with suggestion: {_suggestion}").with_traceback(
-                        sys.exc_info()[2]
-                    )
-                    if raise_on_error:
-                        raise new_exc
-                    else:
-                        print(str(new_exc))
+                if not pending:
                     continue
-                suggestion = fut_map[future]
-                self.experiments.append(Experiment(suggestion, cost, other_costs))
+                completed, _ = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
+                for future in completed:
+                    suggestion = pending.pop(future)
+                    try:
+                        cost, other_costs = future.result()
+                    except Exception as error:
+                        worker_error = OptimizerWorkerError(f"cost function failed for suggestion {suggestion!r}")
+                        if raise_on_error:
+                            raise worker_error from error
+                        _logger.exception(worker_error, exc_info=error)
+                        continue
+                    self.experiments.append(Experiment(suggestion, cost, other_costs))
 
     def run(self, raise_on_error: bool = False) -> None:
         """Run the optimizer.

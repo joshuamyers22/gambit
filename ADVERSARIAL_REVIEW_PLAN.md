@@ -249,7 +249,8 @@ Exit criteria: each defect has a failing-before/passing-after regression test, a
 
 - [ ] Validate timestamp ordering/uniqueness, finite prices/quantities, contract membership, and callback return types.
 - [ ] Replace reconstructed exceptions with contextual chained exceptions.
-- [ ] Make multiprocessing portable, bounded, and interruptible.
+- [x] Make multiprocessing spawn-portable and bound in-flight work.
+- [ ] Add explicit interruption/cancellation behavior for multiprocessing.
 - [ ] Make optional dependencies and imports granular.
 - [ ] Define tolerances and behavior for NaN, Inf, missing marks, zero equity, and empty datasets.
 

@@ -5,13 +5,22 @@ import pytest
 
 from gambit import _io
 from gambit.account import Account
-from gambit.optimize import Experiment, Optimizer
+from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
 
 
 def _price(_contract, _timestamps, _index, _context):
     return 100.0
+
+
+def _square_cost(suggestion):
+    value = suggestion["x"]
+    return float(value * value), {"value": float(value)}
+
+
+def _failing_cost(suggestion):
+    raise ValueError(f"invalid value {suggestion['x']}")
 
 
 def test_account_indexes_each_trade_under_its_own_contract():
@@ -57,6 +66,26 @@ def test_optimizer_cost_order_names_match_sort_direction():
 
     assert [item.cost for item in optimizer.experiment_list("lowest_cost")] == [-2.0, 1.0, 4.0]
     assert [item.cost for item in optimizer.experiment_list("highest_cost")] == [4.0, 1.0, -2.0]
+
+
+def test_optimizer_runs_with_spawn_and_bounded_pending_work():
+    suggestions = ({"x": value} for value in range(4))
+    optimizer = Optimizer(
+        "spawn", suggestions, _square_cost, max_processes=2, process_start_method="spawn", max_pending_tasks=2
+    )
+
+    optimizer.run(raise_on_error=True)
+
+    assert sorted(experiment.cost for experiment in optimizer.experiments) == [0.0, 1.0, 4.0, 9.0]
+
+
+def test_optimizer_chains_worker_error_with_suggestion_context():
+    optimizer = Optimizer("failure", iter([{"x": 7}]), _failing_cost, max_processes=2)
+
+    with pytest.raises(OptimizerWorkerError, match=r"\{'x': 7\}") as error:
+        optimizer.run(raise_on_error=True)
+
+    assert isinstance(error.value.__cause__, ValueError)
 
 
 def test_df_data_applies_inclusive_date_bounds_to_all_columns():
