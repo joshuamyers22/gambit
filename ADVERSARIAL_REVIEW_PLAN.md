@@ -238,7 +238,8 @@ Exit criteria: a fresh checkout can be built and tested using documented command
 - [x] Fix contract-group order filtering and add date/group boundary tests.
 - [x] Fix optimizer sort direction and add selection/ranking tests.
 - [x] Fix `Strategy.df_data` date masking and array-alignment validation.
-- [ ] Add a small independent ledger oracle and golden end-to-end strategies.
+- [x] Add an independent FIFO ledger oracle and compare randomized trade streams against the native engine.
+- [ ] Add golden end-to-end strategies with full account-level reconciliation.
 
 Exit criteria: each defect has a failing-before/passing-after regression test, and all golden scenarios reconcile at symbol, group, and account levels.
 

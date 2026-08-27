@@ -16,7 +16,7 @@ import numpy as np
 import polars as pl
 
 SEC_PER_DAY = 3600 * 24
-EPOCH = datetime.datetime.fromtimestamp(0, datetime.UTC).replace(tzinfo=None)
+EPOCH = datetime.datetime.fromtimestamp(0, datetime.timezone.utc).replace(tzinfo=None)
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "[%(asctime)s.%(msecs)03d %(funcName)s] %(message)s"
 
