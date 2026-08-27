@@ -11,8 +11,10 @@ members read from ZIP archives:
   untrusted or unexpectedly large inputs to bound output-array allocation.
 * Input is parsed as bytes. Fixed-width ``S[n]`` columns preserve byte values;
   callers are responsible for decoding and validating text encodings.
+* A ZIP member's declared decompressed size may not exceed 1 GiB. Larger
+  members are rejected before decompression begins.
 
-ZIP members are streamed and are not expanded into a temporary file. The
-16 MiB row limit applies after decompression, but there is currently no total
-decompressed-file-size limit. Applications accepting untrusted archives should
-also enforce archive and member size limits before calling the native reader.
+ZIP members are streamed and are not expanded into a temporary file. Both the
+16 MiB row limit and 1 GiB member limit apply to decompressed sizes. Applications
+accepting untrusted archives should additionally constrain the archive's total
+size and number of members before calling the native reader.

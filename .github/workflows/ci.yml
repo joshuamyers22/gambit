@@ -49,6 +49,28 @@ jobs:
       - run: jupyter execute examples/notebooks/optimizing_strategies.ipynb --kernel_name gambit-ci --timeout 300
       - run: jupyter execute examples/notebooks/data/create_data.ipynb --kernel_name gambit-ci --timeout 300
 
+  native-sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - name: Build native extensions with ASan and UBSan
+        env:
+          GAMBIT_SANITIZE: "1"
+        run: python -m pip install -e ".[dev]"
+      - name: Configure sanitizer runtime
+        run: echo "LD_PRELOAD=$(gcc -print-file-name=libasan.so)" >> "$GITHUB_ENV"
+      - name: Run native boundary tests
+        env:
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: python -m pytest -q tests/test_native_io_hardening.py
+
   package:
     runs-on: ubuntu-latest
     steps:

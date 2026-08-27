@@ -39,11 +39,15 @@ def _libzip_paths() -> tuple[list[str], list[str]]:
 
 def _extensions() -> list[Extension]:
     is_windows = sys.platform == "win32"
-    cpp_args = [] if is_windows else ["-std=c++11", "-O3"]
+    sanitize = os.environ.get("GAMBIT_SANITIZE") == "1" and not is_windows
+    sanitizer_args = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"] if sanitize else []
+    optimization = "-O1" if sanitize else "-O3"
+    cpp_args = [] if is_windows else ["-std=c++11", optimization, *sanitizer_args]
     cython_args = [] if is_windows else [
         "-Wno-parentheses-equality",
         "-Wno-unreachable-code-fallthrough",
-        "-O3",
+        optimization,
+        *sanitizer_args,
     ]
     zip_includes, zip_libraries = _libzip_paths()
 
@@ -58,6 +62,7 @@ def _extensions() -> list[Extension]:
         libraries=["zip"],
         language="c++",
         extra_compile_args=cpp_args,
+        extra_link_args=sanitizer_args,
     )
 
     option_sources = sorted((CPP_DIR / "options").glob("*.cpp"))
@@ -68,6 +73,7 @@ def _extensions() -> list[Extension]:
         include_dirs=[pybind11.get_include()],
         language="c++",
         extra_compile_args=cpp_args,
+        extra_link_args=sanitizer_args,
     )
 
     pnl_extension = Extension(
@@ -75,6 +81,7 @@ def _extensions() -> list[Extension]:
         [str(Path("src") / "gambit" / "compute_pnl.pyx")],
         include_dirs=[np.get_include()],
         extra_compile_args=cython_args,
+        extra_link_args=sanitizer_args,
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
     )
     cython_pnl = cythonize(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -71,6 +72,54 @@ def test_native_reader_rejects_rows_over_input_limit(tmp_path: Path) -> None:
         _io.read_file(str(csv_file), [0], ["S1"], ",", 0, 0)
 
 
+def test_native_reader_preserves_non_utf8_bytes(tmp_path: Path) -> None:
+    csv_file = tmp_path / "non-utf8.csv"
+    csv_file.write_bytes(b"\xff,1.0\n")
+
+    labels, values = _io.read_file(str(csv_file), [0, 1], ["S1", "f8"], ",", 0, 0)
+
+    assert labels.tolist() == [b"\xff"]
+    assert values.tolist() == [1.0]
+
+
+def test_native_reader_reads_zip_member(tmp_path: Path) -> None:
+    archive = tmp_path / "prices.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr("prices.csv", "AAPL,100.5")
+
+    symbols, prices = _io.read_file(
+        f"{archive}:prices.csv", [0, 1], ["S16", "f8"], ",", 0, 0
+    )
+
+    assert symbols.tolist() == [b"AAPL"]
+    assert prices.tolist() == [100.5]
+
+
+@pytest.mark.parametrize("truncate_bytes", [0, 12])
+def test_native_reader_rejects_corrupt_or_truncated_zip(
+    tmp_path: Path, truncate_bytes: int
+) -> None:
+    archive = tmp_path / f"broken-{truncate_bytes}.zip"
+    if truncate_bytes == 0:
+        archive.write_bytes(b"this is not a zip archive")
+    else:
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr("prices.csv", "AAPL,100.5\n")
+        archive.write_bytes(archive.read_bytes()[:-truncate_bytes])
+
+    with pytest.raises(RuntimeError, match="can't read"):
+        _io.read_file(f"{archive}:prices.csv", [0, 1], ["S16", "f8"], ",", 0, 0)
+
+
+def test_native_reader_rejects_missing_zip_member(tmp_path: Path) -> None:
+    archive = tmp_path / "missing-member.zip"
+    with zipfile.ZipFile(archive, "w") as zip_file:
+        zip_file.writestr("other.csv", "AAPL,100.5\n")
+
+    with pytest.raises(RuntimeError, match="can't inspect"):
+        _io.read_file(f"{archive}:prices.csv", [0, 1], ["S16", "f8"], ",", 0, 0)
+
+
 def test_seeded_malformed_inputs_do_not_crash_native_reader(tmp_path: Path) -> None:
     rng = random.Random(20260827)
     alphabet = b"ABCDEF0123456789,\r\n\x00\xff"
@@ -100,6 +149,7 @@ def test_seeded_malformed_inputs_do_not_crash_native_reader(tmp_path: Path) -> N
         ([1, 0], ["i8", "i8"], "monotonically increasing"),
         ([0], ["i8", "i8"], "same size"),
         ([0], ["object"], "expected i1, i4, i8, f4, f8"),
+        ([0], [""], "expected i1, i4, i8, f4, f8"),
     ],
 )
 def test_native_reader_rejects_invalid_schema(indices, dtypes, message: str) -> None:

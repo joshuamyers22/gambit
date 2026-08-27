@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -256,7 +257,7 @@ void add_line(const vector<char*>& fields, const vector<string>& dtypes, vector<
             add_value<int64_t>(fields[i], data[i]);
         } else if (dtypes[i].substr(0, 3) == "M8[") {
             add_value<int64_t>(fields[i], data[i]);
-        } else if (dtypes[i][0] == 'S') {
+        } else if (!dtypes[i].empty() && dtypes[i][0] == 'S') {
             add_value<string>(fields[i], data[i]);
         } else {
             error("invalid type: " << dtypes[i] << " expected i1, i4, i8, f4, f8, M8[*] or S[n]");
@@ -283,10 +284,34 @@ void* create_vector(const std::string& dtype, size_t max_rows) {
         return create_vec<int64_t>(max_rows);
     } else if (dtype.substr(0, 3) == "M8[") {
         return create_vec<int64_t>(max_rows);
-    } else if (dtype[0] == 'S') {
+    } else if (!dtype.empty() && dtype[0] == 'S') {
         return create_vec<string>(max_rows);
     } else {
         error("invalid type: " << dtype << " expected i1, i4, i8, f4, f8, M8[*] or S[n]");
+    }
+}
+
+void delete_vector(const std::string& dtype, void* data) {
+    if (!data) return;
+    if (dtype == "f4") {
+        delete static_cast<vector<float>*>(data);
+    } else if (dtype == "f8") {
+        delete static_cast<vector<double>*>(data);
+    } else if (dtype == "i1") {
+        delete static_cast<vector<int8_t>*>(data);
+    } else if (dtype == "i4") {
+        delete static_cast<vector<int32_t>*>(data);
+    } else if (dtype == "i8" || dtype.substr(0, 3) == "M8[") {
+        delete static_cast<vector<int64_t>*>(data);
+    } else if (!dtype.empty() && dtype[0] == 'S') {
+        delete static_cast<vector<string>*>(data);
+    }
+}
+
+void delete_output(const vector<string>& dtypes, vector<void*>& output) {
+    for (size_t i = 0; i < output.size(); ++i) {
+        delete_vector(dtypes[i], output[i]);
+        output[i] = nullptr;
     }
 }
 
@@ -345,6 +370,7 @@ struct Reader {
 
 static const size_t BUF_SIZE = 64 * 1024;
 static const size_t MAX_LINE_SIZE = 16 * 1024 * 1024;
+static const zip_uint64_t MAX_ZIP_MEMBER_SIZE = 1024ULL * 1024 * 1024;
 
 ssize_t get_index(char* buf, size_t n, char c) {
     for (size_t i = 0; i < n; ++i) {
@@ -418,8 +444,18 @@ public:
         auto inner_filename = filename.substr(i + 1);
         ZipArchive& archive = ZipArchive::get_instance();
         zip_t* zip_archive = archive.get_archive(zip_filename);
+        zip_stat_t member_stat;
+        zip_stat_init(&member_stat);
+        if (zip_stat(zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS, &member_stat) != 0) {
+            error("can't inspect " << inner_filename << " from " << filename << " : " << zip_strerror(zip_archive));
+        }
+        if ((member_stat.valid & ZIP_STAT_SIZE) && member_stat.size > MAX_ZIP_MEMBER_SIZE) {
+            error(inner_filename << " from " << filename << " exceeds the 1 GiB decompressed member limit");
+        }
         _zip_file = zip_fopen(zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS);
-        if (!_zip_file) error("can't read: " << inner_filename << " from " << filename << " : " << get_error(errno));
+        if (!_zip_file) {
+            error("can't read " << inner_filename << " from " << filename << " : " << zip_strerror(zip_archive));
+        }
     }
 
     string filename() override { return _filename; }
@@ -429,7 +465,9 @@ public:
     }
 
     ssize_t fread(char* buf, size_t buf_size) override {
-        return zip_fread(_zip_file, buf, buf_size);
+        zip_int64_t bytes_read = zip_fread(_zip_file, buf, buf_size);
+        if (bytes_read < 0) error("error reading " << _filename << " : " << zip_file_strerror(_zip_file));
+        return static_cast<ssize_t>(bytes_read);
     }
 
     ~ZipReader() {
@@ -560,17 +598,18 @@ bool read_csv(const std::string& filename,
               std::vector<void*>& output) {
     bool more_to_read = false;
     std::size_t i = filename.find(':');
-    Reader* reader = NULL;
+    unique_ptr<Reader> reader;
     if (i == filename.npos) {
-        reader = new FileReader(filename);
-        bool tmp = read_csv_file(reader, col_indices, dtypes, separator, skip_rows, max_rows, output);
-        if (tmp) more_to_read = true;
-        delete reader;
+        reader.reset(new FileReader(filename));
     } else {
-        reader = new ZipReader(filename);
-        bool tmp = read_csv_file(reader, col_indices, dtypes, separator, skip_rows, max_rows, output);
+        reader.reset(new ZipReader(filename));
+    }
+    try {
+        bool tmp = read_csv_file(reader.get(), col_indices, dtypes, separator, skip_rows, max_rows, output);
         if (tmp) more_to_read = true;
-        delete reader;
+    } catch (...) {
+        delete_output(dtypes, output);
+        throw;
     }
     return more_to_read;
 }
