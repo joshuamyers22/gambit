@@ -12,6 +12,7 @@ from typing import Any, Callable
 
 import numpy as np
 import polars as pl
+from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
 from gambit.compute_pnl import calc_trade_pnl
@@ -24,11 +25,8 @@ NAT = np.datetime64("NaT", "ns")
 def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
     for column in columns:
         vals = df[column].to_numpy().copy()
-        first_non_nan_index_ = np.ravel(np.nonzero(~np.isnan(vals)))  # type: ignore
-        if len(first_non_nan_index_):
-            first_non_nan_index = first_non_nan_index_[0]
-        else:
-            first_non_nan_index = -1
+        non_nan_indices = np.ravel(np.nonzero(~np.isnan(vals)))  # type: ignore
+        first_non_nan_index = int(non_nan_indices[0]) if len(non_nan_indices) else -1
 
         if first_non_nan_index > 0 and first_non_nan_index < len(vals):
             vals[:first_non_nan_index] = np.nan_to_num(vals[:first_non_nan_index])
@@ -93,8 +91,8 @@ class ContractPNL:
         self,
         contract: Contract,
         account_timestamps: np.ndarray,
-        price_function: Callable[[Contract, np.ndarray, int, SimpleNamespace], float],
-        strategy_context: SimpleNamespace,
+        price_function: Callable[[Contract, np.ndarray, int, SimpleNamespace | None], float],
+        strategy_context: SimpleNamespace | None,
     ) -> None:
         self.contract = contract
         self._price_function = price_function
@@ -103,8 +101,8 @@ class ContractPNL:
         self._trade_pnl = SortedDict()
         self._net_pnl = SortedDict()
         # Store trades that are not offset so when new trades come in we can offset against these to calc pnl
-        self.open_qtys = np.empty(0, dtype=int)
-        self.open_prices = np.empty(0, dtype=float)
+        self.open_qtys: NDArray[np.int_] = np.empty(0, dtype=int)
+        self.open_prices: NDArray[np.float64] = np.empty(0, dtype=float)
         self.first_trade_timestamp: np.datetime64 | None = None
         self.final_pnl = np.nan
         self.new_trades_added = False
@@ -289,7 +287,9 @@ class ContractPNL:
 def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarray:
     time_delta = np.timedelta64(pnl_calc_time, "m")
     calc_timestamps = np.unique(timestamps.astype("M8[D]")) + time_delta
-    calc_indices = np.searchsorted(timestamps, calc_timestamps, side="left") - 1
+    calc_indices: NDArray[np.intp] = np.asarray(
+        np.searchsorted(timestamps, calc_timestamps, side="left") - 1, dtype=np.intp
+    )
     if calc_indices[0] == -1:
         calc_indices = calc_indices[1:]
     return np.unique(timestamps[calc_indices])
@@ -437,8 +437,8 @@ class Account:
         self,
         contract_groups: Sequence[ContractGroup],
         timestamps: np.ndarray,
-        price_function: Callable[[Contract, np.ndarray, int, SimpleNamespace], float],
-        strategy_context: SimpleNamespace,
+        price_function: Callable[[Contract, np.ndarray, int, SimpleNamespace | None], float],
+        strategy_context: SimpleNamespace | None,
         starting_equity: float = 1.0e6,
         pnl_calc_time: int = 15 * 60,
     ) -> None:
@@ -489,7 +489,7 @@ class Account:
             trades_by_contract[contract.symbol].append(trade)
 
         for symbol, contract_trades in trades_by_contract.items():
-            contract_trades.sort(key=lambda x: x.timestamp)  # type: ignore
+            contract_trades.sort(key=lambda x: x.timestamp)
             self.symbol_pnls[symbol]._add_trades(contract_trades)
 
         for trade in trades:
@@ -654,17 +654,19 @@ class Account:
         timestamps = self.calc_timestamps
         prev_date = self.calc_timestamps[0] - np.timedelta64(1, "D")
         timestamps = np.insert(timestamps, 0, prev_date)
-        position = np.full(len(timestamps), 0.0, dtype=float)
-        realized = np.full(len(timestamps), 0.0, dtype=float)
-        unrealized = np.full(len(timestamps), 0.0, dtype=float)
-        fee = np.full(len(timestamps), 0.0, dtype=float)
-        commission = np.full(len(timestamps), 0.0, dtype=float)
-        net_pnl = np.full(len(timestamps), 0.0, dtype=float)
+        position: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
+        realized: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
+        unrealized: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
+        fee: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
+        commission: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
+        net_pnl: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
 
         for i in range(1, len(timestamps)):
             timestamp = timestamps[i]
             for symbol_pnl in symbol_pnls:
-                _position, _price, _realized, _unrealized, _fee, _commission, _net_pnl = symbol_pnl.pnl(timestamp)
+                _position, _price, _realized, _unrealized, _fee, _commission, _net_pnl = symbol_pnl.pnl(
+                    np.datetime64(timestamp)
+                )
                 if math.isfinite(_position):
                     position[i] += _position
                 if math.isfinite(_realized):

@@ -9,6 +9,7 @@ Please read README.rst in the main directory to get started
 
    modules
    native_io
+   platform_support
 
 Indices and tables
 ==================

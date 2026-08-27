@@ -76,6 +76,18 @@ jobs:
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python -m pytest -vv -s tests/test_native_io_hardening.py
 
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip pip-audit
+      - name: Audit declared dependencies
+        run: python -m pip_audit --strict .
+
   package:
     runs-on: ubuntu-latest
     steps:
