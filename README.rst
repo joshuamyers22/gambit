@@ -118,6 +118,26 @@ Add ``InstrumentTradabilityPolicy`` to reject expired, bad, duplicate, ignored,
 or untradeable instruments before execution. By default, ignored and untradeable
 positions may still accept orders that reduce existing exposure.
 
+Risk attribution and stress scenarios
+-------------------------------------
+
+``strategy.risk_report`` returns Polars frames containing contract exposure,
+grouped attribution, and scenario results. Exposure includes contract multipliers
+and preserves the sign of long and short positions::
+
+   scenarios = [
+       gambit.StressScenario("risk-off", {"equity": -0.10, "future": -0.05}),
+       gambit.StressScenario("market-down", {"*": -0.02}),
+   ]
+   report = strategy.risk_report(timestamp, scenarios, attribution_by=("asset_class",))
+   report.exposures
+   report.attribution
+   report.scenario_results
+   report.summary()
+
+Scenario keys are resolved from most to least specific: symbol, contract group,
+asset class, then ``*`` as the portfolio-wide default.
+
 
 
 
