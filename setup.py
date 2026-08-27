@@ -76,6 +76,19 @@ def _extensions() -> list[Extension]:
         extra_link_args=sanitizer_args,
     )
 
+    native_extensions = [io_extension, options_extension]
+    if not is_windows:
+        native_extensions.append(
+            Extension(
+                "gambit._factor_cache",
+                sources=[str(CPP_DIR / "factor_cache" / "mapped_column.cpp")],
+                include_dirs=[pybind11.get_include(), np.get_include()],
+                language="c++",
+                extra_compile_args=cpp_args,
+                extra_link_args=sanitizer_args,
+            )
+        )
+
     pnl_extension = Extension(
         "gambit.compute_pnl",
         [str(Path("src") / "gambit" / "compute_pnl.pyx")],
@@ -88,7 +101,7 @@ def _extensions() -> list[Extension]:
         [pnl_extension],
         compiler_directives={"language_level": "3"},
     )[0]
-    return [io_extension, options_extension, cython_pnl]
+    return [*native_extensions, cython_pnl]
 
 
 setup(ext_modules=_extensions())

@@ -365,7 +365,7 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 
 - [ ] Capture representative factor-tree workloads and a no-cache performance baseline.
 - [ ] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
-- [ ] Prototype page-aligned immutable column segments in an NVMe-backed `mmap`.
+- [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
 - [ ] Prototype a descriptor-only SPSC ring with a blocking reference implementation.
 - [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.

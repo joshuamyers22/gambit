@@ -4,6 +4,7 @@ from gambit.pq_utils import *
 from gambit.calculation import *
 from gambit.configuration import *
 from gambit.execution_costs import *
+from gambit.factor_cache import *
 from gambit.instruments import *
 from gambit.pq_types import *
 from gambit.pq_io import *
