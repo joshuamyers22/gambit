@@ -21,6 +21,7 @@ from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelem
 from gambit.calculation import CalculationContext
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
+from gambit.market_data import MarketDataValidationReport
 from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
@@ -47,6 +48,30 @@ PlotPropertiesType = dict[str, dict[str, Any]]
 NAT = np.datetime64("NaT", "ns")
 
 _logger = get_child_logger(__name__)
+
+
+def _concat_artifact_frames(frames: dict[str, pl.DataFrame]) -> pl.DataFrame:
+    if not frames:
+        return pl.DataFrame(schema={"artifact": pl.String})
+    return pl.concat(
+        [
+            frame.with_columns(pl.lit(name).alias("artifact")).select("artifact", *frame.columns)
+            for name, frame in sorted(frames.items())
+        ],
+        how="diagonal_relaxed",
+    )
+
+
+def _concat_report_frames(reports: dict[str, PortfolioRiskReport], field: str) -> pl.DataFrame:
+    if not reports:
+        return pl.DataFrame(schema={"artifact": pl.String, "timestamp": pl.Datetime("ns")})
+    frames = {
+        name: getattr(report, field).with_columns(
+            pl.lit(report.timestamp.astype("datetime64[ns]")).alias("timestamp")
+        )
+        for name, report in reports.items()
+    }
+    return _concat_artifact_frames(frames)
 
 
 class Strategy:
@@ -123,6 +148,13 @@ class Strategy:
         self._current_orders: list[Order] = []
         self.risk_policies: list[RiskPolicy] = []
         self.order_decisions: list[OrderDecision] = []
+        self._recorded_risk_results: dict[str, pl.DataFrame] = {}
+        self._recorded_risk_reports: dict[str, PortfolioRiskReport] = {}
+        self._recorded_validation_reports: dict[str, MarketDataValidationReport] = {}
+        self._risk_result_requests: dict[str, tuple[CalculationContext, tuple[RiskMeasure, ...]]] = {}
+        self._risk_report_requests: dict[
+            str, tuple[CalculationContext, tuple[StressScenario, ...] | None, tuple[str, ...]]
+        ] = {}
         self.indicator_deps: dict[str, list[str]] = {}
         self.indicator_cgroups: dict[str, list[ContractGroup]] = {}
         self.indicator_values: dict[str, SimpleNamespace] = defaultdict(types.SimpleNamespace)
@@ -157,6 +189,79 @@ class Strategy:
         context = CalculationContext.coerce(timestamp)
         report = analyze_account_risk(self.account, context)
         return calculate_risk(report.exposures, measures, context)
+
+    @staticmethod
+    def _require_artifact_name(name: str) -> None:
+        if not name or not name.strip():
+            raise ValueError("artifact name must be non-empty")
+
+    def record_risk_result(self, name: str, result: RiskResult) -> None:
+        """Record an already-calculated typed risk result for the run snapshot."""
+        self._require_artifact_name(name)
+        if name in self._recorded_risk_results:
+            raise ValueError(f"risk result already recorded: {name}")
+        self._recorded_risk_results[name] = result.data.clone()
+
+    def record_risk_report(self, name: str, report: PortfolioRiskReport) -> None:
+        """Record an already-calculated exposure and stress report."""
+        self._require_artifact_name(name)
+        if name in self._recorded_risk_reports:
+            raise ValueError(f"risk report already recorded: {name}")
+        self._recorded_risk_reports[name] = PortfolioRiskReport(
+            report.timestamp,
+            report.exposures.clone(),
+            report.attribution.clone(),
+            report.scenario_results.clone(),
+        )
+
+    def record_market_data_validation(self, name: str, report: MarketDataValidationReport) -> None:
+        """Record validation findings without retaining the validated market data."""
+        self._require_artifact_name(name)
+        if name in self._recorded_validation_reports:
+            raise ValueError(f"validation report already recorded: {name}")
+        self._recorded_validation_reports[name] = report
+
+    def request_risk_result(
+        self,
+        name: str,
+        timestamp: np.datetime64 | CalculationContext,
+        measures: Sequence[RiskMeasure],
+    ) -> None:
+        """Request named typed risk measures after backtest execution completes."""
+        self._require_artifact_name(name)
+        if name in self._risk_result_requests or name in self._recorded_risk_results:
+            raise ValueError(f"risk result already requested or recorded: {name}")
+        if not measures:
+            raise ValueError("at least one risk measure is required")
+        self._risk_result_requests[name] = (CalculationContext.coerce(timestamp), tuple(measures))
+
+    def request_risk_report(
+        self,
+        name: str,
+        timestamp: np.datetime64 | CalculationContext,
+        scenarios: Sequence[StressScenario] | None = None,
+        attribution_by: Sequence[str] = ("contract_group",),
+    ) -> None:
+        """Request a named exposure/stress report after execution completes."""
+        self._require_artifact_name(name)
+        if name in self._risk_report_requests or name in self._recorded_risk_reports:
+            raise ValueError(f"risk report already requested or recorded: {name}")
+        if not attribution_by:
+            raise ValueError("attribution dimensions cannot be empty")
+        selected_scenarios = None if scenarios is None else tuple(scenarios)
+        self._risk_report_requests[name] = (
+            CalculationContext.coerce(timestamp),
+            selected_scenarios,
+            tuple(attribution_by),
+        )
+
+    def _run_requested_analytics(self) -> None:
+        for name, (context, scenarios, attribution_by) in self._risk_report_requests.items():
+            self._recorded_risk_reports.pop(name, None)
+            self.record_risk_report(name, self.risk_report(context, scenarios, attribution_by))
+        for name, (context, measures) in self._risk_result_requests.items():
+            self._recorded_risk_results.pop(name, None)
+            self.record_risk_result(name, self.calculate_risk(context, measures))
 
     def add_indicator(
         self,
@@ -588,6 +693,9 @@ class Strategy:
         measure("indicators", len(self.indicators) * len(self.contract_groups), self.run_indicators)
         measure("signals", len(self.signals) * len(self.contract_groups), self.run_signals)
         measure("rules_execution_accounting", len(self.timestamps), self.run_rules)
+        analytics_count = len(self._risk_report_requests) + len(self._risk_result_requests)
+        if analytics_count:
+            measure("requested_analytics", analytics_count, self._run_requested_analytics)
         return self._backtest_result(tuple(stages))
 
     def _backtest_result(self, stages: tuple[StageTelemetry, ...]) -> BacktestResult:
@@ -624,6 +732,45 @@ class Strategy:
             },
             schema_overrides={"timestamp": pl.Datetime("ns")},
         )
+        risk_measures = _concat_artifact_frames(self._recorded_risk_results)
+        risk_exposures = _concat_report_frames(self._recorded_risk_reports, "exposures")
+        risk_attribution = _concat_report_frames(self._recorded_risk_reports, "attribution")
+        stress_results = _concat_report_frames(self._recorded_risk_reports, "scenario_results")
+        validation_rows: list[dict[str, object]] = []
+        for name, report in sorted(self._recorded_validation_reports.items()):
+            if not report.findings:
+                validation_rows.append(
+                    {
+                        "artifact": name,
+                        "is_valid": True,
+                        "code": None,
+                        "severity": None,
+                        "message": None,
+                        "count": 0,
+                    }
+                )
+            for finding in report.findings:
+                validation_rows.append(
+                    {
+                        "artifact": name,
+                        "is_valid": report.is_valid,
+                        "code": finding.code,
+                        "severity": finding.severity.value,
+                        "message": finding.message,
+                        "count": finding.count,
+                    }
+                )
+        validation_findings = pl.DataFrame(
+            validation_rows,
+            schema={
+                "artifact": pl.String,
+                "is_valid": pl.Boolean,
+                "code": pl.String,
+                "severity": pl.String,
+                "message": pl.String,
+                "count": pl.Int64,
+            },
+        )
         return BacktestResult(
             provenance=self.provenance,
             telemetry=telemetry,
@@ -631,6 +778,11 @@ class Strategy:
             orders=orders,
             decisions=decisions,
             pnl=self.df_pnl(),
+            risk_measures=risk_measures,
+            risk_exposures=risk_exposures,
+            risk_attribution=risk_attribution,
+            stress_results=stress_results,
+            validation_findings=validation_findings,
         )
 
     def _get_orders(

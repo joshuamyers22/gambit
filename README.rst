@@ -92,6 +92,24 @@ The loader verifies each table's SHA-256 digest, row count, schema, and the run
 provenance fingerprint before returning data. Saving refuses to overwrite an
 existing bundle.
 
+Risk and validation artifacts are opt-in. Named risk requests run after trading
+and accounting, while precomputed market-data validation reports can be recorded
+without retaining the source frame::
+
+   strategy.request_risk_result(
+       "closing-risk", strategy.timestamps[-1], [gambit.NetExposureMeasure()]
+   )
+   strategy.request_risk_report(
+       "closing-stress",
+       strategy.timestamps[-1],
+       scenarios=[gambit.StressScenario("down-10", {"*": -0.10})],
+   )
+   strategy.record_market_data_validation("prices", validation_report)
+   result = strategy.run()
+
+Requested analytics have their own telemetry phase and are included in persisted
+result bundles. Gambit does not calculate unrequested risk or stress reports.
+
 Execution costs and liquidity
 -----------------------------
 

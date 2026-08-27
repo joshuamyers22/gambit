@@ -16,8 +16,18 @@ import polars as pl
 from gambit.configuration import RunConfiguration, RunProvenance
 
 BUNDLE_FORMAT = "gambit.backtest-result"
-BUNDLE_VERSION = 1
-_FRAME_NAMES = ("trades", "orders", "decisions", "pnl")
+BUNDLE_VERSION = 2
+_FRAME_NAMES = (
+    "trades",
+    "orders",
+    "decisions",
+    "pnl",
+    "risk_measures",
+    "risk_exposures",
+    "risk_attribution",
+    "stress_results",
+    "validation_findings",
+)
 
 
 class BacktestBundleError(ValueError):
@@ -130,6 +140,11 @@ class BacktestResult:
     _orders: pl.DataFrame
     _decisions: pl.DataFrame
     _pnl: pl.DataFrame
+    _risk_measures: pl.DataFrame
+    _risk_exposures: pl.DataFrame
+    _risk_attribution: pl.DataFrame
+    _stress_results: pl.DataFrame
+    _validation_findings: pl.DataFrame
 
     def __init__(
         self,
@@ -140,6 +155,11 @@ class BacktestResult:
         orders: pl.DataFrame,
         decisions: pl.DataFrame,
         pnl: pl.DataFrame,
+        risk_measures: pl.DataFrame,
+        risk_exposures: pl.DataFrame,
+        risk_attribution: pl.DataFrame,
+        stress_results: pl.DataFrame,
+        validation_findings: pl.DataFrame,
     ) -> None:
         object.__setattr__(self, "provenance", provenance)
         object.__setattr__(self, "telemetry", telemetry)
@@ -147,6 +167,11 @@ class BacktestResult:
         object.__setattr__(self, "_orders", orders.clone())
         object.__setattr__(self, "_decisions", decisions.clone())
         object.__setattr__(self, "_pnl", pnl.clone())
+        object.__setattr__(self, "_risk_measures", risk_measures.clone())
+        object.__setattr__(self, "_risk_exposures", risk_exposures.clone())
+        object.__setattr__(self, "_risk_attribution", risk_attribution.clone())
+        object.__setattr__(self, "_stress_results", stress_results.clone())
+        object.__setattr__(self, "_validation_findings", validation_findings.clone())
 
     @property
     def trades(self) -> pl.DataFrame:
@@ -165,12 +190,37 @@ class BacktestResult:
         return self._pnl.clone()
 
     @property
+    def risk_measures(self) -> pl.DataFrame:
+        return self._risk_measures.clone()
+
+    @property
+    def risk_exposures(self) -> pl.DataFrame:
+        return self._risk_exposures.clone()
+
+    @property
+    def risk_attribution(self) -> pl.DataFrame:
+        return self._risk_attribution.clone()
+
+    @property
+    def stress_results(self) -> pl.DataFrame:
+        return self._stress_results.clone()
+
+    @property
+    def validation_findings(self) -> pl.DataFrame:
+        return self._validation_findings.clone()
+
+    @property
     def frames(self) -> Mapping[str, pl.DataFrame]:
         return {
             "trades": self.trades,
             "orders": self.orders,
             "decisions": self.decisions,
             "pnl": self.pnl,
+            "risk_measures": self.risk_measures,
+            "risk_exposures": self.risk_exposures,
+            "risk_attribution": self.risk_attribution,
+            "stress_results": self.stress_results,
+            "validation_findings": self.validation_findings,
         }
 
     def save(self, destination: str | Path) -> Path:

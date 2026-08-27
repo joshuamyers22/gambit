@@ -10,7 +10,10 @@ import polars as pl
 import pytest
 
 from gambit.backtest_result import BacktestBundleError, BacktestResult
+from gambit.market_data import validate_market_data
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Order, Trade
+from gambit.risk_measures import NetExposureMeasure
+from gambit.risk_reporting import StressScenario
 from gambit.strategy import Strategy, StrategyContextType
 
 
@@ -114,8 +117,58 @@ def test_result_bundle_is_byte_deterministic(tmp_path: Path) -> None:
     first = result.save(tmp_path / "first")
     second = result.save(tmp_path / "second")
 
-    for filename in ["manifest.json", "trades.arrow", "orders.arrow", "decisions.arrow", "pnl.arrow"]:
+    for filename in ["manifest.json", *(f"{name}.arrow" for name in result.frames)]:
         assert (first / filename).read_bytes() == (second / filename).read_bytes()
+
+
+def test_result_includes_only_explicitly_requested_analytics(tmp_path: Path) -> None:
+    strategy = _strategy()
+    timestamp = np.datetime64("2024-01-02")
+    strategy.request_risk_result("closing-risk", timestamp, [NetExposureMeasure()])
+    strategy.request_risk_report(
+        "closing-stress",
+        timestamp,
+        scenarios=[StressScenario("down-10", {"*": -0.1})],
+    )
+    validation = validate_market_data(
+        pl.DataFrame(
+            {
+                "timestamp": np.array(["2024-01-02"], dtype="datetime64[ns]"),
+                "price": [-1.0],
+            }
+        ),
+        now=timestamp,
+    )
+    strategy.record_market_data_validation("prices", validation)
+    valid = validate_market_data(
+        pl.DataFrame(
+            {
+                "timestamp": np.array(["2024-01-02"], dtype="datetime64[ns]"),
+                "price": [10.0],
+            }
+        ),
+        now=timestamp,
+    )
+    strategy.record_market_data_validation("valid-prices", valid)
+
+    result = strategy.run()
+
+    assert result.telemetry.stage("requested_analytics").units == 2
+    assert result.risk_measures["artifact"].unique().to_list() == ["closing-risk"]
+    assert result.risk_exposures["artifact"].unique().to_list() == ["closing-stress"]
+    assert result.stress_results.row(0, named=True)["scenario"] == "down-10"
+    assert result.validation_findings.filter(pl.col("artifact") == "prices")["code"].to_list() == [
+        "non_positive_prices"
+    ]
+    valid_row = result.validation_findings.filter(pl.col("artifact") == "valid-prices").row(0, named=True)
+    assert valid_row["is_valid"] is True
+    assert valid_row["code"] is None
+
+    restored = BacktestResult.load(result.save(tmp_path / "analytics.gambit"))
+    assert restored.risk_measures.equals(result.risk_measures)
+    assert restored.risk_exposures.equals(result.risk_exposures)
+    assert restored.stress_results.equals(result.stress_results)
+    assert restored.validation_findings.equals(result.validation_findings)
 
 
 def test_result_bundle_rejects_corrupted_frame(tmp_path: Path) -> None:
