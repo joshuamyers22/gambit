@@ -4,6 +4,7 @@ from gambit.pq_utils import *
 from gambit.pq_types import *
 from gambit.pq_io import *
 from gambit.holiday_calendars import *
+from gambit.market_data import *
 from gambit.markets import *
 from gambit.account import *
 from gambit.strategy import *

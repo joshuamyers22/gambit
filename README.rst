@@ -25,6 +25,24 @@ Statsmodels remains the analytics backend for regression/statistical routines,
 and pandas-market-calendars remains the source of exchange schedules. Pandas may
 therefore be installed transitively, but it is not Gambit's dataframe API.
 
+Market-data validation
+----------------------
+
+``validate_market_data`` checks a Polars DataFrame without modifying it. It can
+report missing or unordered timestamps, invalid prices and volumes, large price
+changes, future records, and dates outside a named exchange calendar. Validation
+returns structured findings so callers can distinguish errors from warnings and
+decide whether to reject a run::
+
+   report = gambit.validate_market_data(
+       bars,
+       price_columns=("close",),
+       volume_columns=("volume",),
+       calendar_name="NYSE",
+       max_price_change=0.25,
+   )
+   report.raise_if_invalid()
+
 
 
 
