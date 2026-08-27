@@ -241,7 +241,8 @@ Exit criteria: a fresh checkout can be built and tested using documented command
 - [x] Add an independent FIFO ledger oracle and compare randomized trade streams against the native engine.
 - [x] Add a golden account scenario reconciling position, realized/unrealized P&L, costs, net P&L, and equity.
 - [x] Make round-trip reporting repeatable without mutating source trades or their property namespaces.
-- [ ] Add golden end-to-end strategy scenarios covering market-simulation behavior.
+- [x] Add golden lifecycle scenarios for partial fills, invalid orders, cancellation, cross-zero reversal, multipliers, and expiry.
+- [ ] Add end-to-end strategy scenarios for simulator rejection, scale-in/out, and short entry/exit rules.
 
 Exit criteria: each defect has a failing-before/passing-after regression test, and all golden scenarios reconcile at symbol, group, and account levels.
 

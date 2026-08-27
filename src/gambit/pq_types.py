@@ -172,10 +172,11 @@ class Contract:
         Contract._instances = dict()
 
     def __repr__(self) -> str:
+        expiry = self.expiry.astype("datetime64[us]").astype(datetime.datetime) if self.expiry is not None else None
         return (
             f"{self.symbol}"
             + (f" {self.multiplier}" if self.multiplier != 1 else "")
-            + (f" expiry: {self.expiry.astype(datetime.datetime):%Y-%m-%d %H:%M:%S}" if self.expiry is not None else "")
+            + (f" expiry: {expiry:%Y-%m-%d %H:%M:%S}" if expiry is not None else "")
             + (f" group: {self.contract_group.name}" if self.contract_group else "")
             + (f" {_format(self.properties)}")
         )
@@ -314,12 +315,9 @@ class Order:
 
 @dataclass(kw_only=True)
 class MarketOrder(Order):
-    def __post_init__(self):
-        try:
-            if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
-                raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
-        except Exception as ex:
-            _logger.info(ex)
+    def __post_init__(self) -> None:
+        if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
+            raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
 
     def __repr__(self):
         timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
