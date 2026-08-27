@@ -115,10 +115,12 @@ template<typename T> PyObject* create_np_array(PyArray_Descr* descr, void* data)
         PyErr_NoMemory();
         return NULL;
     }
-    ::memcpy(
-      _data,
-      vec->data(),
-      mem_size);
+    if (mem_size != 0) {
+        ::memcpy(
+          _data,
+          vec->data(),
+          mem_size);
+    }
     delete vec;
 
 
