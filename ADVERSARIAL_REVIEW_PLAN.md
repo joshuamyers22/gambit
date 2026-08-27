@@ -47,6 +47,7 @@ Recommended posture: treat all generated P&L, filtered reports, order histories,
 | Data/time utilities | `pq_io.py`, `pq_utils.py`, `holiday_calendars.py` | HDF5, native CSV, resampling, dates, calendars, configuration |
 | Visualization | `interactive_plot.py` | Plotly/Jupyter interactive reports |
 | Native extensions | `compute_pnl.pyx`, `src/gambit/cpp/**` | P&L acceleration, option math, CSV/ZIP parsing |
+| Factor cache/performance research | proposed `factor_cache.py`, native ring-buffer module | Content-addressed factor DAGs, NVMe-backed mapped columns, bounded producer/consumer transport |
 | Examples/docs | `examples/notebooks/**`, `documentation/**` | Executable tutorials and API documentation |
 | Build/release | `setup.py`, `requirements.txt`, `MANIFEST.in`, shell scripts | Compilation, dependency declaration, packaging |
 
@@ -220,6 +221,89 @@ Proposed addition:
 - Add `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, release instructions, and architecture/invariant documentation.
 - Add notebook execution smoke tests with pinned sample data expectations.
 
+#### 16. NVMe-mapped factor caching and ring-buffer synchronization require proof, not intuition
+
+Research backtests repeatedly materialize related factor columns. A factor tree
+could reuse the output of each parent node by storing immutable column segments
+directly in an NVMe-backed `mmap` region and publishing segment descriptors
+through a bounded ring buffer. This may reduce RAM pressure and redundant factor
+calculation, but a naive spinlock design can make performance worse or corrupt
+research results.
+
+Adversarial risks:
+
+- A Python spinlock is constrained by the GIL and is not a valid substitute for
+  native atomic operations.
+- Busy-waiting while a producer or consumer is blocked on a page fault, writeback,
+  or NVMe latency can consume an entire core indefinitely.
+- No spinlock or ring-slot claim may cover `mmap`, page-fault, flush, allocation,
+  checksum, compression, or filesystem operations.
+- Mapped writes are not transaction boundaries. Process termination can leave a
+  valid-looking header pointing at partially written column bytes.
+- False sharing between producer/consumer cursors can erase expected gains;
+  cursors and hot counters need cache-line separation.
+- Multiple processes require a documented memory model and process-shared atomic
+  primitives; thread-only atomics are insufficient.
+- Cache keys that omit source fingerprints, transform code/version, parameters,
+  schema, row ordering, calendar, or floating-point mode can return plausible but
+  incorrect factors.
+- Mutable mapped columns can allow one factor stage to corrupt an ancestor used by
+  other branches. Published segments must be immutable.
+- NVMe capacity, endurance, thermal throttling, filesystem behavior, and page-cache
+  eviction can dominate benchmark results.
+- Unbounded factor trees can exhaust address space, file descriptors, mapped pages,
+  or disk even when physical RAM usage appears stable.
+
+Proposed design for evaluation:
+
+- Represent a factor tree as a deterministic DAG. Each node key hashes parent
+  keys, input-data fingerprints, transform identity/version, normalized parameters,
+  output schema, row count/order, and calculation/provenance context.
+- Store each output column in an immutable, page-aligned segment of a preallocated
+  NVMe-backed mapping. Keep validity/null data and variable-width offsets/data in
+  separately described mapped segments using an Arrow-compatible physical layout
+  where practical.
+- Put only fixed-size descriptors in the ring buffer: cache key, mapping/file id,
+  segment offset, byte length, dtype/schema id, row count, checksum, and publication
+  generation. Do not copy whole columns through ring slots.
+- Use a two-phase publication protocol. A writer reserves space and writes column
+  bytes/checksum first, then atomically publishes a committed descriptor. Readers
+  ignore uncommitted generations and verify length/schema/checksum before exposing
+  the column.
+- Keep the allocation journal/manifest separate from data segments. Update it using
+  generation numbers and crash-recovery scanning; never assume `mmap.flush()` alone
+  provides application-level atomicity or durability.
+- Start with a single-producer/single-consumer native ring using head/tail atomics.
+  Only consider multi-producer or multi-consumer operation after the simpler memory
+  model is verified under ThreadSanitizer and process-crash tests.
+- If contention requires waiting, use a bounded adaptive strategy: short native
+  spin, exponential backoff, then park on an OS primitive. Never spin across NVMe
+  work or wait indefinitely.
+- Expose mapped segments to NumPy/Arrow/Polars with zero-copy views only while a
+  lease pins the segment against eviction. Make lifetime and read-only guarantees
+  explicit.
+- Use reference counts or leases plus an eviction policy constrained by mapped
+  bytes, resident-set pressure, and free NVMe capacity. Reclaim only unpublished or
+  unleased generations.
+- Provide a safe pure-Python/reference implementation using ordinary immutable
+  files and a bounded queue so native results and failure behavior have an oracle.
+
+Implementation gate:
+
+- Do not implement the native spin/ring path until benchmarks compare it with
+  Polars lazy execution, Arrow IPC/Parquet scans, ordinary `mmap`, and a blocking
+  bounded queue.
+- Measure cold/warm latency, rows and bytes per second, CPU time, page faults,
+  context switches, peak/resident memory, NVMe bytes written, cache hit ratio, and
+  end-to-end factor-tree completion time.
+- Test narrow/wide columns, fixed/variable-width data, null-heavy data, branch reuse,
+  cache misses, oversubscription, forced eviction, process crashes, truncated
+  mappings, checksum failure, concurrent readers, and producer/consumer imbalance.
+- Require a material end-to-end improvement on representative research workloads,
+  not only a synthetic ring-buffer throughput win.
+- Correctness, deterministic fingerprints, crash recovery, and bounded resource use
+  remain release blockers even if throughput improves.
+
 ## Implementation roadmap
 
 ### Phase 0 — establish a reproducible baseline
@@ -277,6 +361,24 @@ Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are 
 
 Exit criteria: public API and financial assumptions are documented, generated artifacts cannot silently drift, and release artifacts install and import on every supported platform.
 
+### Phase 5 — factor DAG and NVMe-mapped column cache research
+
+- [ ] Capture representative factor-tree workloads and a no-cache performance baseline.
+- [ ] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
+- [ ] Prototype page-aligned immutable column segments in an NVMe-backed `mmap`.
+- [ ] Define segment headers, checksums, generations, leases, and crash recovery.
+- [ ] Prototype a descriptor-only SPSC ring with a blocking reference implementation.
+- [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.
+- [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
+- [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
+- [ ] Run sanitizer, concurrency, fault-injection, and forced-process-termination tests.
+- [ ] Record an architecture decision to adopt, revise, or reject the design.
+
+Exit criteria: cached and uncached factor trees produce identical schemas, values,
+nulls, and ordering; interrupted writes cannot become visible; resource usage is
+bounded; and representative end-to-end workloads show a material improvement over
+the simplest correct baseline.
+
 ## Required adversarial test matrix
 
 | Surface | Cases that must be covered |
@@ -288,6 +390,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 | Reporting | Every start/end boundary, empty selection, one group/all groups, reconciliation across all exported frames |
 | Optimization | Min/max ordering, ties, invalid results, adaptive generator, worker crash, unpicklable callback, interruption |
 | Files | Empty, truncated, oversized, decompression bomb, invalid encoding/dtype, uneven columns, concurrent access |
+| Mapped factor cache | Cold/warm mapping, page faults, truncated segments, torn publication, checksum mismatch, stale generation, eviction while leased, process crash/restart |
+| Ring/concurrency | Empty/full/wraparound, cursor overflow, false sharing, slow producer/consumer, thread/process contention, bounded spin then park, cancellation |
+| Factor DAG | Shared ancestors, branching, deterministic keys, code/config/schema changes, null/order preservation, cache poisoning, partial invalidation |
 | Platform | Python support matrix, Linux/macOS/Windows, source build, wheel build, no-Conda build, optional extras absent |
 
 ## Validation gates
@@ -300,6 +405,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - Clean build, wheel install, `import gambit`, and minimal-submodule imports pass on supported platforms.
 - Examples/notebooks execute against pinned fixtures without network access.
 - Performance baselines detect material regressions but never replace correctness assertions.
+- NVMe cache benchmarks report end-to-end factor-tree gains, CPU consumption, page
+  faults, resident memory, and physical bytes written; ring throughput alone is not
+  an acceptance metric.
 
 ## Deferred design decisions
 
@@ -311,15 +419,22 @@ These require maintainer intent and should be recorded as architecture decisions
 - How missing marks, stale prices, expiry, corporate actions, cash, margin, and multi-currency accounting should behave.
 - Whether notebooks or Python modules are the canonical source for generated code.
 - Which dependencies and Python/platform versions are genuinely supported for version 1.x.
+- Whether the mapped cache is single-process, process-shared, or both, and which
+  memory-ordering/durability contract it guarantees.
+- Whether the initial column layout should be Arrow-compatible raw buffers, Arrow
+  IPC, or another format after measurement of zero-copy use, recovery, and evolution.
+- What improvement threshold justifies native spin/backoff/park synchronization
+  over a simpler blocking bounded queue.
 
-## Immediate next change set
+## Immediate performance research change set
 
-Keep the first pull request intentionally small:
+Keep the first cache experiment intentionally non-production:
 
-1. Create a conventional `tests/` layout and narrow pytest discovery.
-2. Add regression tests for the four confirmed silent-result defects.
-3. Fix only those four defects.
-4. Add account-level reconciliation assertions and run them against existing example data.
-5. Document behavior changes prominently because consumers may have unknowingly depended on incorrect filtered/ranked output.
+1. Define two representative factor DAG fixtures and record uncached Polars baselines.
+2. Write the mapped-segment format and publication/recovery invariants as an architecture decision.
+3. Prototype one fixed-width column type with a descriptor-only SPSC ring and a blocking queue oracle.
+4. Add equality, crash-recovery, resource-bound, and benchmark tests before expanding dtype or concurrency support.
 
-Do not combine the first correctness patch with broad API, formatting, or packaging rewrites; preserving a reviewable causal link between each regression test and fix is especially important for financial code.
+Do not combine this experiment with production cache integration. Preserve a
+reviewable causal link between the mapped layout, synchronization choice,
+correctness tests, and measured factor-tree performance.
