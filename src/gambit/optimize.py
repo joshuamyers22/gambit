@@ -126,30 +126,36 @@ class Optimizer:
         with concurrent.futures.ProcessPoolExecutor(
             self.max_processes, mp_context=mp.get_context(self.process_start_method)
         ) as executor:
-            while pending or not exhausted:
-                while not exhausted and len(pending) < self.max_pending_tasks:
-                    try:
-                        suggestion = next(suggestions)
-                    except StopIteration:
-                        exhausted = True
-                        break
-                    if suggestion is not None:
-                        pending[executor.submit(self.cost_func, suggestion)] = suggestion
+            try:
+                while pending or not exhausted:
+                    while not exhausted and len(pending) < self.max_pending_tasks:
+                        try:
+                            suggestion = next(suggestions)
+                        except StopIteration:
+                            exhausted = True
+                            break
+                        if suggestion is not None:
+                            pending[executor.submit(self.cost_func, suggestion)] = suggestion
 
-                if not pending:
-                    continue
-                completed, _ = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
-                for future in completed:
-                    suggestion = pending.pop(future)
-                    try:
-                        cost, other_costs = future.result()
-                    except Exception as error:
-                        worker_error = OptimizerWorkerError(f"cost function failed for suggestion {suggestion!r}")
-                        if raise_on_error:
-                            raise worker_error from error
-                        _logger.exception(worker_error, exc_info=error)
+                    if not pending:
                         continue
-                    self.experiments.append(Experiment(suggestion, cost, other_costs))
+                    completed, _ = concurrent.futures.wait(pending, return_when=concurrent.futures.FIRST_COMPLETED)
+                    for future in completed:
+                        suggestion = pending.pop(future)
+                        try:
+                            cost, other_costs = future.result()
+                        except Exception as error:
+                            worker_error = OptimizerWorkerError(f"cost function failed for suggestion {suggestion!r}")
+                            if raise_on_error:
+                                raise worker_error from error
+                            _logger.exception(worker_error, exc_info=error)
+                            continue
+                        self.experiments.append(Experiment(suggestion, cost, other_costs))
+            except BaseException:
+                for future in pending:
+                    future.cancel()
+                executor.shutdown(wait=True, cancel_futures=True)
+                raise
 
     def run(self, raise_on_error: bool = False) -> None:
         """Run the optimizer.

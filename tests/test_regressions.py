@@ -88,6 +88,41 @@ def test_optimizer_chains_worker_error_with_suggestion_context():
     assert isinstance(error.value.__cause__, ValueError)
 
 
+def test_optimizer_cancels_pending_work_when_interrupted(monkeypatch):
+    submitted = []
+
+    class FakeExecutor:
+        def __init__(self):
+            self.shutdown_calls = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def submit(self, *_args):
+            future = __import__("concurrent.futures").futures.Future()
+            submitted.append(future)
+            return future
+
+        def shutdown(self, **kwargs):
+            self.shutdown_calls.append(kwargs)
+
+    executor = FakeExecutor()
+    monkeypatch.setattr("gambit.optimize.concurrent.futures.ProcessPoolExecutor", lambda *_args, **_kwargs: executor)
+    monkeypatch.setattr(
+        "gambit.optimize.concurrent.futures.wait", lambda *_args, **_kwargs: (_ for _ in ()).throw(KeyboardInterrupt())
+    )
+    optimizer = Optimizer("interrupt", iter([{"x": 1}, {"x": 2}]), _square_cost, max_processes=2)
+
+    with pytest.raises(KeyboardInterrupt):
+        optimizer.run()
+
+    assert submitted and all(future.cancelled() for future in submitted)
+    assert executor.shutdown_calls == [{"wait": True, "cancel_futures": True}]
+
+
 def test_df_data_applies_inclusive_date_bounds_to_all_columns():
     group = ContractGroup.get("stocks")
     Contract.create("FIRST", group)
