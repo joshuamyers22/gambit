@@ -354,14 +354,14 @@ def roundtrip_trades(trades: list[Trade]) -> list[RoundTripTrade]:
     """
     rtt: list[RoundTripTrade] = []
     stacks: dict[str, deque] = defaultdict(deque)
-    _trades = copy.copy(trades)
+    working_trades = []
+    for index, source_trade in enumerate(trades):
+        trade = copy.copy(source_trade)
+        trade.properties = copy.deepcopy(source_trade.properties)
+        trade.properties.index = index
+        working_trades.append(trade)
 
-    # Keep track of index
-    for i, trade in enumerate(_trades):
-        trade.properties.index = i
-
-    for _trade in _trades:
-        trade = copy.copy(_trade)  # note this is a shallow copy so don't modify any objects
+    for trade in working_trades:
         while True:
             rt = _net_trade(stacks[trade.contract.symbol], trade)
             if rt is None:

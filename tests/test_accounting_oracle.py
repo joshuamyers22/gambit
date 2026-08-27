@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 from gambit.compute_pnl import calc_trade_pnl
 
-from gambit.account import Account
+from gambit.account import Account, df_roundtrip_trade
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
 
 
@@ -103,7 +103,11 @@ def test_golden_account_scenario_reconciles_equity_and_pnl() -> None:
     assert np.isclose(account.equity(timestamps[-1]), 973.25)
     assert np.isclose(account.equity(timestamps[-1]) - account.starting_equity, pnl["net_pnl"][-1])
 
+    original_state = [(trade.qty, trade.commission, vars(trade.properties).copy()) for trade in trades]
     early_roundtrips = account.roundtrip_trades(end_date=timestamps[1])
+    repeated_roundtrips = account.roundtrip_trades(end_date=timestamps[1])
     completed = [trade for trade in early_roundtrips if not np.isnat(trade.exit_timestamp)]
     assert len(completed) == 1
     assert completed[0].exit_timestamp == timestamps[1]
+    assert [(trade.qty, trade.commission, vars(trade.properties).copy()) for trade in trades] == original_state
+    assert df_roundtrip_trade(early_roundtrips).equals(df_roundtrip_trade(repeated_roundtrips))
