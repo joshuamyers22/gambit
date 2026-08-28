@@ -4,6 +4,13 @@ Environment: Apple silicon, macOS 15.5, Python 3.12.14, Polars 1.44.1,
 NumPy 2.5.2, APFS-backed `/private/tmp`. Results are medians from warm/page-cache
 runs and are not claims about every NVMe device.
 
+The benchmark now reports exact equality for every representation, filesystem
+allocated bytes, file-size/allocation amplification, cache device and block-size
+metadata, and advisory page-cache-eviction reads on platforms that expose
+`posix_fadvise`. The eviction call is a kernel hint, not proof that a physical
+NVMe read occurred. Device-controller and NAND-level write amplification cannot
+be inferred from file sizes and is explicitly marked unmeasured.
+
 The workload is a branching seven-column factor DAG with shared return and moving-
 window ancestors. All read measurements touch and aggregate every output column.
 

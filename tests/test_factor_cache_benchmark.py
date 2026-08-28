@@ -24,3 +24,12 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
     assert "polars_parquet_read" in names
     assert "numpy_raw_mmap_reopen_read" in names
     assert result["workload"]["factor_columns"] == 7
+    assert all(value is not False for value in result["equality"].values())
+    for artifact in result["artifacts"].values():
+        assert artifact["files"] > 0
+        assert artifact["stored_bytes"] > 0
+        assert artifact["allocated_bytes"] > 0
+        assert artifact["file_size_amplification"] > 0
+        assert artifact["filesystem_allocation_amplification"] > 0
+    assert result["decision_metrics"]["ipc_reuse_speedup_vs_recompute"] > 0
+    assert result["environment"]["device_level_write_amplification_measured"] is False

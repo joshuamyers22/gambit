@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import resource
 import statistics
@@ -61,7 +62,15 @@ def calculate_factor_tree(data: pl.DataFrame) -> pl.DataFrame:
             (pl.col("price") / pl.col("price_mean_50") - 1).alias("momentum_50"),
             (pl.col("volume") * pl.col("return").abs()).alias("volume_impulse"),
         )
-        .select("return", "return_mean_20", "return_std_20", "price_mean_50", "return_zscore", "momentum_50", "volume_impulse")
+        .select(
+            "return",
+            "return_mean_20",
+            "return_std_20",
+            "price_mean_50",
+            "return_zscore",
+            "momentum_50",
+            "volume_impulse",
+        )
         .collect()
     )
 
@@ -70,13 +79,23 @@ def sum_frame(frame: pl.DataFrame) -> float:
     return sum(float(series.sum() or 0.0) for series in frame)
 
 
-def _measure(name: str, rows: int, columns: int, byte_count: int, operation: Callable[[], float], repeats: int) -> Measurement:
+def _measure(
+    name: str,
+    rows: int,
+    columns: int,
+    byte_count: int,
+    operation: Callable[[], float],
+    repeats: int,
+    before_each: Callable[[], None] | None = None,
+) -> Measurement:
     wall_times: list[float] = []
     cpu_times: list[float] = []
     minor_faults = 0
     major_faults = 0
     guard = 0.0
     for _ in range(repeats):
+        if before_each is not None:
+            before_each()
         usage_before = resource.getrusage(resource.RUSAGE_SELF)
         cpu_before = time.process_time()
         wall_before = time.perf_counter()
@@ -103,6 +122,30 @@ def _measure(name: str, rows: int, columns: int, byte_count: int, operation: Cal
     )
 
 
+def _request_page_cache_eviction(paths: list[Path]) -> None:
+    """Ask the kernel to discard cached pages; this remains an advisory request."""
+    if not hasattr(os, "posix_fadvise") or not hasattr(os, "POSIX_FADV_DONTNEED"):
+        raise RuntimeError("page-cache eviction advice is unavailable on this platform")
+    for path in paths:
+        descriptor = os.open(path, os.O_RDONLY)
+        try:
+            os.posix_fadvise(descriptor, 0, 0, os.POSIX_FADV_DONTNEED)
+        finally:
+            os.close(descriptor)
+
+
+def _artifact_stats(paths: list[Path], logical_bytes: int) -> dict[str, float | int]:
+    stored_bytes = sum(path.stat().st_size for path in paths)
+    allocated_bytes = sum(path.stat().st_blocks * 512 for path in paths)
+    return {
+        "files": len(paths),
+        "stored_bytes": stored_bytes,
+        "allocated_bytes": allocated_bytes,
+        "file_size_amplification": stored_bytes / logical_bytes,
+        "filesystem_allocation_amplification": allocated_bytes / logical_bytes,
+    }
+
+
 def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, object]:
     cache_directory.mkdir(parents=True, exist_ok=True)
     data = make_market_data(rows)
@@ -121,6 +164,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             repeats,
         )
     )
+    eviction_supported = hasattr(os, "posix_fadvise") and hasattr(os, "POSIX_FADV_DONTNEED")
 
     ipc_path = cache_directory / "factors.arrow"
     measurements.append(
@@ -133,6 +177,18 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             1,
         )
     )
+    if eviction_supported:
+        measurements.append(
+            _measure(
+                "polars_ipc_eviction_requested_read",
+                rows,
+                columns,
+                byte_count,
+                lambda: sum_frame(pl.read_ipc(ipc_path, memory_map=True)),
+                repeats,
+                lambda: _request_page_cache_eviction([ipc_path]),
+            )
+        )
     measurements.append(
         _measure(
             "polars_ipc_mmap_read",
@@ -194,6 +250,18 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
         return sum(float(np.memmap(path, mode="r", dtype=np.float64, shape=(rows,)).sum()) for path in raw_paths)
 
     measurements.append(_measure("numpy_raw_mmap_reopen_read", rows, columns, byte_count, raw_read, repeats))
+    if eviction_supported:
+        measurements.append(
+            _measure(
+                "numpy_raw_mmap_eviction_requested_read",
+                rows,
+                columns,
+                byte_count,
+                raw_read,
+                repeats,
+                lambda: _request_page_cache_eviction(raw_paths),
+            )
+        )
     resident_raw = [np.memmap(path, mode="r", dtype=np.float64, shape=(rows,)) for path in raw_paths]
     measurements.append(
         _measure(
@@ -227,12 +295,49 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
         measurements.append(
             _measure("native_committed_mmap_reopen_read", rows, columns, byte_count, native_reopen_read, repeats)
         )
+        if eviction_supported:
+            measurements.append(
+                _measure(
+                    "native_committed_mmap_eviction_requested_read",
+                    rows,
+                    columns,
+                    byte_count,
+                    native_reopen_read,
+                    repeats,
+                    lambda: _request_page_cache_eviction(native_paths),
+                )
+            )
 
         def native_read() -> float:
             return sum(float(column.values.sum()) for column in native_columns)
 
-        measurements.append(_measure("native_committed_mmap_resident_read", rows, columns, byte_count, native_read, repeats))
+        measurements.append(
+            _measure("native_committed_mmap_resident_read", rows, columns, byte_count, native_read, repeats)
+        )
 
+    ipc_equal = factors.equals(pl.read_ipc(ipc_path, memory_map=True))
+    parquet_equal = factors.equals(pl.read_parquet(parquet_path))
+    raw_equal = all(
+        np.array_equal(series.to_numpy(), np.memmap(path, mode="r", dtype=np.float64, shape=(rows,)), equal_nan=True)
+        for path, series in zip(raw_paths, factors)
+    )
+    native_equal = None
+    artifacts = {
+        "polars_ipc": _artifact_stats([ipc_path], byte_count),
+        "polars_parquet": _artifact_stats([parquet_path], byte_count),
+        "numpy_raw_mmap": _artifact_stats(raw_paths, byte_count),
+    }
+    if MappedFloat64Column is not None:
+        native_equal = all(
+            np.array_equal(series.to_numpy(), MappedFloat64Column.open(str(path)).values, equal_nan=True)
+            for path, series in zip(native_paths, factors)
+        )
+        artifacts["native_committed_mmap"] = _artifact_stats(native_paths, byte_count)
+    measurement_by_name = {measurement.name: measurement for measurement in measurements}
+    recompute_seconds = measurement_by_name["polars_factor_dag"].median_seconds
+    ipc_reuse_seconds = measurement_by_name["polars_ipc_mmap_read"].median_seconds
+    native_reuse = measurement_by_name.get("native_committed_mmap_reopen_read")
+    filesystem = os.statvfs(cache_directory)
     return {
         "environment": {
             "platform": platform.platform(),
@@ -240,9 +345,27 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             "polars": pl.__version__,
             "numpy": np.__version__,
             "cache_directory": str(cache_directory),
+            "cache_device": cache_directory.stat().st_dev,
+            "filesystem_block_size": filesystem.f_frsize,
+            "page_cache_eviction_advice_supported": eviction_supported,
+            "page_cache_eviction_is_advisory": True,
+            "device_level_write_amplification_measured": False,
         },
         "workload": {"rows": rows, "factor_columns": columns, "logical_bytes": byte_count, "repeats": repeats},
         "measurements": [asdict(measurement) for measurement in measurements],
+        "artifacts": artifacts,
+        "equality": {
+            "polars_ipc": ipc_equal,
+            "polars_parquet": parquet_equal,
+            "numpy_raw_mmap": raw_equal,
+            "native_committed_mmap": native_equal,
+        },
+        "decision_metrics": {
+            "ipc_reuse_speedup_vs_recompute": recompute_seconds / ipc_reuse_seconds,
+            "native_reuse_speedup_vs_recompute": (
+                recompute_seconds / native_reuse.median_seconds if native_reuse is not None else None
+            ),
+        },
     }
 
 

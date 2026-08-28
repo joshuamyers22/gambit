@@ -392,6 +392,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   and explicit park-timeout sweeps remain open.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
+- [x] Add exact cross-format equality checks, host-visible file/allocation
+  amplification, cache-device metadata, and advisory page-cache-eviction reads
+  to the factor-cache benchmark. SSD-controller/NAND write amplification still
+  requires device telemetry and is explicitly reported as unmeasured.
 - [ ] Run sanitizer, concurrency, fault-injection, and forced-process-termination tests.
 - [x] Record the initial benchmark decision: use mapped Polars IPC as the baseline and defer the native ring until descriptor coordination is shown to be a bottleneck.
 
