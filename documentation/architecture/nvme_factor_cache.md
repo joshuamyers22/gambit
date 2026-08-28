@@ -65,12 +65,23 @@ Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.
 After atomic pointer replacement, readers see the new complete generation. Garbage
 collection remains a separate, explicitly invoked maintenance operation.
+Spawned-process fault tests terminate publication after a column write, after the
+staging-directory fsync, after the generation-directory fsync, and immediately
+after pointer replacement. They assert that reopening yields the complete old
+generation at the first three boundaries and the complete new generation at the
+last boundary. Orphan staging directories are currently ignored rather than
+reclaimed: safe reclamation requires writer-liveness coordination so maintenance
+cannot delete a generation that a live writer is still constructing.
 
 Readers now take a shared store lock while resolving `CURRENT`, validating and
 opening its segments, and durably creating a per-process lease. Publication and
 garbage collection take the exclusive lock. A returned `FactorGenerationLease`
 must remain alive for as long as any of its column mappings are used and supports
 explicit `close()` and context-manager cleanup.
+
+The lease/collection contract is also exercised across independently spawned
+processes: garbage collection preserves an old generation while a reader process
+holds its lease, then removes it only after that process closes the lease.
 
 Garbage collection removes only non-current generations without leases. A stale
 lease may be reclaimed only after the configured age when it names the local host
