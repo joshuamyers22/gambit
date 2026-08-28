@@ -379,7 +379,12 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 ### Phase 5 — factor DAG and NVMe-mapped column cache research
 
 - [x] Add representative branching factor-tree workloads and a reproducible no-cache/cache benchmark harness; committed machine baselines remain pending.
-- [ ] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
+- [x] Specify canonical factor-node hashing, schemas, lineage, and invalidation rules.
+  `FactorNodeIdentity` hashes a versioned canonical JSON payload containing ordered
+  parent lineage, named input SHA-256 fingerprints, transform name/version,
+  normalized parameters, ordered output schema, row-order semantics, and research
+  context. It rejects ambiguous or non-finite values and seals its payload against
+  mutation of caller-owned dictionaries. Store lookup/reuse by this key is next.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
   Immutable v1 segments now have atomic generation publication, strict manifests,

@@ -2,6 +2,28 @@
 
 Status: experimental; not a production cache contract.
 
+## Factor-DAG identity
+
+`FactorNodeIdentity` defines the cache invalidation boundary independently of the
+physical segment format. Its SHA-256 key covers a domain-separated, versioned,
+canonical JSON payload containing:
+
+- ordered parent node keys;
+- named source-data fingerprints;
+- transform name and independently versioned implementation contract;
+- recursively normalized parameters;
+- ordered output names, physical dtypes, and nullability;
+- explicit row-ordering fields; and
+- research context such as calendar and floating-point policy.
+
+Mapping keys are sorted, while parent, schema, and row order remain significant.
+NaN, infinity, sets, arbitrary Python objects, malformed digests, duplicate output
+names, and unspecified ordering are rejected rather than stringified. The canonical
+payload is sealed during construction so mutating a caller-owned parameter mapping
+cannot change an existing identity. Changing any identity dimension invalidates
+the node. The earlier `factor_node_key` string helper remains available only for
+compatibility with initial experiments; new DAG integration uses the strict type.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.
