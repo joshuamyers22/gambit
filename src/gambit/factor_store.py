@@ -101,6 +101,19 @@ def _store_lock(store: Path, *, exclusive: bool) -> Iterator[None]:
         os.close(descriptor)
 
 
+@contextmanager
+def _writer_lock(store: Path) -> Iterator[None]:
+    """Serialize generation construction with orphan reclamation."""
+    store.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(store / ".writer.lock", os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
 def publish_generation(
     root: str | Path,
     node_key: str,
@@ -117,59 +130,60 @@ def publish_generation(
         raise ValueError("factor column names must be safe portable identifiers")
 
     store = Path(root)
-    generations = store / "generations"
-    generations.mkdir(parents=True, exist_ok=True)
-    generation = uuid.uuid4().hex
-    staging = generations / f".staging-{generation}"
-    destination = generations / generation
-    pointer_staging = store / f".CURRENT-{generation}"
-    staging.mkdir()
-    try:
-        manifest_columns: dict[str, dict[str, int | str]] = {}
-        expected_rows: int | None = None
-        for name in sorted(columns):
-            path = staging / f"{name}.bin"
-            values = np.asarray(columns[name], dtype=np.float64)
-            if values.ndim != 1:
-                raise ValueError("factor columns must be one-dimensional")
-            if expected_rows is None:
-                expected_rows = len(values)
-            elif len(values) != expected_rows:
-                raise ValueError("factor columns must have equal row counts")
-            column = MappedFloat64Column.create_chunked(str(path), values)
-            manifest_columns[name] = {
-                "file": path.name,
-                "rows": column.row_count,
-                "checksum": column.checksum,
-                "segment_version": column.format_version,
+    with _writer_lock(store):
+        generations = store / "generations"
+        generations.mkdir(parents=True, exist_ok=True)
+        generation = uuid.uuid4().hex
+        staging = generations / f".staging-{generation}"
+        destination = generations / generation
+        pointer_staging = store / f".CURRENT-{generation}"
+        staging.mkdir()
+        try:
+            manifest_columns: dict[str, dict[str, int | str]] = {}
+            expected_rows: int | None = None
+            for name in sorted(columns):
+                path = staging / f"{name}.bin"
+                values = np.asarray(columns[name], dtype=np.float64)
+                if values.ndim != 1:
+                    raise ValueError("factor columns must be one-dimensional")
+                if expected_rows is None:
+                    expected_rows = len(values)
+                elif len(values) != expected_rows:
+                    raise ValueError("factor columns must have equal row counts")
+                column = MappedFloat64Column.create_chunked(str(path), values)
+                manifest_columns[name] = {
+                    "file": path.name,
+                    "rows": column.row_count,
+                    "checksum": column.checksum,
+                    "segment_version": column.format_version,
+                }
+            manifest = {
+                "format": FORMAT,
+                "version": VERSION,
+                "generation": generation,
+                "node_key": node_key,
+                "columns": manifest_columns,
             }
-        manifest = {
-            "format": FORMAT,
-            "version": VERSION,
-            "generation": generation,
-            "node_key": node_key,
-            "columns": manifest_columns,
-        }
-        manifest_path = staging / "manifest.json"
-        with manifest_path.open("xb") as file:
-            file.write(_canonical_json(manifest) + b"\n")
-            file.flush()
-            os.fsync(file.fileno())
-        _fsync_directory(staging)
-        with _store_lock(store, exclusive=True):
-            staging.rename(destination)
-            _fsync_directory(generations)
-            with pointer_staging.open("xb") as file:
-                file.write(f"{generation}\n".encode())
+            manifest_path = staging / "manifest.json"
+            with manifest_path.open("xb") as file:
+                file.write(_canonical_json(manifest) + b"\n")
                 file.flush()
                 os.fsync(file.fileno())
-            os.replace(pointer_staging, store / "CURRENT")
-            _fsync_directory(store)
-        return generation
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
-        pointer_staging.unlink(missing_ok=True)
-        raise
+            _fsync_directory(staging)
+            with _store_lock(store, exclusive=True):
+                staging.rename(destination)
+                _fsync_directory(generations)
+                with pointer_staging.open("xb") as file:
+                    file.write(f"{generation}\n".encode())
+                    file.flush()
+                    os.fsync(file.fileno())
+                os.replace(pointer_staging, store / "CURRENT")
+                _fsync_directory(store)
+            return generation
+        except Exception:
+            shutil.rmtree(staging, ignore_errors=True)
+            pointer_staging.unlink(missing_ok=True)
+            raise
 
 
 def open_current_generation(root: str | Path) -> FactorGenerationLease:
@@ -259,43 +273,62 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
     store = Path(root)
     removed_generations: list[str] = []
     removed_leases: list[str] = []
-    with _store_lock(store, exclusive=True):
-        try:
-            current = (store / "CURRENT").read_text().strip()
-        except OSError as error:
-            raise FactorStoreError("factor store has no readable CURRENT generation") from error
-        if _GENERATION_PATTERN.fullmatch(current) is None:
-            raise FactorStoreError("factor store CURRENT generation is invalid")
-        now_ns = time.time_ns()
-        leases_root = store / "leases"
-        generations = store / "generations"
-        for generation_path in generations.iterdir():
-            generation = generation_path.name
-            if generation == current or _GENERATION_PATTERN.fullmatch(generation) is None:
-                continue
-            lease_directory = leases_root / generation
-            if lease_directory.is_symlink():
-                has_leases = True
-            elif lease_directory.is_dir():
-                for lease_path in lease_directory.iterdir():
-                    try:
-                        metadata = json.loads(lease_path.read_bytes())
-                        age_seconds = (now_ns - int(metadata["created_ns"])) / 1_000_000_000
-                        local_dead = metadata["host"] == socket.gethostname() and _local_process_is_dead(
-                            int(metadata["pid"])
-                        )
-                    except (OSError, ValueError, KeyError, TypeError):
-                        continue
-                    if age_seconds >= stale_lease_seconds and local_dead:
-                        lease_path.unlink(missing_ok=True)
-                        removed_leases.append(f"{generation}/{lease_path.name}")
-                has_leases = any(lease_directory.iterdir())
-            else:
-                has_leases = False
-            if not has_leases and generation_path.is_dir() and not generation_path.is_symlink():
-                shutil.rmtree(generation_path)
-                removed_generations.append(generation)
-                if lease_directory.is_dir():
-                    lease_directory.rmdir()
-        _fsync_directory(generations)
-    return {"removed_generations": removed_generations, "removed_leases": removed_leases}
+    removed_staging: list[str] = []
+    removed_pointers: list[str] = []
+    with _writer_lock(store):
+        with _store_lock(store, exclusive=True):
+            try:
+                current = (store / "CURRENT").read_text().strip()
+            except OSError as error:
+                raise FactorStoreError("factor store has no readable CURRENT generation") from error
+            if _GENERATION_PATTERN.fullmatch(current) is None:
+                raise FactorStoreError("factor store CURRENT generation is invalid")
+            now_ns = time.time_ns()
+            leases_root = store / "leases"
+            generations = store / "generations"
+            for generation_path in generations.iterdir():
+                generation = generation_path.name
+                if generation.startswith(".staging-"):
+                    if generation_path.is_dir() and not generation_path.is_symlink():
+                        shutil.rmtree(generation_path)
+                        removed_staging.append(generation)
+                    continue
+                if generation == current or _GENERATION_PATTERN.fullmatch(generation) is None:
+                    continue
+                lease_directory = leases_root / generation
+                if lease_directory.is_symlink():
+                    has_leases = True
+                elif lease_directory.is_dir():
+                    for lease_path in lease_directory.iterdir():
+                        try:
+                            metadata = json.loads(lease_path.read_bytes())
+                            age_seconds = (now_ns - int(metadata["created_ns"])) / 1_000_000_000
+                            local_dead = metadata["host"] == socket.gethostname() and _local_process_is_dead(
+                                int(metadata["pid"])
+                            )
+                        except (OSError, ValueError, KeyError, TypeError):
+                            continue
+                        if age_seconds >= stale_lease_seconds and local_dead:
+                            lease_path.unlink(missing_ok=True)
+                            removed_leases.append(f"{generation}/{lease_path.name}")
+                    has_leases = any(lease_directory.iterdir())
+                else:
+                    has_leases = False
+                if not has_leases and generation_path.is_dir() and not generation_path.is_symlink():
+                    shutil.rmtree(generation_path)
+                    removed_generations.append(generation)
+                    if lease_directory.is_dir():
+                        lease_directory.rmdir()
+            for pointer_path in store.glob(".CURRENT-*"):
+                if pointer_path.is_file() and not pointer_path.is_symlink():
+                    pointer_path.unlink()
+                    removed_pointers.append(pointer_path.name)
+            _fsync_directory(generations)
+            if removed_pointers:
+                _fsync_directory(store)
+    return {
+        "removed_generations": removed_generations,
+        "removed_leases": removed_leases,
+        "removed_staging": removed_staging,
+        "removed_pointers": removed_pointers,
+    }

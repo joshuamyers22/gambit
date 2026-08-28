@@ -82,6 +82,20 @@ def _hold_current_lease(root: str, connection) -> None:
     connection.close()
 
 
+def _hold_writer_lock(root: str, connection) -> None:
+    import gambit.factor_store as factor_store
+
+    with factor_store._writer_lock(Path(root)):
+        connection.send("locked")
+        connection.recv()
+    connection.close()
+
+
+def _collect_and_report(root: str, connection) -> None:
+    connection.send(collect_garbage(root))
+    connection.close()
+
+
 def test_factor_store_atomically_publishes_generations(tmp_path) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
@@ -105,6 +119,60 @@ def test_factor_store_ignores_orphaned_staging_directory(tmp_path) -> None:
     (orphan / "manifest.json").write_text("{}")
 
     assert open_current_generation(tmp_path)["factor"].values[0] == 1.0
+
+
+def test_factor_store_collects_orphaned_publication_artifacts(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    staging = tmp_path / "generations" / f".staging-{'c' * 32}"
+    staging.mkdir()
+    (staging / "partial.bin").write_bytes(b"partial")
+    pointer = tmp_path / f".CURRENT-{'d' * 32}"
+    pointer.write_text(f"{'d' * 32}\n")
+
+    result = collect_garbage(tmp_path)
+
+    assert result["removed_staging"] == [staging.name]
+    assert result["removed_pointers"] == [pointer.name]
+    assert not staging.exists()
+    assert not pointer.exists()
+
+
+def test_factor_store_does_not_collect_while_writer_is_active(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    context = multiprocessing.get_context("spawn")
+    parent_writer, child_writer = context.Pipe()
+    parent_collector, child_collector = context.Pipe()
+    writer = context.Process(target=_hold_writer_lock, args=(str(tmp_path), child_writer))
+    collector = context.Process(
+        target=_collect_and_report,
+        args=(str(tmp_path), child_collector),
+    )
+    writer.start()
+    child_writer.close()
+    assert parent_writer.recv() == "locked"
+    collector.start()
+    child_collector.close()
+    try:
+        assert not parent_collector.poll(0.25)
+        parent_writer.send("release")
+        result = parent_collector.recv()
+        assert result["removed_generations"] == []
+    finally:
+        parent_writer.close()
+        parent_collector.close()
+        writer.join(timeout=30)
+        collector.join(timeout=30)
+        for process in (writer, collector):
+            if process.is_alive():
+                process.terminate()
+                process.join(timeout=5)
+
+    assert writer.exitcode == 0
+    assert collector.exitcode == 0
 
 
 @pytest.mark.parametrize("stage", ["column", "manifest", "generation", "pointer"])

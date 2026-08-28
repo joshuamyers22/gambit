@@ -69,9 +69,12 @@ Spawned-process fault tests terminate publication after a column write, after th
 staging-directory fsync, after the generation-directory fsync, and immediately
 after pointer replacement. They assert that reopening yields the complete old
 generation at the first three boundaries and the complete new generation at the
-last boundary. Orphan staging directories are currently ignored rather than
-reclaimed: safe reclamation requires writer-liveness coordination so maintenance
-cannot delete a generation that a live writer is still constructing.
+last boundary. Publication holds an exclusive writer-lifecycle lock from staging
+creation through pointer replacement. Garbage collection acquires that same lock
+before removing abandoned `.staging-*` directories and temporary `.CURRENT-*`
+pointers, so it cannot delete a generation that a live writer is constructing.
+This serializes writers by design; mapped column construction remains outside the
+shorter reader/publication lock, so existing readers are not blocked by column I/O.
 
 Readers now take a shared store lock while resolving `CURRENT`, validating and
 opening its segments, and durably creating a per-process lease. Publication and

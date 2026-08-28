@@ -387,8 +387,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   collection, backward-compatible v2 chunked lazy verification, and forced-process-
   termination coverage at the column, manifest, generation-rename, and pointer-
   replacement boundaries. A true cross-process reader/collector test proves that
-  a live lease prevents deletion. Safe orphan-staging reclamation, cross-host lease
-  coordination, and cryptographic/authenticated integrity remain open.
+  a live lease prevents deletion. A writer-lifecycle lock now lets collection
+  reclaim abandoned staging directories and pointer files without racing a live
+  writer. Cross-host lease coordination and cryptographic/authenticated integrity
+  remain open.
 - [ ] Prototype descriptor-only persistence transport with a blocking reference implementation. A separate in-memory tick SPSC prototype now exists; factor-cache baselines still do not justify using a ring for persistence.
 - [x] Benchmark the in-memory tick prototype against per-tick and batched Python bounded queues; copied native batches beat per-tick handoff but lose materially to passing NumPy batch views.
 - [x] Add an in-place C++ tick-factor consumer. It removes the outbound copy and materially improves native throughput, but still trails vectorized NumPy batches on the initial workload.
