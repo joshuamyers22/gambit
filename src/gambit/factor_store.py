@@ -136,11 +136,12 @@ def publish_generation(
                 expected_rows = len(values)
             elif len(values) != expected_rows:
                 raise ValueError("factor columns must have equal row counts")
-            column = MappedFloat64Column.create(str(path), values)
+            column = MappedFloat64Column.create_chunked(str(path), values)
             manifest_columns[name] = {
                 "file": path.name,
                 "rows": column.row_count,
                 "checksum": column.checksum,
+                "segment_version": column.format_version,
             }
         manifest = {
             "format": FORMAT,
@@ -217,7 +218,11 @@ def _open_and_lease_current(store: Path) -> FactorGenerationLease:
         if column_path.is_symlink():
             raise FactorStoreError("factor generation may not use symbolic links")
         column = MappedFloat64Column.open(str(column_path))
-        if column.row_count != metadata.get("rows") or column.checksum != metadata.get("checksum"):
+        if (
+            column.row_count != metadata.get("rows")
+            or column.checksum != metadata.get("checksum")
+            or column.format_version != metadata.get("segment_version")
+        ):
             raise FactorStoreError("factor generation column metadata mismatch")
         opened[name] = column
     lease_directory = store / "leases" / generation

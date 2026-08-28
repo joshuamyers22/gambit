@@ -56,6 +56,21 @@ every open. Candidate designs include a crash-safe manifest with verification at
 publication, chunk/page hashes verified lazily, and trusted resident leases. Those
 choices require a separate threat and durability analysis.
 
+## V2 selective-verification follow-up
+
+The chunked v2 prototype retains eager v1 compatibility and uses 256 KiB chunks
+that grow automatically when the header table would overflow. On the same 1M-row,
+seven-column workload, a warm reopen plus verified 65,536-row prefix read measured
+3.58 ms, compared with 22.14 ms for DAG recomputation and 4.08 ms for IPC mmap/read.
+The earlier 4 MiB chunk prototype took 27.8 ms for the same prefix and was rejected
+as too coarse.
+
+A complete v2 reopen and `.values` verification still measured 54.78 ms because it
+hashes every byte, so this does not reverse the production preference for IPC on
+full-column scans. V2 is promising specifically when a factor-tree branch touches
+small column ranges. These are short, warm local measurements rather than portable
+NVMe guarantees.
+
 The benchmark is reproducible with:
 
 ```console

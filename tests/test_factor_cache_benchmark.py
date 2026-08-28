@@ -23,6 +23,8 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
     assert "polars_ipc_mmap_read" in names
     assert "polars_parquet_read" in names
     assert "numpy_raw_mmap_reopen_read" in names
+    if benchmark.MappedFloat64Column is not None:
+        assert "native_chunked_mmap_reopen_prefix_read" in names
     assert result["workload"]["factor_columns"] == 7
     assert all(value is not False for value in result["equality"].values())
     for artifact in result["artifacts"].values():

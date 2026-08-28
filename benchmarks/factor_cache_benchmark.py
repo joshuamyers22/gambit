@@ -280,7 +280,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
         def native_write() -> float:
             total = 0.0
             for path, series in zip(native_paths, factors):
-                column = MappedFloat64Column.create(str(path), series.to_numpy())
+                column = MappedFloat64Column.create_chunked(str(path), series.to_numpy())
                 total += float(column.values[-1])
             return total
 
@@ -294,6 +294,22 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
 
         measurements.append(
             _measure("native_committed_mmap_reopen_read", rows, columns, byte_count, native_reopen_read, repeats)
+        )
+        prefix_rows = min(rows, 65536)
+
+        def native_reopen_prefix_read() -> float:
+            columns_to_read = [MappedFloat64Column.open(str(path)) for path in native_paths]
+            return sum(float(column.slice(0, prefix_rows).sum()) for column in columns_to_read)
+
+        measurements.append(
+            _measure(
+                "native_chunked_mmap_reopen_prefix_read",
+                prefix_rows,
+                columns,
+                prefix_rows * columns * 8,
+                native_reopen_prefix_read,
+                repeats,
+            )
         )
         if eviction_supported:
             measurements.append(

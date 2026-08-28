@@ -10,6 +10,9 @@ have not yet been released are collected below.
 - Immutable, telemetry-bearing backtest results and verified result bundles.
 - Typed risk, stress, validation, provenance, execution-cost, and instrument APIs.
 - Experimental native mapped-column and tick-processing prototypes.
+- Crash-safe experimental factor generations with reader leases and conservative
+  garbage collection.
+- Backward-compatible v2 mapped columns with lazy per-chunk slice verification.
 
 ### Changed
 
@@ -25,4 +28,3 @@ have not yet been released are collected below.
 ### Deprecated
 
 - None.
-

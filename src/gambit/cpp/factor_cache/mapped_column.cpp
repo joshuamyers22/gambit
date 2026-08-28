@@ -2,16 +2,19 @@
 #include <pybind11/pybind11.h>
 
 #include <cerrno>
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fcntl.h>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 namespace py = pybind11;
 
@@ -20,8 +23,10 @@ void init_tick_ring(py::module_& module);
 namespace {
 
 constexpr std::size_t HEADER_BYTES = 4096;
-constexpr std::uint32_t FORMAT_VERSION = 1;
+constexpr std::uint32_t FORMAT_VERSION_V1 = 1;
+constexpr std::uint32_t FORMAT_VERSION_V2 = 2;
 constexpr std::uint32_t STATE_COMMITTED = 1;
+constexpr std::uint64_t DEFAULT_CHUNK_BYTES = 256 * 1024;
 constexpr char MAGIC[8] = {'G', 'A', 'M', 'B', 'I', 'T', 'F', 'C'};
 
 struct alignas(64) Header {
@@ -32,6 +37,8 @@ struct alignas(64) Header {
     std::uint64_t data_offset;
     std::uint64_t data_bytes;
     std::uint64_t checksum;
+    std::uint64_t chunk_bytes;
+    std::uint64_t chunk_count;
 };
 
 static_assert(sizeof(Header) <= HEADER_BYTES, "factor cache header exceeds reserved page");
@@ -52,6 +59,21 @@ std::uint64_t checksum_bytes(const unsigned char* data, std::size_t size) {
 class MappedFloat64Column {
 public:
     static MappedFloat64Column* create(const std::string& path, py::array_t<double, py::array::c_style | py::array::forcecast> values) {
+        return create_impl(path, values, FORMAT_VERSION_V1);
+    }
+
+    static MappedFloat64Column* create_chunked(
+        const std::string& path,
+        py::array_t<double, py::array::c_style | py::array::forcecast> values
+    ) {
+        return create_impl(path, values, FORMAT_VERSION_V2);
+    }
+
+    static MappedFloat64Column* create_impl(
+        const std::string& path,
+        py::array_t<double, py::array::c_style | py::array::forcecast> values,
+        std::uint32_t format_version
+    ) {
         const auto info = values.request();
         if (info.size < 0 || static_cast<std::uint64_t>(info.size) >
                 std::numeric_limits<std::uint64_t>::max() / sizeof(double)) {
@@ -87,13 +109,27 @@ public:
             auto* header = static_cast<Header*>(mapping);
             std::memset(mapping, 0, HEADER_BYTES);
             std::memcpy(header->magic, MAGIC, sizeof(MAGIC));
-            header->version = FORMAT_VERSION;
+            header->version = format_version;
             header->row_count = rows;
             header->data_offset = HEADER_BYTES;
             header->data_bytes = data_bytes;
             auto* destination = static_cast<unsigned char*>(mapping) + HEADER_BYTES;
             std::memcpy(destination, info.ptr, data_bytes);
             header->checksum = checksum_bytes(destination, data_bytes);
+            if (format_version == FORMAT_VERSION_V2) {
+                const auto maximum_chunks = (HEADER_BYTES - sizeof(Header)) / sizeof(std::uint64_t);
+                const auto minimum_chunk_bytes = data_bytes == 0 ? 1 : 1 + (data_bytes - 1) / maximum_chunks;
+                header->chunk_bytes = std::max(DEFAULT_CHUNK_BYTES, minimum_chunk_bytes);
+                header->chunk_count = data_bytes == 0 ? 0 : (data_bytes + header->chunk_bytes - 1) / header->chunk_bytes;
+                auto* chunk_checksums = reinterpret_cast<std::uint64_t*>(
+                    static_cast<unsigned char*>(mapping) + sizeof(Header)
+                );
+                for (std::uint64_t chunk = 0; chunk < header->chunk_count; ++chunk) {
+                    const auto offset = chunk * header->chunk_bytes;
+                    const auto length = std::min(header->chunk_bytes, data_bytes - offset);
+                    chunk_checksums[chunk] = checksum_bytes(destination + offset, static_cast<std::size_t>(length));
+                }
+            }
 
             if (::msync(mapping, mapping_bytes, MS_SYNC) == -1) {
                 const auto error = system_error("flush factor cache data");
@@ -118,7 +154,7 @@ public:
                 throw error;
             }
         }
-        return new MappedFloat64Column(path, fd, mapping, mapping_bytes);
+        return new MappedFloat64Column(path, fd, mapping, mapping_bytes, true);
     }
 
     static MappedFloat64Column* open_existing(const std::string& path) {
@@ -146,7 +182,7 @@ public:
             ::close(fd);
             throw;
         }
-        return new MappedFloat64Column(path, fd, mapping, mapping_bytes);
+        return new MappedFloat64Column(path, fd, mapping, mapping_bytes, false);
     }
 
     MappedFloat64Column(const MappedFloat64Column&) = delete;
@@ -163,12 +199,36 @@ public:
 
     py::array values() {
         const auto* header = static_cast<const Header*>(mapping_);
+        {
+            py::gil_scoped_release release;
+            verify_range(0, header->row_count);
+        }
+        return array_view(0, header->row_count);
+    }
+
+    py::array slice(std::uint64_t start, std::uint64_t stop) {
+        const auto* header = static_cast<const Header*>(mapping_);
+        if (start > stop || stop > header->row_count) {
+            throw std::out_of_range("factor cache slice bounds are invalid");
+        }
+        {
+            py::gil_scoped_release release;
+            verify_range(start, stop);
+        }
+        return array_view(start, stop);
+    }
+
+    py::array array_view(std::uint64_t start, std::uint64_t stop) {
+        const auto* header = static_cast<const Header*>(mapping_);
+        if (stop - start > static_cast<std::uint64_t>(std::numeric_limits<py::ssize_t>::max())) {
+            throw std::overflow_error("factor cache view is too large for NumPy");
+        }
         auto* data = static_cast<unsigned char*>(mapping_) + header->data_offset;
         py::array array(
             py::dtype::of<double>(),
-            {static_cast<py::ssize_t>(header->row_count)},
+            {static_cast<py::ssize_t>(stop - start)},
             {static_cast<py::ssize_t>(sizeof(double))},
-            data,
+            data + start * sizeof(double),
             py::cast(this, py::return_value_policy::reference)
         );
         array.attr("setflags")(false);
@@ -177,15 +237,25 @@ public:
 
     std::uint64_t row_count() const { return static_cast<const Header*>(mapping_)->row_count; }
     std::uint64_t checksum() const { return static_cast<const Header*>(mapping_)->checksum; }
+    std::uint32_t format_version() const { return static_cast<const Header*>(mapping_)->version; }
+    std::uint64_t verified_chunks() const {
+        std::lock_guard<std::mutex> lock(verification_mutex_);
+        return static_cast<std::uint64_t>(std::count(verified_.begin(), verified_.end(), 1));
+    }
     const std::string& path() const { return path_; }
 
 private:
-    MappedFloat64Column(std::string path, int fd, void* mapping, std::size_t mapping_bytes)
-        : path_(std::move(path)), fd_(fd), mapping_(mapping), mapping_bytes_(mapping_bytes) {}
+    MappedFloat64Column(std::string path, int fd, void* mapping, std::size_t mapping_bytes, bool created)
+        : path_(std::move(path)), fd_(fd), mapping_(mapping), mapping_bytes_(mapping_bytes) {
+        const auto* header = static_cast<const Header*>(mapping_);
+        const auto count = header->version == FORMAT_VERSION_V2 ? header->chunk_count : 1;
+        verified_.assign(static_cast<std::size_t>(count), created || header->version == FORMAT_VERSION_V1 ? 1 : 0);
+    }
 
     static void validate(const void* mapping, std::size_t mapping_bytes) {
         const auto* header = static_cast<const Header*>(mapping);
-        if (std::memcmp(header->magic, MAGIC, sizeof(MAGIC)) != 0 || header->version != FORMAT_VERSION) {
+        if (std::memcmp(header->magic, MAGIC, sizeof(MAGIC)) != 0 ||
+            (header->version != FORMAT_VERSION_V1 && header->version != FORMAT_VERSION_V2)) {
             throw std::runtime_error("factor cache header is invalid or unsupported");
         }
         if (__atomic_load_n(&header->state, __ATOMIC_ACQUIRE) != STATE_COMMITTED) {
@@ -198,8 +268,48 @@ private:
             throw std::runtime_error("factor cache segment bounds are invalid");
         }
         const auto* data = static_cast<const unsigned char*>(mapping) + header->data_offset;
-        if (checksum_bytes(data, header->data_bytes) != header->checksum) {
-            throw std::runtime_error("factor cache checksum mismatch");
+        if (header->version == FORMAT_VERSION_V1) {
+            if (checksum_bytes(data, header->data_bytes) != header->checksum) {
+                throw std::runtime_error("factor cache checksum mismatch");
+            }
+        } else {
+            const auto maximum_chunks = (HEADER_BYTES - sizeof(Header)) / sizeof(std::uint64_t);
+            if (header->chunk_bytes == 0) {
+                throw std::runtime_error("factor cache chunk table is invalid");
+            }
+            const auto expected_chunks = header->data_bytes == 0 ? 0 :
+                1 + (header->data_bytes - 1) / header->chunk_bytes;
+            if (header->chunk_count != expected_chunks ||
+                header->chunk_count > maximum_chunks) {
+                throw std::runtime_error("factor cache chunk table is invalid");
+            }
+        }
+    }
+
+    void verify_range(std::uint64_t start, std::uint64_t stop) {
+        const auto* header = static_cast<const Header*>(mapping_);
+        if (header->version == FORMAT_VERSION_V1 || start == stop) {
+            return;
+        }
+        const auto first_byte = start * sizeof(double);
+        const auto stop_byte = stop * sizeof(double);
+        const auto first_chunk = first_byte / header->chunk_bytes;
+        const auto last_chunk = (stop_byte - 1) / header->chunk_bytes;
+        const auto* data = static_cast<const unsigned char*>(mapping_) + header->data_offset;
+        const auto* chunk_checksums = reinterpret_cast<const std::uint64_t*>(
+            static_cast<const unsigned char*>(mapping_) + sizeof(Header)
+        );
+        std::lock_guard<std::mutex> lock(verification_mutex_);
+        for (auto chunk = first_chunk; chunk <= last_chunk; ++chunk) {
+            if (verified_[static_cast<std::size_t>(chunk)] != 0) {
+                continue;
+            }
+            const auto offset = chunk * header->chunk_bytes;
+            const auto length = std::min(header->chunk_bytes, header->data_bytes - offset);
+            if (checksum_bytes(data + offset, static_cast<std::size_t>(length)) != chunk_checksums[chunk]) {
+                throw std::runtime_error("factor cache chunk checksum mismatch");
+            }
+            verified_[static_cast<std::size_t>(chunk)] = 1;
         }
     }
 
@@ -207,6 +317,8 @@ private:
     int fd_;
     void* mapping_;
     std::size_t mapping_bytes_;
+    mutable std::mutex verification_mutex_;
+    std::vector<unsigned char> verified_;
 };
 
 }  // namespace
@@ -214,10 +326,14 @@ private:
 PYBIND11_MODULE(_factor_cache, module) {
     py::class_<MappedFloat64Column>(module, "MappedFloat64Column")
         .def_static("create", &MappedFloat64Column::create, py::arg("path"), py::arg("values"))
+        .def_static("create_chunked", &MappedFloat64Column::create_chunked, py::arg("path"), py::arg("values"))
         .def_static("open", &MappedFloat64Column::open_existing, py::arg("path"))
         .def_property_readonly("values", &MappedFloat64Column::values)
         .def_property_readonly("row_count", &MappedFloat64Column::row_count)
         .def_property_readonly("checksum", &MappedFloat64Column::checksum)
+        .def_property_readonly("format_version", &MappedFloat64Column::format_version)
+        .def_property_readonly("verified_chunks", &MappedFloat64Column::verified_chunks)
+        .def("slice", &MappedFloat64Column::slice, py::arg("start"), py::arg("stop"))
         .def_property_readonly("path", &MappedFloat64Column::path);
     init_tick_ring(module);
 }

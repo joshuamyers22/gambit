@@ -79,9 +79,30 @@ or otherwise unverifiable leases retain their generation. This intentionally
 prefers leaked disk space over use-after-delete risk. PID reuse can delay cleanup
 but cannot cause deletion because a reused live PID is treated as active.
 
-This layer does not make v1 opens lazy: every segment still receives full checksum
-verification. A future v2 segment may add chunk hashes and verified-chunk state,
-but v1 compatibility and this publication protocol must remain unchanged.
+The generation layer now publishes v2 segments by default. V1 segments remain
+readable with eager whole-column verification, and the publication protocol is
+shared by both versions.
+
+## Chunked segment v2
+
+V2 preserves the v1 header prefix and adds `chunk_bytes` and `chunk_count` fields,
+followed by a bounded array of FNV-1a-64 chunk hashes within the reserved 4 KiB
+header page. Chunk size defaults to 256 KiB and grows automatically when necessary
+so the complete table always fits in the header. V1 creation and eager validation
+remain available for compatibility.
+
+Opening v2 validates magic, version, commit state, mapping bounds, chunk geometry,
+and table bounds without reading all column bytes. `slice(start, stop)` verifies
+each touched chunk once per mapped object under a mutex, then returns a read-only
+NumPy view. Requesting `.values` verifies every chunk before returning the complete
+view. A failed chunk remains unverified and every later access retries and fails.
+The generation manifest records the segment version, row count, and whole-column
+publication checksum so version or header substitution fails closed.
+
+Lazy verification assumes published files are not modified in place. It prevents
+undetected pre-access corruption; it cannot prevent a privileged writer from
+changing bytes after verification. Production deployment therefore also requires
+filesystem permissions and storage isolation appropriate to the threat model.
 
 ## Tick transport prototype
 

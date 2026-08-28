@@ -78,3 +78,48 @@ def test_native_reader_rejects_uncommitted_and_truncated_segments(tmp_path) -> N
     truncated.write_bytes(b"GAMBITFC")
     with pytest.raises(RuntimeError, match="truncated"):
         MappedFloat64Column.open(str(truncated))
+
+
+@pytest.mark.native
+def test_chunked_segment_verifies_only_touched_chunks(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    rows_per_chunk = 256 * 1024 // 8
+    values = np.arange(rows_per_chunk + 4, dtype=np.float64)
+    path = tmp_path / "chunked.bin"
+    created = MappedFloat64Column.create_chunked(str(path), values)
+    assert created.format_version == 2
+    del created
+
+    with path.open("r+b") as file:
+        file.seek(HEADER_BYTES + rows_per_chunk * 8)
+        file.write(b"\xff")
+    opened = MappedFloat64Column.open(str(path))
+
+    assert opened.verified_chunks == 0
+    assert np.array_equal(opened.slice(0, 16), values[:16])
+    assert opened.verified_chunks == 1
+    with pytest.raises(RuntimeError, match="chunk checksum"):
+        opened.slice(rows_per_chunk, rows_per_chunk + 1)
+    assert opened.verified_chunks == 1
+    with pytest.raises(RuntimeError, match="chunk checksum"):
+        _ = opened.values
+
+
+@pytest.mark.native
+def test_chunked_segment_rejects_invalid_bounds_and_chunk_table(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    path = tmp_path / "chunked.bin"
+    MappedFloat64Column.create_chunked(str(path), np.arange(8, dtype=np.float64))
+    opened = MappedFloat64Column.open(str(path))
+    with pytest.raises((IndexError, ValueError), match="slice bounds"):
+        opened.slice(4, 3)
+    with pytest.raises((IndexError, ValueError), match="slice bounds"):
+        opened.slice(0, 9)
+
+    with path.open("r+b") as file:
+        file.seek(48)  # v2 chunk_bytes field
+        file.write(struct.pack("<Q", 0))
+    with pytest.raises(RuntimeError, match="chunk table"):
+        MappedFloat64Column.open(str(path))
