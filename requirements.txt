@@ -9,5 +9,5 @@ plotly>=5.18
 pyyaml>=6.0
 scipy>=1.11
 sortedcontainers>=2.4
-statsmodels>=0.14
+statsmodels>=0.14.6
 traitlets>=5.14
