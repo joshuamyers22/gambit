@@ -386,6 +386,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - [x] Benchmark the in-memory tick prototype against per-tick and batched Python bounded queues; copied native batches beat per-tick handoff but lose materially to passing NumPy batch views.
 - [x] Add an in-place C++ tick-factor consumer. It removes the outbound copy and materially improves native throughput, but still trails vectorized NumPy batches on the initial workload.
 - [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.
+  A first repeated matrix on Apple Silicon covers batch sizes 64/256/1024 and
+  spin budgets 0/64/256/1024. It favors the in-place native consumer for modest
+  batches, while vectorized Python/NumPy wins at 1024; controlled-core latency
+  and explicit park-timeout sweeps remain open.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
 - [ ] Run sanitizer, concurrency, fault-injection, and forced-process-termination tests.

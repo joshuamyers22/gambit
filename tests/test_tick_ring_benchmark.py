@@ -2,6 +2,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _load_benchmark_module():
     path = Path(__file__).parents[1] / "benchmarks" / "tick_ring_benchmark.py"
@@ -27,3 +29,28 @@ def test_tick_ring_benchmark_smoke() -> None:
     if "native_spsc_in_place_factors" in measurements:
         assert measurements["native_spsc_in_place_factors"]["sequence_errors"] == 0
         assert measurements["native_spsc_in_place_factors"]["rejected_pushes"] == 0
+
+
+def test_tick_ring_benchmark_matrix_smoke() -> None:
+    benchmark = _load_benchmark_module()
+
+    result = benchmark.run_matrix(1_000, [64], [256], [0, 64], repeats=2, warmups=0)
+
+    assert result["workload"] == {"ticks": 1_000, "repeats": 2, "warmups": 0}
+    assert len(result["configurations"]) == 2
+    for configuration in result["configurations"]:
+        assert configuration["batch_size"] == 64
+        assert configuration["capacity"] == 256
+        for measurement in configuration["measurements"]:
+            assert measurement["median_ticks_per_second"] > 0
+            assert measurement["sequence_errors"] == 0
+            assert measurement["rejected_pushes"] == 0
+
+
+def test_tick_ring_benchmark_matrix_rejects_invalid_dimensions() -> None:
+    benchmark = _load_benchmark_module()
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        benchmark.run_matrix(1_000, [], [256], [64], repeats=1, warmups=0)
+    with pytest.raises(ValueError, match="power of two"):
+        benchmark.run_matrix(1_000, [64], [250], [64], repeats=1, warmups=0)

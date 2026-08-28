@@ -6,6 +6,7 @@ import argparse
 import json
 import platform
 import queue
+import statistics
 import threading
 import time
 from dataclasses import asdict, dataclass
@@ -43,7 +44,7 @@ def make_ticks(count: int) -> np.ndarray:
     return records
 
 
-def benchmark_native(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
+def benchmark_native(records: np.ndarray, batch_size: int, capacity: int, spin_count: int = 256) -> PipelineMeasurement:
     if TickRing is None:
         raise RuntimeError("native tick ring extension is not built")
     ring = TickRing(capacity)
@@ -66,7 +67,7 @@ def benchmark_native(records: np.ndarray, batch_size: int, capacity: int) -> Pip
         nonlocal consumed, sequence_errors
         expected = 0
         while consumed < len(records):
-            batch = ring.wait_pop_batch(batch_size, spin_count=256, timeout_seconds=0.01)
+            batch = ring.wait_pop_batch(batch_size, spin_count=spin_count, timeout_seconds=0.01)
             if not len(batch):
                 continue
             sequences = batch["sequence"]
@@ -101,7 +102,9 @@ def benchmark_native(records: np.ndarray, batch_size: int, capacity: int) -> Pip
     )
 
 
-def benchmark_native_in_place(records: np.ndarray, batch_size: int, capacity: int) -> PipelineMeasurement:
+def benchmark_native_in_place(
+    records: np.ndarray, batch_size: int, capacity: int, spin_count: int = 256
+) -> PipelineMeasurement:
     if TickRing is None or TickFactorProcessor is None:
         raise RuntimeError("native tick processor extension is not built")
     ring = TickRing(capacity)
@@ -126,7 +129,7 @@ def benchmark_native_in_place(records: np.ndarray, batch_size: int, capacity: in
             consumed += ring.wait_process_batch(
                 processor,
                 batch_size,
-                spin_count=256,
+                spin_count=spin_count,
                 timeout_seconds=0.01,
             )
 
@@ -248,7 +251,7 @@ def benchmark_python_batch_queue(records: np.ndarray, batch_size: int, capacity:
     )
 
 
-def run_benchmark(ticks: int, batch_size: int, capacity: int) -> dict[str, object]:
+def run_benchmark(ticks: int, batch_size: int, capacity: int, spin_count: int = 256) -> dict[str, object]:
     if capacity < batch_size:
         raise ValueError("capacity must be at least batch_size")
     records = make_ticks(ticks)
@@ -257,9 +260,9 @@ def run_benchmark(ticks: int, batch_size: int, capacity: int) -> dict[str, objec
         benchmark_python_batch_queue(records, batch_size, capacity),
     ]
     if TickRing is not None:
-        measurements.append(benchmark_native(records, batch_size, capacity))
+        measurements.append(benchmark_native(records, batch_size, capacity, spin_count))
     if TickRing is not None and TickFactorProcessor is not None:
-        measurements.append(benchmark_native_in_place(records, batch_size, capacity))
+        measurements.append(benchmark_native_in_place(records, batch_size, capacity, spin_count))
     return {
         "environment": {
             "platform": platform.platform(),
@@ -270,16 +273,103 @@ def run_benchmark(ticks: int, batch_size: int, capacity: int) -> dict[str, objec
     }
 
 
+def _percentile(values: list[float], percentile: float) -> float:
+    ordered = sorted(values)
+    index = round((len(ordered) - 1) * percentile)
+    return ordered[index]
+
+
+def run_matrix(
+    ticks: int,
+    batch_sizes: list[int],
+    capacities: list[int],
+    spin_counts: list[int],
+    repeats: int,
+    warmups: int,
+) -> dict[str, object]:
+    if ticks <= 0 or repeats <= 0 or warmups < 0:
+        raise ValueError("ticks and repeats must be positive and warmups must be non-negative")
+    if not batch_sizes or not capacities or not spin_counts:
+        raise ValueError("matrix dimensions must not be empty")
+    configurations: list[dict[str, object]] = []
+    for batch_size in batch_sizes:
+        for capacity in capacities:
+            if batch_size <= 0 or capacity < batch_size or capacity & (capacity - 1):
+                raise ValueError("capacity must be a power of two and at least batch_size")
+            for spin_count in spin_counts:
+                if spin_count < 0:
+                    raise ValueError("spin_count must be non-negative")
+                for _ in range(warmups):
+                    run_benchmark(ticks, batch_size, capacity, spin_count)
+                trials = [run_benchmark(ticks, batch_size, capacity, spin_count) for _ in range(repeats)]
+                names = [measurement["name"] for measurement in trials[0]["measurements"]]
+                summaries = []
+                for name in names:
+                    samples = [next(item for item in trial["measurements"] if item["name"] == name) for trial in trials]
+                    throughput = [float(sample["ticks_per_second"]) for sample in samples]
+                    wall = [float(sample["wall_seconds"]) for sample in samples]
+                    cpu_efficiency = [
+                        float(sample["cpu_seconds"]) / float(sample["wall_seconds"]) for sample in samples
+                    ]
+                    summaries.append(
+                        {
+                            "name": name,
+                            "median_ticks_per_second": statistics.median(throughput),
+                            "p95_ticks_per_second": _percentile(throughput, 0.95),
+                            "median_wall_seconds": statistics.median(wall),
+                            "median_cpu_to_wall_ratio": statistics.median(cpu_efficiency),
+                            "min_ticks_per_second": min(throughput),
+                            "max_ticks_per_second": max(throughput),
+                            "sequence_errors": sum(int(sample["sequence_errors"]) for sample in samples),
+                            "rejected_pushes": sum(int(sample["rejected_pushes"]) for sample in samples),
+                        }
+                    )
+                configurations.append(
+                    {
+                        "batch_size": batch_size,
+                        "capacity": capacity,
+                        "spin_count": spin_count,
+                        "measurements": summaries,
+                    }
+                )
+    return {
+        "environment": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+        },
+        "workload": {"ticks": ticks, "repeats": repeats, "warmups": warmups},
+        "configurations": configurations,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ticks", type=int, default=1_000_000)
     parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--capacity", type=int, default=65536)
+    parser.add_argument("--spin-count", type=int, default=256)
+    parser.add_argument("--matrix", action="store_true")
+    parser.add_argument("--batch-sizes", type=int, nargs="+", default=[64, 256, 1024])
+    parser.add_argument("--capacities", type=int, nargs="+", default=[4096, 65536])
+    parser.add_argument("--spin-counts", type=int, nargs="+", default=[0, 64, 256, 1024])
+    parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--output")
     arguments = parser.parse_args()
     if arguments.ticks <= 0 or arguments.batch_size <= 0:
         parser.error("ticks and batch-size must be positive")
-    result = run_benchmark(arguments.ticks, arguments.batch_size, arguments.capacity)
+    if arguments.matrix:
+        result = run_matrix(
+            arguments.ticks,
+            arguments.batch_sizes,
+            arguments.capacities,
+            arguments.spin_counts,
+            arguments.repeats,
+            arguments.warmups,
+        )
+    else:
+        result = run_benchmark(arguments.ticks, arguments.batch_size, arguments.capacity, arguments.spin_count)
     output = json.dumps(result, indent=2)
     if arguments.output:
         with open(arguments.output, "w") as file:
