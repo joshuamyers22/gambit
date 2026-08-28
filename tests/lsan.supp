@@ -1,0 +1,12 @@
+# CPython and NumPy retain allocator arenas, free lists, and process-global
+# caches. These frames are not actionable C++ ownership leaks in Gambit.
+leak:_PyMem_RawMalloc
+leak:PyMem_RawMalloc
+leak:_PyObject_Malloc
+leak:PyObject_Malloc
+leak:PyMem_Malloc
+leak:list_resize
+leak:PyThread_allocate_lock
+leak:PyDataMem_NEW
+leak:default_calloc
+leak:resize_compact
