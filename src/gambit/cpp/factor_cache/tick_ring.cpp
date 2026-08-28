@@ -1,6 +1,8 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
+#include "spsc_ring.hpp"
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -11,7 +13,6 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_map>
-#include <vector>
 
 namespace py = pybind11;
 
@@ -84,7 +85,7 @@ private:
 class TickRing {
 public:
     explicit TickRing(std::uint64_t capacity)
-        : capacity_(checked_capacity(capacity)), mask_(capacity_ - 1), slots_(capacity_) {}
+        : ring_(capacity) {}
 
     std::uint64_t push_batch(py::array_t<TickRecord, py::array::c_style> records) {
         const auto info = records.request();
@@ -154,12 +155,13 @@ public:
         const auto count = available < maximum ? available : maximum;
         {
             py::gil_scoped_release release;
-            const auto tail = tail_.value.load(std::memory_order_relaxed);
-            for (std::uint64_t index = 0; index < count; ++index) {
-                processor.process(slots_[(tail + index) & mask_]);
+            const auto consumed = ring_.consume(count, [&processor](const TickRecord& record) {
+                processor.process(record);
+            });
+            if (consumed != count) {
+                throw std::runtime_error("tick ring consumer invariant failed");
             }
-            tail_.value.store(tail + count, std::memory_order_release);
-            popped_.fetch_add(count, std::memory_order_relaxed);
+            popped_.fetch_add(consumed, std::memory_order_relaxed);
         }
         return count;
     }
@@ -193,17 +195,15 @@ public:
         return process_batch(processor, maximum);
     }
 
-    std::uint64_t capacity() const { return capacity_; }
+    std::uint64_t capacity() const { return ring_.capacity(); }
 
     std::uint64_t depth() const {
-        const auto head = head_.value.load(std::memory_order_acquire);
-        const auto tail = tail_.value.load(std::memory_order_acquire);
-        return head - tail;
+        return ring_.depth();
     }
 
     py::dict metrics() const {
         py::dict result;
-        result["capacity"] = capacity_;
+        result["capacity"] = capacity();
         result["depth"] = depth();
         result["pushed"] = pushed_.load(std::memory_order_relaxed);
         result["popped"] = popped_.load(std::memory_order_relaxed);
@@ -214,47 +214,23 @@ public:
     }
 
 private:
-    static std::uint64_t checked_capacity(std::uint64_t capacity) {
-        if (capacity < 2 || (capacity & (capacity - 1)) != 0 ||
-            capacity > std::vector<TickRecord>().max_size()) {
-            throw std::invalid_argument("tick ring capacity must be a supported power of two and at least two");
-        }
-        return capacity;
-    }
-
-    struct alignas(64) Cursor {
-        std::atomic<std::uint64_t> value{0};
-    };
-
     bool try_push(const TickRecord& record) {
-        const auto head = head_.value.load(std::memory_order_relaxed);
-        const auto tail = tail_.value.load(std::memory_order_acquire);
-        if (head - tail == capacity_) {
+        if (!ring_.try_push(record)) {
             return false;
         }
-        slots_[head & mask_] = record;
-        head_.value.store(head + 1, std::memory_order_release);
         pushed_.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
     bool try_pop(TickRecord& record) {
-        const auto tail = tail_.value.load(std::memory_order_relaxed);
-        const auto head = head_.value.load(std::memory_order_acquire);
-        if (tail == head) {
+        if (!ring_.try_pop(record)) {
             return false;
         }
-        record = slots_[tail & mask_];
-        tail_.value.store(tail + 1, std::memory_order_release);
         popped_.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
-    std::uint64_t capacity_;
-    std::uint64_t mask_;
-    std::vector<TickRecord> slots_;
-    Cursor head_;
-    Cursor tail_;
+    gambit::SpscRing<TickRecord> ring_;
     std::atomic<std::uint64_t> pushed_{0};
     std::atomic<std::uint64_t> popped_{0};
     std::atomic<std::uint64_t> dropped_{0};

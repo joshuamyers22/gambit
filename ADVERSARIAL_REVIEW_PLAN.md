@@ -148,14 +148,14 @@ Proposed change:
 
 The C++ parser performs manual buffer management, delimiter mutation, dtype dispatch, raw allocation, and Python/NumPy ownership transfer. The 2026-08-27 ownership review confirmed leaks when NumPy conversion failed partway through, a leaked dtype descriptor for string columns, a leaked Python reference on a datetime failure path, and process-lifetime ZIP descriptor retention. The global ZIP cache also allowed an archive to be closed while a concurrent member reader still referenced it. These paths have been removed or repaired, and descriptor-lifetime and repeated-failure regressions were added.
 
-The same review added mapped-segment arithmetic checks, failure cleanup for unpublished mapped files, pre-allocation ring-capacity validation, finite timeout validation, and a native allocation stress probe. All project-owned native extensions rebuild with compiler warnings enabled; the only remaining local build warning is in generated Cython output. An ASan/UBSan build succeeds, but macOS prevents runtime interceptor injection for this Python executable, and the platform `leaks` tool cannot acquire a task port even with the approved unsandboxed run. Therefore the source review and stress tests are evidence of improved ownership safety, not a proof that no native leak exists.
+The same review added mapped-segment arithmetic checks, failure cleanup for unpublished mapped files, pre-allocation ring-capacity validation, finite timeout validation, and a native allocation stress probe. All project-owned native extensions rebuild with compiler warnings enabled; the only remaining local build warning is in generated Cython output. Linux CI now passes the native ASan/UBSan boundary suite and the LeakSan allocation/lifetime stress probe. CPython and NumPy process-global allocator caches are narrowly suppressed by allocator frame; raw project-owned C++ allocations remain visible. macOS still prevents runtime interceptor injection for this Python executable, and the platform `leaks` tool cannot acquire a task port even with the approved unsandboxed run. Therefore the source review and sanitizer stress tests are strong evidence of improved ownership safety, not a proof that no native leak can exist.
 
 Residual risks:
 
 - The CSV bridge still uses type-erased raw vector pointers. Its known cleanup paths are covered, but replacing this with RAII column objects remains preferable before treating untrusted native ingestion as production-hardened.
 - `TickRing` is strictly single-producer/single-consumer. Concurrent producer or consumer misuse is outside its memory model and must remain experimental until runtime ownership enforcement or a different queue is implemented.
 - The bundled Lets Be Rational sources are third-party numerical code and were checked for integration ownership, not re-audited line by line as project-owned code.
-- LeakSanitizer is now required by the Linux native stress job, but its first result is pending; ThreadSanitizer coverage is still required for the SPSC prototype. Local macOS tooling did not provide a usable dynamic leak/race report.
+- LeakSanitizer is required and passing in the Linux native stress job. The SPSC algorithm has been extracted into a reusable project-owned core with a standalone two-thread ThreadSanitizer target; its first Linux CI result is pending. Local macOS tooling did not provide a usable dynamic leak/race report.
 
 Proposed addition:
 
@@ -354,7 +354,7 @@ Exit criteria: invalid inputs fail early with stable, documented exceptions; mul
 
 - [ ] Fuzz native CSV/ZIP parsing and HDF5 schema operations.
 - [x] Run ASan/UBSan native boundary tests in Linux CI and add a LeakSanitizer allocation/lifetime stress probe.
-- [ ] Make compiler warnings errors for project-owned C/C++ and add ThreadSanitizer coverage for the SPSC prototype.
+- [ ] Make compiler warnings errors for all project-owned C/C++; the extracted SPSC core and standalone ThreadSanitizer target already use `-Wall -Wextra -Wpedantic -Werror`.
 - [x] Audit native ownership/failure paths and add repeated-allocation, descriptor-lifetime, malformed-input, mmap-lifetime, and ring stress probes.
 - [ ] Add resource limits and malformed-input tests.
 - [ ] Make HDF5 writes schema-versioned and as crash-safe as documented.

@@ -89,6 +89,22 @@ jobs:
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python tests/native_memory_probe.py
 
+  native-thread-sanitizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build standalone SPSC stress test with ThreadSanitizer
+        run: >-
+          g++ -std=c++11 -O1 -g -Wall -Wextra -Wpedantic -Werror
+          -fsanitize=thread -fno-omit-frame-pointer -pthread
+          -Isrc/gambit/cpp/factor_cache
+          tests/cpp/tick_ring_tsan.cpp
+          -o /tmp/gambit-tick-ring-tsan
+      - name: Run SPSC stress test under ThreadSanitizer
+        env:
+          TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+        run: /tmp/gambit-tick-ring-tsan
+
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
