@@ -8,6 +8,9 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Callable, TypeVar
+
+_Result = TypeVar("_Result")
 
 
 def main() -> None:
@@ -21,7 +24,13 @@ def main() -> None:
     from gambit import _io
     from gambit.factor_cache import TICK_DTYPE, MappedFloat64Column, TickFactorProcessor, TickRing
 
-    enable_leak_tracking()
+    def tracked_call(function: Callable[..., _Result], *args: object) -> _Result:
+        enable_leak_tracking()
+        try:
+            return function(*args)
+        finally:
+            disable_leak_tracking()
+
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         csv_path = root / "values.csv"
@@ -31,23 +40,23 @@ def main() -> None:
             archive.writestr("values.csv", "value,42\n")
 
         for _ in range(2_000):
-            labels, values = _io.read_file(str(csv_path), [0, 1], ["S16", "i8"], ",", 0, 0)
+            labels, values = tracked_call(_io.read_file, str(csv_path), [0, 1], ["S16", "i8"], ",", 0, 0)
             assert labels[0] == b"value" and values[0] == 42
             try:
-                _io.read_file(str(csv_path), [0], ["S0"], ",", 0, 0)
+                tracked_call(_io.read_file, str(csv_path), [0], ["S0"], ",", 0, 0)
             except TypeError:
                 pass
             else:
                 raise AssertionError("invalid string width was accepted")
 
         for _ in range(200):
-            labels, values = _io.read_file(f"{archive_path}:values.csv", [0, 1], ["S16", "i8"], ",", 0, 0)
+            labels, values = tracked_call(_io.read_file, f"{archive_path}:values.csv", [0, 1], ["S16", "i8"], ",", 0, 0)
             assert labels[0] == b"value" and values[0] == 42
 
         if MappedFloat64Column is not None:
             for index in range(200):
                 path = root / f"column-{index}.bin"
-                column = MappedFloat64Column.create(str(path), np.arange(128, dtype=np.float64))
+                column = tracked_call(MappedFloat64Column.create, str(path), np.arange(128, dtype=np.float64))
                 view = column.values
                 del column
                 assert view[-1] == 127
@@ -59,10 +68,10 @@ def main() -> None:
             records["price"] = 100.0
             records["quantity"] = 1.0
             for _ in range(2_000):
-                ring = TickRing(128)
-                processor = TickFactorProcessor()
-                assert ring.push_batch(records) == 128
-                assert ring.process_batch(processor, 128) == 128
+                ring = tracked_call(TickRing, 128)
+                processor = tracked_call(TickFactorProcessor)
+                assert tracked_call(ring.push_batch, records) == 128
+                assert tracked_call(ring.process_batch, processor, 128) == 128
 
     gc.collect()
 

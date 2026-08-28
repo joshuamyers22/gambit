@@ -48,7 +48,17 @@ from gambit.pq_types import (
     Trade,
     VWAPOrder,
 )
-from gambit.pq_utils import Paths, PQException, assert_, find_in_subdir, get_child_logger, get_main_logger, has_display
+from gambit.pq_utils import (
+    Paths,
+    PQException,
+    assert_,
+    find_in_subdir,
+    get_child_logger,
+    get_main_logger,
+    has_display,
+    np_find_closest,
+    set_defaults,
+)
 from gambit.risk import (
     DecisionStatus,
     InstrumentTradabilityPolicy,
@@ -249,11 +259,13 @@ __all__ = [
     "implied_vol",
     "load_run_configuration",
     "np_arrays_to_hdf5",
+    "np_find_closest",
     "plot_return_metrics",
     "read_reference_float64",
     "rho",
     "roundtrip_trades",
     "run_stress_scenarios",
+    "set_defaults",
     "theta",
     "validate_market_data",
     "vega",
