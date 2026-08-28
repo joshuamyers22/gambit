@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import json
+import socket
 
 import numpy as np
 import pytest
 
 from gambit.factor_cache import MappedFloat64Column
-from gambit.factor_store import FactorStoreError, open_current_generation, publish_generation
+from gambit.factor_store import (
+    FactorStoreError,
+    collect_garbage,
+    open_current_generation,
+    publish_generation,
+)
 
 pytestmark = pytest.mark.native
 NODE_A = "a" * 64
@@ -85,3 +91,58 @@ def test_factor_store_rejects_symlinked_column(tmp_path) -> None:
 
     with pytest.raises(FactorStoreError, match="symbolic links"):
         open_current_generation(tmp_path)
+
+
+def test_factor_store_garbage_collection_respects_active_lease(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first = publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    lease = open_current_generation(tmp_path)
+    publish_generation(tmp_path, NODE_B, {"factor": np.array([2.0])})
+
+    while_leased = collect_garbage(tmp_path)
+    assert while_leased["removed_generations"] == []
+    assert (tmp_path / "generations" / first).is_dir()
+
+    lease.close()
+    after_close = collect_garbage(tmp_path)
+    assert after_close["removed_generations"] == [first]
+    assert not (tmp_path / "generations" / first).exists()
+
+
+def test_closed_factor_store_lease_rejects_access(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    lease = open_current_generation(tmp_path)
+
+    lease.close()
+
+    with pytest.raises(FactorStoreError, match="lease is closed"):
+        lease["factor"]
+    lease.close()
+
+
+def test_factor_store_collects_old_dead_local_lease(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first = publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    publish_generation(tmp_path, NODE_B, {"factor": np.array([2.0])})
+    lease_directory = tmp_path / "leases" / first
+    lease_directory.mkdir(parents=True)
+    stale = lease_directory / "99999999-dead.json"
+    stale.write_text(
+        json.dumps(
+            {
+                "generation": first,
+                "pid": 99999999,
+                "host": socket.gethostname(),
+                "created_ns": 0,
+            }
+        )
+    )
+
+    result = collect_garbage(tmp_path, stale_lease_seconds=0)
+
+    assert result["removed_generations"] == [first]
+    assert result["removed_leases"] == [f"{first}/{stale.name}"]

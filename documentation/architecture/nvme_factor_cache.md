@@ -64,8 +64,20 @@ identity mismatch, metadata mismatch, corrupt segments, and uncommitted segments
 Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.
 After atomic pointer replacement, readers see the new complete generation. Garbage
-collection is deliberately separate and must respect reader leases before it is
-implemented.
+collection remains a separate, explicitly invoked maintenance operation.
+
+Readers now take a shared store lock while resolving `CURRENT`, validating and
+opening its segments, and durably creating a per-process lease. Publication and
+garbage collection take the exclusive lock. A returned `FactorGenerationLease`
+must remain alive for as long as any of its column mappings are used and supports
+explicit `close()` and context-manager cleanup.
+
+Garbage collection removes only non-current generations without leases. A stale
+lease may be reclaimed only after the configured age when it names the local host
+and its PID is demonstrably absent. Malformed, remote-host, permission-ambiguous,
+or otherwise unverifiable leases retain their generation. This intentionally
+prefers leaked disk space over use-after-delete risk. PID reuse can delay cleanup
+but cannot cause deletion because a reused live PID is treated as active.
 
 This layer does not make v1 opens lazy: every segment still receives full checksum
 verification. A future v2 segment may add chunk hashes and verified-chunk state,

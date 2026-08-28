@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
 import shutil
+import socket
+import time
 import uuid
+from collections.abc import Iterator
+from collections.abc import Mapping as MappingABC
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -21,11 +27,54 @@ _GENERATION_PATTERN = re.compile(r"[0-9a-f]{32}")
 _COLUMN_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,127}")
 _NODE_KEY_PATTERN = re.compile(r"[0-9a-f]{64}")
 
-__all__ = ["FactorStoreError", "open_current_generation", "publish_generation"]
+__all__ = [
+    "FactorGenerationLease",
+    "FactorStoreError",
+    "collect_garbage",
+    "open_current_generation",
+    "publish_generation",
+]
 
 
 class FactorStoreError(RuntimeError):
     """Raised when a factor generation cannot be safely published or opened."""
+
+
+class FactorGenerationLease(MappingABC[str, Any]):
+    """Mapping of opened columns that keeps its generation leased until closed."""
+
+    def __init__(self, generation: str, columns: dict[str, Any], lease_path: Path) -> None:
+        self.generation = generation
+        self._columns = columns
+        self._lease_path = lease_path
+        self._closed = False
+
+    def __getitem__(self, name: str) -> Any:
+        if self._closed:
+            raise FactorStoreError("factor generation lease is closed")
+        return self._columns[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._columns)
+
+    def __len__(self) -> int:
+        return len(self._columns)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._columns.clear()
+        self._lease_path.unlink(missing_ok=True)
+        self._closed = True
+
+    def __enter__(self) -> FactorGenerationLease:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        self.close()
 
 
 def _canonical_json(value: object) -> bytes:
@@ -37,6 +86,18 @@ def _fsync_directory(path: Path) -> None:
     try:
         os.fsync(descriptor)
     finally:
+        os.close(descriptor)
+
+
+@contextmanager
+def _store_lock(store: Path, *, exclusive: bool) -> Iterator[None]:
+    store.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(store / ".lock", os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
         os.close(descriptor)
 
 
@@ -94,15 +155,15 @@ def publish_generation(
             file.flush()
             os.fsync(file.fileno())
         _fsync_directory(staging)
-        staging.rename(destination)
-        _fsync_directory(generations)
-
-        with pointer_staging.open("xb") as file:
-            file.write(f"{generation}\n".encode())
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(pointer_staging, store / "CURRENT")
-        _fsync_directory(store)
+        with _store_lock(store, exclusive=True):
+            staging.rename(destination)
+            _fsync_directory(generations)
+            with pointer_staging.open("xb") as file:
+                file.write(f"{generation}\n".encode())
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(pointer_staging, store / "CURRENT")
+            _fsync_directory(store)
         return generation
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
@@ -110,11 +171,16 @@ def publish_generation(
         raise
 
 
-def open_current_generation(root: str | Path) -> dict[str, object]:
+def open_current_generation(root: str | Path) -> FactorGenerationLease:
     """Open the current committed generation after strict manifest validation."""
     if MappedFloat64Column is None:
         raise FactorStoreError("native mapped-column support is unavailable")
     store = Path(root)
+    with _store_lock(store, exclusive=False):
+        return _open_and_lease_current(store)
+
+
+def _open_and_lease_current(store: Path) -> FactorGenerationLease:
     try:
         generation = (store / "CURRENT").read_text().strip()
     except OSError as error:
@@ -154,4 +220,77 @@ def open_current_generation(root: str | Path) -> dict[str, object]:
         if column.row_count != metadata.get("rows") or column.checksum != metadata.get("checksum"):
             raise FactorStoreError("factor generation column metadata mismatch")
         opened[name] = column
-    return opened
+    lease_directory = store / "leases" / generation
+    lease_directory.mkdir(parents=True, exist_ok=True)
+    lease_path = lease_directory / f"{os.getpid()}-{uuid.uuid4().hex}.json"
+    lease = {
+        "generation": generation,
+        "pid": os.getpid(),
+        "host": socket.gethostname(),
+        "created_ns": time.time_ns(),
+    }
+    with lease_path.open("xb") as file:
+        file.write(_canonical_json(lease) + b"\n")
+        file.flush()
+        os.fsync(file.fileno())
+    _fsync_directory(lease_directory)
+    return FactorGenerationLease(generation, opened, lease_path)
+
+
+def _local_process_is_dead(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return True
+    except (PermissionError, ValueError):
+        return False
+    return False
+
+
+def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -> dict[str, list[str]]:
+    """Remove invisible unleased generations while failing safe on ambiguous leases."""
+    if stale_lease_seconds < 0:
+        raise ValueError("stale_lease_seconds must be non-negative")
+    store = Path(root)
+    removed_generations: list[str] = []
+    removed_leases: list[str] = []
+    with _store_lock(store, exclusive=True):
+        try:
+            current = (store / "CURRENT").read_text().strip()
+        except OSError as error:
+            raise FactorStoreError("factor store has no readable CURRENT generation") from error
+        if _GENERATION_PATTERN.fullmatch(current) is None:
+            raise FactorStoreError("factor store CURRENT generation is invalid")
+        now_ns = time.time_ns()
+        leases_root = store / "leases"
+        generations = store / "generations"
+        for generation_path in generations.iterdir():
+            generation = generation_path.name
+            if generation == current or _GENERATION_PATTERN.fullmatch(generation) is None:
+                continue
+            lease_directory = leases_root / generation
+            if lease_directory.is_symlink():
+                has_leases = True
+            elif lease_directory.is_dir():
+                for lease_path in lease_directory.iterdir():
+                    try:
+                        metadata = json.loads(lease_path.read_bytes())
+                        age_seconds = (now_ns - int(metadata["created_ns"])) / 1_000_000_000
+                        local_dead = metadata["host"] == socket.gethostname() and _local_process_is_dead(
+                            int(metadata["pid"])
+                        )
+                    except (OSError, ValueError, KeyError, TypeError):
+                        continue
+                    if age_seconds >= stale_lease_seconds and local_dead:
+                        lease_path.unlink(missing_ok=True)
+                        removed_leases.append(f"{generation}/{lease_path.name}")
+                has_leases = any(lease_directory.iterdir())
+            else:
+                has_leases = False
+            if not has_leases and generation_path.is_dir() and not generation_path.is_symlink():
+                shutil.rmtree(generation_path)
+                removed_generations.append(generation)
+                if lease_directory.is_dir():
+                    lease_directory.rmdir()
+        _fsync_directory(generations)
+    return {"removed_generations": removed_generations, "removed_leases": removed_leases}
