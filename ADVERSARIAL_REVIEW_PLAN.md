@@ -155,7 +155,7 @@ Residual risks:
 - The CSV bridge still uses type-erased raw vector pointers. Its known cleanup paths are covered, but replacing this with RAII column objects remains preferable before treating untrusted native ingestion as production-hardened.
 - `TickRing` is strictly single-producer/single-consumer. Concurrent producer or consumer misuse is outside its memory model and must remain experimental until runtime ownership enforcement or a different queue is implemented.
 - The bundled Lets Be Rational sources are third-party numerical code and were checked for integration ownership, not re-audited line by line as project-owned code.
-- LeakSanitizer is required and passing in the Linux native stress job. The SPSC algorithm has been extracted into a reusable project-owned core with a standalone two-thread ThreadSanitizer target; its first Linux CI result is pending. Local macOS tooling did not provide a usable dynamic leak/race report.
+- LeakSanitizer is required and passing in the Linux native stress job. The SPSC algorithm has been extracted into a reusable project-owned core; its standalone two-thread stress test passes under Linux ThreadSanitizer after transferring one million ordered records. Local macOS tooling did not provide a usable dynamic leak/race report.
 
 Proposed addition:
 
