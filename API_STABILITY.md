@@ -22,9 +22,10 @@ modules, and undocumented attributes are internal.
 
 ## Experimental native APIs
 
-`MappedFloat64Column`, `TickRing`, and `TickFactorProcessor` remain development
-prototypes. Their presence in the root namespace makes discovery convenient but
-does not make their storage layout or concurrency contract stable. Production
+`MappedFloat64Column`, `TickRing`, `TickFactorProcessor`, and the
+`gambit.factor_store` generation API remain development prototypes. Native types
+in the root namespace are convenient for discovery; this does not make their
+storage layout, publication protocol, or concurrency contract stable. Production
 promotion requires the correctness, sanitizer, crash-recovery, and performance
 gates in `ADVERSARIAL_REVIEW_PLAN.md`.
 
@@ -36,4 +37,3 @@ Deprecations must include all of the following:
 2. A documented replacement and earliest removal release.
 3. Tests for both the warning and the replacement.
 4. A changelog entry under a dedicated deprecations heading.
-

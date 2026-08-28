@@ -44,6 +44,33 @@ No ring lock or slot claim may cover mapping, page faults, writes, checksum work
 flushes, or validation. A future ring transports only committed descriptors. The
 first supported topology will be SPSC with bounded spin/backoff/park behavior.
 
+## Generation publication layer
+
+The experimental `gambit.factor_store` module groups immutable v1 column segments
+into crash-safe generations:
+
+1. Create `generations/.staging-<generation>` on the store filesystem.
+2. Create and commit every immutable column segment inside the staging directory.
+3. Write a canonical manifest containing the generation, factor-node key, column
+   filenames, row counts, and checksums; fsync the manifest and directory.
+4. Rename the staging directory to `generations/<generation>` and fsync its parent.
+5. Write and fsync a temporary pointer, atomically replace `CURRENT`, and fsync the
+   store directory.
+
+Readers follow only the strictly validated hexadecimal generation named by
+`CURRENT`. They reject traversal, filename substitution, symbolic links, manifest
+identity mismatch, metadata mismatch, corrupt segments, and uncommitted segments.
+
+Crashes before step 4 leave ignored staging directories. Crashes between steps 4
+and 5 can leave a complete but unreferenced generation, which remains invisible.
+After atomic pointer replacement, readers see the new complete generation. Garbage
+collection is deliberately separate and must respect reader leases before it is
+implemented.
+
+This layer does not make v1 opens lazy: every segment still receives full checksum
+verification. A future v2 segment may add chunk hashes and verified-chunk state,
+but v1 compatibility and this publication protocol must remain unchanged.
+
 ## Tick transport prototype
 
 The native extension also contains an in-memory SPSC tick ring. This ring is not
