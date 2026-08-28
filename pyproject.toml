@@ -43,7 +43,7 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.6",
   "twine>=5.1",
-  "types-PyYAML>=6.0",
+  "types-PyYAML>=6.0.12.20260815",
   "types-python-dateutil>=2.9",
 ]
 docs = ["sphinx>=7.4", "sphinx-autodoc-typehints>=2.2"]
