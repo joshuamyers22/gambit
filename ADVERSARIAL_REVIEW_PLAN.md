@@ -424,7 +424,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;
   persistent rejection hints now avoid repeated absent-node opens. Aggregated access
-  metadata, capacity enforcement, and wear telemetry remain open.
+  samples now drive byte/node-bounded LRU eviction. Current and leased generations
+  fail safe when they prevent a requested bound. Compaction, filesystem-wide quota
+  accounting, and device-level wear telemetry remain open.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

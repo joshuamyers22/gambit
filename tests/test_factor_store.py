@@ -13,8 +13,10 @@ import pytest
 from gambit.factor_cache import MappedFloat64Column
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 from gambit.factor_store import (
+    FactorNodeCacheMiss,
     FactorStoreError,
     collect_garbage,
+    evict_factor_nodes,
     open_current_generation,
     open_generation_by_node_key,
     publish_factor_node,
@@ -145,6 +147,29 @@ def test_factor_store_persists_and_opens_strict_identity_by_node_key(tmp_path) -
         assert np.array_equal(cached["factor"].values, np.array([1.0, 2.0]))
     manifest = json.loads((tmp_path / "generations" / generation / "manifest.json").read_text())
     assert manifest["identity"] == identity.snapshot()
+
+
+def test_factor_store_rate_limits_persisted_access_metadata(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identity = _node_identity()
+    generation = publish_factor_node(tmp_path, identity, {"factor": np.array([1.0])})
+    access_path = tmp_path / "access" / f"{identity.node_key}.json"
+    initial = json.loads(access_path.read_text())
+    assert initial["generation"] == generation
+    assert initial["access_count"] == 1
+
+    with open_generation_by_node_key(tmp_path, identity.node_key):
+        pass
+    assert json.loads(access_path.read_text())["access_count"] == 1
+
+    with open_generation_by_node_key(
+        tmp_path,
+        identity.node_key,
+        access_update_interval_seconds=0,
+    ):
+        pass
+    assert json.loads(access_path.read_text())["access_count"] == 2
 
 
 def test_factor_store_reuses_valid_generation_for_same_node_key(tmp_path) -> None:
@@ -383,6 +408,84 @@ def test_factor_store_garbage_collection_preserves_indexed_nodes(tmp_path) -> No
     assert (tmp_path / "generations" / first).is_dir()
     with open_generation_by_node_key(tmp_path, first_identity.node_key) as cached:
         assert cached["factor"].values[0] == 1.0
+
+
+def test_factor_store_evicts_least_recently_used_unleased_node(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identities = [_node_identity(version) for version in ("1", "2", "3")]
+    generations = [
+        publish_factor_node(tmp_path, identity, {"factor": np.array([float(index)])})
+        for index, identity in enumerate(identities)
+    ]
+    for last_access_ns, identity in enumerate(identities, start=1):
+        access_path = tmp_path / "access" / f"{identity.node_key}.json"
+        access = json.loads(access_path.read_text())
+        access["last_access_ns"] = last_access_ns
+        access_path.write_text(json.dumps(access))
+
+    result = evict_factor_nodes(tmp_path, max_bytes=10**9, max_nodes=2)
+
+    assert result["evicted_node_keys"] == [identities[0].node_key]
+    assert result["removed_generations"] == [generations[0]]
+    assert result["total_nodes_before"] == 3
+    assert result["total_nodes_after"] == 2
+    assert result["limits_satisfied"] is True
+    with pytest.raises(FactorNodeCacheMiss):
+        open_generation_by_node_key(tmp_path, identities[0].node_key)
+    with open_generation_by_node_key(tmp_path, identities[1].node_key):
+        pass
+
+
+def test_factor_store_eviction_protects_current_and_leased_generations(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first_identity = _node_identity("1")
+    current_identity = _node_identity("2")
+    first = publish_factor_node(tmp_path, first_identity, {"factor": np.array([1.0])})
+    publish_factor_node(tmp_path, current_identity, {"factor": np.array([2.0])})
+    lease = open_generation_by_node_key(tmp_path, first_identity.node_key)
+
+    protected = evict_factor_nodes(tmp_path, max_bytes=0, max_nodes=0)
+
+    assert set(protected["protected_node_keys"]) == {
+        first_identity.node_key,
+        current_identity.node_key,
+    }
+    assert protected["evicted_node_keys"] == []
+    assert protected["limits_satisfied"] is False
+    assert (tmp_path / "generations" / first).is_dir()
+
+    lease.close()
+    after_close = evict_factor_nodes(tmp_path, max_bytes=10**9, max_nodes=1)
+    assert after_close["evicted_node_keys"] == [first_identity.node_key]
+    assert after_close["limits_satisfied"] is True
+
+
+def test_factor_store_eviction_enforces_actual_generation_byte_limit(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    large_identity = _node_identity("large")
+    current_identity = _node_identity("current")
+    publish_factor_node(tmp_path, large_identity, {"factor": np.arange(10_000, dtype=np.float64)})
+    current = publish_factor_node(tmp_path, current_identity, {"factor": np.array([1.0])})
+    current_path = tmp_path / "generations" / current
+    current_bytes = sum(path.stat().st_size for path in current_path.iterdir() if path.is_file())
+
+    result = evict_factor_nodes(tmp_path, max_bytes=current_bytes)
+
+    assert result["evicted_node_keys"] == [large_identity.node_key]
+    assert result["total_bytes_after"] == current_bytes
+    assert result["limits_satisfied"] is True
+
+
+def test_factor_store_eviction_and_access_limits_validate_inputs(tmp_path) -> None:
+    with pytest.raises(ValueError, match="max_bytes"):
+        evict_factor_nodes(tmp_path, max_bytes=-1)
+    with pytest.raises(ValueError, match="max_nodes"):
+        evict_factor_nodes(tmp_path, max_bytes=0, max_nodes=-1)
+    with pytest.raises(ValueError, match="access_update"):
+        open_generation_by_node_key(tmp_path, NODE_A, access_update_interval_seconds=-1)
 
 
 def test_factor_store_garbage_collection_respects_cross_process_lease(tmp_path) -> None:

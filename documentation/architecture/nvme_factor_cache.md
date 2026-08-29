@@ -84,6 +84,29 @@ another process or policy can publish the node without being masked. Successful
 admission or cache reuse clears the obsolete rejection. Hints improve performance
 only and are not trusted for factor correctness.
 
+## Bounded eviction
+
+Successful strict-node publication and rate-limited cache hits maintain advisory
+access records under `access/`. The default interval is 60 seconds, limiting
+metadata write amplification; counts therefore represent persisted access samples,
+not an exact request counter. Missing, corrupt, symlinked, or future-dated records
+fall back to the generation creation time.
+
+`evict_factor_nodes` measures actual manifest and segment file sizes for every
+indexed generation and removes least-recently-used nodes until `max_bytes` and the
+optional `max_nodes` limit are met. Eviction holds the writer-lifecycle and
+exclusive store locks, validates index/manifest correspondence, unlinks and fsyncs
+the node pointer first, then deletes the unleased generation and its advisory
+metadata. A crash after unindexing leaves an invisible generation that ordinary
+garbage collection can reclaim.
+
+The generation named by `CURRENT`, active leases, symlinked lease directories, and
+ambiguous lease files are protected. If protected generations alone exceed the
+requested bound, eviction reports `limits_satisfied = false`; it never weakens the
+lease contract to force a quota. Byte accounting currently covers immutable
+generation files, not filesystem metadata or allocator/controller write
+amplification.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

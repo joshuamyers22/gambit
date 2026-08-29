@@ -33,6 +33,7 @@ __all__ = [
     "FactorNodeCacheMiss",
     "FactorStoreError",
     "collect_garbage",
+    "evict_factor_nodes",
     "open_current_generation",
     "open_generation_by_node_key",
     "publish_factor_node",
@@ -162,6 +163,12 @@ def publish_generation(
                         expected_node_key=node_key,
                         require_identity=True,
                     )
+                    _record_node_access(
+                        store,
+                        node_key,
+                        indexed_generation,
+                        minimum_interval_seconds=60,
+                    )
                 lease.close()
                 return indexed_generation
         generations = store / "generations"
@@ -195,6 +202,7 @@ def publish_generation(
                 "version": VERSION,
                 "generation": generation,
                 "node_key": node_key,
+                "created_ns": time.time_ns(),
                 "columns": manifest_columns,
             }
             if identity is not None:
@@ -224,6 +232,7 @@ def publish_generation(
                         os.fsync(file.fileno())
                     os.replace(node_staging, nodes / node_key)
                     _fsync_directory(nodes)
+                    _record_node_access(store, node_key, generation, minimum_interval_seconds=0)
             return generation
         except Exception:
             shutil.rmtree(staging, ignore_errors=True)
@@ -264,6 +273,93 @@ def _read_node_pointer(store: Path, node_key: str, *, missing_ok: bool) -> str |
     return generation
 
 
+def _record_node_access(
+    store: Path,
+    node_key: str,
+    generation: str,
+    *,
+    minimum_interval_seconds: float,
+) -> None:
+    """Best-effort rate-limited LRU metadata; never part of correctness."""
+    directory = store / "access"
+    if directory.is_symlink():
+        return
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        destination = directory / f"{node_key}.json"
+        now_ns = time.time_ns()
+        access_count = 0
+        if destination.is_file() and not destination.is_symlink():
+            try:
+                previous = json.loads(destination.read_bytes())
+                if (
+                    isinstance(previous, dict)
+                    and previous.get("node_key") == node_key
+                    and previous.get("generation") == generation
+                    and type(previous.get("last_access_ns")) is int
+                    and type(previous.get("access_count")) is int
+                ):
+                    last_access_ns = int(previous["last_access_ns"])
+                    access_count = max(0, int(previous["access_count"]))
+                    if 0 <= last_access_ns <= now_ns and (
+                        now_ns - last_access_ns < minimum_interval_seconds * 1_000_000_000
+                    ):
+                        return
+            except (OSError, ValueError, TypeError):
+                pass
+        value = {
+            "format": "gambit-factor-access",
+            "version": 1,
+            "node_key": node_key,
+            "generation": generation,
+            "last_access_ns": now_ns,
+            "access_count": access_count + 1,
+        }
+        staging = directory / f".{node_key}-{uuid.uuid4().hex}"
+        try:
+            with staging.open("xb") as file:
+                file.write(_canonical_json(value) + b"\n")
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(staging, destination)
+            _fsync_directory(directory)
+        finally:
+            staging.unlink(missing_ok=True)
+    except OSError:
+        return
+
+
+def _read_node_last_access(store: Path, node_key: str, generation: str, fallback_ns: int) -> int:
+    path = store / "access" / f"{node_key}.json"
+    if path.is_symlink():
+        return fallback_ns
+    try:
+        value = json.loads(path.read_bytes())
+        if (
+            not isinstance(value, dict)
+            or value.get("format") != "gambit-factor-access"
+            or value.get("version") != 1
+            or value.get("node_key") != node_key
+            or value.get("generation") != generation
+            or type(value.get("last_access_ns")) is not int
+        ):
+            return fallback_ns
+        last_access_ns = int(value["last_access_ns"])
+        return last_access_ns if 0 <= last_access_ns <= time.time_ns() else fallback_ns
+    except (OSError, ValueError, TypeError):
+        return fallback_ns
+
+
+def _generation_stored_bytes(path: Path) -> int:
+    total = 0
+    for entry in path.iterdir():
+        if entry.is_symlink():
+            raise FactorStoreError("factor generation may not use symbolic links")
+        if entry.is_file():
+            total += entry.stat().st_size
+    return total
+
+
 def open_current_generation(root: str | Path) -> FactorGenerationLease:
     """Open the current committed generation after strict manifest validation."""
     if MappedFloat64Column is None:
@@ -283,20 +379,34 @@ def _open_and_lease_current(store: Path) -> FactorGenerationLease:
     return _open_and_lease_generation(store, generation)
 
 
-def open_generation_by_node_key(root: str | Path, node_key: str) -> FactorGenerationLease:
+def open_generation_by_node_key(
+    root: str | Path,
+    node_key: str,
+    *,
+    access_update_interval_seconds: float = 60.0,
+) -> FactorGenerationLease:
     """Open and lease a cached generation using its deterministic factor-node key."""
     if MappedFloat64Column is None:
         raise FactorStoreError("native mapped-column support is unavailable")
+    if not np.isfinite(access_update_interval_seconds) or access_update_interval_seconds < 0:
+        raise ValueError("access_update_interval_seconds must be finite and non-negative")
     store = Path(root)
     with _store_lock(store, exclusive=False):
         generation = _read_node_pointer(store, node_key, missing_ok=False)
         assert generation is not None
-        return _open_and_lease_generation(
+        lease = _open_and_lease_generation(
             store,
             generation,
             expected_node_key=node_key,
             require_identity=True,
         )
+        _record_node_access(
+            store,
+            node_key,
+            generation,
+            minimum_interval_seconds=access_update_interval_seconds,
+        )
+        return lease
 
 
 def _open_and_lease_generation(
@@ -476,4 +586,113 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
         "removed_staging": removed_staging,
         "removed_pointers": removed_pointers,
         "removed_node_staging": removed_node_staging,
+    }
+
+
+def evict_factor_nodes(
+    root: str | Path,
+    *,
+    max_bytes: int,
+    max_nodes: int | None = None,
+) -> dict[str, object]:
+    """Evict least-recently-used indexed nodes without deleting current or leased data."""
+    if type(max_bytes) is not int or max_bytes < 0:
+        raise ValueError("max_bytes must be a non-negative integer")
+    if max_nodes is not None and (type(max_nodes) is not int or max_nodes < 0):
+        raise ValueError("max_nodes must be a non-negative integer or None")
+    store = Path(root)
+    evicted_node_keys: list[str] = []
+    removed_generations: list[str] = []
+    protected_node_keys: list[str] = []
+    with _writer_lock(store):
+        with _store_lock(store, exclusive=True):
+            try:
+                current = (store / "CURRENT").read_text().strip()
+            except OSError as error:
+                raise FactorStoreError("factor store has no readable CURRENT generation") from error
+            if _GENERATION_PATTERN.fullmatch(current) is None:
+                raise FactorStoreError("factor store CURRENT generation is invalid")
+            nodes = store / "nodes"
+            generations = store / "generations"
+            if nodes.is_symlink():
+                raise FactorStoreError("factor node index may not use symbolic links")
+            entries: list[tuple[int, str, str, int, bool]] = []
+            if nodes.is_dir():
+                for pointer in nodes.iterdir():
+                    node_key = pointer.name
+                    if node_key.startswith("."):
+                        continue
+                    if _NODE_KEY_PATTERN.fullmatch(node_key) is None:
+                        raise FactorStoreError("factor node index contains an invalid key")
+                    generation = _read_node_pointer(store, node_key, missing_ok=False)
+                    assert generation is not None
+                    generation_path = generations / generation
+                    manifest_path = generation_path / "manifest.json"
+                    if generation_path.is_symlink() or manifest_path.is_symlink():
+                        raise FactorStoreError("factor generation may not use symbolic links")
+                    try:
+                        manifest = json.loads(manifest_path.read_bytes())
+                    except (OSError, ValueError) as error:
+                        raise FactorStoreError("factor generation manifest is unreadable") from error
+                    if manifest.get("generation") != generation or manifest.get("node_key") != node_key:
+                        raise FactorStoreError("factor node index does not match its generation manifest")
+                    stored_bytes = _generation_stored_bytes(generation_path)
+                    created_ns = manifest.get("created_ns", manifest_path.stat().st_mtime_ns)
+                    if type(created_ns) is not int or created_ns < 0:
+                        raise FactorStoreError("factor generation creation timestamp is invalid")
+                    fallback_ns = created_ns
+                    last_access_ns = _read_node_last_access(store, node_key, generation, fallback_ns)
+                    lease_directory = store / "leases" / generation
+                    leased = lease_directory.is_symlink() or (
+                        lease_directory.is_dir() and any(lease_directory.iterdir())
+                    )
+                    protected = generation == current or leased
+                    entries.append((last_access_ns, node_key, generation, stored_bytes, protected))
+
+            total_bytes_before = sum(entry[3] for entry in entries)
+            total_nodes_before = len(entries)
+            total_bytes_after = total_bytes_before
+            total_nodes_after = total_nodes_before
+
+            def over_limit() -> bool:
+                return total_bytes_after > max_bytes or (
+                    max_nodes is not None and total_nodes_after > max_nodes
+                )
+
+            for _, node_key, generation, stored_bytes, protected in sorted(entries):
+                if not over_limit():
+                    break
+                if protected:
+                    protected_node_keys.append(node_key)
+                    continue
+                (nodes / node_key).unlink()
+                evicted_node_keys.append(node_key)
+                total_nodes_after -= 1
+                generation_path = generations / generation
+                shutil.rmtree(generation_path)
+                removed_generations.append(generation)
+                total_bytes_after -= stored_bytes
+                lease_directory = store / "leases" / generation
+                if lease_directory.is_dir() and not any(lease_directory.iterdir()):
+                    lease_directory.rmdir()
+                for metadata_root, suffix in ((store / "access", ".json"), (store / "admission", ".json")):
+                    metadata_path = metadata_root / f"{node_key}{suffix}"
+                    if metadata_path.is_file() and not metadata_path.is_symlink():
+                        metadata_path.unlink()
+
+            if evicted_node_keys:
+                _fsync_directory(nodes)
+                _fsync_directory(generations)
+                for metadata_root in (store / "access", store / "admission"):
+                    if metadata_root.is_dir() and not metadata_root.is_symlink():
+                        _fsync_directory(metadata_root)
+    return {
+        "evicted_node_keys": evicted_node_keys,
+        "removed_generations": removed_generations,
+        "protected_node_keys": protected_node_keys,
+        "total_bytes_before": total_bytes_before,
+        "total_bytes_after": total_bytes_after,
+        "total_nodes_before": total_nodes_before,
+        "total_nodes_after": total_nodes_after,
+        "limits_satisfied": not over_limit(),
     }
