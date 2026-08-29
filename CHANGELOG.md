@@ -31,6 +31,7 @@ have not yet been released are collected below.
 - Hysteretic whole-cache allocated-space quotas with reserved filesystem capacity.
 - Tick-ring benchmark sweeps for bounded-spin budgets and park timeouts with CPU and latency summaries.
 - Opt-in native tick-ring exponential backoff, cancellation, lost-wakeup prevention, and wait metrics.
+- Paced-arrival tick transport benchmarks with per-tick wake latency and CPU measurements.
 
 ### Changed
 

@@ -425,7 +425,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   and park timeouts 0/100us/1ms/10ms. It reports throughput, CPU-to-wall ratio,
   spin/park counts, and p50/p99 pipeline-trial latency against per-tick and batched
   Python blocking queues, including no-backoff/adaptive A/B configurations.
-  Controlled-core per-tick latency and a default-policy decision remain follow-up work.
+  A paced-arrival harness now reports true per-tick p50/p99 wake latency and CPU
+  ratio at configurable feed intervals. On the initial unpinned Apple Silicon run,
+  eight-step backoff increased CPU and materially worsened 100us-arrival latency;
+  it therefore remains opt-in. Controlled-core replication remains follow-up work.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;

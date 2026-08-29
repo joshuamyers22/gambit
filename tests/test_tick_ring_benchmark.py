@@ -73,3 +73,27 @@ def test_tick_ring_benchmark_matrix_rejects_invalid_dimensions() -> None:
         benchmark.run_matrix(1_000, [64], [250], [64], [0.001], [0], 0.001, repeats=1, warmups=0)
     with pytest.raises(ValueError, match="park timeouts"):
         benchmark.run_matrix(1_000, [64], [256], [64], [-1.0], [0], 0.001, repeats=1, warmups=0)
+
+
+def test_sparse_wait_benchmark_reports_wakeup_latency_and_cpu() -> None:
+    benchmark = _load_benchmark_module()
+
+    result = benchmark.run_sparse_wait_matrix(
+        samples=10,
+        arrival_intervals=[0.0],
+        capacity=16,
+        spin_counts=[0],
+        backoff_counts=[0, 2],
+        maximum_backoff_seconds=0.0001,
+        park_timeout_seconds=0.01,
+        repeats=1,
+    )
+
+    assert len(result["configurations"]) == 3
+    for configuration in result["configurations"]:
+        measurement = configuration["measurement"]
+        assert measurement["samples"] == 10
+        assert measurement["p50_wakeup_latency_ns"] >= 0
+        assert measurement["p99_wakeup_latency_ns"] >= measurement["p50_wakeup_latency_ns"]
+        assert measurement["median_cpu_to_wall_ratio"] >= 0
+        assert measurement["sequence_errors"] == 0

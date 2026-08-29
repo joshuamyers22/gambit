@@ -464,6 +464,215 @@ def run_matrix(
     }
 
 
+def _sparse_summary(name: str, trials: list[dict[str, object]]) -> dict[str, object]:
+    latencies = [int(value) for trial in trials for value in trial["latencies_ns"]]
+    cpu_ratios = [float(trial["cpu_seconds"]) / float(trial["wall_seconds"]) for trial in trials]
+    return {
+        "name": name,
+        "samples": len(latencies),
+        "p50_wakeup_latency_ns": _percentile(latencies, 0.50),
+        "p99_wakeup_latency_ns": _percentile(latencies, 0.99),
+        "maximum_wakeup_latency_ns": max(latencies),
+        "median_cpu_to_wall_ratio": statistics.median(cpu_ratios),
+        "sequence_errors": sum(int(trial["sequence_errors"]) for trial in trials),
+        "median_spins": statistics.median(int(trial["spins"]) for trial in trials),
+        "median_backoffs": statistics.median(int(trial["backoffs"]) for trial in trials),
+        "median_parks": statistics.median(int(trial["parks"]) for trial in trials),
+        "median_park_timeouts": statistics.median(
+            int(trial["park_timeouts"]) for trial in trials
+        ),
+    }
+
+
+def benchmark_sparse_native_wait(
+    samples: int,
+    arrival_interval_seconds: float,
+    capacity: int,
+    spin_count: int,
+    backoff_count: int,
+    maximum_backoff_seconds: float,
+    park_timeout_seconds: float,
+) -> dict[str, object]:
+    if TickRing is None:
+        raise RuntimeError("native tick ring extension is not built")
+    ring = TickRing(capacity)
+    records = make_ticks(samples)
+    sent_ns = [0] * samples
+    latencies_ns: list[int] = []
+    sequence_errors = 0
+    ready = threading.Event()
+
+    def consume() -> None:
+        nonlocal sequence_errors
+        expected = 0
+        ready.set()
+        while expected < samples:
+            batch = ring.wait_pop_batch(
+                1,
+                spin_count=spin_count,
+                timeout_seconds=park_timeout_seconds,
+                backoff_count=backoff_count,
+                maximum_backoff_seconds=maximum_backoff_seconds,
+            )
+            if not len(batch):
+                continue
+            sequence = int(batch["sequence"][0])
+            sequence_errors += int(sequence != expected)
+            latencies_ns.append(time.perf_counter_ns() - sent_ns[sequence])
+            expected += 1
+
+    def produce() -> None:
+        ready.wait()
+        for sequence in range(samples):
+            if arrival_interval_seconds:
+                time.sleep(arrival_interval_seconds)
+            sent_ns[sequence] = time.perf_counter_ns()
+            if ring.push_batch(records[sequence : sequence + 1]) != 1:
+                raise RuntimeError("sparse producer unexpectedly filled the ring")
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    consumer = threading.Thread(target=consume)
+    producer = threading.Thread(target=produce)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    metrics = ring.metrics
+    return {
+        "latencies_ns": latencies_ns,
+        "wall_seconds": time.perf_counter() - wall_start,
+        "cpu_seconds": time.process_time() - cpu_start,
+        "sequence_errors": sequence_errors,
+        "spins": metrics["spins"],
+        "backoffs": metrics["backoffs"],
+        "parks": metrics["parks"],
+        "park_timeouts": metrics["park_timeouts"],
+    }
+
+
+def benchmark_sparse_python_queue(
+    samples: int,
+    arrival_interval_seconds: float,
+    capacity: int,
+) -> dict[str, object]:
+    bounded_queue: queue.Queue[tuple[int, int]] = queue.Queue(maxsize=capacity)
+    latencies_ns: list[int] = []
+    sequence_errors = 0
+    ready = threading.Event()
+
+    def consume() -> None:
+        nonlocal sequence_errors
+        ready.set()
+        for expected in range(samples):
+            sequence, sent_ns = bounded_queue.get()
+            sequence_errors += int(sequence != expected)
+            latencies_ns.append(time.perf_counter_ns() - sent_ns)
+
+    def produce() -> None:
+        ready.wait()
+        for sequence in range(samples):
+            if arrival_interval_seconds:
+                time.sleep(arrival_interval_seconds)
+            bounded_queue.put((sequence, time.perf_counter_ns()))
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    consumer = threading.Thread(target=consume)
+    producer = threading.Thread(target=produce)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    return {
+        "latencies_ns": latencies_ns,
+        "wall_seconds": time.perf_counter() - wall_start,
+        "cpu_seconds": time.process_time() - cpu_start,
+        "sequence_errors": sequence_errors,
+        "spins": 0,
+        "backoffs": 0,
+        "parks": 0,
+        "park_timeouts": 0,
+    }
+
+
+def run_sparse_wait_matrix(
+    samples: int,
+    arrival_intervals: list[float],
+    capacity: int,
+    spin_counts: list[int],
+    backoff_counts: list[int],
+    maximum_backoff_seconds: float,
+    park_timeout_seconds: float,
+    repeats: int,
+) -> dict[str, object]:
+    if samples <= 0 or repeats <= 0 or capacity <= 0 or capacity & (capacity - 1):
+        raise ValueError("samples/repeats must be positive and capacity must be a power of two")
+    if not arrival_intervals or not spin_counts or not backoff_counts:
+        raise ValueError("sparse matrix dimensions must not be empty")
+    if any(not np.isfinite(value) or value < 0 for value in arrival_intervals):
+        raise ValueError("arrival intervals must be finite and non-negative")
+    if any(value < 0 for value in spin_counts + backoff_counts):
+        raise ValueError("spin and backoff counts must be non-negative")
+    if (
+        not np.isfinite(maximum_backoff_seconds)
+        or maximum_backoff_seconds < 0
+        or not np.isfinite(park_timeout_seconds)
+        or park_timeout_seconds < 0
+    ):
+        raise ValueError("backoff and park durations must be finite and non-negative")
+    configurations: list[dict[str, object]] = []
+    for interval in arrival_intervals:
+        python_trials = [
+            benchmark_sparse_python_queue(samples, interval, capacity) for _ in range(repeats)
+        ]
+        configurations.append(
+            {
+                "arrival_interval_seconds": interval,
+                "spin_count": None,
+                "backoff_count": None,
+                "measurement": _sparse_summary("python_blocking_queue", python_trials),
+            }
+        )
+        for spin_count in spin_counts:
+            for backoff_count in backoff_counts:
+                trials = [
+                    benchmark_sparse_native_wait(
+                        samples,
+                        interval,
+                        capacity,
+                        spin_count,
+                        backoff_count,
+                        maximum_backoff_seconds,
+                        park_timeout_seconds,
+                    )
+                    for _ in range(repeats)
+                ]
+                configurations.append(
+                    {
+                        "arrival_interval_seconds": interval,
+                        "spin_count": spin_count,
+                        "backoff_count": backoff_count,
+                        "measurement": _sparse_summary("native_spsc_wait", trials),
+                    }
+                )
+    return {
+        "environment": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+        },
+        "workload": {
+            "samples_per_trial": samples,
+            "capacity": capacity,
+            "maximum_backoff_seconds": maximum_backoff_seconds,
+            "park_timeout_seconds": park_timeout_seconds,
+            "repeats": repeats,
+        },
+        "configurations": configurations,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ticks", type=int, default=1_000_000)
@@ -473,7 +682,10 @@ def main() -> None:
     parser.add_argument("--park-timeout", type=float, default=0.01)
     parser.add_argument("--backoff-count", type=int, default=0)
     parser.add_argument("--maximum-backoff", type=float, default=0.001)
-    parser.add_argument("--matrix", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--matrix", action="store_true")
+    mode.add_argument("--sparse-wait", action="store_true")
+    parser.add_argument("--arrival-intervals", type=float, nargs="+", default=[0.0001, 0.001, 0.01])
     parser.add_argument("--batch-sizes", type=int, nargs="+", default=[64, 256, 1024])
     parser.add_argument("--capacities", type=int, nargs="+", default=[4096, 65536])
     parser.add_argument("--spin-counts", type=int, nargs="+", default=[0, 64, 256, 1024])
@@ -485,7 +697,18 @@ def main() -> None:
     arguments = parser.parse_args()
     if arguments.ticks <= 0 or arguments.batch_size <= 0:
         parser.error("ticks and batch-size must be positive")
-    if arguments.matrix:
+    if arguments.sparse_wait:
+        result = run_sparse_wait_matrix(
+            arguments.ticks,
+            arguments.arrival_intervals,
+            arguments.capacity,
+            arguments.spin_counts,
+            arguments.backoff_counts,
+            arguments.maximum_backoff,
+            arguments.park_timeout,
+            arguments.repeats,
+        )
+    elif arguments.matrix:
         result = run_matrix(
             arguments.ticks,
             arguments.batch_sizes,

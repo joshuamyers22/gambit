@@ -293,6 +293,13 @@ parks, park timeouts, and successful wakeups. The GIL is released during native
 transfer and waiting. This first prototype supports exactly one producer and one
 consumer; additional concurrent callers violate its contract.
 
+`benchmarks/tick_ring_benchmark.py --sparse-wait` paces individual arrivals and
+compares native wait policies with Python's blocking queue using producer-side
+monotonic timestamps. It reports per-tick p50/p99/maximum wake latency and
+CPU-to-wall ratio. Initial unpinned local results did not meet the promotion gate
+for adaptive backoff, so the default remains no backoff; benchmark output is
+machine-specific and is not a portable latency guarantee.
+
 `TickFactorProcessor` is the first in-place consumer. It reads ring slots directly
 before advancing the consumer cursor and maintains per-instrument previous prices,
 sequence continuity, quantity/notional totals, mid/spread aggregates, absolute
