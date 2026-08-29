@@ -190,6 +190,10 @@ verify the checksum before returning a view. V2 and v3 verify only touched 256 K
 chunks and remember verified chunks for the mapping lifetime. Uncommitted,
 truncated, extended, or corrupt segments are rejected. Published files are never
 modified in place. New factor-store generations use v3 while v1/v2 remain readable.
+The portable admission defaults assume 2 GiB/s verified reads, 1 GiB/s durable
+writes, and conservative 0.250/0.500 ms fixed read/write costs. These are policy
+floors derived below the measured development-host v3 calibration, not claims
+about every device; on-device calibration should replace them for deployment.
 
 `mmap.flush`/`msync` does not by itself provide a complete cross-filesystem power-
 loss guarantee. A later manifest design must provide generation recovery and define

@@ -178,6 +178,15 @@ def test_cost_aware_policy_admits_only_when_estimated_total_cost_improves() -> N
 
     assert policy.admit(compute_seconds=10.0, output_bytes=1_000, expected_uses=5)
     assert not policy.admit(compute_seconds=0.1, output_bytes=1_000, expected_uses=5)
+
+
+def test_default_admission_costs_are_conservative_v3_calibration_floor() -> None:
+    policy = FactorCacheAdmissionPolicy()
+
+    assert policy.estimated_read_bytes_per_second == 2 * 1024**3
+    assert policy.estimated_write_bytes_per_second == 1024**3
+    assert policy.fixed_read_seconds == 0.00025
+    assert policy.fixed_write_seconds == 0.0005
     assert not policy.admit(compute_seconds=10.0, output_bytes=1_000, expected_uses=1)
 
 

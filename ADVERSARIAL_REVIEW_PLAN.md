@@ -465,6 +465,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   uses portable XXH64 per chunk and is 5.50× faster than v2 reopen at 10M rows,
   making verified reuse 2.25× faster than recomputation. V1/v2 remain readable,
   touched-chunk corruption tests remain mandatory, and IPC remains the full-frame baseline.
+  End-to-end v3 DAG hits are 2.01×/2.47× faster than recomputation at 1M/10M
+  rows. Admission defaults are recalibrated well below measured warm-device v3
+  throughput, while two-use cheap nodes remain correctly declined.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

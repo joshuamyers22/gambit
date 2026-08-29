@@ -32,10 +32,10 @@ class FactorCacheAdmissionPolicy:
     """Estimate whether publication will repay its write and future read costs."""
 
     minimum_expected_uses: int = 2
-    estimated_read_bytes_per_second: float = 900 * 1024 * 1024
-    estimated_write_bytes_per_second: float = 400 * 1024 * 1024
-    fixed_read_seconds: float = 0.001
-    fixed_write_seconds: float = 0.002
+    estimated_read_bytes_per_second: float = 2 * 1024 * 1024 * 1024
+    estimated_write_bytes_per_second: float = 1024 * 1024 * 1024
+    fixed_read_seconds: float = 0.00025
+    fixed_write_seconds: float = 0.0005
     minimum_speedup: float = 1.1
     rejection_ttl_seconds: float = 3600.0
     force_admission: bool = False
