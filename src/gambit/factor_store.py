@@ -343,6 +343,30 @@ def _legacy_node_plan(store: Path, selected_node_keys: set[str] | None) -> list[
     return plan
 
 
+def _try_write_migration_checkpoint(store: Path, value: dict[str, object]) -> bool:
+    """Persist advisory batch progress; node pointers remain the authoritative checkpoint."""
+    directory = store / "migration"
+    if directory.is_symlink():
+        return False
+    staging: Path | None = None
+    try:
+        directory.mkdir(exist_ok=True)
+        destination = directory / "checkpoint.json"
+        staging = directory / f".checkpoint-{uuid.uuid4().hex}"
+        with staging.open("xb") as file:
+            file.write(_canonical_json(value) + b"\n")
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(staging, destination)
+        _fsync_directory(directory)
+    except OSError:
+        return False
+    finally:
+        if staging is not None:
+            staging.unlink(missing_ok=True)
+    return True
+
+
 def migrate_factor_nodes_to_v3(
     root: str | Path,
     *,
@@ -364,7 +388,27 @@ def migrate_factor_nodes_to_v3(
     if not store.is_dir() or store.is_symlink():
         raise ValueError("factor cache root must be an existing non-symlink directory")
     selected = set(node_keys) if node_keys is not None else None
-    plan = _legacy_node_plan(store, selected)
+    nodes_root = store / "nodes"
+    if selected is None:
+        if not nodes_root.is_dir() or nodes_root.is_symlink():
+            raise FactorStoreError("factor node index is missing or invalid")
+        keys_to_plan = sorted(path.name for path in nodes_root.iterdir() if not path.name.startswith("."))
+    else:
+        keys_to_plan = sorted(selected)
+    plan: list[dict[str, object]] = []
+    failures: list[dict[str, str]] = []
+    for node_key in keys_to_plan:
+        try:
+            plan.extend(_legacy_node_plan(store, {node_key}))
+        except (FactorStoreError, OSError, ValueError) as error:
+            failures.append(
+                {
+                    "node_key": node_key,
+                    "stage": "planning",
+                    "error": type(error).__name__,
+                    "message": str(error),
+                }
+            )
     filesystem = os.statvfs(store)
     free_bytes = filesystem.f_bavail * filesystem.f_frsize
     budget = max(0, free_bytes - reserve_free_bytes)
@@ -382,35 +426,113 @@ def migrate_factor_nodes_to_v3(
         planned_bytes += write_bytes
 
     migrated: list[dict[str, str]] = []
+    checkpoint_recorded: bool | None = None
     if not dry_run:
+        run_id = uuid.uuid4().hex
+        started_ns = time.time_ns()
+        checkpoint_recorded = _try_write_migration_checkpoint(
+            store,
+            {
+                "format": "gambit-factor-migration-checkpoint",
+                "version": 1,
+                "run_id": run_id,
+                "started_ns": started_ns,
+                "updated_ns": started_ns,
+                "status": "running",
+                "planned_nodes": len(planned),
+                "completed_nodes": 0,
+                "failed_nodes": len(failures),
+                "last_node_key": None,
+            },
+        )
         for entry in planned:
             node_key = str(entry["node_key"])
             old_generation = str(entry["generation"])
-            with open_generation_by_node_key(store, node_key) as lease:
-                if lease.generation != old_generation or lease.identity is None:
-                    raise FactorStoreError("factor node changed during migration")
-                columns = {name: lease[name].values for name in lease}
-                new_generation = publish_generation(
-                    store,
-                    node_key,
-                    columns,
-                    identity=lease.identity,
-                    _replace_generation=old_generation,
-                    _verify_written=True,
+            try:
+                with open_generation_by_node_key(store, node_key) as lease:
+                    if lease.generation != old_generation or lease.identity is None:
+                        raise FactorStoreError("factor node changed during migration")
+                    columns = {name: lease[name].values for name in lease}
+                    new_generation = publish_generation(
+                        store,
+                        node_key,
+                        columns,
+                        identity=lease.identity,
+                        _replace_generation=old_generation,
+                        _verify_written=True,
+                    )
+                migrated.append(
+                    {"node_key": node_key, "old_generation": old_generation, "new_generation": new_generation}
                 )
-            migrated.append(
-                {"node_key": node_key, "old_generation": old_generation, "new_generation": new_generation}
-            )
+            except (FactorStoreError, OSError, RuntimeError, ValueError) as error:
+                failures.append(
+                    {
+                        "node_key": node_key,
+                        "stage": "migration",
+                        "error": type(error).__name__,
+                        "message": str(error),
+                    }
+                )
+            checkpoint_recorded = _try_write_migration_checkpoint(
+                store,
+                {
+                    "format": "gambit-factor-migration-checkpoint",
+                    "version": 1,
+                    "run_id": run_id,
+                    "started_ns": started_ns,
+                    "updated_ns": time.time_ns(),
+                    "status": "running",
+                    "planned_nodes": len(planned),
+                    "completed_nodes": len(migrated),
+                    "failed_nodes": len(failures),
+                    "last_node_key": node_key,
+                },
+            ) and checkpoint_recorded
+        checkpoint_recorded = _try_write_migration_checkpoint(
+            store,
+            {
+                "format": "gambit-factor-migration-checkpoint",
+                "version": 1,
+                "run_id": run_id,
+                "started_ns": started_ns,
+                "updated_ns": time.time_ns(),
+                "status": "complete_with_failures" if failures else "complete",
+                "planned_nodes": len(planned),
+                "completed_nodes": len(migrated),
+                "failed_nodes": len(failures),
+                "last_node_key": str(planned[-1]["node_key"]) if planned else None,
+            },
+        ) and checkpoint_recorded
+        from gambit.factor_metrics import try_record_factor_cache_metrics
+
+        migration_conflicts = sum("changed during migration" in failure["message"] for failure in failures)
+        migrated_node_keys = {item["node_key"] for item in migrated}
+        metrics_recorded = try_record_factor_cache_metrics(
+            store,
+            migration_nodes=len(migrated),
+            migration_bytes=sum(
+                int(entry["estimated_write_bytes"])
+                for entry in planned
+                if entry["node_key"] in migrated_node_keys
+            ),
+            migration_failures=len(failures),
+            migration_conflicts=migration_conflicts,
+        )
+    else:
+        metrics_recorded = None
     return {
         "eligible_nodes": plan,
         "planned_nodes": planned,
         "planned_write_bytes": planned_bytes,
         "migrated_nodes": migrated,
+        "failures": failures,
         "skipped_by_limits": len(plan) - len(planned),
         "filesystem_free_bytes": free_bytes,
         "reserve_free_bytes": reserve_free_bytes,
         "max_additional_bytes": max_additional_bytes,
         "dry_run": dry_run,
+        "checkpoint_recorded": checkpoint_recorded,
+        "metrics_recorded": metrics_recorded,
     }
 
 

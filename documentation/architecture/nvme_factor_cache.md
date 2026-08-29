@@ -229,6 +229,11 @@ concurrent leased readers remain valid and garbage collection remains a separate
 operation. An expected-generation check rejects concurrent pointer replacement.
 Dry-run planning is bounded by node count, estimated temporary writes, filesystem
 free space, and an explicit free-space reserve; reruns skip v3 nodes.
+Each applied batch atomically replaces a bounded advisory progress checkpoint
+after every node. Per-node operational failures do not hide successful pointer
+switches or stop later independent nodes. Persistent metrics schema v2 adds fixed
+migration node, byte, failure, and conflict counters; v1 counter files are upgraded
+losslessly on their next write.
 
 Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.

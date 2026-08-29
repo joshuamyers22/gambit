@@ -45,6 +45,15 @@ to reclaim unleased legacy generations. Reruns skip completed v3 nodes, making a
 partially completed migration resumable. Use repeated `--node-key` arguments to
 restrict the operation to explicitly selected nodes.
 
+Applied batches persist `migration/checkpoint.json` after each attempted node.
+The checkpoint reports counts and the last attempted key; immutable v3 node
+pointers remain the authoritative resume state. Expected operational failures are
+reported per node and the batch continues, while the command exits nonzero when
+any failure is present. Lifetime metrics include migrated nodes/bytes, failures,
+and concurrent-pointer conflicts. Check `checkpoint_recorded` and
+`metrics_recorded` in command output because these post-publication records are
+best effort and cannot roll back an already committed pointer.
+
 Before migrating a large cache, reproduce temporary allocation and device-write
 costs on the target filesystem:
 

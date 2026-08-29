@@ -141,7 +141,7 @@ def _write_text(value: str, output: Path | None) -> None:
 
 def main(arguments: Sequence[str] | None = None) -> int:
     parsed = _parser().parse_args(arguments)
-    health_ok = True
+    result_ok = True
     try:
         if parsed.command == "inventory":
             result = inspect_factor_cache(parsed.root).snapshot()
@@ -165,7 +165,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 max_staging_generations=parsed.max_staging_generations,
                 old_lease_seconds=parsed.old_lease_seconds,
             )
-            health_ok = health.ok
+            result_ok = health.ok
             result = health.snapshot()
         elif parsed.command == "calibrate":
             result = calibrate_factor_cache(
@@ -206,6 +206,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 reserve_free_bytes=parsed.reserve_free_bytes,
                 dry_run=not parsed.apply,
             )
+            result_ok = not result["failures"]
         else:  # pragma: no cover - argparse enforces the command set
             raise AssertionError(f"unsupported command: {parsed.command}")
     except (FactorMetricsError, FactorStoreError, OSError, RuntimeError, ValueError) as error:
@@ -215,7 +216,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
         )
         return 1
     _write_result(result, parsed.output)
-    return 0 if health_ok else 1
+    return 0 if result_ok else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -12,6 +12,7 @@ import pytest
 
 from gambit.factor_cache import MappedFloat64Column
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
+from gambit.factor_metrics import read_factor_cache_metrics
 from gambit.factor_store import (
     FactorNodeCacheMiss,
     FactorStoreError,
@@ -175,6 +176,8 @@ def test_factor_store_migration_is_dry_run_first_verified_and_idempotent(tmp_pat
     preview = migrate_factor_nodes_to_v3(tmp_path)
 
     assert preview["dry_run"] is True
+    assert preview["checkpoint_recorded"] is None
+    assert preview["metrics_recorded"] is None
     assert preview["planned_nodes"][0]["segment_versions"] == [2]
     assert preview["planned_nodes"][0]["leased"] is True
     assert (tmp_path / "nodes" / identity.node_key).read_text().strip() == old_generation
@@ -184,6 +187,14 @@ def test_factor_store_migration_is_dry_run_first_verified_and_idempotent(tmp_pat
     assert new_generation != old_generation
     assert (tmp_path / "generations" / old_generation).is_dir()
     assert np.array_equal(lease["factor"].values, values, equal_nan=True)
+    assert applied["checkpoint_recorded"] is True
+    assert applied["metrics_recorded"] is True
+    checkpoint = json.loads((tmp_path / "migration" / "checkpoint.json").read_text())
+    assert checkpoint["status"] == "complete"
+    assert checkpoint["completed_nodes"] == 1
+    metrics = read_factor_cache_metrics(tmp_path)
+    assert metrics.counters["migration_nodes"] == 1
+    assert metrics.counters["migration_bytes"] > 0
     with open_generation_by_node_key(tmp_path, identity.node_key) as migrated:
         assert migrated["factor"].format_version == 3
         assert np.array_equal(migrated["factor"].values, values, equal_nan=True)
@@ -220,12 +231,43 @@ def test_factor_store_migration_failure_preserves_legacy_pointer(tmp_path, monke
         raise OSError("injected migration failure")
 
     monkeypatch.setattr(factor_store.MappedFloat64Column, "create_chunked_v3", create_then_fail)
-    with pytest.raises(OSError, match="injected"):
-        migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+    result = migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
 
+    assert result["migrated_nodes"] == []
+    assert result["failures"][0]["error"] == "OSError"
+    assert "injected" in result["failures"][0]["message"]
     assert (tmp_path / "nodes" / identity.node_key).read_text().strip() == old_generation
     with open_generation_by_node_key(tmp_path, identity.node_key) as cached:
         assert cached["factor"].format_version == 2
+    assert read_factor_cache_metrics(tmp_path).counters["migration_failures"] == 1
+
+
+def test_factor_store_migration_continues_after_one_node_fails(tmp_path, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    successful = _node_identity("legacy-success")
+    failing = _node_identity("legacy-batch-failure")
+    _publish_legacy_node(tmp_path, monkeypatch, successful, np.array([1.0]))
+    failing_generation = _publish_legacy_node(tmp_path, monkeypatch, failing, np.array([2.0]))
+    import gambit.factor_store as factor_store
+
+    original_create = factor_store.MappedFloat64Column.create_chunked_v3
+
+    def fail_selected_value(path, values):
+        if values[0] == 2.0:
+            raise OSError("selected batch failure")
+        return original_create(path, values)
+
+    monkeypatch.setattr(factor_store.MappedFloat64Column, "create_chunked_v3", fail_selected_value)
+    result = migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+
+    assert [entry["node_key"] for entry in result["migrated_nodes"]] == [successful.node_key]
+    assert result["failures"][0]["node_key"] == failing.node_key
+    assert (tmp_path / "nodes" / failing.node_key).read_text().strip() == failing_generation
+    checkpoint = json.loads((tmp_path / "migration" / "checkpoint.json").read_text())
+    assert checkpoint["status"] == "complete_with_failures"
+    assert checkpoint["completed_nodes"] == 1
+    assert checkpoint["failed_nodes"] == 1
 
 
 def test_factor_store_rate_limits_persisted_access_metadata(tmp_path) -> None:

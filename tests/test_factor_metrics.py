@@ -48,6 +48,28 @@ def test_factor_metrics_do_not_overwrite_corrupt_state(tmp_path) -> None:
     assert json.loads(path.read_text()) == {"version": 999}
 
 
+def test_factor_metrics_upgrade_v1_counters_without_losing_values(tmp_path) -> None:
+    metrics = tmp_path / "metrics"
+    metrics.mkdir()
+    legacy = {name: index for index, name in enumerate(COUNTER_NAMES[:8])}
+    (metrics / "lifetime.json").write_text(
+        json.dumps(
+            {
+                "format": "gambit-factor-cache-metrics",
+                "version": 1,
+                "updated_ns": 1,
+                "counters": legacy,
+            }
+        )
+    )
+
+    upgraded = record_factor_cache_metrics(tmp_path, migration_nodes=1)
+
+    assert upgraded.version == 2
+    assert all(upgraded.counters[name] == value for name, value in legacy.items())
+    assert upgraded.counters["migration_nodes"] == 1
+
+
 def test_factor_metrics_lock_prevents_lost_cross_process_updates(tmp_path) -> None:
     context = multiprocessing.get_context("spawn")
     processes = [context.Process(target=_increment, args=(str(tmp_path), 20)) for _ in range(3)]

@@ -475,6 +475,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   48 ms/467 ms for three-column 1M/10M fixtures with 1.00113×/1.00011× temporary
   allocation amplification and exact post-collection allocation recovery. Physical
   write-amplification benchmarking on an idle Linux NVMe device remains open.
+  Multi-node migration now records atomic bounded progress, continues after
+  isolated operational failures, emits structured per-node results and nonzero CLI
+  status, and persists fixed-cardinality node/byte/failure/conflict metrics with a
+  lossless metrics-v1 reader upgrade.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

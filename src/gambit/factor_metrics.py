@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Iterator, Mapping
 
 _FORMAT = "gambit-factor-cache-metrics"
-_VERSION = 1
-COUNTER_NAMES = (
+_VERSION = 2
+_V1_COUNTER_NAMES = (
     "cache_hits",
     "cache_misses",
     "cache_admissions",
@@ -23,6 +23,13 @@ COUNTER_NAMES = (
     "reclaimed_bytes",
     "corruption_failures",
     "lease_conflicts",
+)
+COUNTER_NAMES = (
+    *_V1_COUNTER_NAMES,
+    "migration_nodes",
+    "migration_bytes",
+    "migration_failures",
+    "migration_conflicts",
 )
 _PROMETHEUS_NAMES = {
     name: f"gambit_factor_cache_{name.removeprefix('cache_')}_total"
@@ -87,19 +94,23 @@ def _decode(path: Path) -> FactorCacheMetrics:
     try:
         payload = json.loads(path.read_bytes())
         counters = payload["counters"]
+        version = payload["version"]
+        expected_names = set(_V1_COUNTER_NAMES if version == 1 else COUNTER_NAMES)
         if (
             payload["format"] != _FORMAT
-            or payload["version"] != _VERSION
+            or version not in (1, _VERSION)
             or type(payload["updated_ns"]) is not int
             or payload["updated_ns"] < 0
             or not isinstance(counters, dict)
-            or set(counters) != set(COUNTER_NAMES)
+            or set(counters) != expected_names
             or any(type(value) is not int or value < 0 for value in counters.values())
         ):
             raise ValueError
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise FactorMetricsError("factor cache lifetime metrics are invalid") from error
-    return FactorCacheMetrics(_FORMAT, _VERSION, payload["updated_ns"], dict(counters))
+    normalized = _empty_counters()
+    normalized.update(counters)
+    return FactorCacheMetrics(_FORMAT, _VERSION, payload["updated_ns"], normalized)
 
 
 def read_factor_cache_metrics(root: str | Path) -> FactorCacheMetrics:
