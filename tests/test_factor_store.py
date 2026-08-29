@@ -18,6 +18,7 @@ from gambit.factor_store import (
     collect_garbage,
     enforce_factor_cache_quota,
     evict_factor_nodes,
+    migrate_factor_nodes_to_v3,
     open_current_generation,
     open_generation_by_node_key,
     publish_factor_node,
@@ -120,6 +121,18 @@ def _publish_factor_and_report(root: str, connection) -> None:
     connection.close()
 
 
+def _publish_legacy_node(tmp_path, monkeypatch, identity, values) -> str:
+    import gambit.factor_store as factor_store
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            factor_store.MappedFloat64Column,
+            "create_chunked_v3",
+            factor_store.MappedFloat64Column.create_chunked,
+        )
+        return publish_factor_node(tmp_path, identity, {"factor": values})
+
+
 def test_factor_store_atomically_publishes_generations(tmp_path) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
@@ -149,6 +162,70 @@ def test_factor_store_persists_and_opens_strict_identity_by_node_key(tmp_path) -
     manifest = json.loads((tmp_path / "generations" / generation / "manifest.json").read_text())
     assert manifest["identity"] == identity.snapshot()
     assert manifest["columns"]["factor"]["segment_version"] == 3
+
+
+def test_factor_store_migration_is_dry_run_first_verified_and_idempotent(tmp_path, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identity = _node_identity("legacy")
+    values = np.array([1.0, np.nan, -3.5])
+    old_generation = _publish_legacy_node(tmp_path, monkeypatch, identity, values)
+    lease = open_generation_by_node_key(tmp_path, identity.node_key)
+
+    preview = migrate_factor_nodes_to_v3(tmp_path)
+
+    assert preview["dry_run"] is True
+    assert preview["planned_nodes"][0]["segment_versions"] == [2]
+    assert preview["planned_nodes"][0]["leased"] is True
+    assert (tmp_path / "nodes" / identity.node_key).read_text().strip() == old_generation
+
+    applied = migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+    new_generation = applied["migrated_nodes"][0]["new_generation"]
+    assert new_generation != old_generation
+    assert (tmp_path / "generations" / old_generation).is_dir()
+    assert np.array_equal(lease["factor"].values, values, equal_nan=True)
+    with open_generation_by_node_key(tmp_path, identity.node_key) as migrated:
+        assert migrated["factor"].format_version == 3
+        assert np.array_equal(migrated["factor"].values, values, equal_nan=True)
+    assert migrate_factor_nodes_to_v3(tmp_path)["planned_nodes"] == []
+    lease.close()
+
+
+def test_factor_store_migration_respects_space_and_node_limits(tmp_path, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    for version in ("legacy-1", "legacy-2"):
+        _publish_legacy_node(tmp_path, monkeypatch, _node_identity(version), np.array([1.0]))
+
+    no_space = migrate_factor_nodes_to_v3(tmp_path, max_additional_bytes=0)
+    one_node = migrate_factor_nodes_to_v3(tmp_path, max_nodes=1)
+
+    assert no_space["planned_nodes"] == []
+    assert no_space["skipped_by_limits"] == 2
+    assert len(one_node["planned_nodes"]) == 1
+    assert one_node["skipped_by_limits"] == 1
+
+
+def test_factor_store_migration_failure_preserves_legacy_pointer(tmp_path, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identity = _node_identity("legacy-failure")
+    old_generation = _publish_legacy_node(tmp_path, monkeypatch, identity, np.array([1.0]))
+    import gambit.factor_store as factor_store
+
+    original_create = factor_store.MappedFloat64Column.create_chunked_v3
+
+    def create_then_fail(path, values):
+        original_create(path, values)
+        raise OSError("injected migration failure")
+
+    monkeypatch.setattr(factor_store.MappedFloat64Column, "create_chunked_v3", create_then_fail)
+    with pytest.raises(OSError, match="injected"):
+        migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+
+    assert (tmp_path / "nodes" / identity.node_key).read_text().strip() == old_generation
+    with open_generation_by_node_key(tmp_path, identity.node_key) as cached:
+        assert cached["factor"].format_version == 2
 
 
 def test_factor_store_rate_limits_persisted_access_metadata(tmp_path) -> None:

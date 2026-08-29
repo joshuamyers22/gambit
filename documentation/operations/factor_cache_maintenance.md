@@ -12,6 +12,7 @@ gambit-factor-cache health /cache/gambit --minimum-free-bytes 20GiB --max-cache-
 gambit-factor-cache metrics /cache/gambit --prometheus
 gambit-factor-cache metrics /cache/gambit --openmetrics
 gambit-factor-cache device /cache/gambit
+gambit-factor-cache migrate /cache/gambit --max-nodes 10 --max-additional-bytes 20GiB
 ```
 
 Lifetime counters use a fixed set of names and a process lock. DAG telemetry
@@ -23,6 +24,26 @@ The device command reports cumulative host writes only when Linux sysfs exposes
 the backing block device. It does not infer NAND writes, write amplification, or
 SSD wear. Compare snapshots around an isolated benchmark to obtain a noisy
 whole-device delta; concurrent host I/O remains a confounder.
+
+## Migrate legacy generations
+
+Migration is dry-run by default. It inventories indexed v1/v2 nodes, applies node
+and temporary-space limits, and reports active leases. Review the plan before
+repeating it with `--apply`:
+
+```bash
+gambit-factor-cache migrate /cache/gambit \
+  --max-nodes 10 --max-additional-bytes 20GiB --reserve-free-bytes 50GiB
+gambit-factor-cache migrate /cache/gambit \
+  --max-nodes 10 --max-additional-bytes 20GiB --reserve-free-bytes 50GiB --apply
+```
+
+Apply creates and reopens a new immutable v3 generation, verifies exact values,
+then atomically changes the node pointer. It never rewrites or deletes the old
+generation. Existing leases therefore remain valid; run garbage collection later
+to reclaim unleased legacy generations. Reruns skip completed v3 nodes, making a
+partially completed migration resumable. Use repeated `--node-key` arguments to
+restrict the operation to explicitly selected nodes.
 
 ## Maintain
 

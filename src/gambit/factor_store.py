@@ -37,6 +37,7 @@ __all__ = [
     "evict_factor_nodes",
     "open_current_generation",
     "open_generation_by_node_key",
+    "migrate_factor_nodes_to_v3",
     "publish_factor_node",
     "publish_generation",
 ]
@@ -139,6 +140,8 @@ def publish_generation(
     columns: Mapping[str, NDArray[np.float64]],
     *,
     identity: FactorNodeIdentity | None = None,
+    _replace_generation: str | None = None,
+    _verify_written: bool = False,
 ) -> str:
     """Publish one immutable generation and atomically make it current."""
     if MappedFloat64Column is None:
@@ -154,9 +157,15 @@ def publish_generation(
 
     store = Path(root)
     with _writer_lock(store):
+        if _replace_generation is not None:
+            if identity is None or _GENERATION_PATTERN.fullmatch(_replace_generation) is None:
+                raise ValueError("replacement publication requires an identity and valid generation")
+            indexed_generation = _read_node_pointer(store, node_key, missing_ok=False)
+            if indexed_generation != _replace_generation:
+                raise FactorStoreError("factor node changed during migration")
         if identity is not None:
             indexed_generation = _read_node_pointer(store, node_key, missing_ok=True)
-            if indexed_generation is not None:
+            if indexed_generation is not None and _replace_generation is None:
                 with _store_lock(store, exclusive=False):
                     lease = _open_and_lease_generation(
                         store,
@@ -192,6 +201,10 @@ def publish_generation(
                 elif len(values) != expected_rows:
                     raise ValueError("factor columns must have equal row counts")
                 column = MappedFloat64Column.create_chunked_v3(str(path), values)
+                if _verify_written:
+                    verified = MappedFloat64Column.open(str(path))
+                    if not np.array_equal(verified.values, values, equal_nan=True):
+                        raise FactorStoreError("factor migration verification failed")
                 manifest_columns[name] = {
                     "file": path.name,
                     "rows": column.row_count,
@@ -253,6 +266,152 @@ def publish_factor_node(
     if any(column.dtype != "float64" or column.nullable for column in schema.values()):
         raise ValueError("mapped factor storage currently requires non-nullable float64 columns")
     return publish_generation(root, identity.node_key, columns, identity=identity)
+
+
+def _legacy_node_plan(store: Path, selected_node_keys: set[str] | None) -> list[dict[str, object]]:
+    nodes = store / "nodes"
+    if not nodes.is_dir() or nodes.is_symlink():
+        raise FactorStoreError("factor node index is missing or invalid")
+    plan: list[dict[str, object]] = []
+    for pointer in sorted(nodes.iterdir()):
+        node_key = pointer.name
+        if node_key.startswith(".") or (selected_node_keys is not None and node_key not in selected_node_keys):
+            continue
+        generation = _read_node_pointer(store, node_key, missing_ok=False)
+        assert generation is not None
+        generation_path = store / "generations" / generation
+        manifest_path = generation_path / "manifest.json"
+        if generation_path.is_symlink() or manifest_path.is_symlink():
+            raise FactorStoreError("factor generation may not use symbolic links")
+        try:
+            manifest = json.loads(manifest_path.read_bytes())
+            columns = manifest["columns"]
+            if not isinstance(columns, dict) or not columns or any(
+                not isinstance(metadata, dict) for metadata in columns.values()
+            ):
+                raise ValueError
+            for name, metadata in columns.items():
+                if (
+                    _COLUMN_PATTERN.fullmatch(name) is None
+                    or metadata.get("file") != f"{name}.bin"
+                    or type(metadata.get("rows")) is not int
+                    or metadata["rows"] < 0
+                    or type(metadata.get("checksum")) is not int
+                ):
+                    raise ValueError
+            identity = FactorNodeIdentity.from_snapshot(manifest["identity"])
+            versions = {metadata["segment_version"] for metadata in columns.values()}
+            if (
+                manifest.get("format") != FORMAT
+                or manifest.get("version") != VERSION
+                or manifest["node_key"] != node_key
+                or manifest["generation"] != generation
+                or identity.node_key != node_key
+                or any(type(version) is not int or version not in (1, 2, 3) for version in versions)
+            ):
+                raise ValueError
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise FactorStoreError("factor migration found an invalid generation manifest") from error
+        if versions == {3}:
+            continue
+        if 3 in versions:
+            raise FactorStoreError("factor migration does not support mixed segment versions")
+        lease_directory = store / "leases" / generation
+        leased = lease_directory.is_symlink() or (
+            lease_directory.is_dir() and any(lease_directory.iterdir())
+        )
+        plan.append(
+            {
+                "node_key": node_key,
+                "generation": generation,
+                "segment_versions": sorted(versions),
+                "estimated_write_bytes": (
+                    _allocated_bytes(generation_path)
+                    + generation_path.stat().st_blocks * 512
+                ),
+                "leased": leased,
+            }
+        )
+    if selected_node_keys is not None:
+        indexed = {entry["node_key"] for entry in plan}
+        missing = selected_node_keys - indexed
+        # Selected v3 nodes are intentionally idempotent; only truly absent keys fail.
+        available = {path.name for path in nodes.iterdir() if path.is_file() and not path.is_symlink()}
+        absent = missing - available
+        if absent:
+            raise FactorNodeCacheMiss(f"selected factor nodes are not cached: {', '.join(sorted(absent))}")
+    return plan
+
+
+def migrate_factor_nodes_to_v3(
+    root: str | Path,
+    *,
+    node_keys: tuple[str, ...] | None = None,
+    max_nodes: int | None = None,
+    max_additional_bytes: int | None = None,
+    reserve_free_bytes: int = 0,
+    dry_run: bool = True,
+) -> dict[str, object]:
+    """Plan or rewrite legacy indexed nodes as verified immutable v3 generations."""
+    if node_keys is not None and any(_NODE_KEY_PATTERN.fullmatch(key) is None for key in node_keys):
+        raise ValueError("migration node keys must be lowercase SHA-256 digests")
+    for name, value in (("max_nodes", max_nodes), ("max_additional_bytes", max_additional_bytes)):
+        if value is not None and (type(value) is not int or value < 0):
+            raise ValueError(f"{name} must be a non-negative integer or None")
+    if type(reserve_free_bytes) is not int or reserve_free_bytes < 0:
+        raise ValueError("reserve_free_bytes must be a non-negative integer")
+    store = Path(root)
+    if not store.is_dir() or store.is_symlink():
+        raise ValueError("factor cache root must be an existing non-symlink directory")
+    selected = set(node_keys) if node_keys is not None else None
+    plan = _legacy_node_plan(store, selected)
+    filesystem = os.statvfs(store)
+    free_bytes = filesystem.f_bavail * filesystem.f_frsize
+    budget = max(0, free_bytes - reserve_free_bytes)
+    if max_additional_bytes is not None:
+        budget = min(budget, max_additional_bytes)
+    planned: list[dict[str, object]] = []
+    planned_bytes = 0
+    for entry in plan:
+        write_bytes = int(entry["estimated_write_bytes"])
+        if max_nodes is not None and len(planned) >= max_nodes:
+            break
+        if planned_bytes + write_bytes > budget:
+            break
+        planned.append(entry)
+        planned_bytes += write_bytes
+
+    migrated: list[dict[str, str]] = []
+    if not dry_run:
+        for entry in planned:
+            node_key = str(entry["node_key"])
+            old_generation = str(entry["generation"])
+            with open_generation_by_node_key(store, node_key) as lease:
+                if lease.generation != old_generation or lease.identity is None:
+                    raise FactorStoreError("factor node changed during migration")
+                columns = {name: lease[name].values for name in lease}
+                new_generation = publish_generation(
+                    store,
+                    node_key,
+                    columns,
+                    identity=lease.identity,
+                    _replace_generation=old_generation,
+                    _verify_written=True,
+                )
+            migrated.append(
+                {"node_key": node_key, "old_generation": old_generation, "new_generation": new_generation}
+            )
+    return {
+        "eligible_nodes": plan,
+        "planned_nodes": planned,
+        "planned_write_bytes": planned_bytes,
+        "migrated_nodes": migrated,
+        "skipped_by_limits": len(plan) - len(planned),
+        "filesystem_free_bytes": free_bytes,
+        "reserve_free_bytes": reserve_free_bytes,
+        "max_additional_bytes": max_additional_bytes,
+        "dry_run": dry_run,
+    }
 
 
 def _read_node_pointer(store: Path, node_key: str, *, missing_ok: bool) -> str | None:

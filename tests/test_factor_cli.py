@@ -168,3 +168,27 @@ def test_factor_cache_cli_health_reports_threshold_findings(tmp_path, capsys) ->
     assert result["ok"] is False
     assert result["status"] == "warning"
     assert any(finding["code"] == "cache-quota-pressure" for finding in result["findings"])
+
+
+def test_factor_cache_cli_migration_defaults_to_dry_run(tmp_path, capsys, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    import gambit.factor_store as factor_store
+
+    identity = _identity("legacy-cli")
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            factor_store.MappedFloat64Column,
+            "create_chunked_v3",
+            factor_store.MappedFloat64Column.create_chunked,
+        )
+        old_generation = publish_factor_node(tmp_path, identity, {"factor": np.array([1.0])})
+
+    assert main(["migrate", str(tmp_path), "--node-key", identity.node_key]) == 0
+    preview = json.loads(capsys.readouterr().out)
+    assert preview["dry_run"] is True
+    assert preview["planned_nodes"][0]["generation"] == old_generation
+
+    assert main(["migrate", str(tmp_path), "--node-key", identity.node_key, "--apply"]) == 0
+    applied = json.loads(capsys.readouterr().out)
+    assert applied["migrated_nodes"][0]["old_generation"] == old_generation

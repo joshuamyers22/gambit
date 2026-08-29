@@ -222,6 +222,14 @@ Readers follow only the strictly validated hexadecimal generation named by
 `CURRENT`. They reject traversal, filename substitution, symbolic links, manifest
 identity mismatch, metadata mismatch, corrupt segments, and uncommitted segments.
 
+Legacy migration reuses this publication protocol. It copies indexed v1/v2 data
+into a staged v3 generation, reopens it to validate checksums and exact values,
+then switches pointers. It never mutates or deletes the source generation, so
+concurrent leased readers remain valid and garbage collection remains a separate
+operation. An expected-generation check rejects concurrent pointer replacement.
+Dry-run planning is bounded by node count, estimated temporary writes, filesystem
+free space, and an explicit free-space reserve; reruns skip v3 nodes.
+
 Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.
 After atomic pointer replacement, readers see the new complete generation. Garbage

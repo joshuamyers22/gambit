@@ -24,6 +24,7 @@ from gambit.factor_store import (
     collect_garbage,
     enforce_factor_cache_quota,
     evict_factor_nodes,
+    migrate_factor_nodes_to_v3,
 )
 
 _SIZE_PATTERN = re.compile(r"([0-9]+)([kmgt]?i?b)?", re.IGNORECASE)
@@ -111,6 +112,15 @@ def _parser() -> argparse.ArgumentParser:
     quota.add_argument("--low-watermark", type=float, default=0.8)
     quota.add_argument("--apply", action="store_true", help="perform deletion; default is dry-run")
     quota.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
+
+    migrate = subparsers.add_parser("migrate", help="plan or apply legacy-node migration to v3")
+    migrate.add_argument("root", type=Path)
+    migrate.add_argument("--node-key", action="append", dest="node_keys")
+    migrate.add_argument("--max-nodes", type=int)
+    migrate.add_argument("--max-additional-bytes", type=_parse_bytes)
+    migrate.add_argument("--reserve-free-bytes", type=_parse_bytes, default=0)
+    migrate.add_argument("--apply", action="store_true", help="publish v3 replacements; default is dry-run")
+    migrate.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
     return parser
 
 
@@ -185,6 +195,15 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 reserve_free_bytes=parsed.reserve_free_bytes,
                 high_watermark=parsed.high_watermark,
                 low_watermark=parsed.low_watermark,
+                dry_run=not parsed.apply,
+            )
+        elif parsed.command == "migrate":
+            result = migrate_factor_nodes_to_v3(
+                parsed.root,
+                node_keys=tuple(parsed.node_keys) if parsed.node_keys else None,
+                max_nodes=parsed.max_nodes,
+                max_additional_bytes=parsed.max_additional_bytes,
+                reserve_free_bytes=parsed.reserve_free_bytes,
                 dry_run=not parsed.apply,
             )
         else:  # pragma: no cover - argparse enforces the command set

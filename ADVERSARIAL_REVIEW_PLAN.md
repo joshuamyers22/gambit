@@ -468,6 +468,11 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   End-to-end v3 DAG hits are 2.01×/2.47× faster than recomputation at 1M/10M
   rows. Admission defaults are recalibrated well below measured warm-device v3
   throughput, while two-use cheap nodes remain correctly declined.
+  Dry-run-first v1/v2 migration now stages and reopens v3 replacements, verifies
+  exact values before pointer publication, preserves leased legacy generations,
+  rejects concurrent pointer changes, respects temporary-space/node limits, and
+  is resumable because completed v3 nodes are skipped. Migration write-amplification
+  benchmarking on Linux NVMe remains open.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.
