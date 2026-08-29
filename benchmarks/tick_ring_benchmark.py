@@ -30,6 +30,12 @@ class PipelineMeasurement:
     spins: int
     parks: int
     park_timeout_seconds: float
+    yields: int = 0
+    backoffs: int = 0
+    park_timeouts: int = 0
+    wakeups: int = 0
+    backoff_count: int = 0
+    maximum_backoff_seconds: float = 0.0
 
 
 def make_ticks(count: int) -> np.ndarray:
@@ -51,6 +57,8 @@ def benchmark_native(
     capacity: int,
     spin_count: int = 256,
     park_timeout_seconds: float = 0.01,
+    backoff_count: int = 0,
+    maximum_backoff_seconds: float = 0.0,
 ) -> PipelineMeasurement:
     if TickRing is None:
         raise RuntimeError("native tick ring extension is not built")
@@ -78,6 +86,8 @@ def benchmark_native(
                 batch_size,
                 spin_count=spin_count,
                 timeout_seconds=park_timeout_seconds,
+                backoff_count=backoff_count,
+                maximum_backoff_seconds=maximum_backoff_seconds,
             )
             if not len(batch):
                 continue
@@ -111,6 +121,12 @@ def benchmark_native(
         metrics["spins"],
         metrics["parks"],
         park_timeout_seconds,
+        metrics["yields"],
+        metrics["backoffs"],
+        metrics["park_timeouts"],
+        metrics["wakeups"],
+        backoff_count,
+        maximum_backoff_seconds,
     )
 
 
@@ -120,6 +136,8 @@ def benchmark_native_in_place(
     capacity: int,
     spin_count: int = 256,
     park_timeout_seconds: float = 0.01,
+    backoff_count: int = 0,
+    maximum_backoff_seconds: float = 0.0,
 ) -> PipelineMeasurement:
     if TickRing is None or TickFactorProcessor is None:
         raise RuntimeError("native tick processor extension is not built")
@@ -147,6 +165,8 @@ def benchmark_native_in_place(
                 batch_size,
                 spin_count=spin_count,
                 timeout_seconds=park_timeout_seconds,
+                backoff_count=backoff_count,
+                maximum_backoff_seconds=maximum_backoff_seconds,
             )
 
     cpu_start = time.process_time()
@@ -174,6 +194,12 @@ def benchmark_native_in_place(
         metrics["spins"],
         metrics["parks"],
         park_timeout_seconds,
+        metrics["yields"],
+        metrics["backoffs"],
+        metrics["park_timeouts"],
+        metrics["wakeups"],
+        backoff_count,
+        maximum_backoff_seconds,
     )
 
 
@@ -276,11 +302,15 @@ def run_benchmark(
     capacity: int,
     spin_count: int = 256,
     park_timeout_seconds: float = 0.01,
+    backoff_count: int = 0,
+    maximum_backoff_seconds: float = 0.0,
 ) -> dict[str, object]:
     if capacity < batch_size:
         raise ValueError("capacity must be at least batch_size")
     if not np.isfinite(park_timeout_seconds) or park_timeout_seconds < 0:
         raise ValueError("park_timeout_seconds must be finite and non-negative")
+    if backoff_count < 0 or not np.isfinite(maximum_backoff_seconds) or maximum_backoff_seconds < 0:
+        raise ValueError("backoff settings must be finite and non-negative")
     records = make_ticks(ticks)
     measurements = [
         benchmark_python_queue(records, capacity),
@@ -288,7 +318,15 @@ def run_benchmark(
     ]
     if TickRing is not None:
         measurements.append(
-            benchmark_native(records, batch_size, capacity, spin_count, park_timeout_seconds)
+            benchmark_native(
+                records,
+                batch_size,
+                capacity,
+                spin_count,
+                park_timeout_seconds,
+                backoff_count,
+                maximum_backoff_seconds,
+            )
         )
     if TickRing is not None and TickFactorProcessor is not None:
         measurements.append(
@@ -298,6 +336,8 @@ def run_benchmark(
                 capacity,
                 spin_count,
                 park_timeout_seconds,
+                backoff_count,
+                maximum_backoff_seconds,
             )
         )
     return {
@@ -322,13 +362,17 @@ def run_matrix(
     capacities: list[int],
     spin_counts: list[int],
     park_timeouts: list[float],
+    backoff_counts: list[int],
+    maximum_backoff_seconds: float,
     repeats: int,
     warmups: int,
 ) -> dict[str, object]:
     if ticks <= 0 or repeats <= 0 or warmups < 0:
         raise ValueError("ticks and repeats must be positive and warmups must be non-negative")
-    if not batch_sizes or not capacities or not spin_counts or not park_timeouts:
+    if not batch_sizes or not capacities or not spin_counts or not park_timeouts or not backoff_counts:
         raise ValueError("matrix dimensions must not be empty")
+    if not np.isfinite(maximum_backoff_seconds) or maximum_backoff_seconds < 0:
+        raise ValueError("maximum_backoff_seconds must be finite and non-negative")
     configurations: list[dict[str, object]] = []
     for batch_size in batch_sizes:
         for capacity in capacities:
@@ -340,58 +384,75 @@ def run_matrix(
                 for park_timeout in park_timeouts:
                     if not np.isfinite(park_timeout) or park_timeout < 0:
                         raise ValueError("park timeouts must be finite and non-negative")
-                    for _ in range(warmups):
-                        run_benchmark(ticks, batch_size, capacity, spin_count, park_timeout)
-                    trials = [
-                        run_benchmark(ticks, batch_size, capacity, spin_count, park_timeout)
-                        for _ in range(repeats)
-                    ]
-                    names = [measurement["name"] for measurement in trials[0]["measurements"]]
-                    summaries = []
-                    for name in names:
-                        samples = [
-                            next(item for item in trial["measurements"] if item["name"] == name)
-                            for trial in trials
-                        ]
-                        throughput = [float(sample["ticks_per_second"]) for sample in samples]
-                        wall = [float(sample["wall_seconds"]) for sample in samples]
-                        cpu_efficiency = [
-                            float(sample["cpu_seconds"]) / float(sample["wall_seconds"])
-                            for sample in samples
-                        ]
-                        summaries.append(
+                    for backoff_count in backoff_counts:
+                        if backoff_count < 0:
+                            raise ValueError("backoff_count must be non-negative")
+                        arguments = (
+                            ticks,
+                            batch_size,
+                            capacity,
+                            spin_count,
+                            park_timeout,
+                            backoff_count,
+                            maximum_backoff_seconds,
+                        )
+                        for _ in range(warmups):
+                            run_benchmark(*arguments)
+                        trials = [run_benchmark(*arguments) for _ in range(repeats)]
+                        names = [measurement["name"] for measurement in trials[0]["measurements"]]
+                        summaries = []
+                        for name in names:
+                            samples = [
+                                next(item for item in trial["measurements"] if item["name"] == name)
+                                for trial in trials
+                            ]
+                            throughput = [float(sample["ticks_per_second"]) for sample in samples]
+                            wall = [float(sample["wall_seconds"]) for sample in samples]
+                            cpu_efficiency = [
+                                float(sample["cpu_seconds"]) / float(sample["wall_seconds"])
+                                for sample in samples
+                            ]
+                            summaries.append(
+                                {
+                                    "name": name,
+                                    "median_ticks_per_second": statistics.median(throughput),
+                                    "p95_ticks_per_second": _percentile(throughput, 0.95),
+                                    "p50_trial_latency_seconds": _percentile(wall, 0.50),
+                                    "p99_trial_latency_seconds": _percentile(wall, 0.99),
+                                    "median_cpu_to_wall_ratio": statistics.median(cpu_efficiency),
+                                    "min_ticks_per_second": min(throughput),
+                                    "max_ticks_per_second": max(throughput),
+                                    "median_spins": statistics.median(
+                                        int(sample["spins"]) for sample in samples
+                                    ),
+                                    "median_parks": statistics.median(
+                                        int(sample["parks"]) for sample in samples
+                                    ),
+                                    "median_backoffs": statistics.median(
+                                        int(sample["backoffs"]) for sample in samples
+                                    ),
+                                    "median_park_timeouts": statistics.median(
+                                        int(sample["park_timeouts"]) for sample in samples
+                                    ),
+                                    "sequence_errors": sum(
+                                        int(sample["sequence_errors"]) for sample in samples
+                                    ),
+                                    "rejected_pushes": sum(
+                                        int(sample["rejected_pushes"]) for sample in samples
+                                    ),
+                                }
+                            )
+                        configurations.append(
                             {
-                                "name": name,
-                                "median_ticks_per_second": statistics.median(throughput),
-                                "p95_ticks_per_second": _percentile(throughput, 0.95),
-                                "p50_trial_latency_seconds": _percentile(wall, 0.50),
-                                "p99_trial_latency_seconds": _percentile(wall, 0.99),
-                                "median_cpu_to_wall_ratio": statistics.median(cpu_efficiency),
-                                "min_ticks_per_second": min(throughput),
-                                "max_ticks_per_second": max(throughput),
-                                "median_spins": statistics.median(
-                                    int(sample["spins"]) for sample in samples
-                                ),
-                                "median_parks": statistics.median(
-                                    int(sample["parks"]) for sample in samples
-                                ),
-                                "sequence_errors": sum(
-                                    int(sample["sequence_errors"]) for sample in samples
-                                ),
-                                "rejected_pushes": sum(
-                                    int(sample["rejected_pushes"]) for sample in samples
-                                ),
+                                "batch_size": batch_size,
+                                "capacity": capacity,
+                                "spin_count": spin_count,
+                                "park_timeout_seconds": park_timeout,
+                                "backoff_count": backoff_count,
+                                "maximum_backoff_seconds": maximum_backoff_seconds,
+                                "measurements": summaries,
                             }
                         )
-                    configurations.append(
-                        {
-                            "batch_size": batch_size,
-                            "capacity": capacity,
-                            "spin_count": spin_count,
-                            "park_timeout_seconds": park_timeout,
-                            "measurements": summaries,
-                        }
-                    )
     return {
         "environment": {
             "platform": platform.platform(),
@@ -410,11 +471,14 @@ def main() -> None:
     parser.add_argument("--capacity", type=int, default=65536)
     parser.add_argument("--spin-count", type=int, default=256)
     parser.add_argument("--park-timeout", type=float, default=0.01)
+    parser.add_argument("--backoff-count", type=int, default=0)
+    parser.add_argument("--maximum-backoff", type=float, default=0.001)
     parser.add_argument("--matrix", action="store_true")
     parser.add_argument("--batch-sizes", type=int, nargs="+", default=[64, 256, 1024])
     parser.add_argument("--capacities", type=int, nargs="+", default=[4096, 65536])
     parser.add_argument("--spin-counts", type=int, nargs="+", default=[0, 64, 256, 1024])
     parser.add_argument("--park-timeouts", type=float, nargs="+", default=[0.0, 0.0001, 0.001, 0.01])
+    parser.add_argument("--backoff-counts", type=int, nargs="+", default=[0, 8])
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--output")
@@ -428,6 +492,8 @@ def main() -> None:
             arguments.capacities,
             arguments.spin_counts,
             arguments.park_timeouts,
+            arguments.backoff_counts,
+            arguments.maximum_backoff,
             arguments.repeats,
             arguments.warmups,
         )
@@ -438,6 +504,8 @@ def main() -> None:
             arguments.capacity,
             arguments.spin_count,
             arguments.park_timeout,
+            arguments.backoff_count,
+            arguments.maximum_backoff,
         )
     output = json.dumps(result, indent=2)
     if arguments.output:

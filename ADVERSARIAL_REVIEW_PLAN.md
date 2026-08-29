@@ -416,12 +416,16 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - [x] Benchmark the in-memory tick prototype against per-tick and batched Python bounded queues; copied native batches beat per-tick handoff but lose materially to passing NumPy batch views.
 - [x] Add an in-place C++ tick-factor consumer. It removes the outbound copy and materially improves native throughput, but still trails vectorized NumPy batches on the initial workload.
 - [ ] Benchmark native atomic spin/backoff/park behavior against a bounded blocking queue.
-  The bounded-spin/yield/park repeated matrix covers batch sizes 64/256/1024,
+  The native wait path now shares one implementation across copied and in-place
+  consumers, supports opt-in exponential sleep backoff and explicit cancellation,
+  coordinates notification to prevent lost wakeups, and reports yields, backoffs,
+  park timeouts, and wakeups. Defaults retain the simpler no-backoff behavior until
+  representative benchmarks justify promotion. The repeated matrix covers batch sizes 64/256/1024,
   spin budgets 0/64/256/1024,
   and park timeouts 0/100us/1ms/10ms. It reports throughput, CPU-to-wall ratio,
   spin/park counts, and p50/p99 pipeline-trial latency against per-tick and batched
-  Python blocking queues. An adaptive-backoff implementation and controlled-core
-  per-tick latency remain follow-up work.
+  Python blocking queues, including no-backoff/adaptive A/B configurations.
+  Controlled-core per-tick latency and a default-policy decision remain follow-up work.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;

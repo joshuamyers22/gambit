@@ -3,6 +3,7 @@
 
 #include "spsc_ring.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -102,6 +103,10 @@ public:
             }
         }
         if (pushed != 0) {
+            {
+                // Serialize with the consumer's predicate check before notifying.
+                std::lock_guard<std::mutex> lock(wait_mutex_);
+            }
             wakeup_.notify_one();
         }
         return pushed;
@@ -126,26 +131,17 @@ public:
         return output;
     }
 
-    py::array_t<TickRecord> wait_pop_batch(std::uint64_t maximum, std::uint64_t spin_count, double timeout_seconds) {
-        if (!std::isfinite(timeout_seconds) || timeout_seconds < 0) {
-            throw std::invalid_argument("timeout_seconds must be finite and non-negative");
-        }
+    py::array_t<TickRecord> wait_pop_batch(
+        std::uint64_t maximum,
+        std::uint64_t spin_count,
+        double timeout_seconds,
+        std::uint64_t backoff_count,
+        double maximum_backoff_seconds
+    ) {
+        validate_wait_arguments(timeout_seconds, maximum_backoff_seconds);
         {
             py::gil_scoped_release release;
-            for (std::uint64_t attempt = 0; attempt < spin_count; ++attempt) {
-                spins_.fetch_add(1, std::memory_order_relaxed);
-                if (depth() != 0) {
-                    break;
-                }
-                if ((attempt & 63U) == 63U) {
-                    std::this_thread::yield();
-                }
-            }
-            if (depth() == 0 && timeout_seconds > 0) {
-                parks_.fetch_add(1, std::memory_order_relaxed);
-                std::unique_lock<std::mutex> lock(wait_mutex_);
-                wakeup_.wait_for(lock, std::chrono::duration<double>(timeout_seconds), [this] { return depth() != 0; });
-            }
+            wait_for_data(spin_count, backoff_count, maximum_backoff_seconds, timeout_seconds);
         }
         return pop_batch(maximum);
     }
@@ -170,29 +166,24 @@ public:
         TickFactorProcessor& processor,
         std::uint64_t maximum,
         std::uint64_t spin_count,
-        double timeout_seconds
+        double timeout_seconds,
+        std::uint64_t backoff_count,
+        double maximum_backoff_seconds
     ) {
-        if (!std::isfinite(timeout_seconds) || timeout_seconds < 0) {
-            throw std::invalid_argument("timeout_seconds must be finite and non-negative");
-        }
+        validate_wait_arguments(timeout_seconds, maximum_backoff_seconds);
         {
             py::gil_scoped_release release;
-            for (std::uint64_t attempt = 0; attempt < spin_count; ++attempt) {
-                spins_.fetch_add(1, std::memory_order_relaxed);
-                if (depth() != 0) {
-                    break;
-                }
-                if ((attempt & 63U) == 63U) {
-                    std::this_thread::yield();
-                }
-            }
-            if (depth() == 0 && timeout_seconds > 0) {
-                parks_.fetch_add(1, std::memory_order_relaxed);
-                std::unique_lock<std::mutex> lock(wait_mutex_);
-                wakeup_.wait_for(lock, std::chrono::duration<double>(timeout_seconds), [this] { return depth() != 0; });
-            }
+            wait_for_data(spin_count, backoff_count, maximum_backoff_seconds, timeout_seconds);
         }
         return process_batch(processor, maximum);
+    }
+
+    void close() {
+        {
+            std::lock_guard<std::mutex> lock(wait_mutex_);
+            closed_.store(true, std::memory_order_release);
+        }
+        wakeup_.notify_all();
     }
 
     std::uint64_t capacity() const { return ring_.capacity(); }
@@ -209,12 +200,72 @@ public:
         result["popped"] = popped_.load(std::memory_order_relaxed);
         result["dropped"] = dropped_.load(std::memory_order_relaxed);
         result["spins"] = spins_.load(std::memory_order_relaxed);
+        result["yields"] = yields_.load(std::memory_order_relaxed);
+        result["backoffs"] = backoffs_.load(std::memory_order_relaxed);
         result["parks"] = parks_.load(std::memory_order_relaxed);
+        result["park_timeouts"] = park_timeouts_.load(std::memory_order_relaxed);
+        result["wakeups"] = wakeups_.load(std::memory_order_relaxed);
+        result["closed"] = closed_.load(std::memory_order_acquire);
         return result;
     }
 
 private:
+    static void validate_wait_arguments(double timeout_seconds, double maximum_backoff_seconds) {
+        if (!std::isfinite(timeout_seconds) || timeout_seconds < 0) {
+            throw std::invalid_argument("timeout_seconds must be finite and non-negative");
+        }
+        if (!std::isfinite(maximum_backoff_seconds) || maximum_backoff_seconds < 0) {
+            throw std::invalid_argument("maximum_backoff_seconds must be finite and non-negative");
+        }
+    }
+
+    bool data_or_closed() const {
+        return depth() != 0 || closed_.load(std::memory_order_acquire);
+    }
+
+    void wait_for_data(
+        std::uint64_t spin_count,
+        std::uint64_t backoff_count,
+        double maximum_backoff_seconds,
+        double timeout_seconds
+    ) {
+        for (std::uint64_t attempt = 0; attempt < spin_count && !data_or_closed(); ++attempt) {
+            spins_.fetch_add(1, std::memory_order_relaxed);
+            if ((attempt & 63U) == 63U) {
+                yields_.fetch_add(1, std::memory_order_relaxed);
+                std::this_thread::yield();
+            }
+        }
+        double delay_seconds = std::min(0.000001, maximum_backoff_seconds);
+        for (
+            std::uint64_t attempt = 0;
+            attempt < backoff_count && maximum_backoff_seconds > 0 && !data_or_closed();
+            ++attempt
+        ) {
+            backoffs_.fetch_add(1, std::memory_order_relaxed);
+            std::this_thread::sleep_for(std::chrono::duration<double>(delay_seconds));
+            delay_seconds = std::min(maximum_backoff_seconds, delay_seconds * 2.0);
+        }
+        if (!data_or_closed() && timeout_seconds > 0) {
+            parks_.fetch_add(1, std::memory_order_relaxed);
+            std::unique_lock<std::mutex> lock(wait_mutex_);
+            const bool awakened = wakeup_.wait_for(
+                lock,
+                std::chrono::duration<double>(timeout_seconds),
+                [this] { return data_or_closed(); }
+            );
+            if (awakened) {
+                wakeups_.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                park_timeouts_.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+    }
+
     bool try_push(const TickRecord& record) {
+        if (closed_.load(std::memory_order_acquire)) {
+            return false;
+        }
         if (!ring_.try_push(record)) {
             return false;
         }
@@ -235,7 +286,12 @@ private:
     std::atomic<std::uint64_t> popped_{0};
     std::atomic<std::uint64_t> dropped_{0};
     std::atomic<std::uint64_t> spins_{0};
+    std::atomic<std::uint64_t> yields_{0};
+    std::atomic<std::uint64_t> backoffs_{0};
     std::atomic<std::uint64_t> parks_{0};
+    std::atomic<std::uint64_t> park_timeouts_{0};
+    std::atomic<std::uint64_t> wakeups_{0};
+    std::atomic<bool> closed_{false};
     std::mutex wait_mutex_;
     std::condition_variable wakeup_;
 };
@@ -265,7 +321,9 @@ void init_tick_ring(py::module_& module) {
             &TickRing::wait_pop_batch,
             py::arg("maximum"),
             py::arg("spin_count") = 256,
-            py::arg("timeout_seconds") = 0.001
+            py::arg("timeout_seconds") = 0.001,
+            py::arg("backoff_count") = 0,
+            py::arg("maximum_backoff_seconds") = 0.0
         )
         .def("process_batch", &TickRing::process_batch, py::arg("processor"), py::arg("maximum"))
         .def(
@@ -274,8 +332,11 @@ void init_tick_ring(py::module_& module) {
             py::arg("processor"),
             py::arg("maximum"),
             py::arg("spin_count") = 256,
-            py::arg("timeout_seconds") = 0.001
+            py::arg("timeout_seconds") = 0.001,
+            py::arg("backoff_count") = 0,
+            py::arg("maximum_backoff_seconds") = 0.0
         )
+        .def("close", &TickRing::close)
         .def_property_readonly("capacity", &TickRing::capacity)
         .def_property_readonly("depth", &TickRing::depth)
         .def_property_readonly("metrics", &TickRing::metrics);

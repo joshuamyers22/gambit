@@ -71,6 +71,70 @@ def test_wait_releases_gil_then_parks_until_producer_arrives() -> None:
 
     assert result["sequence"].tolist() == [42]
     assert ring.metrics["parks"] == 1
+    assert ring.metrics["wakeups"] == 1
+
+
+def test_wait_uses_bounded_adaptive_backoff() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(8)
+
+    result = ring.wait_pop_batch(
+        1,
+        spin_count=64,
+        backoff_count=3,
+        maximum_backoff_seconds=0.0001,
+        timeout_seconds=0,
+    )
+
+    assert len(result) == 0
+    assert ring.metrics["spins"] == 64
+    assert ring.metrics["yields"] == 1
+    assert ring.metrics["backoffs"] == 3
+    assert ring.metrics["parks"] == 0
+
+
+def test_close_cancels_parked_consumer_without_timeout_polling() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(8)
+    completed = threading.Event()
+
+    def consume() -> None:
+        assert len(ring.wait_pop_batch(1, spin_count=0, timeout_seconds=60)) == 0
+        completed.set()
+
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    time.sleep(0.01)
+    ring.close()
+    consumer.join(timeout=1)
+
+    assert completed.is_set()
+    assert ring.metrics["closed"] is True
+    assert ring.metrics["wakeups"] == 1
+    assert ring.metrics["park_timeouts"] == 0
+    assert ring.push_batch(_ticks(0, 1)) == 0
+
+
+def test_notifications_do_not_lose_racing_producer_wakeups() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    for sequence in range(100):
+        ring = TickRing(2)
+        received = []
+
+        def consume() -> None:
+            received.extend(
+                ring.wait_pop_batch(1, spin_count=0, timeout_seconds=0.5)["sequence"].tolist()
+            )
+
+        consumer = threading.Thread(target=consume)
+        consumer.start()
+        ring.push_batch(_ticks(sequence, 1))
+        consumer.join(timeout=1)
+
+        assert received == [sequence]
 
 
 def test_processor_consumes_ring_slots_in_place() -> None:

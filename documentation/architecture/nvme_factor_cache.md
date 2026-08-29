@@ -283,7 +283,13 @@ are cache-line separated and use release/acquire publication.
 
 Batch push rejects newest records once full and increments an explicit drop count.
 Waiting consumers spin for a bounded number of attempts, periodically yield, then
-park on a condition variable with a timeout. The GIL is released during native
+optionally use exponentially increasing sleeps capped by
+`maximum_backoff_seconds`, then park on a condition variable with a timeout. The
+backoff phase is opt-in; defaults preserve the earlier spin/yield/park behavior.
+`close()` cancels a parked consumer without timeout polling and rejects later
+pushes. Producer notifications coordinate with the wait mutex to prevent the
+predicate-check/wait lost-wakeup race. Metrics distinguish spins, yields, backoffs,
+parks, park timeouts, and successful wakeups. The GIL is released during native
 transfer and waiting. This first prototype supports exactly one producer and one
 consumer; additional concurrent callers violate its contract.
 
