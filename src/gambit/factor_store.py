@@ -494,10 +494,15 @@ def _local_process_is_dead(pid: int) -> bool:
     return False
 
 
-def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -> dict[str, list[str]]:
+def collect_garbage(
+    root: str | Path,
+    *,
+    stale_lease_seconds: float = 86400.0,
+    dry_run: bool = False,
+) -> dict[str, object]:
     """Remove invisible unleased generations while failing safe on ambiguous leases."""
-    if stale_lease_seconds < 0:
-        raise ValueError("stale_lease_seconds must be non-negative")
+    if not np.isfinite(stale_lease_seconds) or stale_lease_seconds < 0:
+        raise ValueError("stale_lease_seconds must be finite and non-negative")
     store = Path(root)
     removed_generations: list[str] = []
     removed_leases: list[str] = []
@@ -523,8 +528,9 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
                 for node_pointer in nodes.iterdir():
                     if node_pointer.name.startswith("."):
                         if node_pointer.is_file() and not node_pointer.is_symlink():
-                            node_pointer.unlink()
                             removed_node_staging.append(node_pointer.name)
+                            if not dry_run:
+                                node_pointer.unlink()
                         continue
                     if _NODE_KEY_PATTERN.fullmatch(node_pointer.name) is None:
                         raise FactorStoreError("factor node index contains an invalid key")
@@ -538,8 +544,9 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
                 generation = generation_path.name
                 if generation.startswith(".staging-"):
                     if generation_path.is_dir() and not generation_path.is_symlink():
-                        shutil.rmtree(generation_path)
                         removed_staging.append(generation)
+                        if not dry_run:
+                            shutil.rmtree(generation_path)
                     continue
                 if (
                     generation == current
@@ -551,6 +558,7 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
                 if lease_directory.is_symlink():
                     has_leases = True
                 elif lease_directory.is_dir():
+                    surviving_leases = 0
                     for lease_path in lease_directory.iterdir():
                         try:
                             metadata = json.loads(lease_path.read_bytes())
@@ -559,33 +567,41 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
                                 int(metadata["pid"])
                             )
                         except (OSError, ValueError, KeyError, TypeError):
+                            surviving_leases += 1
                             continue
                         if age_seconds >= stale_lease_seconds and local_dead:
-                            lease_path.unlink(missing_ok=True)
                             removed_leases.append(f"{generation}/{lease_path.name}")
-                    has_leases = any(lease_directory.iterdir())
+                            if not dry_run:
+                                lease_path.unlink(missing_ok=True)
+                        else:
+                            surviving_leases += 1
+                    has_leases = surviving_leases > 0
                 else:
                     has_leases = False
                 if not has_leases and generation_path.is_dir() and not generation_path.is_symlink():
-                    shutil.rmtree(generation_path)
                     removed_generations.append(generation)
-                    if lease_directory.is_dir():
-                        lease_directory.rmdir()
+                    if not dry_run:
+                        shutil.rmtree(generation_path)
+                        if lease_directory.is_dir():
+                            lease_directory.rmdir()
             for pointer_path in store.glob(".CURRENT-*"):
                 if pointer_path.is_file() and not pointer_path.is_symlink():
-                    pointer_path.unlink()
                     removed_pointers.append(pointer_path.name)
-            _fsync_directory(generations)
-            if removed_pointers:
-                _fsync_directory(store)
-            if removed_node_staging:
-                _fsync_directory(nodes)
+                    if not dry_run:
+                        pointer_path.unlink()
+            if not dry_run:
+                _fsync_directory(generations)
+                if removed_pointers:
+                    _fsync_directory(store)
+                if removed_node_staging:
+                    _fsync_directory(nodes)
     return {
         "removed_generations": removed_generations,
         "removed_leases": removed_leases,
         "removed_staging": removed_staging,
         "removed_pointers": removed_pointers,
         "removed_node_staging": removed_node_staging,
+        "dry_run": dry_run,
     }
 
 
@@ -594,6 +610,7 @@ def evict_factor_nodes(
     *,
     max_bytes: int,
     max_nodes: int | None = None,
+    dry_run: bool = False,
 ) -> dict[str, object]:
     """Evict least-recently-used indexed nodes without deleting current or leased data."""
     if type(max_bytes) is not int or max_bytes < 0:
@@ -665,22 +682,26 @@ def evict_factor_nodes(
                 if protected:
                     protected_node_keys.append(node_key)
                     continue
-                (nodes / node_key).unlink()
                 evicted_node_keys.append(node_key)
                 total_nodes_after -= 1
                 generation_path = generations / generation
-                shutil.rmtree(generation_path)
                 removed_generations.append(generation)
                 total_bytes_after -= stored_bytes
-                lease_directory = store / "leases" / generation
-                if lease_directory.is_dir() and not any(lease_directory.iterdir()):
-                    lease_directory.rmdir()
-                for metadata_root, suffix in ((store / "access", ".json"), (store / "admission", ".json")):
-                    metadata_path = metadata_root / f"{node_key}{suffix}"
-                    if metadata_path.is_file() and not metadata_path.is_symlink():
-                        metadata_path.unlink()
+                if not dry_run:
+                    (nodes / node_key).unlink()
+                    shutil.rmtree(generation_path)
+                    lease_directory = store / "leases" / generation
+                    if lease_directory.is_dir() and not any(lease_directory.iterdir()):
+                        lease_directory.rmdir()
+                    for metadata_root, suffix in (
+                        (store / "access", ".json"),
+                        (store / "admission", ".json"),
+                    ):
+                        metadata_path = metadata_root / f"{node_key}{suffix}"
+                        if metadata_path.is_file() and not metadata_path.is_symlink():
+                            metadata_path.unlink()
 
-            if evicted_node_keys:
+            if evicted_node_keys and not dry_run:
                 _fsync_directory(nodes)
                 _fsync_directory(generations)
                 for metadata_root in (store / "access", store / "admission"):
@@ -695,4 +716,5 @@ def evict_factor_nodes(
         "total_nodes_before": total_nodes_before,
         "total_nodes_after": total_nodes_after,
         "limits_satisfied": not over_limit(),
+        "dry_run": dry_run,
     }

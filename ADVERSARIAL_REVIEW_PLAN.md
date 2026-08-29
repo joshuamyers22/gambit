@@ -432,6 +432,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   per-node details, and structured findings. On-device native segment calibration
   can fit read/write bandwidth and fixed-cost inputs for admission policy; its
   page-cache eviction request remains advisory and wear remains unmeasured.
+  The `gambit-factor-cache` JSON CLI now exposes inventory, calibration, orphan
+  collection, and bounded eviction. Destructive commands default to dry-run and
+  require an explicit `--apply`.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

@@ -129,6 +129,22 @@ be repeated after material hardware, filesystem, encryption, thermal, or kernel
 changes. It is intentionally never run during import, testing, or an ordinary
 backtest.
 
+The installed `gambit-factor-cache` command exposes these operations with JSON
+output:
+
+```text
+gambit-factor-cache inventory /nvme/gambit-cache
+gambit-factor-cache calibrate /nvme/gambit-cache --repeats 3
+gambit-factor-cache collect /nvme/gambit-cache
+gambit-factor-cache collect /nvme/gambit-cache --apply
+gambit-factor-cache evict /nvme/gambit-cache --max-bytes 250GiB --max-nodes 10000
+gambit-factor-cache evict /nvme/gambit-cache --max-bytes 250GiB --max-nodes 10000 --apply
+```
+
+`collect` and `evict` are dry-run by default and require `--apply` to mutate the
+store. Size arguments accept bytes and KiB/MiB/GiB/TiB forms. `--output` writes the
+same JSON to a file; operational failures also return JSON and a nonzero exit code.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

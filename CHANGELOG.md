@@ -25,6 +25,8 @@ have not yet been released are collected below.
   current and leased factor generations.
 - Read-only cache inventory and on-device native segment calibration for admission
   policy parameters, with explicit page-cache and device-wear limitations.
+- A JSON `gambit-factor-cache` operations CLI whose collection and eviction
+  commands default to dry-run and require explicit `--apply` mutation.
 
 ### Changed
 

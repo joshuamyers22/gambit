@@ -424,6 +424,13 @@ def test_factor_store_evicts_least_recently_used_unleased_node(tmp_path) -> None
         access["last_access_ns"] = last_access_ns
         access_path.write_text(json.dumps(access))
 
+    preview = evict_factor_nodes(tmp_path, max_bytes=10**9, max_nodes=2, dry_run=True)
+
+    assert preview["dry_run"] is True
+    assert preview["evicted_node_keys"] == [identities[0].node_key]
+    assert (tmp_path / "generations" / generations[0]).is_dir()
+    assert (tmp_path / "nodes" / identities[0].node_key).is_file()
+
     result = evict_factor_nodes(tmp_path, max_bytes=10**9, max_nodes=2)
 
     assert result["evicted_node_keys"] == [identities[0].node_key]
@@ -435,6 +442,20 @@ def test_factor_store_evicts_least_recently_used_unleased_node(tmp_path) -> None
         open_generation_by_node_key(tmp_path, identities[0].node_key)
     with open_generation_by_node_key(tmp_path, identities[1].node_key):
         pass
+
+
+def test_factor_store_garbage_collection_dry_run_is_non_mutating(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    staging = tmp_path / "generations" / ".staging-preview"
+    staging.mkdir()
+
+    preview = collect_garbage(tmp_path, dry_run=True)
+
+    assert preview["dry_run"] is True
+    assert preview["removed_staging"] == [staging.name]
+    assert staging.is_dir()
 
 
 def test_factor_store_eviction_protects_current_and_leased_generations(tmp_path) -> None:
