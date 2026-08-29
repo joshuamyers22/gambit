@@ -427,6 +427,11 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   samples now drive byte/node-bounded LRU eviction. Current and leased generations
   fail safe when they prevent a requested bound. Compaction, filesystem-wide quota
   accounting, and device-level wear telemetry remain open.
+  Read-only inventory now reports file/allocation bytes, filesystem capacity,
+  indexed/unindexed/staging generations, leases, sampled access, rejection hints,
+  per-node details, and structured findings. On-device native segment calibration
+  can fit read/write bandwidth and fixed-cost inputs for admission policy; its
+  page-cache eviction request remains advisory and wear remains unmeasured.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

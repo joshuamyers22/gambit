@@ -42,3 +42,21 @@ for direct recomputation and 57.79 ms for forced warm cache hits. The remaining 
 and measurement overhead motivated persistent rejection metadata. Declines are now
 stored as expiring policy-keyed hints; subsequent runs skip strict opens for those
 known-missing nodes while still recomputing and re-evaluating admission.
+
+## Local device calibration
+
+The native calibration routine ran on device id `16777234`, which matches the
+repository device, using 1 MiB and 16 MiB v2 segments with three repetitions:
+
+| Metric | Result |
+| --- | ---: |
+| Verified read estimate | 919 MiB/s |
+| Committed write estimate | 439 MiB/s |
+| Fitted fixed read cost | 0 ms |
+| Fitted fixed write cost | 0.057 ms |
+| Page-cache eviction requested | No (unsupported) |
+| Device wear measured | No |
+
+The read number is therefore a warm-cache/filesystem estimate, not physical NVMe
+throughput. It broadly supports keeping the default admission calibration
+conservative at 900 MiB/s reads and 400 MiB/s writes on this host.

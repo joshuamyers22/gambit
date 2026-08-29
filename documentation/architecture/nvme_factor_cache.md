@@ -107,6 +107,28 @@ lease contract to force a quota. Byte accounting currently covers immutable
 generation files, not filesystem metadata or allocator/controller write
 amplification.
 
+## Operations and calibration
+
+`inspect_factor_cache(root)` provides a non-mutating inventory containing actual
+and allocated bytes, filesystem capacity/free space, device id, indexed and
+unindexed generation counts, staging directories, leases, access samples,
+rejection hints, and per-node sizes/rows/current status. Malformed advisory or
+index state is returned as structured findings. Device wear is explicitly marked
+unmeasured rather than inferred from host-visible file sizes.
+
+`calibrate_factor_cache(root)` creates a uniquely named temporary directory on the
+selected filesystem, measures two native v2 segment sizes over repeated fsynced
+writes and full verified reads, fits fixed cost plus bytes/second estimates, and
+removes all calibration segments in `finally`. When supported, it requests page-
+cache eviction with `POSIX_FADV_DONTNEED`; the result records that this is advisory,
+not proof of a physical NVMe read. The returned `FactorCacheCalibration` produces
+a `FactorCacheAdmissionPolicy` through `admission_policy()`.
+
+Calibration must run on the directory/device used by the research cache and should
+be repeated after material hardware, filesystem, encryption, thermal, or kernel
+changes. It is intentionally never run during import, testing, or an ordinary
+backtest.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

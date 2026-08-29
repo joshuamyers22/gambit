@@ -33,6 +33,14 @@ from gambit.factor_dag import (
     PolarsFactorNode,
 )
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
+from gambit.factor_operations import (
+    FactorCacheCalibration,
+    FactorCacheFinding,
+    FactorCacheInventory,
+    FactorCacheNodeInventory,
+    calibrate_factor_cache,
+    inspect_factor_cache,
+)
 from gambit.holiday_calendars import Calendar, get_date_from_weekday
 from gambit.instruments import AssetClass, InstrumentSpec, Tradability
 from gambit.interactive_plot import InteractivePlot, LineConfig, LineGraphWithDetailDisplay
@@ -156,6 +164,10 @@ __all__ = [
     "FixedPercentageSlippage",
     "FactorColumnSchema",
     "FactorCacheAdmissionPolicy",
+    "FactorCacheCalibration",
+    "FactorCacheFinding",
+    "FactorCacheInventory",
+    "FactorCacheNodeInventory",
     "FactorDagExecution",
     "FactorDagTelemetry",
     "FactorNodeIdentity",
@@ -247,6 +259,7 @@ __all__ = [
     "attribute_exposure",
     "black_scholes_price",
     "calculate_risk",
+    "calibrate_factor_cache",
     "cdf",
     "compute_return_metrics",
     "d1",
@@ -272,6 +285,7 @@ __all__ = [
     "hdf5_to_df",
     "hdf5_to_np_arrays",
     "implied_vol",
+    "inspect_factor_cache",
     "load_run_configuration",
     "np_arrays_to_hdf5",
     "np_find_closest",

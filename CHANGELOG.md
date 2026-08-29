@@ -23,6 +23,8 @@ have not yet been released are collected below.
   opens without masking nodes published by another process.
 - Rate-limited access metadata and byte/node-bounded LRU eviction that protects
   current and leased factor generations.
+- Read-only cache inventory and on-device native segment calibration for admission
+  policy parameters, with explicit page-cache and device-wear limitations.
 
 ### Changed
 
