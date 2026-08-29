@@ -8,7 +8,7 @@ import math
 from collections import defaultdict, deque
 from collections.abc import Sequence
 from types import SimpleNamespace
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import numpy as np
 import polars as pl
@@ -37,7 +37,7 @@ def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFram
 def find_last_non_nan_index(array: np.ndarray) -> int:
     i = np.nonzero(np.isfinite(array))[0]
     if len(i):
-        return i[-1]
+        return int(i[-1])
     return 0
 
 
@@ -619,7 +619,7 @@ class Account:
                     net_pnl_diff = np.diff(df["net_pnl"].to_numpy())
                     last_index = np.nonzero(net_pnl_diff)
                     if len(last_index[0]):
-                        last_index_ = last_index[0][-1] + 1
+                        last_index_: int = int(last_index[0][-1]) + 1
                         df = df.head(last_index_ + 1)
                 df = df.with_columns(pl.lit(contract_group.name).alias("contract_group"))
                 dfs.append(df)
@@ -662,10 +662,10 @@ class Account:
         net_pnl: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
 
         for i in range(1, len(timestamps)):
-            timestamp = timestamps[i]
+            timestamp = cast(np.datetime64, timestamps[i])
             for symbol_pnl in symbol_pnls:
                 _position, _price, _realized, _unrealized, _fee, _commission, _net_pnl = symbol_pnl.pnl(
-                    np.datetime64(timestamp)
+                    timestamp
                 )
                 if math.isfinite(_position):
                     position[i] += _position
