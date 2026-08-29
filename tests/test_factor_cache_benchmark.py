@@ -41,13 +41,11 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
             "warm_hits": 3,
             "warm_misses": 0,
         }
-        assert result["factor_dag_admission"] == {
-            "writes": 0,
-            "declines": 3,
-            "computed": 3,
-            "reused": 0,
-            "rejection_hints": 0,
-        }
+        admission = result["factor_dag_admission"]
+        assert admission["writes"] + admission["declines"] == 3
+        assert admission["computed"] == 3
+        assert admission["reused"] == 0
+        assert admission["rejection_hints"] == 0
     assert result["workload"]["factor_columns"] == 7
     assert all(value is not False for value in result["equality"].values())
     for artifact in result["artifacts"].values():

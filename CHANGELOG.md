@@ -10,6 +10,7 @@
 - Add backward-compatible native segment v3 with XXH64 chunk validation and use it for new factor-store generations.
 - Recalibrate v3 admission defaults and record 1M/10M end-to-end DAG speedups.
 - Add bounded, dry-run-first, lease-safe and resumable v1/v2-to-v3 factor migration.
+- Add reproducible migration latency, allocation-amplification, and Linux device-delta benchmarking.
 
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.

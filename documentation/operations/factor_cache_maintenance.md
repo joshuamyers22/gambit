@@ -45,6 +45,20 @@ to reclaim unleased legacy generations. Reruns skip completed v3 nodes, making a
 partially completed migration resumable. Use repeated `--node-key` arguments to
 restrict the operation to explicitly selected nodes.
 
+Before migrating a large cache, reproduce temporary allocation and device-write
+costs on the target filesystem:
+
+```bash
+.venv/bin/python benchmarks/factor_migration_benchmark.py \
+  --rows 1000000 10000000 --columns 3 \
+  --cache-directory /cache/gambit-migration-benchmark \
+  --output migration-benchmark.json
+```
+
+Use a dedicated empty benchmark directory. The script creates and later collects
+its legacy generation, but it leaves the final v3 fixture for inspection; remove
+the benchmark directory separately after reviewing the result.
+
 ## Maintain
 
 First inspect a dry-run:
