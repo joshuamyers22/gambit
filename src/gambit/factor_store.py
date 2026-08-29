@@ -375,6 +375,7 @@ def migrate_factor_nodes_to_v3(
     max_additional_bytes: int | None = None,
     reserve_free_bytes: int = 0,
     dry_run: bool = True,
+    plan_collection: bool = False,
 ) -> dict[str, object]:
     """Plan or rewrite legacy indexed nodes as verified immutable v3 generations."""
     if node_keys is not None and any(_NODE_KEY_PATTERN.fullmatch(key) is None for key in node_keys):
@@ -520,6 +521,7 @@ def migrate_factor_nodes_to_v3(
         )
     else:
         metrics_recorded = None
+    collection_plan = collect_garbage(store, dry_run=True) if plan_collection and not dry_run else None
     return {
         "eligible_nodes": plan,
         "planned_nodes": planned,
@@ -533,6 +535,7 @@ def migrate_factor_nodes_to_v3(
         "dry_run": dry_run,
         "checkpoint_recorded": checkpoint_recorded,
         "metrics_recorded": metrics_recorded,
+        "collection_plan": collection_plan,
     }
 
 

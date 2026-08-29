@@ -122,6 +122,20 @@ def _publish_factor_and_report(root: str, connection) -> None:
     connection.close()
 
 
+def _migrate_then_terminate_after_first_publish(root: str) -> None:
+    import gambit.factor_store as factor_store
+
+    original_publish = factor_store.publish_generation
+
+    def publish_then_terminate(*args, **kwargs) -> NoReturn:
+        original_publish(*args, **kwargs)
+        os._exit(87)
+
+    factor_store.publish_generation = publish_then_terminate
+    factor_store.migrate_factor_nodes_to_v3(root, dry_run=False)
+    raise AssertionError("migration process did not terminate")
+
+
 def _publish_legacy_node(tmp_path, monkeypatch, identity, values) -> str:
     import gambit.factor_store as factor_store
 
@@ -182,7 +196,7 @@ def test_factor_store_migration_is_dry_run_first_verified_and_idempotent(tmp_pat
     assert preview["planned_nodes"][0]["leased"] is True
     assert (tmp_path / "nodes" / identity.node_key).read_text().strip() == old_generation
 
-    applied = migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+    applied = migrate_factor_nodes_to_v3(tmp_path, dry_run=False, plan_collection=True)
     new_generation = applied["migrated_nodes"][0]["new_generation"]
     assert new_generation != old_generation
     assert (tmp_path / "generations" / old_generation).is_dir()
@@ -195,11 +209,14 @@ def test_factor_store_migration_is_dry_run_first_verified_and_idempotent(tmp_pat
     metrics = read_factor_cache_metrics(tmp_path)
     assert metrics.counters["migration_nodes"] == 1
     assert metrics.counters["migration_bytes"] > 0
+    assert old_generation not in applied["collection_plan"]["removed_generations"]
+    assert (tmp_path / "generations" / old_generation).is_dir()
     with open_generation_by_node_key(tmp_path, identity.node_key) as migrated:
         assert migrated["factor"].format_version == 3
         assert np.array_equal(migrated["factor"].values, values, equal_nan=True)
     assert migrate_factor_nodes_to_v3(tmp_path)["planned_nodes"] == []
     lease.close()
+    assert old_generation in collect_garbage(tmp_path, dry_run=True)["removed_generations"]
 
 
 def test_factor_store_migration_respects_space_and_node_limits(tmp_path, monkeypatch) -> None:
@@ -268,6 +285,29 @@ def test_factor_store_migration_continues_after_one_node_fails(tmp_path, monkeyp
     assert checkpoint["status"] == "complete_with_failures"
     assert checkpoint["completed_nodes"] == 1
     assert checkpoint["failed_nodes"] == 1
+
+
+def test_factor_store_migration_resumes_after_process_death(tmp_path, monkeypatch) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identities = (_node_identity("resume-1"), _node_identity("resume-2"))
+    for index, identity in enumerate(identities):
+        _publish_legacy_node(tmp_path, monkeypatch, identity, np.array([float(index)]))
+    context = multiprocessing.get_context("spawn")
+    process = context.Process(target=_migrate_then_terminate_after_first_publish, args=(str(tmp_path),))
+
+    process.start()
+    process.join(timeout=30)
+
+    assert process.exitcode == 87
+    resumed_plan = migrate_factor_nodes_to_v3(tmp_path)
+    assert len(resumed_plan["planned_nodes"]) == 1
+    resumed = migrate_factor_nodes_to_v3(tmp_path, dry_run=False)
+    assert len(resumed["migrated_nodes"]) == 1
+    assert resumed["failures"] == []
+    for identity in identities:
+        with open_generation_by_node_key(tmp_path, identity.node_key) as lease:
+            assert lease["factor"].format_version == 3
 
 
 def test_factor_store_rate_limits_persisted_access_metadata(tmp_path) -> None:

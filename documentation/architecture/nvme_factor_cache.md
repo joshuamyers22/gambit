@@ -234,6 +234,10 @@ after every node. Per-node operational failures do not hide successful pointer
 switches or stop later independent nodes. Persistent metrics schema v2 adds fixed
 migration node, byte, failure, and conflict counters; v1 counter files are upgraded
 losslessly on their next write.
+The optional post-migration collection result is always a dry-run. Forced-process
+termination immediately after a pointer switch is recoverable: the pointer itself
+marks that node complete, so a subsequent plan skips it even when the advisory
+batch checkpoint was not updated.
 
 Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.

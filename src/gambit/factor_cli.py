@@ -120,6 +120,11 @@ def _parser() -> argparse.ArgumentParser:
     migrate.add_argument("--max-additional-bytes", type=_parse_bytes)
     migrate.add_argument("--reserve-free-bytes", type=_parse_bytes, default=0)
     migrate.add_argument("--apply", action="store_true", help="publish v3 replacements; default is dry-run")
+    migrate.add_argument(
+        "--plan-collection",
+        action="store_true",
+        help="after apply, preview separately reclaimable legacy generations",
+    )
     migrate.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
     return parser
 
@@ -205,6 +210,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 max_additional_bytes=parsed.max_additional_bytes,
                 reserve_free_bytes=parsed.reserve_free_bytes,
                 dry_run=not parsed.apply,
+                plan_collection=parsed.plan_collection,
             )
             result_ok = not result["failures"]
         else:  # pragma: no cover - argparse enforces the command set

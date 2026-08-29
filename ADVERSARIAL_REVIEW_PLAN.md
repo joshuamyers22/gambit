@@ -479,6 +479,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   isolated operational failures, emits structured per-node results and nonzero CLI
   status, and persists fixed-cardinality node/byte/failure/conflict metrics with a
   lossless metrics-v1 reader upgrade.
+  Forced termination after the first durable switch in a multi-node batch now has
+  explicit resume coverage. Optional post-migration collection is preview-only and
+  excludes still-leased legacy generations; deletion remains a separate apply step.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

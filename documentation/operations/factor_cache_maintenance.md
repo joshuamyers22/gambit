@@ -35,7 +35,8 @@ repeating it with `--apply`:
 gambit-factor-cache migrate /cache/gambit \
   --max-nodes 10 --max-additional-bytes 20GiB --reserve-free-bytes 50GiB
 gambit-factor-cache migrate /cache/gambit \
-  --max-nodes 10 --max-additional-bytes 20GiB --reserve-free-bytes 50GiB --apply
+  --max-nodes 10 --max-additional-bytes 20GiB --reserve-free-bytes 50GiB \
+  --apply --plan-collection
 ```
 
 Apply creates and reopens a new immutable v3 generation, verifies exact values,
@@ -53,6 +54,9 @@ any failure is present. Lifetime metrics include migrated nodes/bytes, failures,
 and concurrent-pointer conflicts. Check `checkpoint_recorded` and
 `metrics_recorded` in command output because these post-publication records are
 best effort and cannot roll back an already committed pointer.
+`--plan-collection` performs only a post-migration garbage-collection dry-run; it
+never deletes the legacy generation. Leased sources are excluded from that plan.
+Apply collection later as a separate reviewed command.
 
 Before migrating a large cache, reproduce temporary allocation and device-write
 costs on the target filesystem:

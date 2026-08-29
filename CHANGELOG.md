@@ -12,6 +12,7 @@
 - Add bounded, dry-run-first, lease-safe and resumable v1/v2-to-v3 factor migration.
 - Add reproducible migration latency, allocation-amplification, and Linux device-delta benchmarking.
 - Add resilient per-node migration reporting, atomic progress checkpoints, and backward-compatible migration metrics.
+- Add forced-termination migration resume coverage and preview-only post-migration collection planning.
 
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.
