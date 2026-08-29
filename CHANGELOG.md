@@ -13,6 +13,8 @@ have not yet been released are collected below.
 - Crash-safe experimental factor generations with reader leases and conservative
   garbage collection.
 - Backward-compatible v2 mapped columns with lazy per-chunk slice verification.
+- Canonical factor-DAG identities with manifest-backed node lookup, cross-process
+  publication deduplication, and index-aware garbage collection.
 
 ### Changed
 

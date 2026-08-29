@@ -91,3 +91,28 @@ def test_factor_identity_is_detached_from_mutable_constructor_inputs() -> None:
 
     assert identity.node_key == original_key
     assert identity.snapshot() == original_snapshot
+
+
+def test_factor_identity_round_trips_persisted_snapshot() -> None:
+    identity = _identity()
+
+    restored = FactorNodeIdentity.from_snapshot(identity.snapshot())
+
+    assert restored.snapshot() == identity.snapshot()
+    assert restored.node_key == identity.node_key
+
+
+def test_factor_identity_rejects_unknown_persisted_fields() -> None:
+    snapshot = _identity().snapshot()
+    snapshot["unexpected"] = True
+
+    with pytest.raises(ValueError, match="fields are invalid"):
+        FactorNodeIdentity.from_snapshot(snapshot)
+
+
+def test_factor_identity_rejects_boolean_snapshot_version() -> None:
+    snapshot = _identity().snapshot()
+    snapshot["version"] = True
+
+    with pytest.raises(ValueError, match="version is invalid"):
+        FactorNodeIdentity.from_snapshot(snapshot)

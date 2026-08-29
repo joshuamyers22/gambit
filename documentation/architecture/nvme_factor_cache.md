@@ -24,6 +24,27 @@ cannot change an existing identity. Changing any identity dimension invalidates
 the node. The earlier `factor_node_key` string helper remains available only for
 compatibility with initial experiments; new DAG integration uses the strict type.
 
+## Identity index and cache reuse
+
+Strict nodes are published through `publish_factor_node`. The canonical identity
+snapshot is embedded in the generation manifest, and `nodes/<node-key>` atomically
+maps the identity to its immutable generation. `open_generation_by_node_key`
+validates the pointer, manifest, reconstructed identity hash, segment metadata,
+and lease before returning columns. A missing key is a cache miss; malformed,
+symlinked, dangling, or hash-inconsistent state is corruption and fails closed.
+
+The writer-lifecycle lock makes same-node publication a check-then-create critical
+section. Concurrent processes therefore converge on the first valid generation;
+later publishers validate and reuse it without rewriting column data. The current
+format accepts only identity schemas exactly matching the supplied, non-nullable
+`float64` columns.
+
+Ordinary orphan collection retains every indexed generation even when it is not
+`CURRENT`, because deleting it would turn a valid cache hit into a dangling index.
+Index-aware capacity eviction will be a separate operation that first removes a
+node pointer atomically, then reclaims its unleased generation. Invalid index state
+aborts collection rather than risking live data.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from gambit.factor_cache import MappedFloat64Column
+from gambit.factor_identity import FactorNodeIdentity
 
 FORMAT = "gambit-factor-generation"
 VERSION = 1
@@ -32,6 +33,8 @@ __all__ = [
     "FactorStoreError",
     "collect_garbage",
     "open_current_generation",
+    "open_generation_by_node_key",
+    "publish_factor_node",
     "publish_generation",
 ]
 
@@ -43,8 +46,17 @@ class FactorStoreError(RuntimeError):
 class FactorGenerationLease(MappingABC[str, Any]):
     """Mapping of opened columns that keeps its generation leased until closed."""
 
-    def __init__(self, generation: str, columns: dict[str, Any], lease_path: Path) -> None:
+    def __init__(
+        self,
+        generation: str,
+        node_key: str,
+        identity: FactorNodeIdentity | None,
+        columns: dict[str, Any],
+        lease_path: Path,
+    ) -> None:
         self.generation = generation
+        self.node_key = node_key
+        self.identity = identity
         self._columns = columns
         self._lease_path = lease_path
         self._closed = False
@@ -118,6 +130,8 @@ def publish_generation(
     root: str | Path,
     node_key: str,
     columns: Mapping[str, NDArray[np.float64]],
+    *,
+    identity: FactorNodeIdentity | None = None,
 ) -> str:
     """Publish one immutable generation and atomically make it current."""
     if MappedFloat64Column is None:
@@ -126,11 +140,25 @@ def publish_generation(
         raise ValueError("columns must not be empty")
     if _NODE_KEY_PATTERN.fullmatch(node_key) is None:
         raise ValueError("node_key must be a lowercase SHA-256 digest")
+    if identity is not None and identity.node_key != node_key:
+        raise ValueError("identity does not hash to node_key")
     if any(_COLUMN_PATTERN.fullmatch(name) is None for name in columns):
         raise ValueError("factor column names must be safe portable identifiers")
 
     store = Path(root)
     with _writer_lock(store):
+        if identity is not None:
+            indexed_generation = _read_node_pointer(store, node_key, missing_ok=True)
+            if indexed_generation is not None:
+                with _store_lock(store, exclusive=False):
+                    lease = _open_and_lease_generation(
+                        store,
+                        indexed_generation,
+                        expected_node_key=node_key,
+                        require_identity=True,
+                    )
+                lease.close()
+                return indexed_generation
         generations = store / "generations"
         generations.mkdir(parents=True, exist_ok=True)
         generation = uuid.uuid4().hex
@@ -164,6 +192,8 @@ def publish_generation(
                 "node_key": node_key,
                 "columns": manifest_columns,
             }
+            if identity is not None:
+                manifest["identity"] = identity.snapshot()
             manifest_path = staging / "manifest.json"
             with manifest_path.open("xb") as file:
                 file.write(_canonical_json(manifest) + b"\n")
@@ -179,11 +209,54 @@ def publish_generation(
                     os.fsync(file.fileno())
                 os.replace(pointer_staging, store / "CURRENT")
                 _fsync_directory(store)
+                if identity is not None:
+                    nodes = store / "nodes"
+                    nodes.mkdir(exist_ok=True)
+                    node_staging = nodes / f".{node_key}-{generation}"
+                    with node_staging.open("xb") as file:
+                        file.write(f"{generation}\n".encode())
+                        file.flush()
+                        os.fsync(file.fileno())
+                    os.replace(node_staging, nodes / node_key)
+                    _fsync_directory(nodes)
             return generation
         except Exception:
             shutil.rmtree(staging, ignore_errors=True)
             pointer_staging.unlink(missing_ok=True)
             raise
+
+
+def publish_factor_node(
+    root: str | Path,
+    identity: FactorNodeIdentity,
+    columns: Mapping[str, NDArray[np.float64]],
+) -> str:
+    """Publish a strict factor identity, reusing an existing valid generation."""
+    schema = {column.name: column for column in identity.output_schema}
+    if set(schema) != set(columns):
+        raise ValueError("identity output schema must exactly match published columns")
+    if any(column.dtype != "float64" or column.nullable for column in schema.values()):
+        raise ValueError("mapped factor storage currently requires non-nullable float64 columns")
+    return publish_generation(root, identity.node_key, columns, identity=identity)
+
+
+def _read_node_pointer(store: Path, node_key: str, *, missing_ok: bool) -> str | None:
+    if _NODE_KEY_PATTERN.fullmatch(node_key) is None:
+        raise ValueError("node_key must be a lowercase SHA-256 digest")
+    pointer = store / "nodes" / node_key
+    if pointer.is_symlink():
+        raise FactorStoreError("factor node index may not use symbolic links")
+    try:
+        generation = pointer.read_text().strip()
+    except FileNotFoundError:
+        if missing_ok:
+            return None
+        raise FactorStoreError("factor node is not cached") from None
+    except OSError as error:
+        raise FactorStoreError("factor node index is unreadable") from error
+    if _GENERATION_PATTERN.fullmatch(generation) is None:
+        raise FactorStoreError("factor node index generation is invalid")
+    return generation
 
 
 def open_current_generation(root: str | Path) -> FactorGenerationLease:
@@ -202,6 +275,32 @@ def _open_and_lease_current(store: Path) -> FactorGenerationLease:
         raise FactorStoreError("factor store has no readable CURRENT generation") from error
     if _GENERATION_PATTERN.fullmatch(generation) is None:
         raise FactorStoreError("factor store CURRENT generation is invalid")
+    return _open_and_lease_generation(store, generation)
+
+
+def open_generation_by_node_key(root: str | Path, node_key: str) -> FactorGenerationLease:
+    """Open and lease a cached generation using its deterministic factor-node key."""
+    if MappedFloat64Column is None:
+        raise FactorStoreError("native mapped-column support is unavailable")
+    store = Path(root)
+    with _store_lock(store, exclusive=False):
+        generation = _read_node_pointer(store, node_key, missing_ok=False)
+        assert generation is not None
+        return _open_and_lease_generation(
+            store,
+            generation,
+            expected_node_key=node_key,
+            require_identity=True,
+        )
+
+
+def _open_and_lease_generation(
+    store: Path,
+    generation: str,
+    *,
+    expected_node_key: str | None = None,
+    require_identity: bool = False,
+) -> FactorGenerationLease:
     generation_path = store / "generations" / generation
     manifest_path = generation_path / "manifest.json"
     if generation_path.is_symlink() or manifest_path.is_symlink():
@@ -217,6 +316,20 @@ def _open_and_lease_current(store: Path) -> FactorGenerationLease:
         or _NODE_KEY_PATTERN.fullmatch(str(manifest.get("node_key", ""))) is None
     ):
         raise FactorStoreError("factor generation manifest identity is invalid")
+    node_key = str(manifest["node_key"])
+    if expected_node_key is not None and node_key != expected_node_key:
+        raise FactorStoreError("factor generation node key does not match its index")
+    identity_snapshot = manifest.get("identity")
+    identity: FactorNodeIdentity | None = None
+    if identity_snapshot is not None:
+        try:
+            identity = FactorNodeIdentity.from_snapshot(identity_snapshot)
+        except (TypeError, ValueError) as error:
+            raise FactorStoreError("factor generation identity snapshot is invalid") from error
+        if identity.node_key != node_key:
+            raise FactorStoreError("factor generation identity hash mismatch")
+    elif require_identity:
+        raise FactorStoreError("factor generation has no strict identity snapshot")
     columns = manifest.get("columns")
     if not isinstance(columns, dict) or not columns:
         raise FactorStoreError("factor generation manifest has no columns")
@@ -253,7 +366,7 @@ def _open_and_lease_current(store: Path) -> FactorGenerationLease:
         file.flush()
         os.fsync(file.fileno())
     _fsync_directory(lease_directory)
-    return FactorGenerationLease(generation, opened, lease_path)
+    return FactorGenerationLease(generation, node_key, identity, opened, lease_path)
 
 
 def _local_process_is_dead(pid: int) -> bool:
@@ -275,6 +388,7 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
     removed_leases: list[str] = []
     removed_staging: list[str] = []
     removed_pointers: list[str] = []
+    removed_node_staging: list[str] = []
     with _writer_lock(store):
         with _store_lock(store, exclusive=True):
             try:
@@ -286,6 +400,25 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
             now_ns = time.time_ns()
             leases_root = store / "leases"
             generations = store / "generations"
+            indexed_generations: set[str] = set()
+            nodes = store / "nodes"
+            if nodes.is_symlink():
+                raise FactorStoreError("factor node index may not use symbolic links")
+            if nodes.is_dir():
+                for node_pointer in nodes.iterdir():
+                    if node_pointer.name.startswith("."):
+                        if node_pointer.is_file() and not node_pointer.is_symlink():
+                            node_pointer.unlink()
+                            removed_node_staging.append(node_pointer.name)
+                        continue
+                    if _NODE_KEY_PATTERN.fullmatch(node_pointer.name) is None:
+                        raise FactorStoreError("factor node index contains an invalid key")
+                    generation = _read_node_pointer(store, node_pointer.name, missing_ok=False)
+                    assert generation is not None
+                    generation_path = generations / generation
+                    if not generation_path.is_dir() or generation_path.is_symlink():
+                        raise FactorStoreError("factor node index references a missing generation")
+                    indexed_generations.add(generation)
             for generation_path in generations.iterdir():
                 generation = generation_path.name
                 if generation.startswith(".staging-"):
@@ -293,7 +426,11 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
                         shutil.rmtree(generation_path)
                         removed_staging.append(generation)
                     continue
-                if generation == current or _GENERATION_PATTERN.fullmatch(generation) is None:
+                if (
+                    generation == current
+                    or generation in indexed_generations
+                    or _GENERATION_PATTERN.fullmatch(generation) is None
+                ):
                     continue
                 lease_directory = leases_root / generation
                 if lease_directory.is_symlink():
@@ -326,9 +463,12 @@ def collect_garbage(root: str | Path, *, stale_lease_seconds: float = 86400.0) -
             _fsync_directory(generations)
             if removed_pointers:
                 _fsync_directory(store)
+            if removed_node_staging:
+                _fsync_directory(nodes)
     return {
         "removed_generations": removed_generations,
         "removed_leases": removed_leases,
         "removed_staging": removed_staging,
         "removed_pointers": removed_pointers,
+        "removed_node_staging": removed_node_staging,
     }

@@ -384,7 +384,11 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   parent lineage, named input SHA-256 fingerprints, transform name/version,
   normalized parameters, ordered output schema, row-order semantics, and research
   context. It rejects ambiguous or non-finite values and seals its payload against
-  mutation of caller-owned dictionaries. Store lookup/reuse by this key is next.
+  mutation of caller-owned dictionaries. Strict identity snapshots are now stored
+  in generation manifests and atomically indexed by node key. Lookup reconstructs
+  and re-hashes the identity, leases the generation, and fails closed on corruption.
+  The writer lock deduplicates concurrent same-node publication, while garbage
+  collection preserves indexed nodes. Factor-execution integration is next.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
   Immutable v1 segments now have atomic generation publication, strict manifests,

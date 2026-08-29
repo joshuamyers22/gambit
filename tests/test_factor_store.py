@@ -11,16 +11,31 @@ import numpy as np
 import pytest
 
 from gambit.factor_cache import MappedFloat64Column
+from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 from gambit.factor_store import (
     FactorStoreError,
     collect_garbage,
     open_current_generation,
+    open_generation_by_node_key,
+    publish_factor_node,
     publish_generation,
 )
 
 pytestmark = pytest.mark.native
 NODE_A = "a" * 64
 NODE_B = "b" * 64
+
+
+def _node_identity(version: str = "1") -> FactorNodeIdentity:
+    return FactorNodeIdentity(
+        transform="tests.factor",
+        transform_version=version,
+        input_fingerprints={"prices": NODE_A},
+        parameters={"window": 20},
+        output_schema=(FactorColumnSchema("factor", "float64"),),
+        row_ordering=("timestamp_ns",),
+        research_context={"calendar": "XNYS"},
+    )
 
 
 def _terminate_process() -> NoReturn:
@@ -96,6 +111,12 @@ def _collect_and_report(root: str, connection) -> None:
     connection.close()
 
 
+def _publish_factor_and_report(root: str, connection) -> None:
+    generation = publish_factor_node(root, _node_identity(), {"factor": np.array([1.0, 2.0])})
+    connection.send(generation)
+    connection.close()
+
+
 def test_factor_store_atomically_publishes_generations(tmp_path) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
@@ -108,6 +129,91 @@ def test_factor_store_atomically_publishes_generations(tmp_path) -> None:
     assert np.array_equal(current["alpha"].values, np.array([3.0, 4.0]))
     assert (tmp_path / "generations" / first / "manifest.json").is_file()
     assert (tmp_path / "CURRENT").read_text() == f"{second}\n"
+
+
+def test_factor_store_persists_and_opens_strict_identity_by_node_key(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identity = _node_identity()
+    generation = publish_factor_node(tmp_path, identity, {"factor": np.array([1.0, 2.0])})
+
+    with open_generation_by_node_key(tmp_path, identity.node_key) as cached:
+        assert cached.generation == generation
+        assert cached.node_key == identity.node_key
+        assert cached.identity is not None
+        assert cached.identity.snapshot() == identity.snapshot()
+        assert np.array_equal(cached["factor"].values, np.array([1.0, 2.0]))
+    manifest = json.loads((tmp_path / "generations" / generation / "manifest.json").read_text())
+    assert manifest["identity"] == identity.snapshot()
+
+
+def test_factor_store_reuses_valid_generation_for_same_node_key(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    identity = _node_identity()
+    first = publish_factor_node(tmp_path, identity, {"factor": np.array([1.0, 2.0])})
+    reused = publish_factor_node(tmp_path, identity, {"factor": np.array([99.0, 100.0])})
+
+    assert reused == first
+    assert len(list((tmp_path / "generations").glob("[0-9a-f]" * 32))) == 1
+    with open_generation_by_node_key(tmp_path, identity.node_key) as cached:
+        assert np.array_equal(cached["factor"].values, np.array([1.0, 2.0]))
+
+
+def test_factor_store_same_node_publication_is_deduplicated_across_processes(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    context = multiprocessing.get_context("spawn")
+    connections = [context.Pipe() for _ in range(2)]
+    processes = [
+        context.Process(target=_publish_factor_and_report, args=(str(tmp_path), child))
+        for _, child in connections
+    ]
+    for (parent, child), process in zip(connections, processes):
+        process.start()
+        child.close()
+    generations = [parent.recv() for parent, _ in connections]
+    for (parent, _), process in zip(connections, processes):
+        parent.close()
+        process.join(timeout=30)
+        assert process.exitcode == 0
+
+    assert generations[0] == generations[1]
+    assert len(list((tmp_path / "generations").glob("[0-9a-f]" * 32))) == 1
+
+
+def test_factor_store_node_lookup_miss_and_identity_tampering_fail_closed(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    with pytest.raises(FactorStoreError, match="not cached"):
+        open_generation_by_node_key(tmp_path, NODE_A)
+
+    identity = _node_identity()
+    generation = publish_factor_node(tmp_path, identity, {"factor": np.array([1.0])})
+    manifest_path = tmp_path / "generations" / generation / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["identity"]["parameters"]["window"] = 21
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(FactorStoreError, match="hash mismatch"):
+        open_generation_by_node_key(tmp_path, identity.node_key)
+
+
+def test_factor_store_rejects_schema_that_storage_cannot_honor(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    wrong_name = _node_identity()
+    with pytest.raises(ValueError, match="exactly match"):
+        publish_factor_node(tmp_path, wrong_name, {"other": np.array([1.0])})
+    nullable = FactorNodeIdentity(
+        transform="tests.factor",
+        transform_version="1",
+        input_fingerprints={"prices": NODE_A},
+        output_schema=(FactorColumnSchema("factor", "float64", nullable=True),),
+        row_ordering=("timestamp_ns",),
+    )
+    with pytest.raises(ValueError, match="non-nullable float64"):
+        publish_factor_node(tmp_path, nullable, {"factor": np.array([1.0])})
 
 
 def test_factor_store_ignores_orphaned_staging_directory(tmp_path) -> None:
@@ -261,6 +367,22 @@ def test_factor_store_garbage_collection_respects_active_lease(tmp_path) -> None
     after_close = collect_garbage(tmp_path)
     assert after_close["removed_generations"] == [first]
     assert not (tmp_path / "generations" / first).exists()
+
+
+def test_factor_store_garbage_collection_preserves_indexed_nodes(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first_identity = _node_identity("1")
+    second_identity = _node_identity("2")
+    first = publish_factor_node(tmp_path, first_identity, {"factor": np.array([1.0])})
+    publish_factor_node(tmp_path, second_identity, {"factor": np.array([2.0])})
+
+    result = collect_garbage(tmp_path)
+
+    assert result["removed_generations"] == []
+    assert (tmp_path / "generations" / first).is_dir()
+    with open_generation_by_node_key(tmp_path, first_identity.node_key) as cached:
+        assert cached["factor"].values[0] == 1.0
 
 
 def test_factor_store_garbage_collection_respects_cross_process_lease(tmp_path) -> None:

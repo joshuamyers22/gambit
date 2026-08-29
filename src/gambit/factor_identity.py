@@ -123,6 +123,72 @@ class FactorNodeIdentity:
         """Return the canonical, JSON-compatible identity payload."""
         return json.loads(self._canonical_payload)
 
+    @classmethod
+    def from_snapshot(cls, snapshot: object) -> FactorNodeIdentity:
+        """Validate and reconstruct a persisted canonical identity payload."""
+        if not isinstance(snapshot, dict) or set(snapshot) != {
+            "format",
+            "version",
+            "parents",
+            "inputs",
+            "transform",
+            "parameters",
+            "output_schema",
+            "row_ordering",
+            "research_context",
+        }:
+            raise ValueError("factor identity snapshot fields are invalid")
+        if (
+            snapshot["format"] != IDENTITY_FORMAT
+            or type(snapshot["version"]) is not int
+            or snapshot["version"] != IDENTITY_VERSION
+        ):
+            raise ValueError("factor identity snapshot version is invalid")
+        transform = snapshot["transform"]
+        if not isinstance(transform, dict) or set(transform) != {"name", "version"}:
+            raise ValueError("factor identity transform is invalid")
+        parents = snapshot["parents"]
+        inputs = snapshot["inputs"]
+        schema = snapshot["output_schema"]
+        ordering = snapshot["row_ordering"]
+        parameters = snapshot["parameters"]
+        context = snapshot["research_context"]
+        if not isinstance(parents, list) or any(not isinstance(value, str) for value in parents):
+            raise ValueError("factor identity parents are invalid")
+        if not isinstance(inputs, dict):
+            raise ValueError("factor identity inputs are invalid")
+        if not isinstance(schema, list):
+            raise ValueError("factor identity output schema is invalid")
+        if not isinstance(ordering, list) or any(not isinstance(value, str) for value in ordering):
+            raise ValueError("factor identity row ordering is invalid")
+        if not isinstance(parameters, dict) or not isinstance(context, dict):
+            raise ValueError("factor identity mappings are invalid")
+        columns: list[FactorColumnSchema] = []
+        for column in schema:
+            if not isinstance(column, dict) or set(column) != {"name", "dtype", "nullable"}:
+                raise ValueError("factor identity output schema is invalid")
+            if (
+                not isinstance(column["name"], str)
+                or not isinstance(column["dtype"], str)
+                or not isinstance(column["nullable"], bool)
+            ):
+                raise ValueError("factor identity output schema is invalid")
+            columns.append(FactorColumnSchema(column["name"], column["dtype"], column["nullable"]))
+        if not isinstance(transform["name"], str) or not isinstance(transform["version"], str):
+            raise ValueError("factor identity transform is invalid")
+        if any(not isinstance(name, str) or not isinstance(value, str) for name, value in inputs.items()):
+            raise ValueError("factor identity inputs are invalid")
+        return cls(
+            transform=transform["name"],
+            transform_version=transform["version"],
+            parents=tuple(parents),
+            input_fingerprints=inputs,
+            parameters=parameters,
+            output_schema=tuple(columns),
+            row_ordering=tuple(ordering),
+            research_context=context,
+        )
+
     @property
     def node_key(self) -> str:
         return hashlib.sha256(self._canonical_payload).hexdigest()
