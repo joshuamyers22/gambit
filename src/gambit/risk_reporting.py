@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
@@ -60,7 +60,7 @@ class StressScenario:
     """Named percentage shocks keyed by symbol, group, asset class, or ``*``."""
 
     name: str
-    shocks: Mapping[str, float] = MappingProxyType({})
+    shocks: Mapping[str, float] = field(default_factory=dict)
     market_shocks: tuple[MarketDataShock, ...] = ()
 
     def __post_init__(self) -> None:

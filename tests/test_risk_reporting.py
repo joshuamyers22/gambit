@@ -65,3 +65,13 @@ def test_scenario_shocks_are_immutable_and_finite() -> None:
     assert scenario.shocks["*"] == -0.1
     with pytest.raises(ValueError, match="finite"):
         StressScenario("bad", {"*": np.nan})
+
+
+def test_scenario_default_shocks_are_per_instance_and_immutable() -> None:
+    first = StressScenario("first")
+    second = StressScenario("second")
+
+    assert first.shocks == second.shocks == {}
+    assert first.shocks is not second.shocks
+    with pytest.raises(TypeError):
+        first.shocks["*"] = -0.1  # type: ignore[index]
