@@ -456,6 +456,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   replacement and a cross-process lock; DAG updates are aggregated once per run,
   and applied evictions report whether their best-effort post-mutation metric write
   succeeded. Health findings produce a nonzero exit status for schedulers.
+  Stable label-free Prometheus/OpenMetrics export and a dedicated overhead benchmark
+  are now present. Conservative Linux sysfs telemetry reports cumulative host-device
+  writes when available, while NAND writes and SMART wear remain explicitly unmeasured.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

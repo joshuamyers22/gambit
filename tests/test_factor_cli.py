@@ -151,7 +151,10 @@ def test_factor_cache_cli_emits_metrics_as_json_and_prometheus(tmp_path, capsys)
     assert json.loads(capsys.readouterr().out)["counters"]["cache_hits"] == 3
 
     assert main(["metrics", str(tmp_path), "--prometheus"]) == 0
-    assert 'gambit_factor_cache_counter{name="cache_hits"} 3' in capsys.readouterr().out
+    assert "gambit_factor_cache_hits_total 3" in capsys.readouterr().out
+
+    assert main(["metrics", str(tmp_path), "--openmetrics"]) == 0
+    assert capsys.readouterr().out.endswith("# EOF\n")
 
 
 def test_factor_cache_cli_health_reports_threshold_findings(tmp_path, capsys) -> None:

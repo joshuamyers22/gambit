@@ -64,6 +64,7 @@ def test_prometheus_metrics_have_bounded_names(tmp_path) -> None:
     metrics = record_factor_cache_metrics(tmp_path, cache_misses=7)
     text = format_prometheus_metrics(metrics)
 
-    assert 'gambit_factor_cache_counter{name="cache_misses"} 7\n' in text
+    assert "gambit_factor_cache_misses_total 7\n" in text
     assert text.endswith("\n")
     assert len([line for line in text.splitlines() if line.startswith("gambit_")]) == len(COUNTER_NAMES)
+    assert format_prometheus_metrics(metrics, openmetrics=True).endswith("# EOF\n")

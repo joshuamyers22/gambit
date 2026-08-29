@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Sequence
 
+from gambit.factor_device import inspect_factor_cache_device
 from gambit.factor_metrics import (
     FactorMetricsError,
     format_prometheus_metrics,
@@ -59,6 +60,7 @@ def _parser() -> argparse.ArgumentParser:
     metrics = subparsers.add_parser("metrics", help="read persistent lifetime counters")
     metrics.add_argument("root", type=Path)
     metrics.add_argument("--prometheus", action="store_true", help="emit Prometheus text format")
+    metrics.add_argument("--openmetrics", action="store_true", help="emit OpenMetrics text format")
     metrics.add_argument("--output", type=Path, help="write output to this file instead of stdout")
 
     health = subparsers.add_parser("health", help="evaluate cache health thresholds")
@@ -69,6 +71,10 @@ def _parser() -> argparse.ArgumentParser:
     health.add_argument("--max-staging-generations", type=int, default=0)
     health.add_argument("--old-lease-seconds", type=float, default=86400.0)
     health.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
+
+    device = subparsers.add_parser("device", help="inspect conservative host-device write telemetry")
+    device.add_argument("root", type=Path)
+    device.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
 
     calibrate = subparsers.add_parser("calibrate", help="measure native cache costs on a selected device")
     calibrate.add_argument("root", type=Path)
@@ -129,10 +135,15 @@ def main(arguments: Sequence[str] | None = None) -> int:
     try:
         if parsed.command == "inventory":
             result = inspect_factor_cache(parsed.root).snapshot()
+        elif parsed.command == "device":
+            result = inspect_factor_cache_device(parsed.root).snapshot()
         elif parsed.command == "metrics":
             metrics = read_factor_cache_metrics(parsed.root)
-            if parsed.prometheus:
-                _write_text(format_prometheus_metrics(metrics), parsed.output)
+            if parsed.prometheus or parsed.openmetrics:
+                _write_text(
+                    format_prometheus_metrics(metrics, openmetrics=parsed.openmetrics),
+                    parsed.output,
+                )
                 return 0
             result = metrics.snapshot()
         elif parsed.command == "health":

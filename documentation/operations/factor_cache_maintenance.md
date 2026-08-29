@@ -10,12 +10,19 @@ mutation.
 gambit-factor-cache inventory /cache/gambit
 gambit-factor-cache health /cache/gambit --minimum-free-bytes 20GiB --max-cache-bytes 500GiB
 gambit-factor-cache metrics /cache/gambit --prometheus
+gambit-factor-cache metrics /cache/gambit --openmetrics
+gambit-factor-cache device /cache/gambit
 ```
 
 Lifetime counters use a fixed set of names and a process lock. DAG telemetry
 remains the source for per-run node identities and timing; the persistent file
 contains aggregate counts only. An old lease is a warning, not proof that its
 owner is dead. Verify owner liveness before applying garbage collection.
+
+The device command reports cumulative host writes only when Linux sysfs exposes
+the backing block device. It does not infer NAND writes, write amplification, or
+SSD wear. Compare snapshots around an isolated benchmark to obtain a noisy
+whole-device delta; concurrent host I/O remains a confounder.
 
 ## Maintain
 

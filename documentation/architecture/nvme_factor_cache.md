@@ -228,6 +228,10 @@ tick. Per-run node identities and timings remain in `FactorDagTelemetry`; this
 keeps lifetime metrics bounded and avoids exposing factor keys as Prometheus
 labels. The `metrics` and `health` CLI commands provide monitoring without
 mutating cache state. See `documentation/operations/factor_cache_maintenance.md`.
+Prometheus export uses stable, label-free counter names; OpenMetrics export adds
+the required end-of-document marker. Linux device inspection can report cumulative
+512-byte sectors written from sysfs, but deliberately does not equate host writes
+with NAND writes, controller amplification, or NVMe SMART percentage-used wear.
 Spawned-process fault tests terminate publication after a column write, after the
 staging-directory fsync, after the generation-directory fsync, and immediately
 after pointer replacement. They assert that reopening yields the complete old

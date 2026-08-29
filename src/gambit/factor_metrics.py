@@ -24,6 +24,10 @@ COUNTER_NAMES = (
     "corruption_failures",
     "lease_conflicts",
 )
+_PROMETHEUS_NAMES = {
+    name: f"gambit_factor_cache_{name.removeprefix('cache_')}_total"
+    for name in COUNTER_NAMES
+}
 
 
 class FactorMetricsError(RuntimeError):
@@ -143,15 +147,20 @@ def try_record_factor_cache_metrics(root: str | Path, **increments: int) -> bool
     return True
 
 
-def format_prometheus_metrics(metrics: FactorCacheMetrics) -> str:
-    lines = [
-        "# HELP gambit_factor_cache_counter Factor cache lifetime operational counter.",
-        "# TYPE gambit_factor_cache_counter counter",
-    ]
-    lines.extend(
-        f'gambit_factor_cache_counter{{name="{name}"}} {metrics.counters[name]}'
-        for name in COUNTER_NAMES
-    )
+def format_prometheus_metrics(metrics: FactorCacheMetrics, *, openmetrics: bool = False) -> str:
+    """Render fixed-name counters in Prometheus or OpenMetrics text format."""
+    lines: list[str] = []
+    for name in COUNTER_NAMES:
+        metric_name = _PROMETHEUS_NAMES[name]
+        lines.extend(
+            (
+                f"# HELP {metric_name} Gambit factor cache lifetime {name.replace('_', ' ')}.",
+                f"# TYPE {metric_name} counter",
+                f"{metric_name} {metrics.counters[name]}",
+            )
+        )
+    if openmetrics:
+        lines.append("# EOF")
     return "\n".join(lines) + "\n"
 
 
