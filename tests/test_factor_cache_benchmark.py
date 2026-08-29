@@ -27,12 +27,19 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
         assert "native_chunked_mmap_reopen_prefix_read" in names
         assert "native_factor_dag_cache_cold" in names
         assert "native_factor_dag_cache_hit" in names
+        assert "cost_aware_factor_dag" in names
         assert result["factor_dag_cache"] == {
             "nodes": 3,
             "cold_hits": 0,
             "cold_misses": 3,
             "warm_hits": 3,
             "warm_misses": 0,
+        }
+        assert result["factor_dag_admission"] == {
+            "writes": 0,
+            "declines": 3,
+            "computed": 3,
+            "reused": 0,
         }
     assert result["workload"]["factor_columns"] == 7
     assert all(value is not False for value in result["equality"].values())

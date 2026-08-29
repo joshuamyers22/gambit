@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import time
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,11 +23,67 @@ FactorCompute = Callable[[Mapping[str, pl.DataFrame]], pl.DataFrame]
 
 
 @dataclass(frozen=True)
+class FactorCacheAdmissionPolicy:
+    """Estimate whether publication will repay its write and future read costs."""
+
+    minimum_expected_uses: int = 2
+    estimated_read_bytes_per_second: float = 900 * 1024 * 1024
+    estimated_write_bytes_per_second: float = 400 * 1024 * 1024
+    fixed_read_seconds: float = 0.001
+    fixed_write_seconds: float = 0.002
+    minimum_speedup: float = 1.1
+    force_admission: bool = False
+
+    def __post_init__(self) -> None:
+        if self.minimum_expected_uses < 1:
+            raise ValueError("minimum_expected_uses must be positive")
+        if (
+            not math.isfinite(self.estimated_read_bytes_per_second)
+            or not math.isfinite(self.estimated_write_bytes_per_second)
+            or self.estimated_read_bytes_per_second <= 0
+            or self.estimated_write_bytes_per_second <= 0
+        ):
+            raise ValueError("estimated cache bandwidth must be positive")
+        if (
+            not math.isfinite(self.fixed_read_seconds)
+            or not math.isfinite(self.fixed_write_seconds)
+            or self.fixed_read_seconds < 0
+            or self.fixed_write_seconds < 0
+        ):
+            raise ValueError("fixed cache costs must be non-negative")
+        if not math.isfinite(self.minimum_speedup) or self.minimum_speedup <= 0:
+            raise ValueError("minimum_speedup must be positive")
+
+    @classmethod
+    def always(cls) -> FactorCacheAdmissionPolicy:
+        """Preserve unconditional caching for experiments and compatibility."""
+        return cls(force_admission=True)
+
+    def admit(self, *, compute_seconds: float, output_bytes: int, expected_uses: int) -> bool:
+        if not math.isfinite(compute_seconds) or compute_seconds < 0 or output_bytes < 0 or expected_uses < 1:
+            raise ValueError("cache admission measurements must be non-negative")
+        if self.force_admission:
+            return True
+        if expected_uses < self.minimum_expected_uses:
+            return False
+        read_seconds = self.fixed_read_seconds + output_bytes / self.estimated_read_bytes_per_second
+        write_seconds = self.fixed_write_seconds + output_bytes / self.estimated_write_bytes_per_second
+        uncached_seconds = compute_seconds * expected_uses
+        cached_seconds = compute_seconds + write_seconds + read_seconds * (expected_uses - 1)
+        return uncached_seconds >= cached_seconds * self.minimum_speedup
+
+
+@dataclass(frozen=True)
 class PolarsFactorNode:
     """One topologically ordered factor node and its deterministic computation."""
 
     identity: FactorNodeIdentity
     compute: FactorCompute
+    expected_uses: int = 2
+
+    def __post_init__(self) -> None:
+        if self.expected_uses < 1:
+            raise ValueError("expected_uses must be positive")
 
 
 @dataclass(frozen=True)
@@ -34,6 +92,9 @@ class FactorDagTelemetry:
 
     cache_hits: tuple[str, ...]
     cache_misses: tuple[str, ...]
+    cache_writes: tuple[str, ...] = ()
+    cache_declines: tuple[str, ...] = ()
+    compute_measurements: tuple[tuple[str, float, int], ...] = ()
 
     @property
     def nodes_reused(self) -> int:
@@ -92,8 +153,13 @@ class FactorDagExecution(Mapping[str, pl.DataFrame]):
 class PolarsFactorDagExecutor:
     """Execute topologically sorted nodes while reusing valid mapped generations."""
 
-    def __init__(self, cache_root: str | Path) -> None:
+    def __init__(
+        self,
+        cache_root: str | Path,
+        admission_policy: FactorCacheAdmissionPolicy | None = None,
+    ) -> None:
         self._cache_root = Path(cache_root)
+        self._admission_policy = admission_policy or FactorCacheAdmissionPolicy()
 
     def execute(self, nodes: tuple[PolarsFactorNode, ...]) -> FactorDagExecution:
         if not nodes:
@@ -102,6 +168,9 @@ class PolarsFactorDagExecutor:
         leases: list[FactorGenerationLease] = []
         hits: list[str] = []
         misses: list[str] = []
+        writes: list[str] = []
+        declines: list[str] = []
+        measurements: list[tuple[str, float, int]] = []
         try:
             for node in nodes:
                 node_key = node.identity.node_key
@@ -116,10 +185,22 @@ class PolarsFactorDagExecutor:
                     parent_outputs = MappingProxyType(
                         {parent: outputs[parent] for parent in node.identity.parents}
                     )
+                    compute_started = time.perf_counter()
                     frame = node.compute(parent_outputs)
+                    compute_seconds = time.perf_counter() - compute_started
                     self._validate_output(node.identity, frame)
-                    columns = {name: frame[name].to_numpy() for name in frame.columns}
-                    publish_factor_node(self._cache_root, node.identity, columns)
+                    output_bytes = frame.estimated_size()
+                    measurements.append((node_key, compute_seconds, output_bytes))
+                    if self._admission_policy.admit(
+                        compute_seconds=compute_seconds,
+                        output_bytes=output_bytes,
+                        expected_uses=node.expected_uses,
+                    ):
+                        columns = {name: frame[name].to_numpy() for name in frame.columns}
+                        publish_factor_node(self._cache_root, node.identity, columns)
+                        writes.append(node_key)
+                    else:
+                        declines.append(node_key)
                     outputs[node_key] = frame
                     misses.append(node_key)
                 else:
@@ -134,7 +215,13 @@ class PolarsFactorDagExecutor:
             for lease in leases:
                 lease.close()
             raise
-        telemetry = FactorDagTelemetry(tuple(hits), tuple(misses))
+        telemetry = FactorDagTelemetry(
+            tuple(hits),
+            tuple(misses),
+            tuple(writes),
+            tuple(declines),
+            tuple(measurements),
+        )
         return FactorDagExecution(outputs, leases, telemetry)
 
     @staticmethod
@@ -151,6 +238,7 @@ class PolarsFactorDagExecutor:
 __all__ = [
     "FactorDagExecution",
     "FactorDagTelemetry",
+    "FactorCacheAdmissionPolicy",
     "PolarsFactorDagExecutor",
     "PolarsFactorNode",
 ]

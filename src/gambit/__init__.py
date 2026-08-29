@@ -25,7 +25,13 @@ from gambit.factor_cache import (
     read_reference_float64,
     write_reference_float64,
 )
-from gambit.factor_dag import FactorDagExecution, FactorDagTelemetry, PolarsFactorDagExecutor, PolarsFactorNode
+from gambit.factor_dag import (
+    FactorCacheAdmissionPolicy,
+    FactorDagExecution,
+    FactorDagTelemetry,
+    PolarsFactorDagExecutor,
+    PolarsFactorNode,
+)
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 from gambit.holiday_calendars import Calendar, get_date_from_weekday
 from gambit.instruments import AssetClass, InstrumentSpec, Tradability
@@ -149,6 +155,7 @@ __all__ = [
     "Experiment",
     "FixedPercentageSlippage",
     "FactorColumnSchema",
+    "FactorCacheAdmissionPolicy",
     "FactorDagExecution",
     "FactorDagTelemetry",
     "FactorNodeIdentity",

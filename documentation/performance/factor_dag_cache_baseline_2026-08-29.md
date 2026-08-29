@@ -28,3 +28,16 @@ file containing the complete output.
   computation materially exceeds lookup and verification cost.
 - Add node cost/size telemetry and a cache policy capable of declining low-value
   writes before integrating this executor into production backtests.
+
+## Admission-policy follow-up
+
+The executor now measures each missed node and supports a cost-aware admission
+policy. It estimates publication plus future mapped reads against repeated compute
+over an explicit expected-use count. With conservative default calibration
+(900 MiB/s reads, 400 MiB/s writes, 1 ms fixed read cost, 2 ms fixed write cost,
+and a required 1.1× gain), the benchmark's three cheap nodes are all declined.
+This avoids persisting a cache that the measurements already show would lose.
+At one million rows, the cost-aware execution took 27.65 ms versus 23.91 ms for
+direct recomputation and 58.09 ms for forced warm cache hits. The remaining miss
+and measurement overhead motivates persistent rejection metadata before production
+integration.

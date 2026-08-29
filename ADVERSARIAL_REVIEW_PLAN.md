@@ -395,6 +395,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   reuse at only 0.37×/0.42× the speed of recomputing this cheap Polars workload;
   Polars IPC remains the full-result baseline. Broader integration is gated on a
   cost-aware policy and workloads with genuinely expensive or highly shared nodes.
+  An admission estimator now compares measured compute time with calibrated write
+  and mapped-read costs over an expected-use horizon, records decisions and node
+  measurements, and declines low-value writes. Calibration on representative NVMe
+  hardware and persistent policy metrics remain open.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
   Immutable v1 segments now have atomic generation publication, strict manifests,
@@ -416,6 +420,8 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   and explicit park-timeout sweeps remain open.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
+  Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;
+  persistent access metadata, capacity enforcement, and wear telemetry remain open.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

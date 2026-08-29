@@ -17,6 +17,8 @@ have not yet been released are collected below.
   publication deduplication, and index-aware garbage collection.
 - A Polars factor-DAG executor with leased mapped-column reuse, cache telemetry,
   and lineage-driven partial invalidation.
+- Cost-aware factor-node admission based on measured computation, output size,
+  expected reuse, and calibrated mapped read/write cost estimates.
 
 ### Changed
 

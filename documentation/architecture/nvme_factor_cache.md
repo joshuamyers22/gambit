@@ -60,6 +60,20 @@ Telemetry records exact hit and miss node keys. Changing a node identity changes
 the parent key embedded in every descendant identity, invalidating only that node
 and its dependent subgraph while unrelated ancestors remain reusable.
 
+`FactorCacheAdmissionPolicy` prevents unconditional NVMe writes. After a miss, the
+executor measures callback time and Polars output bytes, then estimates total cost
+over the node's declared expected-use horizon:
+
+`compute + publish + (expected uses - 1) × mapped read`
+
+The node is admitted only when that estimate beats repeated recomputation by the
+configured minimum speedup. Read/write bandwidth and fixed operation costs are
+explicit calibration inputs; invalid or non-finite values fail early. Telemetry
+records admitted keys, declined keys, and `(node key, compute seconds, bytes)` for
+every computed node. The executor retains an `always()` policy for controlled
+experiments and backward-compatible comparisons; cost-aware admission is the
+executor default.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 
 import polars as pl
 import pytest
 
 from gambit.factor_cache import MappedFloat64Column
-from gambit.factor_dag import PolarsFactorDagExecutor, PolarsFactorNode
+from gambit.factor_dag import FactorCacheAdmissionPolicy, PolarsFactorDagExecutor, PolarsFactorNode
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 
 pytestmark = pytest.mark.native
@@ -73,7 +74,7 @@ def test_factor_dag_reuses_all_nodes_on_second_execution(tmp_path) -> None:
         pytest.skip("native factor cache extension is not built")
     calls: dict[str, int] = {}
     nodes, identities = _branching_dag(calls)
-    executor = PolarsFactorDagExecutor(tmp_path)
+    executor = PolarsFactorDagExecutor(tmp_path, FactorCacheAdmissionPolicy.always())
 
     with executor.execute(nodes) as first:
         assert first.telemetry.nodes_computed == 4
@@ -92,7 +93,7 @@ def test_factor_dag_partially_invalidates_changed_branch_and_descendants(tmp_pat
         pytest.skip("native factor cache extension is not built")
     calls: dict[str, int] = {}
     initial_nodes, initial_identities = _branching_dag(calls)
-    executor = PolarsFactorDagExecutor(tmp_path)
+    executor = PolarsFactorDagExecutor(tmp_path, FactorCacheAdmissionPolicy.always())
     with executor.execute(initial_nodes):
         pass
     changed_nodes, changed_identities = _branching_dag(calls, right_version="2")
@@ -138,3 +139,47 @@ def test_closed_factor_dag_execution_rejects_access(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match="closed"):
         execution[identities[0].node_key]
+
+
+def test_cost_aware_policy_declines_nodes_without_enough_expected_reuse(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    calls: dict[str, int] = {}
+    nodes, _ = _branching_dag(calls)
+    policy = FactorCacheAdmissionPolicy(minimum_expected_uses=3)
+    executor = PolarsFactorDagExecutor(tmp_path, policy)
+
+    with executor.execute(nodes) as first:
+        assert first.telemetry.cache_writes == ()
+        assert first.telemetry.cache_declines == tuple(node.identity.node_key for node in nodes)
+        assert len(first.telemetry.compute_measurements) == 4
+    with executor.execute(nodes) as second:
+        assert second.telemetry.nodes_reused == 0
+        assert second.telemetry.nodes_computed == 4
+
+    assert calls == {"root": 2, "left": 2, "right": 2, "leaf": 2}
+
+
+def test_cost_aware_policy_admits_only_when_estimated_total_cost_improves() -> None:
+    policy = FactorCacheAdmissionPolicy(
+        estimated_read_bytes_per_second=1_000,
+        estimated_write_bytes_per_second=500,
+        fixed_read_seconds=0,
+        fixed_write_seconds=0,
+        minimum_speedup=1.1,
+    )
+
+    assert policy.admit(compute_seconds=10.0, output_bytes=1_000, expected_uses=5)
+    assert not policy.admit(compute_seconds=0.1, output_bytes=1_000, expected_uses=5)
+    assert not policy.admit(compute_seconds=10.0, output_bytes=1_000, expected_uses=1)
+
+
+def test_factor_cache_policy_validates_configuration_and_measurements() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        FactorCacheAdmissionPolicy(minimum_expected_uses=0)
+    with pytest.raises(ValueError, match="non-negative"):
+        FactorCacheAdmissionPolicy().admit(compute_seconds=-1, output_bytes=0, expected_uses=2)
+    with pytest.raises(ValueError, match="positive"):
+        FactorCacheAdmissionPolicy(estimated_read_bytes_per_second=math.inf)
+    with pytest.raises(ValueError, match="non-negative"):
+        FactorCacheAdmissionPolicy().admit(compute_seconds=math.nan, output_bytes=0, expected_uses=2)

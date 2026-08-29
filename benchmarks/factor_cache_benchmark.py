@@ -24,7 +24,7 @@ import polars as pl
 
 from gambit.configuration import fingerprint_polars_frame
 from gambit.factor_cache import MappedFloat64Column
-from gambit.factor_dag import PolarsFactorDagExecutor, PolarsFactorNode
+from gambit.factor_dag import FactorCacheAdmissionPolicy, PolarsFactorDagExecutor, PolarsFactorNode
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 
 
@@ -402,7 +402,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
 
         dag_cache = cache_directory / "factor-dag"
         dag_nodes, dag_node_keys = build_cached_factor_dag(data)
-        dag_executor = PolarsFactorDagExecutor(dag_cache)
+        dag_executor = PolarsFactorDagExecutor(dag_cache, FactorCacheAdmissionPolicy.always())
         cold_telemetry = None
         hit_telemetry = None
 
@@ -422,6 +422,22 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
 
         measurements.append(
             _measure("native_factor_dag_cache_hit", rows, columns, byte_count, cached_dag_hit, repeats)
+        )
+
+        policy_executor = PolarsFactorDagExecutor(
+            cache_directory / "factor-dag-cost-aware",
+            FactorCacheAdmissionPolicy(),
+        )
+        policy_telemetry = None
+
+        def cost_aware_dag() -> float:
+            nonlocal policy_telemetry
+            with policy_executor.execute(dag_nodes) as execution:
+                policy_telemetry = execution.telemetry
+                return sum_cached_execution(execution, dag_node_keys)
+
+        measurements.append(
+            _measure("cost_aware_factor_dag", rows, columns, byte_count, cost_aware_dag, repeats)
         )
 
     ipc_equal = factors.equals(pl.read_ipc(ipc_path, memory_map=True))
@@ -501,6 +517,16 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
                 "warm_misses": hit_telemetry.nodes_computed,
             }
             if MappedFloat64Column is not None and cold_telemetry is not None and hit_telemetry is not None
+            else None
+        ),
+        "factor_dag_admission": (
+            {
+                "writes": len(policy_telemetry.cache_writes),
+                "declines": len(policy_telemetry.cache_declines),
+                "computed": policy_telemetry.nodes_computed,
+                "reused": policy_telemetry.nodes_reused,
+            }
+            if MappedFloat64Column is not None and policy_telemetry is not None
             else None
         ),
     }
