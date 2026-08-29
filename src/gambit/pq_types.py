@@ -64,7 +64,17 @@ class ContractGroup:
 
     @staticmethod
     def clear_cache() -> None:
-        ContractGroup._instances = {}
+        """Remove cached groups and their contract references.
+
+        ``DEFAULT_CG`` is a module-level singleton imported by strategy code, so
+        replacing it would leave those imports pointing at stale state. Preserve
+        its identity, clear every registered group, and register it as the sole
+        fresh group.
+        """
+        for contract_group in ContractGroup._instances.values():
+            contract_group.clear()
+        DEFAULT_CG.clear()
+        ContractGroup._instances = {DEFAULT_CG.name: DEFAULT_CG}
 
     def clear(self) -> None:
         """Remove all contracts"""
@@ -175,7 +185,7 @@ class Contract:
     @staticmethod
     def clear_cache() -> None:
         """
-        Remove our cache of contract groups
+        Remove the contract cache.
         """
         Contract._instances = dict()
 

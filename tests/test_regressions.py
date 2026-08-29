@@ -6,8 +6,23 @@ import pytest
 from gambit import _io
 from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
-from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
+from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
+
+
+def test_contract_group_cache_clear_removes_contracts_without_replacing_default() -> None:
+    named_group = ContractGroup.get("named")
+    Contract.create("DEFAULT-CONTRACT")
+    Contract.create("NAMED-CONTRACT", named_group)
+
+    Contract.clear_cache()
+    ContractGroup.clear_cache()
+
+    assert DEFAULT_CG.get_contracts() == []
+    assert named_group.get_contracts() == []
+    assert ContractGroup.get_default() is DEFAULT_CG
+    assert ContractGroup.get("DEFAULT") is DEFAULT_CG
+    assert not ContractGroup.exists("named")
 
 
 def _price(_contract, _timestamps, _index, _context):
