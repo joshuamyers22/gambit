@@ -73,6 +73,12 @@ def main() -> None:
                 processor = tracked_call(TickFactorProcessor)
                 assert tracked_call(ring.push_batch, records) == 128
                 assert tracked_call(ring.process_batch, processor, 128) == 128
+                assert tracked_call(ring.push_batch, records) == 128
+                lease = tracked_call(ring.lease_batch, 128)
+                view = tracked_call(lambda: lease.values)
+                lease.close()
+                del view
+                del lease
 
     gc.collect()
 

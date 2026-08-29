@@ -19,6 +19,7 @@ from gambit.execution_costs import (
 from gambit.factor_cache import (
     TICK_DTYPE,
     MappedFloat64Column,
+    TickBatchLease,
     TickFactorProcessor,
     TickRing,
     factor_node_key,
@@ -241,6 +242,7 @@ __all__ = [
     "StressScenario",
     "TICK_DTYPE",
     "TickFactorProcessor",
+    "TickBatchLease",
     "TickRing",
     "TimeInForce",
     "Tradability",

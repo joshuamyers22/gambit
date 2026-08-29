@@ -306,3 +306,11 @@ sequence continuity, quantity/notional totals, mid/spread aggregates, absolute
 returns, and maximum feed latency. Python receives only an aggregate snapshot; tick
 records are not copied out of the ring. This is an experimental processor rather
 than the final factor API.
+
+`lease_batch()` and `wait_lease_batch()` expose an experimental read-only NumPy
+view over the contiguous consumer tail. Only one consumer lease may exist. Closing
+requests release, but the tail cursor advances only after every derived array is
+destroyed; each view retains shared lease state that in turn retains the ring's
+Python owner. A lease stops at wraparound and the next lease exposes the following
+contiguous segment. Competing copied/in-place consumers fail while a lease is
+active. The state/view counters are manipulated only while Python holds the GIL.

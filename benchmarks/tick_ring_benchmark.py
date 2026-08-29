@@ -203,6 +203,93 @@ def benchmark_native_in_place(
     )
 
 
+def benchmark_native_zero_copy(
+    records: np.ndarray,
+    batch_size: int,
+    capacity: int,
+    spin_count: int = 256,
+    park_timeout_seconds: float = 0.01,
+    backoff_count: int = 0,
+    maximum_backoff_seconds: float = 0.0,
+) -> PipelineMeasurement:
+    if TickRing is None:
+        raise RuntimeError("native tick ring extension is not built")
+    ring = TickRing(capacity)
+    consumed = 0
+    sequence_errors = 0
+    calculation_guard = 0.0
+
+    def produce() -> None:
+        offset = 0
+        while offset < len(records):
+            end = min(offset + batch_size, len(records))
+            count = end - offset
+            while ring.capacity - ring.depth < count:
+                time.sleep(0)
+            if ring.push_batch(records[offset:end]) != count:
+                raise RuntimeError("producer capacity invariant failed")
+            offset = end
+
+    def consume() -> None:
+        nonlocal calculation_guard, consumed, sequence_errors
+        previous_price: float | None = None
+        while consumed < len(records):
+            lease = ring.wait_lease_batch(
+                batch_size,
+                spin_count=spin_count,
+                timeout_seconds=park_timeout_seconds,
+                backoff_count=backoff_count,
+                maximum_backoff_seconds=maximum_backoff_seconds,
+            )
+            batch = lease.values
+            if not len(batch):
+                lease.close()
+                del batch
+                continue
+            expected = np.arange(consumed, consumed + len(batch), dtype=np.uint64)
+            sequence_errors += int(np.count_nonzero(batch["sequence"] != expected))
+            calculation_guard += float(np.dot(batch["price"], batch["quantity"]))
+            calculation_guard += float((batch["ask"] - batch["bid"]).sum())
+            if previous_price is not None:
+                calculation_guard += abs(float(batch["price"][0]) / previous_price - 1)
+            previous_price = float(batch["price"][-1])
+            consumed += len(batch)
+            lease.close()
+            del batch
+
+    cpu_start = time.process_time()
+    wall_start = time.perf_counter()
+    producer = threading.Thread(target=produce)
+    consumer = threading.Thread(target=consume)
+    consumer.start()
+    producer.start()
+    producer.join()
+    consumer.join()
+    wall = time.perf_counter() - wall_start
+    cpu = time.process_time() - cpu_start
+    metrics = ring.metrics
+    return PipelineMeasurement(
+        "native_spsc_zero_copy_numpy",
+        len(records),
+        batch_size,
+        capacity,
+        wall,
+        cpu,
+        len(records) / wall,
+        sequence_errors,
+        metrics["dropped"],
+        metrics["spins"],
+        metrics["parks"],
+        park_timeout_seconds,
+        metrics["yields"],
+        metrics["backoffs"],
+        metrics["park_timeouts"],
+        metrics["wakeups"],
+        backoff_count,
+        maximum_backoff_seconds,
+    )
+
+
 def benchmark_python_queue(records: np.ndarray, capacity: int) -> PipelineMeasurement:
     bounded_queue: queue.Queue[int] = queue.Queue(maxsize=capacity)
     sequence_errors = 0
@@ -319,6 +406,17 @@ def run_benchmark(
     if TickRing is not None:
         measurements.append(
             benchmark_native(
+                records,
+                batch_size,
+                capacity,
+                spin_count,
+                park_timeout_seconds,
+                backoff_count,
+                maximum_backoff_seconds,
+            )
+        )
+        measurements.append(
+            benchmark_native_zero_copy(
                 records,
                 batch_size,
                 capacity,

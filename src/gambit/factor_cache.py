@@ -11,9 +11,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 try:
-    from gambit._factor_cache import MappedFloat64Column, TickFactorProcessor, TickRing
+    from gambit._factor_cache import MappedFloat64Column, TickBatchLease, TickFactorProcessor, TickRing
 except ImportError:  # pragma: no cover - supported fallback on platforms without the native extension
     MappedFloat64Column = None
+    TickBatchLease = None
     TickRing = None
     TickFactorProcessor = None
 

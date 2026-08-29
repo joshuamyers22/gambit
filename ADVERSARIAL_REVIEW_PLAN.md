@@ -430,6 +430,12 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   eight-step backoff increased CPU and materially worsened 100us-arrival latency;
   it therefore remains opt-in. Controlled-core replication remains follow-up work.
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
+  A read-only NumPy lease prototype now pins contiguous consumer slots and the ring
+  owner until every derived view is released. Manual/context close defers cursor
+  advancement while views survive; wraparound is split at the storage boundary,
+  and competing consumers are rejected. It improves over copied native batches at
+  large batch sizes but still trails in-place C++ and ordinary NumPy batching.
+  Arrow/Polars adapters remain open; the NumPy lease stays research-facing.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;
   persistent rejection hints now avoid repeated absent-node opens. Aggregated access

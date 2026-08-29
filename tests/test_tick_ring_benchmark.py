@@ -29,6 +29,9 @@ def test_tick_ring_benchmark_smoke() -> None:
     if "native_spsc_in_place_factors" in measurements:
         assert measurements["native_spsc_in_place_factors"]["sequence_errors"] == 0
         assert measurements["native_spsc_in_place_factors"]["rejected_pushes"] == 0
+    if "native_spsc_zero_copy_numpy" in measurements:
+        assert measurements["native_spsc_zero_copy_numpy"]["sequence_errors"] == 0
+        assert measurements["native_spsc_zero_copy_numpy"]["rejected_pushes"] == 0
 
 
 def test_tick_ring_benchmark_matrix_smoke() -> None:

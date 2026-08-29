@@ -10,6 +10,11 @@ namespace gambit {
 template <typename Record>
 class SpscRing {
 public:
+    struct ReadSpan {
+        const Record* data;
+        std::uint64_t count;
+    };
+
     explicit SpscRing(std::uint64_t capacity)
         : capacity_(checked_capacity(capacity)), mask_(capacity_ - 1), slots_(capacity_) {}
 
@@ -46,6 +51,25 @@ public:
         }
         tail_.value.store(tail + count, std::memory_order_release);
         return count;
+    }
+
+    ReadSpan read_span(std::uint64_t maximum) const {
+        const auto tail = tail_.value.load(std::memory_order_relaxed);
+        const auto head = head_.value.load(std::memory_order_acquire);
+        const auto available = head - tail;
+        const auto requested = available < maximum ? available : maximum;
+        const auto contiguous = capacity_ - (tail & mask_);
+        const auto count = requested < contiguous ? requested : contiguous;
+        return ReadSpan{count ? &slots_[tail & mask_] : nullptr, count};
+    }
+
+    void release(std::uint64_t count) {
+        const auto tail = tail_.value.load(std::memory_order_relaxed);
+        const auto head = head_.value.load(std::memory_order_acquire);
+        if (count > head - tail) {
+            throw std::logic_error("ring release exceeds available records");
+        }
+        tail_.value.store(tail + count, std::memory_order_release);
     }
 
     std::uint64_t capacity() const { return capacity_; }

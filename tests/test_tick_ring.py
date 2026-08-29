@@ -1,3 +1,4 @@
+import gc
 import threading
 import time
 
@@ -53,6 +54,96 @@ def test_ring_rejects_newest_records_when_full() -> None:
 
     assert ring.metrics["dropped"] == 1
     assert ring.pop_batch(2)["sequence"].tolist() == [0, 1]
+
+
+def test_zero_copy_lease_is_read_only_and_defers_release_until_view_dies() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(4)
+    ring.push_batch(_ticks(0, 3))
+    lease = ring.lease_batch(3)
+    view = lease.values
+    second_view = lease.values
+
+    assert view["sequence"].tolist() == [0, 1, 2]
+    assert view.flags.writeable is False
+    with pytest.raises(ValueError, match="read-only"):
+        view["sequence"][0] = 99
+    lease.close()
+
+    assert lease.closed is True
+    assert ring.depth == 3
+    assert ring.metrics["active_lease"] is True
+    with pytest.raises(RuntimeError, match="closed"):
+        lease.values
+
+    del view
+    gc.collect()
+
+    assert ring.depth == 3
+    del second_view
+    gc.collect()
+
+    assert ring.depth == 0
+    assert ring.metrics["active_lease"] is False
+    assert ring.metrics["popped"] == 3
+
+
+def test_zero_copy_lease_stops_at_wrap_boundary() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(4)
+    ring.push_batch(_ticks(0, 4))
+    assert ring.pop_batch(3)["sequence"].tolist() == [0, 1, 2]
+    ring.push_batch(_ticks(4, 3))
+
+    with ring.lease_batch(4) as first:
+        assert first.values["sequence"].tolist() == [3]
+    with ring.lease_batch(4) as second:
+        assert second.values["sequence"].tolist() == [4, 5, 6]
+
+    assert ring.depth == 0
+
+
+def test_zero_copy_lease_blocks_other_consumers_and_survives_ring_reference() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(4)
+    ring.push_batch(_ticks(10, 2))
+    lease = ring.lease_batch(2)
+    view = lease.values
+
+    with pytest.raises(RuntimeError, match="already active"):
+        ring.lease_batch(1)
+    with pytest.raises(RuntimeError, match="already active"):
+        ring.pop_batch(1)
+
+    del ring
+    gc.collect()
+    assert view["sequence"].tolist() == [10, 11]
+
+    lease.close()
+    del view
+    del lease
+    gc.collect()
+
+
+def test_zero_copy_context_exception_keeps_retained_view_pinned() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(4)
+    ring.push_batch(_ticks(0, 1))
+    retained = None
+
+    with pytest.raises(RuntimeError, match="research failure"):
+        with ring.lease_batch(1) as lease:
+            retained = lease.values
+            raise RuntimeError("research failure")
+
+    assert ring.depth == 1
+    del retained
+    gc.collect()
+    assert ring.depth == 0
 
 
 def test_wait_releases_gil_then_parks_until_producer_arrives() -> None:
