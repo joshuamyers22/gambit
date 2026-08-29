@@ -139,6 +139,8 @@ gambit-factor-cache collect /nvme/gambit-cache
 gambit-factor-cache collect /nvme/gambit-cache --apply
 gambit-factor-cache evict /nvme/gambit-cache --max-bytes 250GiB --max-nodes 10000
 gambit-factor-cache evict /nvme/gambit-cache --max-bytes 250GiB --max-nodes 10000 --apply
+gambit-factor-cache quota /nvme/gambit-cache --max-cache-bytes 500GiB --reserve-free-bytes 50GiB
+gambit-factor-cache quota /nvme/gambit-cache --max-cache-bytes 500GiB --reserve-free-bytes 50GiB --apply
 ```
 
 `collect` and `evict` are dry-run by default and require `--apply` to mutate the
@@ -147,6 +149,13 @@ same JSON to a file; operational failures also return JSON and a nonzero exit co
 Collection also removes orphaned access and admission records after 30 days by
 default. `--metadata-retention-seconds` adjusts that window; records belonging to
 an indexed node are never removed by retention cleanup.
+
+`quota` accounts for allocated filesystem blocks across the whole cache. It
+triggers above the high watermark (90% by default) or below the reserved free-space
+floor, then evicts unleased LRU nodes toward the low watermark (80% by default).
+This hysteresis avoids repeated single-node eviction near the boundary. Current and
+leased generations remain protected; `limits_satisfied: false` reports when they
+make the requested target impossible.
 
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;

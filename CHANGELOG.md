@@ -28,6 +28,7 @@ have not yet been released are collected below.
 - A JSON `gambit-factor-cache` operations CLI whose collection and eviction
   commands default to dry-run and require explicit `--apply` mutation.
 - Bounded retention for orphaned factor-cache access and admission metadata.
+- Hysteretic whole-cache allocated-space quotas with reserved filesystem capacity.
 
 ### Changed
 

@@ -83,6 +83,34 @@ def test_factor_cache_cli_collection_preview_and_output_file(tmp_path, capsys) -
     assert staging.is_dir()
 
 
+def test_factor_cache_cli_quota_defaults_to_dry_run(tmp_path, capsys) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first = _identity("quota-first")
+    publish_factor_node(tmp_path, first, {"factor": np.array([1.0])})
+    publish_factor_node(tmp_path, _identity("quota-current"), {"factor": np.array([2.0])})
+
+    status = main(
+        [
+            "quota",
+            str(tmp_path),
+            "--max-cache-bytes",
+            "1B",
+            "--high-watermark",
+            "1",
+            "--low-watermark",
+            "0",
+        ]
+    )
+
+    result = json.loads(capsys.readouterr().out)
+    assert status == 0
+    assert result["dry_run"] is True
+    assert result["quota_triggered"] is True
+    assert result["evicted_node_keys"] == [first.node_key]
+    assert (tmp_path / "nodes" / first.node_key).is_file()
+
+
 def test_factor_cache_cli_calibration_accepts_human_sizes(tmp_path, capsys) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")

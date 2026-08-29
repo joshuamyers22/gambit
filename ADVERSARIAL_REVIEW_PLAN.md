@@ -427,7 +427,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   samples now drive byte/node-bounded LRU eviction. Current and leased generations
   fail safe when they prevent a requested bound. Collection now bounds orphaned
   access/admission metadata by age without removing records for indexed nodes.
-  Filesystem-wide quota accounting and device-level wear telemetry remain open.
+  A dry-run-safe whole-cache quota now uses allocated filesystem blocks, high/low
+  watermarks, a reserved free-space floor, and lease-aware LRU reclamation. Device-
+  level wear telemetry remains open.
   Read-only inventory now reports file/allocation bytes, filesystem capacity,
   indexed/unindexed/staging generations, leases, sampled access, rejection hints,
   per-node details, and structured findings. On-device native segment calibration

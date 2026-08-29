@@ -33,6 +33,7 @@ __all__ = [
     "FactorNodeCacheMiss",
     "FactorStoreError",
     "collect_garbage",
+    "enforce_factor_cache_quota",
     "evict_factor_nodes",
     "open_current_generation",
     "open_generation_by_node_key",
@@ -360,6 +361,31 @@ def _generation_stored_bytes(path: Path) -> int:
     return total
 
 
+def _allocated_bytes(path: Path) -> int:
+    return sum(
+        entry.stat().st_blocks * 512
+        for entry in path.rglob("*")
+        if not entry.is_symlink()
+    )
+
+
+def _node_reclaimable_allocated_bytes(store: Path, node_key: str, generation: str) -> int:
+    paths = [
+        store / "generations" / generation,
+        store / "nodes" / node_key,
+        store / "access" / f"{node_key}.json",
+        store / "admission" / f"{node_key}.json",
+    ]
+    total = _allocated_bytes(paths[0]) + paths[0].stat().st_blocks * 512
+    for path in paths[1:]:
+        if path.exists() and not path.is_symlink():
+            total += path.stat().st_blocks * 512
+    lease_directory = store / "leases" / generation
+    if lease_directory.is_dir() and not lease_directory.is_symlink() and not any(lease_directory.iterdir()):
+        total += lease_directory.stat().st_blocks * 512
+    return total
+
+
 def open_current_generation(root: str | Path) -> FactorGenerationLease:
     """Open the current committed generation after strict manifest validation."""
     if MappedFloat64Column is None:
@@ -645,6 +671,9 @@ def evict_factor_nodes(
     *,
     max_bytes: int,
     max_nodes: int | None = None,
+    max_cache_allocated_bytes: int | None = None,
+    minimum_free_bytes: int = 0,
+    trigger_cache_allocated_bytes: int | None = None,
     dry_run: bool = False,
 ) -> dict[str, object]:
     """Evict least-recently-used indexed nodes without deleting current or leased data."""
@@ -652,6 +681,19 @@ def evict_factor_nodes(
         raise ValueError("max_bytes must be a non-negative integer")
     if max_nodes is not None and (type(max_nodes) is not int or max_nodes < 0):
         raise ValueError("max_nodes must be a non-negative integer or None")
+    for name, value in (
+        ("max_cache_allocated_bytes", max_cache_allocated_bytes),
+        ("minimum_free_bytes", minimum_free_bytes),
+        ("trigger_cache_allocated_bytes", trigger_cache_allocated_bytes),
+    ):
+        if value is not None and (type(value) is not int or value < 0):
+            raise ValueError(f"{name} must be a non-negative integer or None")
+    if (
+        trigger_cache_allocated_bytes is not None
+        and max_cache_allocated_bytes is not None
+        and trigger_cache_allocated_bytes < max_cache_allocated_bytes
+    ):
+        raise ValueError("trigger_cache_allocated_bytes must not be below the cache target")
     store = Path(root)
     evicted_node_keys: list[str] = []
     removed_generations: list[str] = []
@@ -668,7 +710,7 @@ def evict_factor_nodes(
             generations = store / "generations"
             if nodes.is_symlink():
                 raise FactorStoreError("factor node index may not use symbolic links")
-            entries: list[tuple[int, str, str, int, bool]] = []
+            entries: list[tuple[int, str, str, int, int, bool]] = []
             if nodes.is_dir():
                 for pointer in nodes.iterdir():
                     node_key = pointer.name
@@ -689,6 +731,9 @@ def evict_factor_nodes(
                     if manifest.get("generation") != generation or manifest.get("node_key") != node_key:
                         raise FactorStoreError("factor node index does not match its generation manifest")
                     stored_bytes = _generation_stored_bytes(generation_path)
+                    reclaimable_allocated_bytes = _node_reclaimable_allocated_bytes(
+                        store, node_key, generation
+                    )
                     created_ns = manifest.get("created_ns", manifest_path.stat().st_mtime_ns)
                     if type(created_ns) is not int or created_ns < 0:
                         raise FactorStoreError("factor generation creation timestamp is invalid")
@@ -699,19 +744,45 @@ def evict_factor_nodes(
                         lease_directory.is_dir() and any(lease_directory.iterdir())
                     )
                     protected = generation == current or leased
-                    entries.append((last_access_ns, node_key, generation, stored_bytes, protected))
+                    entries.append(
+                        (
+                            last_access_ns,
+                            node_key,
+                            generation,
+                            stored_bytes,
+                            reclaimable_allocated_bytes,
+                            protected,
+                        )
+                    )
 
             total_bytes_before = sum(entry[3] for entry in entries)
             total_nodes_before = len(entries)
             total_bytes_after = total_bytes_before
             total_nodes_after = total_nodes_before
+            cache_allocated_bytes_before = _allocated_bytes(store)
+            cache_allocated_bytes_after = cache_allocated_bytes_before
+            filesystem = os.statvfs(store)
+            filesystem_free_bytes_before = filesystem.f_bavail * filesystem.f_frsize
+            filesystem_free_bytes_after = filesystem_free_bytes_before
+            quota_triggered = (
+                trigger_cache_allocated_bytes is not None
+                and cache_allocated_bytes_before > trigger_cache_allocated_bytes
+            ) or filesystem_free_bytes_before < minimum_free_bytes
 
             def over_limit() -> bool:
-                return total_bytes_after > max_bytes or (
+                ordinary_limit = total_bytes_after > max_bytes or (
                     max_nodes is not None and total_nodes_after > max_nodes
                 )
+                quota_limit = quota_triggered and (
+                    (
+                        max_cache_allocated_bytes is not None
+                        and cache_allocated_bytes_after > max_cache_allocated_bytes
+                    )
+                    or filesystem_free_bytes_after < minimum_free_bytes
+                )
+                return ordinary_limit or quota_limit
 
-            for _, node_key, generation, stored_bytes, protected in sorted(entries):
+            for _, node_key, generation, stored_bytes, allocated_bytes, protected in sorted(entries):
                 if not over_limit():
                     break
                 if protected:
@@ -722,6 +793,8 @@ def evict_factor_nodes(
                 generation_path = generations / generation
                 removed_generations.append(generation)
                 total_bytes_after -= stored_bytes
+                cache_allocated_bytes_after -= allocated_bytes
+                filesystem_free_bytes_after += allocated_bytes
                 if not dry_run:
                     (nodes / node_key).unlink()
                     shutil.rmtree(generation_path)
@@ -750,6 +823,52 @@ def evict_factor_nodes(
         "total_bytes_after": total_bytes_after,
         "total_nodes_before": total_nodes_before,
         "total_nodes_after": total_nodes_after,
+        "cache_allocated_bytes_before": cache_allocated_bytes_before,
+        "cache_allocated_bytes_after": cache_allocated_bytes_after,
+        "filesystem_free_bytes_before": filesystem_free_bytes_before,
+        "filesystem_free_bytes_after": filesystem_free_bytes_after,
+        "quota_triggered": quota_triggered,
         "limits_satisfied": not over_limit(),
         "dry_run": dry_run,
     }
+
+
+def enforce_factor_cache_quota(
+    root: str | Path,
+    *,
+    max_cache_bytes: int,
+    reserve_free_bytes: int = 0,
+    high_watermark: float = 0.9,
+    low_watermark: float = 0.8,
+    dry_run: bool = False,
+) -> dict[str, object]:
+    """Plan or enforce a hysteretic whole-cache allocation quota."""
+    if type(max_cache_bytes) is not int or max_cache_bytes < 0:
+        raise ValueError("max_cache_bytes must be a non-negative integer")
+    if type(reserve_free_bytes) is not int or reserve_free_bytes < 0:
+        raise ValueError("reserve_free_bytes must be a non-negative integer")
+    if not np.isfinite(low_watermark) or not np.isfinite(high_watermark):
+        raise ValueError("watermarks must be finite")
+    if not 0 <= low_watermark < high_watermark <= 1:
+        raise ValueError("watermarks must satisfy 0 <= low < high <= 1")
+    target_bytes = int(max_cache_bytes * low_watermark)
+    trigger_bytes = int(max_cache_bytes * high_watermark)
+    result = evict_factor_nodes(
+        root,
+        max_bytes=(1 << 63) - 1,
+        max_cache_allocated_bytes=target_bytes,
+        minimum_free_bytes=reserve_free_bytes,
+        trigger_cache_allocated_bytes=trigger_bytes,
+        dry_run=dry_run,
+    )
+    result.update(
+        {
+            "max_cache_bytes": max_cache_bytes,
+            "reserve_free_bytes": reserve_free_bytes,
+            "high_watermark": high_watermark,
+            "low_watermark": low_watermark,
+            "trigger_cache_allocated_bytes": trigger_bytes,
+            "target_cache_allocated_bytes": target_bytes,
+        }
+    )
+    return result

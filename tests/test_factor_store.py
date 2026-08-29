@@ -16,6 +16,7 @@ from gambit.factor_store import (
     FactorNodeCacheMiss,
     FactorStoreError,
     collect_garbage,
+    enforce_factor_cache_quota,
     evict_factor_nodes,
     open_current_generation,
     open_generation_by_node_key,
@@ -518,6 +519,45 @@ def test_factor_store_eviction_protects_current_and_leased_generations(tmp_path)
     assert after_close["limits_satisfied"] is True
 
 
+def test_factor_store_quota_uses_hysteresis_and_allocated_bytes(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first_identity = _node_identity("quota-first")
+    current_identity = _node_identity("quota-current")
+    publish_factor_node(tmp_path, first_identity, {"factor": np.arange(1024, dtype=np.float64)})
+    publish_factor_node(tmp_path, current_identity, {"factor": np.arange(1024, dtype=np.float64)})
+
+    below_high = enforce_factor_cache_quota(tmp_path, max_cache_bytes=10**9, dry_run=True)
+
+    assert below_high["quota_triggered"] is False
+    assert below_high["evicted_node_keys"] == []
+
+    preview = enforce_factor_cache_quota(
+        tmp_path,
+        max_cache_bytes=1,
+        high_watermark=1.0,
+        low_watermark=0.0,
+        dry_run=True,
+    )
+
+    assert preview["quota_triggered"] is True
+    assert preview["evicted_node_keys"] == [first_identity.node_key]
+    assert preview["cache_allocated_bytes_after"] < preview["cache_allocated_bytes_before"]
+    assert preview["limits_satisfied"] is False
+    assert (tmp_path / "nodes" / first_identity.node_key).is_file()
+
+    applied = enforce_factor_cache_quota(
+        tmp_path,
+        max_cache_bytes=1,
+        high_watermark=1.0,
+        low_watermark=0.0,
+    )
+
+    assert applied["evicted_node_keys"] == preview["evicted_node_keys"]
+    assert not (tmp_path / "nodes" / first_identity.node_key).exists()
+    assert (tmp_path / "nodes" / current_identity.node_key).is_file()
+
+
 def test_factor_store_eviction_enforces_actual_generation_byte_limit(tmp_path) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
@@ -544,6 +584,8 @@ def test_factor_store_eviction_and_access_limits_validate_inputs(tmp_path) -> No
         open_generation_by_node_key(tmp_path, NODE_A, access_update_interval_seconds=-1)
     with pytest.raises(ValueError, match="metadata_retention_seconds"):
         collect_garbage(tmp_path, metadata_retention_seconds=float("inf"))
+    with pytest.raises(ValueError, match="watermarks"):
+        enforce_factor_cache_quota(tmp_path, max_cache_bytes=1, low_watermark=0.9, high_watermark=0.8)
 
 
 def test_factor_store_garbage_collection_respects_cross_process_lease(tmp_path) -> None:

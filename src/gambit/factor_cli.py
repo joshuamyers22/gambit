@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Sequence
 
 from gambit.factor_operations import calibrate_factor_cache, inspect_factor_cache
-from gambit.factor_store import FactorStoreError, collect_garbage, evict_factor_nodes
+from gambit.factor_store import (
+    FactorStoreError,
+    collect_garbage,
+    enforce_factor_cache_quota,
+    evict_factor_nodes,
+)
 
 _SIZE_PATTERN = re.compile(r"([0-9]+)([kmgt]?i?b)?", re.IGNORECASE)
 _SIZE_MULTIPLIERS = {
@@ -68,6 +73,15 @@ def _parser() -> argparse.ArgumentParser:
     evict.add_argument("--max-nodes", type=int)
     evict.add_argument("--apply", action="store_true", help="perform deletion; default is dry-run")
     evict.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
+
+    quota = subparsers.add_parser("quota", help="plan or enforce a whole-cache allocation budget")
+    quota.add_argument("root", type=Path)
+    quota.add_argument("--max-cache-bytes", type=_parse_bytes, required=True)
+    quota.add_argument("--reserve-free-bytes", type=_parse_bytes, default=0)
+    quota.add_argument("--high-watermark", type=float, default=0.9)
+    quota.add_argument("--low-watermark", type=float, default=0.8)
+    quota.add_argument("--apply", action="store_true", help="perform deletion; default is dry-run")
+    quota.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
     return parser
 
 
@@ -103,6 +117,15 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 parsed.root,
                 max_bytes=parsed.max_bytes,
                 max_nodes=parsed.max_nodes,
+                dry_run=not parsed.apply,
+            )
+        elif parsed.command == "quota":
+            result = enforce_factor_cache_quota(
+                parsed.root,
+                max_cache_bytes=parsed.max_cache_bytes,
+                reserve_free_bytes=parsed.reserve_free_bytes,
+                high_watermark=parsed.high_watermark,
+                low_watermark=parsed.low_watermark,
                 dry_run=not parsed.apply,
             )
         else:  # pragma: no cover - argparse enforces the command set
