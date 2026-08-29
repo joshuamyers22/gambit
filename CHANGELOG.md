@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add atomic, cross-process factor-cache lifetime metrics with bounded Prometheus export.
+- Add non-mutating cache health thresholds and operational scheduling guidance.
+- Record aggregate DAG admission/reuse decisions and applied eviction reclamation.
+
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.
 

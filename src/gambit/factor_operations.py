@@ -69,6 +69,23 @@ class FactorCacheInventory:
 
 
 @dataclass(frozen=True)
+class FactorCacheHealth:
+    root: str
+    measured_at_ns: int
+    ok: bool
+    status: str
+    findings: tuple[FactorCacheFinding, ...]
+    filesystem_free_bytes: int
+    total_cache_allocated_bytes: int
+    unindexed_generation_count: int
+    staging_generation_count: int
+    old_lease_count: int
+
+    def snapshot(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class FactorCacheCalibration:
     root: str
     measured_at_ns: int
@@ -251,6 +268,90 @@ def inspect_factor_cache(root: str | Path) -> FactorCacheInventory:
             sum(1 for path in access_root.glob("*.json") if path.is_file()) if access_root.is_dir() else 0
         ),
         findings=tuple(findings),
+    )
+
+
+def inspect_factor_cache_health(
+    root: str | Path,
+    *,
+    minimum_free_bytes: int = 0,
+    max_cache_allocated_bytes: int | None = None,
+    max_unindexed_generations: int = 0,
+    max_staging_generations: int = 0,
+    old_lease_seconds: float = 86400.0,
+) -> FactorCacheHealth:
+    """Evaluate actionable cache conditions without mutating or declaring old leases dead."""
+    for name, value in (
+        ("minimum_free_bytes", minimum_free_bytes),
+        ("max_unindexed_generations", max_unindexed_generations),
+        ("max_staging_generations", max_staging_generations),
+    ):
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+    if max_cache_allocated_bytes is not None and (
+        type(max_cache_allocated_bytes) is not int or max_cache_allocated_bytes < 0
+    ):
+        raise ValueError("max_cache_allocated_bytes must be a non-negative integer or None")
+    if not isinstance(old_lease_seconds, (int, float)) or old_lease_seconds < 0:
+        raise ValueError("old_lease_seconds must be non-negative")
+
+    inventory = inspect_factor_cache(root)
+    findings = list(inventory.findings)
+    if inventory.filesystem_free_bytes < minimum_free_bytes:
+        findings.append(FactorCacheFinding("low-free-space", inventory.root, "filesystem free space is below threshold"))
+    if (
+        max_cache_allocated_bytes is not None
+        and inventory.total_cache_allocated_bytes > max_cache_allocated_bytes
+    ):
+        findings.append(FactorCacheFinding("cache-quota-pressure", inventory.root, "cache allocation exceeds threshold"))
+    if inventory.unindexed_generation_count > max_unindexed_generations:
+        findings.append(FactorCacheFinding("unindexed-generations", "generations", "unindexed generations exceed threshold"))
+    if inventory.staging_generation_count > max_staging_generations:
+        findings.append(FactorCacheFinding("staging-generations", "generations", "staging generations exceed threshold"))
+
+    cutoff_ns = inventory.measured_at_ns - int(old_lease_seconds * 1_000_000_000)
+    old_lease_count = 0
+    leases_root = Path(root) / "leases"
+    if leases_root.is_dir() and not leases_root.is_symlink():
+        for lease in leases_root.rglob("*"):
+            if lease.is_file() and not lease.is_symlink():
+                try:
+                    if lease.stat().st_mtime_ns <= cutoff_ns:
+                        old_lease_count += 1
+                except OSError:
+                    continue
+    if old_lease_count:
+        findings.append(
+            FactorCacheFinding(
+                "old-leases",
+                "leases",
+                "lease files exceed the age threshold; verify owner liveness before collection",
+            )
+        )
+    structural_codes = {
+        "missing-current",
+        "invalid-current",
+        "symlinked-index",
+        "invalid-node-index",
+        "unreadable-node-index",
+        "dangling-node-index",
+        "invalid-manifest",
+        "symlinked-leases",
+        "invalid-access",
+    }
+    has_error = any(finding.code in structural_codes for finding in findings)
+    status = "error" if has_error else "warning" if findings else "healthy"
+    return FactorCacheHealth(
+        root=inventory.root,
+        measured_at_ns=inventory.measured_at_ns,
+        ok=not findings,
+        status=status,
+        findings=tuple(findings),
+        filesystem_free_bytes=inventory.filesystem_free_bytes,
+        total_cache_allocated_bytes=inventory.total_cache_allocated_bytes,
+        unindexed_generation_count=inventory.unindexed_generation_count,
+        staging_generation_count=inventory.staging_generation_count,
+        old_lease_count=old_lease_count,
     )
 
 

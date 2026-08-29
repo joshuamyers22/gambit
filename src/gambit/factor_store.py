@@ -815,7 +815,7 @@ def evict_factor_nodes(
                 for metadata_root in (store / "access", store / "admission"):
                     if metadata_root.is_dir() and not metadata_root.is_symlink():
                         _fsync_directory(metadata_root)
-    return {
+    result = {
         "evicted_node_keys": evicted_node_keys,
         "removed_generations": removed_generations,
         "protected_node_keys": protected_node_keys,
@@ -831,6 +831,16 @@ def evict_factor_nodes(
         "limits_satisfied": not over_limit(),
         "dry_run": dry_run,
     }
+    if not dry_run and evicted_node_keys:
+        from gambit.factor_metrics import try_record_factor_cache_metrics
+
+        result["metrics_recorded"] = try_record_factor_cache_metrics(
+            store,
+            cache_evictions=len(evicted_node_keys),
+            reclaimed_bytes=cache_allocated_bytes_before - cache_allocated_bytes_after,
+            lease_conflicts=len(protected_node_keys),
+        )
+    return result
 
 
 def enforce_factor_cache_quota(

@@ -220,6 +220,14 @@ Crashes before step 4 leave ignored staging directories. Crashes between steps 4
 and 5 can leave a complete but unreferenced generation, which remains invisible.
 After atomic pointer replacement, readers see the new complete generation. Garbage
 collection remains a separate, explicitly invoked maintenance operation.
+
+Operational counters are persisted under `metrics/lifetime.json` with a fixed,
+versioned schema, atomic replacement, and a cross-process file lock. DAG runs
+perform one aggregate update after execution rather than writing on each node or
+tick. Per-run node identities and timings remain in `FactorDagTelemetry`; this
+keeps lifetime metrics bounded and avoids exposing factor keys as Prometheus
+labels. The `metrics` and `health` CLI commands provide monitoring without
+mutating cache state. See `documentation/operations/factor_cache_maintenance.md`.
 Spawned-process fault tests terminate publication after a column write, after the
 staging-directory fsync, after the generation-directory fsync, and immediately
 after pointer replacement. They assert that reopening yields the complete old

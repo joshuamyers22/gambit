@@ -15,9 +15,11 @@ import polars as pl
 
 from gambit.factor_admission import clear_rejection, has_recent_rejection, record_rejection
 from gambit.factor_identity import FactorNodeIdentity
+from gambit.factor_metrics import try_record_factor_cache_metrics
 from gambit.factor_store import (
     FactorGenerationLease,
     FactorNodeCacheMiss,
+    FactorStoreError,
     open_generation_by_node_key,
     publish_factor_node,
 )
@@ -118,6 +120,7 @@ class FactorDagTelemetry:
     cache_declines: tuple[str, ...] = ()
     rejection_hints: tuple[str, ...] = ()
     compute_measurements: tuple[tuple[str, float, int], ...] = ()
+    lifetime_metrics_recorded: bool = True
 
     @property
     def nodes_reused(self) -> int:
@@ -219,6 +222,9 @@ class PolarsFactorDagExecutor:
                         lease = open_generation_by_node_key(self._cache_root, node_key)
                     except FactorNodeCacheMiss:
                         pass
+                    except FactorStoreError:
+                        try_record_factor_cache_metrics(self._cache_root, corruption_failures=1)
+                        raise
                 if lease is None:
                     parent_outputs = MappingProxyType(
                         {parent: outputs[parent] for parent in node.identity.parents}
@@ -263,6 +269,13 @@ class PolarsFactorDagExecutor:
             for lease in leases:
                 lease.close()
             raise
+        metrics_recorded = try_record_factor_cache_metrics(
+            self._cache_root,
+            cache_hits=len(hits),
+            cache_misses=len(misses),
+            cache_admissions=len(writes),
+            cache_declines=len(declines),
+        )
         telemetry = FactorDagTelemetry(
             tuple(hits),
             tuple(misses),
@@ -270,6 +283,7 @@ class PolarsFactorDagExecutor:
             tuple(declines),
             tuple(rejection_hints),
             tuple(measurements),
+            metrics_recorded,
         )
         return FactorDagExecution(outputs, leases, telemetry)
 

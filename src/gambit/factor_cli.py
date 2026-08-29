@@ -8,7 +8,16 @@ import re
 from pathlib import Path
 from typing import Sequence
 
-from gambit.factor_operations import calibrate_factor_cache, inspect_factor_cache
+from gambit.factor_metrics import (
+    FactorMetricsError,
+    format_prometheus_metrics,
+    read_factor_cache_metrics,
+)
+from gambit.factor_operations import (
+    calibrate_factor_cache,
+    inspect_factor_cache,
+    inspect_factor_cache_health,
+)
 from gambit.factor_store import (
     FactorStoreError,
     collect_garbage,
@@ -46,6 +55,20 @@ def _parser() -> argparse.ArgumentParser:
     inventory = subparsers.add_parser("inventory", help="inspect cache state without mutation")
     inventory.add_argument("root", type=Path)
     inventory.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
+
+    metrics = subparsers.add_parser("metrics", help="read persistent lifetime counters")
+    metrics.add_argument("root", type=Path)
+    metrics.add_argument("--prometheus", action="store_true", help="emit Prometheus text format")
+    metrics.add_argument("--output", type=Path, help="write output to this file instead of stdout")
+
+    health = subparsers.add_parser("health", help="evaluate cache health thresholds")
+    health.add_argument("root", type=Path)
+    health.add_argument("--minimum-free-bytes", type=_parse_bytes, default=0)
+    health.add_argument("--max-cache-bytes", type=_parse_bytes)
+    health.add_argument("--max-unindexed-generations", type=int, default=0)
+    health.add_argument("--max-staging-generations", type=int, default=0)
+    health.add_argument("--old-lease-seconds", type=float, default=86400.0)
+    health.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
 
     calibrate = subparsers.add_parser("calibrate", help="measure native cache costs on a selected device")
     calibrate.add_argument("root", type=Path)
@@ -93,11 +116,36 @@ def _write_result(value: object, output: Path | None) -> None:
         output.write_text(encoded)
 
 
+def _write_text(value: str, output: Path | None) -> None:
+    if output is None:
+        print(value, end="")
+    else:
+        output.write_text(value)
+
+
 def main(arguments: Sequence[str] | None = None) -> int:
     parsed = _parser().parse_args(arguments)
+    health_ok = True
     try:
         if parsed.command == "inventory":
             result = inspect_factor_cache(parsed.root).snapshot()
+        elif parsed.command == "metrics":
+            metrics = read_factor_cache_metrics(parsed.root)
+            if parsed.prometheus:
+                _write_text(format_prometheus_metrics(metrics), parsed.output)
+                return 0
+            result = metrics.snapshot()
+        elif parsed.command == "health":
+            health = inspect_factor_cache_health(
+                parsed.root,
+                minimum_free_bytes=parsed.minimum_free_bytes,
+                max_cache_allocated_bytes=parsed.max_cache_bytes,
+                max_unindexed_generations=parsed.max_unindexed_generations,
+                max_staging_generations=parsed.max_staging_generations,
+                old_lease_seconds=parsed.old_lease_seconds,
+            )
+            health_ok = health.ok
+            result = health.snapshot()
         elif parsed.command == "calibrate":
             result = calibrate_factor_cache(
                 parsed.root,
@@ -130,14 +178,14 @@ def main(arguments: Sequence[str] | None = None) -> int:
             )
         else:  # pragma: no cover - argparse enforces the command set
             raise AssertionError(f"unsupported command: {parsed.command}")
-    except (FactorStoreError, OSError, RuntimeError, ValueError) as error:
+    except (FactorMetricsError, FactorStoreError, OSError, RuntimeError, ValueError) as error:
         _write_result(
             {"error": type(error).__name__, "message": str(error), "ok": False},
             parsed.output,
         )
         return 1
     _write_result(result, parsed.output)
-    return 0
+    return 0 if health_ok else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

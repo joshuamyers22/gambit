@@ -8,6 +8,7 @@ import pytest
 from gambit.factor_cache import MappedFloat64Column
 from gambit.factor_cli import main
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
+from gambit.factor_metrics import record_factor_cache_metrics
 from gambit.factor_store import publish_factor_node
 
 pytestmark = pytest.mark.native
@@ -141,3 +142,26 @@ def test_factor_cache_cli_reports_operational_errors_as_json(tmp_path, capsys) -
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is False
     assert result["error"] == "ValueError"
+
+
+def test_factor_cache_cli_emits_metrics_as_json_and_prometheus(tmp_path, capsys) -> None:
+    record_factor_cache_metrics(tmp_path, cache_hits=3)
+
+    assert main(["metrics", str(tmp_path)]) == 0
+    assert json.loads(capsys.readouterr().out)["counters"]["cache_hits"] == 3
+
+    assert main(["metrics", str(tmp_path), "--prometheus"]) == 0
+    assert 'gambit_factor_cache_counter{name="cache_hits"} 3' in capsys.readouterr().out
+
+
+def test_factor_cache_cli_health_reports_threshold_findings(tmp_path, capsys) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    publish_factor_node(tmp_path, _identity("health"), {"factor": np.array([1.0])})
+
+    assert main(["health", str(tmp_path), "--max-cache-bytes", "1B"]) == 1
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert result["status"] == "warning"
+    assert any(finding["code"] == "cache-quota-pressure" for finding in result["findings"])
