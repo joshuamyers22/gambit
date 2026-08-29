@@ -29,6 +29,7 @@ have not yet been released are collected below.
   commands default to dry-run and require explicit `--apply` mutation.
 - Bounded retention for orphaned factor-cache access and admission metadata.
 - Hysteretic whole-cache allocated-space quotas with reserved filesystem capacity.
+- Tick-ring benchmark sweeps for bounded-spin budgets and park timeouts with CPU and latency summaries.
 
 ### Changed
 
