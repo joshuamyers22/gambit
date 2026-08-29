@@ -397,8 +397,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   cost-aware policy and workloads with genuinely expensive or highly shared nodes.
   An admission estimator now compares measured compute time with calibrated write
   and mapped-read costs over an expected-use horizon, records decisions and node
-  measurements, and declines low-value writes. Calibration on representative NVMe
-  hardware and persistent policy metrics remain open.
+  measurements, and declines low-value writes. Atomic policy-keyed rejection hints
+  now bypass repeated strict opens for known-missing nodes, expire automatically,
+  and yield to any newly published node index. Calibration on representative NVMe
+  hardware and aggregated policy metrics remain open.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
   Immutable v1 segments now have atomic generation publication, strict manifests,
@@ -421,7 +423,8 @@ Exit criteria: public API and financial assumptions are documented, generated ar
 - [ ] Add zero-copy NumPy/Arrow/Polars views with explicit lifetime protection.
 - [ ] Add capacity limits, eviction, compaction, observability, and NVMe-wear metrics.
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;
-  persistent access metadata, capacity enforcement, and wear telemetry remain open.
+  persistent rejection hints now avoid repeated absent-node opens. Aggregated access
+  metadata, capacity enforcement, and wear telemetry remain open.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

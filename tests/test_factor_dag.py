@@ -6,6 +6,7 @@ from collections.abc import Mapping
 import polars as pl
 import pytest
 
+import gambit.factor_dag as factor_dag_module
 from gambit.factor_cache import MappedFloat64Column
 from gambit.factor_dag import FactorCacheAdmissionPolicy, PolarsFactorDagExecutor, PolarsFactorNode
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
@@ -141,7 +142,7 @@ def test_closed_factor_dag_execution_rejects_access(tmp_path) -> None:
         execution[identities[0].node_key]
 
 
-def test_cost_aware_policy_declines_nodes_without_enough_expected_reuse(tmp_path) -> None:
+def test_cost_aware_policy_reuses_persisted_rejection_hints(tmp_path, monkeypatch) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
     calls: dict[str, int] = {}
@@ -153,9 +154,15 @@ def test_cost_aware_policy_declines_nodes_without_enough_expected_reuse(tmp_path
         assert first.telemetry.cache_writes == ()
         assert first.telemetry.cache_declines == tuple(node.identity.node_key for node in nodes)
         assert len(first.telemetry.compute_measurements) == 4
+
+    def unexpected_cache_probe(*_args, **_kwargs):
+        raise AssertionError("persisted rejection should bypass cache lookup")
+
+    monkeypatch.setattr(factor_dag_module, "open_generation_by_node_key", unexpected_cache_probe)
     with executor.execute(nodes) as second:
         assert second.telemetry.nodes_reused == 0
         assert second.telemetry.nodes_computed == 4
+        assert second.telemetry.rejection_hints == tuple(node.identity.node_key for node in nodes)
 
     assert calls == {"root": 2, "left": 2, "right": 2, "leaf": 2}
 
@@ -183,3 +190,36 @@ def test_factor_cache_policy_validates_configuration_and_measurements() -> None:
         FactorCacheAdmissionPolicy(estimated_read_bytes_per_second=math.inf)
     with pytest.raises(ValueError, match="non-negative"):
         FactorCacheAdmissionPolicy().admit(compute_seconds=math.nan, output_bytes=0, expected_uses=2)
+
+
+def test_factor_cache_policy_key_changes_only_with_admission_calibration() -> None:
+    first = FactorCacheAdmissionPolicy(rejection_ttl_seconds=60)
+    different_ttl = FactorCacheAdmissionPolicy(rejection_ttl_seconds=120)
+    different_cost = FactorCacheAdmissionPolicy(fixed_read_seconds=0.1)
+
+    assert first.policy_key == different_ttl.policy_key
+    assert first.policy_key != different_cost.policy_key
+
+
+def test_persisted_rejection_does_not_mask_node_published_by_another_policy(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    calls: dict[str, int] = {}
+    nodes, _ = _branching_dag(calls)
+    root_node = (nodes[0],)
+    rejecting = PolarsFactorDagExecutor(
+        tmp_path,
+        FactorCacheAdmissionPolicy(minimum_expected_uses=3),
+    )
+    with rejecting.execute(root_node) as first:
+        assert first.telemetry.cache_declines == (root_node[0].identity.node_key,)
+
+    forced = PolarsFactorDagExecutor(tmp_path, FactorCacheAdmissionPolicy.always())
+    with forced.execute(root_node) as published:
+        assert published.telemetry.cache_writes == (root_node[0].identity.node_key,)
+
+    with rejecting.execute(root_node) as reused:
+        assert reused.telemetry.cache_hits == (root_node[0].identity.node_key,)
+        assert reused.telemetry.rejection_hints == ()
+
+    assert calls["root"] == 2

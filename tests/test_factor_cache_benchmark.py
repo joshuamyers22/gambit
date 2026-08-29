@@ -40,6 +40,7 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
             "declines": 3,
             "computed": 3,
             "reused": 0,
+            "rejection_hints": 0,
         }
     assert result["workload"]["factor_columns"] == 7
     assert all(value is not False for value in result["equality"].values())

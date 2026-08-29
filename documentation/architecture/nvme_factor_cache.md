@@ -74,6 +74,16 @@ every computed node. The executor retains an `always()` policy for controlled
 experiments and backward-compatible comparisons; cost-aware admission is the
 executor default.
 
+Declines are stored as atomic, fsynced advisory records under `admission/`. Each
+record binds the node key, admission-policy fingerprint, measurement, decision,
+and timestamp. A matching unexpired record skips the known-missing strict cache
+open on later executions, but never skips computation or admission re-evaluation.
+Malformed, substituted, policy-mismatched, future-dated, and expired records are
+ignored. The presence of a node-index entry always overrides a rejection hint, so
+another process or policy can publish the node without being masked. Successful
+admission or cache reuse clears the obsolete rejection. Hints improve performance
+only and are not trusted for factor correctness.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

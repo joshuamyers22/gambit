@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import time
 from collections.abc import Callable, Iterator, Mapping
@@ -11,6 +13,7 @@ from types import MappingProxyType
 
 import polars as pl
 
+from gambit.factor_admission import clear_rejection, has_recent_rejection, record_rejection
 from gambit.factor_identity import FactorNodeIdentity
 from gambit.factor_store import (
     FactorGenerationLease,
@@ -32,6 +35,7 @@ class FactorCacheAdmissionPolicy:
     fixed_read_seconds: float = 0.001
     fixed_write_seconds: float = 0.002
     minimum_speedup: float = 1.1
+    rejection_ttl_seconds: float = 3600.0
     force_admission: bool = False
 
     def __post_init__(self) -> None:
@@ -53,6 +57,8 @@ class FactorCacheAdmissionPolicy:
             raise ValueError("fixed cache costs must be non-negative")
         if not math.isfinite(self.minimum_speedup) or self.minimum_speedup <= 0:
             raise ValueError("minimum_speedup must be positive")
+        if not math.isfinite(self.rejection_ttl_seconds) or self.rejection_ttl_seconds < 0:
+            raise ValueError("rejection_ttl_seconds must be finite and non-negative")
 
     @classmethod
     def always(cls) -> FactorCacheAdmissionPolicy:
@@ -71,6 +77,22 @@ class FactorCacheAdmissionPolicy:
         uncached_seconds = compute_seconds * expected_uses
         cached_seconds = compute_seconds + write_seconds + read_seconds * (expected_uses - 1)
         return uncached_seconds >= cached_seconds * self.minimum_speedup
+
+    @property
+    def policy_key(self) -> str:
+        value = {
+            "format": "gambit-factor-admission-policy",
+            "version": 1,
+            "minimum_expected_uses": self.minimum_expected_uses,
+            "estimated_read_bytes_per_second": self.estimated_read_bytes_per_second,
+            "estimated_write_bytes_per_second": self.estimated_write_bytes_per_second,
+            "fixed_read_seconds": self.fixed_read_seconds,
+            "fixed_write_seconds": self.fixed_write_seconds,
+            "minimum_speedup": self.minimum_speedup,
+            "force_admission": self.force_admission,
+        }
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        return hashlib.sha256(payload).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -94,6 +116,7 @@ class FactorDagTelemetry:
     cache_misses: tuple[str, ...]
     cache_writes: tuple[str, ...] = ()
     cache_declines: tuple[str, ...] = ()
+    rejection_hints: tuple[str, ...] = ()
     compute_measurements: tuple[tuple[str, float, int], ...] = ()
 
     @property
@@ -170,6 +193,7 @@ class PolarsFactorDagExecutor:
         misses: list[str] = []
         writes: list[str] = []
         declines: list[str] = []
+        rejection_hints: list[str] = []
         measurements: list[tuple[str, float, int]] = []
         try:
             for node in nodes:
@@ -179,9 +203,23 @@ class PolarsFactorDagExecutor:
                 missing_parents = [parent for parent in node.identity.parents if parent not in outputs]
                 if missing_parents:
                     raise ValueError("factor DAG nodes must be topologically ordered")
-                try:
-                    lease = open_generation_by_node_key(self._cache_root, node_key)
-                except FactorNodeCacheMiss:
+                rejected_hint = has_recent_rejection(
+                    self._cache_root,
+                    node_key,
+                    self._admission_policy.policy_key,
+                    ttl_seconds=self._admission_policy.rejection_ttl_seconds,
+                )
+                if (self._cache_root / "nodes" / node_key).exists():
+                    rejected_hint = False
+                lease = None
+                if rejected_hint:
+                    rejection_hints.append(node_key)
+                else:
+                    try:
+                        lease = open_generation_by_node_key(self._cache_root, node_key)
+                    except FactorNodeCacheMiss:
+                        pass
+                if lease is None:
                     parent_outputs = MappingProxyType(
                         {parent: outputs[parent] for parent in node.identity.parents}
                     )
@@ -198,12 +236,22 @@ class PolarsFactorDagExecutor:
                     ):
                         columns = {name: frame[name].to_numpy() for name in frame.columns}
                         publish_factor_node(self._cache_root, node.identity, columns)
+                        clear_rejection(self._cache_root, node_key)
                         writes.append(node_key)
                     else:
+                        if not rejected_hint:
+                            record_rejection(
+                                self._cache_root,
+                                node_key,
+                                self._admission_policy.policy_key,
+                                compute_seconds=compute_seconds,
+                                output_bytes=output_bytes,
+                            )
                         declines.append(node_key)
                     outputs[node_key] = frame
                     misses.append(node_key)
                 else:
+                    clear_rejection(self._cache_root, node_key)
                     frame = pl.DataFrame(
                         {column.name: lease[column.name].values for column in node.identity.output_schema}
                     )
@@ -220,6 +268,7 @@ class PolarsFactorDagExecutor:
             tuple(misses),
             tuple(writes),
             tuple(declines),
+            tuple(rejection_hints),
             tuple(measurements),
         )
         return FactorDagExecution(outputs, leases, telemetry)

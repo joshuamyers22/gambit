@@ -19,6 +19,8 @@ have not yet been released are collected below.
   and lineage-driven partial invalidation.
 - Cost-aware factor-node admission based on measured computation, output size,
   expected reuse, and calibrated mapped read/write cost estimates.
+- Expiring, policy-keyed rejection hints that bypass repeated missing-node cache
+  opens without masking nodes published by another process.
 
 ### Changed
 

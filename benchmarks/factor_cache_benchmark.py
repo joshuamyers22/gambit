@@ -525,6 +525,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
                 "declines": len(policy_telemetry.cache_declines),
                 "computed": policy_telemetry.nodes_computed,
                 "reused": policy_telemetry.nodes_reused,
+                "rejection_hints": len(policy_telemetry.rejection_hints),
             }
             if MappedFloat64Column is not None and policy_telemetry is not None
             else None
