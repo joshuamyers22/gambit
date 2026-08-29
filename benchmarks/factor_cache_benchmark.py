@@ -474,6 +474,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
     recompute_seconds = measurement_by_name["polars_factor_dag"].median_seconds
     ipc_reuse_seconds = measurement_by_name["polars_ipc_mmap_read"].median_seconds
     native_reuse = measurement_by_name.get("native_committed_mmap_reopen_read")
+    native_resident_reuse = measurement_by_name.get("native_committed_mmap_resident_read")
     dag_reuse = measurement_by_name.get("native_factor_dag_cache_hit")
     filesystem = os.statvfs(cache_directory)
     return {
@@ -503,6 +504,16 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             "ipc_reuse_speedup_vs_recompute": recompute_seconds / ipc_reuse_seconds,
             "native_reuse_speedup_vs_recompute": (
                 recompute_seconds / native_reuse.median_seconds if native_reuse is not None else None
+            ),
+            "native_resident_speedup_vs_recompute": (
+                recompute_seconds / native_resident_reuse.median_seconds
+                if native_resident_reuse is not None
+                else None
+            ),
+            "native_reopen_verification_fraction": (
+                1 - native_resident_reuse.median_seconds / native_reuse.median_seconds
+                if native_reuse is not None and native_resident_reuse is not None
+                else None
             ),
             "factor_dag_cache_hit_speedup_vs_recompute": (
                 recompute_seconds / dag_reuse.median_seconds if dag_reuse is not None else None

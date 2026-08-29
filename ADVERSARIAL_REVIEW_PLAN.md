@@ -459,6 +459,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   Stable label-free Prometheus/OpenMetrics export and a dedicated overhead benchmark
   are now present. Conservative Linux sysfs telemetry reports cumulative host-device
   writes when available, while NAND writes and SMART wear remain explicitly unmeasured.
+  A 1M/10M isolated scale run confirms native forced reuse is 0.41–0.42× recomputation
+  while IPC mmap is about 6× faster. Native resident traversal is fast, isolating
+  serial first-access chunk validation as the dominant reopen cost. A versioned
+  faster-checksum experiment remains open; integrity checks must not be disabled.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

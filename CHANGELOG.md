@@ -6,6 +6,7 @@
 - Add non-mutating cache health thresholds and operational scheduling guidance.
 - Record aggregate DAG admission/reuse decisions and applied eviction reclamation.
 - Add label-free OpenMetrics export, observability overhead benchmarks, and conservative Linux device-write telemetry.
+- Extend factor-cache decisions with resident-versus-verification measurements and a 1M/10M scale baseline.
 
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.

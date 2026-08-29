@@ -28,6 +28,9 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
         assert "native_factor_dag_cache_cold" in names
         assert "native_factor_dag_cache_hit" in names
         assert "cost_aware_factor_dag" in names
+        assert result["decision_metrics"]["native_resident_speedup_vs_recompute"] is not None
+        verification_fraction = result["decision_metrics"]["native_reopen_verification_fraction"]
+        assert 0 <= verification_fraction <= 1
         assert result["factor_dag_cache"] == {
             "nodes": 3,
             "cold_hits": 0,
