@@ -4,7 +4,8 @@
 
 - Review date: 2026-08-26
 - Reviewed tree: `Downloads/pyqstrat-master`
-- Package version: `1.0.2`
+- Distribution: `gambit-markets`
+- Package version: `1.0.0`
 - Scope: Python, Cython, C++, packaging, tests, examples, generated documentation, and operational behavior
 - Method: static inspection plus a local `pytest --collect-only` attempt
 - Constraint: the available interpreter is Python 3.9.6 while the project requires Python 3.10+, and project dependencies/native extensions are not installed. Runtime findings below are therefore separated from findings confirmed directly from source.

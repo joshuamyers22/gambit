@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import json
 import re
+from importlib.metadata import version
 from pathlib import Path
 
 import gambit
+
+
+def test_distribution_and_import_versions_match() -> None:
+    assert gambit.__version__ == version("gambit-markets") == "1.0.0"
 
 
 def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:

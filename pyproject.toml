@@ -3,19 +3,25 @@ requires = ["setuptools>=75", "wheel", "Cython>=3.0", "numpy>=1.26", "pybind11>=
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gambit"
-version = "1.0.2"
+name = "gambit-markets"
+version = "1.0.0"
 description = "Fast, extensible quantitative strategy backtesting"
 readme = "README.rst"
-requires-python = ">=3.10"
-license = "BSD-2-Clause"
-license-files = ["LICENSE.txt"]
+requires-python = ">=3.10,<3.13"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.txt", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Gambit contributors" }]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Office/Business :: Financial :: Investment",
 ]
 dependencies = [
@@ -37,6 +43,7 @@ dependencies = [
 notebooks = ["h5py>=3.11", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10"]
 dev = [
   "build>=1.2",
+  "cibuildwheel>=4.2; python_version >= '3.11'",
   "mypy>=1.11",
   "pip-audit>=2.9",
   "pytest>=8.3",
@@ -46,11 +53,13 @@ dev = [
   "types-PyYAML>=6.0",
   "types-python-dateutil>=2.9",
 ]
-docs = ["sphinx>=7.4", "sphinx-autodoc-typehints>=2.2"]
+docs = ["pydata-sphinx-theme>=0.16", "sphinx>=7.4", "sphinx-autodoc-typehints>=2.2"]
 
 [project.urls]
 Repository = "https://github.com/joshuamyers22/gambit"
 Issues = "https://github.com/joshuamyers22/gambit/issues"
+Documentation = "https://joshuamyers22.github.io/gambit/"
+Changelog = "https://github.com/joshuamyers22/gambit/blob/main/CHANGELOG.md"
 
 [project.scripts]
 gambit-factor-cache = "gambit.factor_cli:main"
@@ -90,3 +99,21 @@ check_untyped_defs = true
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+
+[tool.cibuildwheel]
+build = ["cp310-*", "cp311-*", "cp312-*"]
+skip = ["*-musllinux_*", "*-win32", "*-win_amd64"]
+test-command = [
+  "python -c \"import gambit; from importlib.metadata import version; assert version('gambit-markets')\"",
+  "gambit-factor-cache --help",
+]
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+manylinux-x86_64-image = "manylinux_2_28"
+before-all = "dnf install -y libzip-devel"
+
+[tool.cibuildwheel.macos]
+archs = ["auto"]
+before-all = "brew install libzip"
+repair-wheel-command = "delocate-wheel --require-archs {delocate_archs} -w {dest_dir} -v {wheel}"

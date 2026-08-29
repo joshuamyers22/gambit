@@ -1,23 +1,13 @@
 # Changelog
 
-## Unreleased
-
-- Add atomic, cross-process factor-cache lifetime metrics with bounded Prometheus export.
-- Add non-mutating cache health thresholds and operational scheduling guidance.
-- Record aggregate DAG admission/reuse decisions and applied eviction reclamation.
-- Add label-free OpenMetrics export, observability overhead benchmarks, and conservative Linux device-write telemetry.
-- Extend factor-cache decisions with resident-versus-verification measurements and a 1M/10M scale baseline.
-- Add backward-compatible native segment v3 with XXH64 chunk validation and use it for new factor-store generations.
-- Recalibrate v3 admission defaults and record 1M/10M end-to-end DAG speedups.
-- Add bounded, dry-run-first, lease-safe and resumable v1/v2-to-v3 factor migration.
-- Add reproducible migration latency, allocation-amplification, and Linux device-delta benchmarking.
-- Add resilient per-node migration reporting, atomic progress checkpoints, and backward-compatible migration metrics.
-- Add forced-termination migration resume coverage and preview-only post-migration collection planning.
-
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.
 
 ## Unreleased
+
+No changes yet.
+
+## 1.0.0 - 2026-08-29
 
 ### Added
 
@@ -47,17 +37,24 @@ have not yet been released are collected below.
 - Opt-in native tick-ring exponential backoff, cancellation, lost-wakeup prevention, and wait metrics.
 - Paced-arrival tick transport benchmarks with per-tick wake latency and CPU measurements.
 - Experimental read-only zero-copy NumPy tick leases with deferred cursor release.
+- Atomic, cross-process factor-cache lifetime metrics with bounded Prometheus export.
+- Non-mutating cache health thresholds, Linux device-write telemetry, and operational scheduling guidance.
+- Backward-compatible native segment v3 with XXH64 chunk validation.
+- Bounded, dry-run-first, lease-safe, resumable v1/v2-to-v3 factor migration and benchmarks.
+- A deterministic synthetic 4/16 moving-average crossover regression.
 
 ### Changed
 
 - Replaced accidental wildcard root exports with an explicit public API.
 - Replaced Pandas data-frame processing with Polars in the backtest path.
+- Publish under the `gambit-markets` distribution while preserving the `gambit` import namespace.
 
 ### Fixed
 
 - Hardened native CSV/ZIP ownership, allocation failure, and Python reference
   cleanup paths.
 - Bound the native `rho` function to the correct implementation.
+- Clear stale contracts from cached contract groups without replacing the process-wide default singleton.
 
 ### Deprecated
 

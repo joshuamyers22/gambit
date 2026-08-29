@@ -1,9 +1,12 @@
 |PyVersion| |Status| |License|
 
-Introduction
-============
+Gambit Markets
+==============
 
-The ``gambit`` package is designed for backtesting quantitative strategies. It was originally built for my own use after I could not find a python based framework that was fast, extensible and transparent enough for use in my work.
+Gambit is a transparent, event-driven framework for quantitative research and
+backtesting. Install the ``gambit-markets`` distribution and import the
+``gambit`` package. Polars provides the labelled dataframe boundary; NumPy,
+Cython, and C++ support performance-sensitive paths.
 
 The goals are:
 
@@ -232,9 +235,21 @@ as-of time, and base currency as queryable Polars columns.
 Installation
 ------------
 
-Gambit requires Python 3.10 or newer, a C/C++ compiler, and libzip. On macOS,
-install libzip with ``brew install libzip``; on Debian/Ubuntu use
-``apt install libzip-dev``. Then install the project in an isolated environment:
+Binary wheels are published for CPython 3.10, 3.11, and 3.12 on supported Linux and
+macOS systems::
+
+   python -m pip install gambit-markets
+
+The distribution and import names intentionally differ::
+
+   from importlib.metadata import version
+   import gambit
+
+   print(version("gambit-markets"))
+
+For an editable source installation, first install a C/C++ compiler and libzip
+(``brew install libzip`` on macOS or ``apt install libzip-dev`` on Debian and
+Ubuntu), then run:
 
 ::
 
@@ -247,7 +262,7 @@ For development, install every test, documentation, and notebook dependency:
 
 ::
 
-   python -m pip install -r requirements-dev.txt
+   python -m pip install -e ".[dev,docs,notebooks]"
    python -m pytest
 
 Repository layout
@@ -263,7 +278,10 @@ Repository layout
 Documentation
 -------------
 
-The best way to get started is the local ``examples/notebooks/getting_started.ipynb`` notebook.
+Start with the detailed ``documentation/source/getting_started.rst`` guide or
+the executable ``examples/notebooks/getting_started.ipynb`` notebook. The user
+guide separates core concepts, market data, strategy construction, risk, factor
+research, pitfalls, examples, and the API reference.
 
 See ``CONTRIBUTING.md`` for the full validation workflow and
 ``ADVERSARIAL_REVIEW_PLAN.md`` for the current hardening roadmap.
@@ -271,15 +289,16 @@ See ``CONTRIBUTING.md`` for the full validation workflow and
 Disclaimer
 ----------
 
-The software is provided on the conditions of the simplified BSD license.
+The software is provided under the BSD 3-Clause license. See
+``THIRD_PARTY_NOTICES.md`` for bundled-source attribution.
 
 .. _Python: http://www.python.org
 
-.. |PyVersion| image:: https://img.shields.io/badge/python-3.10+-blue.svg
+.. |PyVersion| image:: https://img.shields.io/badge/python-3.10--3.12-blue.svg
    :alt:
 
-.. |Status| image:: https://img.shields.io/badge/status-beta-green.svg
+.. |Status| image:: https://img.shields.io/badge/status-stable-green.svg
    :alt:
 
-.. |License| image:: https://img.shields.io/badge/license-BSD-blue.svg
+.. |License| image:: https://img.shields.io/badge/license-BSD--3--Clause-blue.svg
    :alt:

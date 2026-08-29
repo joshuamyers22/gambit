@@ -9,7 +9,7 @@ requires libzip (`brew install libzip` on macOS or the equivalent system package
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
+python -m pip install -e ".[dev,docs,notebooks]"
 ```
 
 ## Quality checks
@@ -37,7 +37,15 @@ The current mypy gate covers the build configuration and new regression suite.
 Expanding typed coverage across the legacy numerical modules is tracked in the
 adversarial review and should be done incrementally without blanket suppressions.
 
-## Repository setup
+## Repository and release setup
 
-The canonical repository is `joshuamyers22/gambit`. Create it as a private
-GitHub repository, add it as the `origin` remote, and push the default branch.
+The canonical public repository is `joshuamyers22/gambit`. Pull requests must
+pass tests, lint, typing, native sanitizer jobs, notebook execution, package
+builds, and warning-free documentation builds.
+
+Releases use the `gambit-markets` distribution name and retain the `gambit`
+import namespace. A manual release-workflow run publishes to TestPyPI. A
+published GitHub release publishes the previously verified artifacts to PyPI by
+Trusted Publishing; maintainers must never upload local `dist/` contents. See
+`RELEASING.md` for environment setup, TestPyPI validation, and the release
+checklist.

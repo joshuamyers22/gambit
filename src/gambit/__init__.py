@@ -1,5 +1,12 @@
 """Stable public API for Gambit."""
 
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("gambit-markets")
+except PackageNotFoundError:  # pragma: no cover - source trees are normally installed
+    __version__ = "0+unknown"
+
 from gambit._options import black_scholes_price, cdf, d1, d2, delta, gamma, implied_vol, rho, theta, vega
 from gambit.account import Account, ContractPNL, df_roundtrip_trade, roundtrip_trades
 from gambit.backtest_result import BacktestBundleError, BacktestResult, BacktestTelemetry, StageTelemetry
@@ -139,6 +146,7 @@ from gambit.strategy_components import (
 )
 
 __all__ = [
+    "__version__",
     "Account",
     "AccountingStage",
     "AssetClass",

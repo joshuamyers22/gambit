@@ -1,9 +1,14 @@
 Platform support
 ================
 
-Gambit's supported native build platforms are Linux and macOS on Python 3.10
-and 3.12. Continuous integration compiles the C++ and Cython extensions and
+Gambit's supported native build platforms are Linux and macOS on Python 3.10,
+3.11, and 3.12. Continuous integration compiles the C++ and Cython extensions and
 runs the test suite on each supported platform and Python version.
+
+Release artifacts include manylinux x86-64 wheels and macOS x86-64 and ARM64
+wheels. Linux wheels are repaired with ``auditwheel`` and macOS wheels with
+``delocate`` so libzip is included rather than referenced from a package-manager
+path. Source distributions remain available for other compatible POSIX systems.
 
 Native Windows builds are not currently supported. The I/O extension depends
 on libzip, and the project does not yet provide reproducible MSVC library

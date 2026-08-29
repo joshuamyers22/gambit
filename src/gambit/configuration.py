@@ -92,7 +92,7 @@ def fingerprint_polars_frame(frame: pl.DataFrame) -> str:
 
 def _package_version() -> str:
     try:
-        return version("gambit")
+        return version("gambit-markets")
     except PackageNotFoundError:
         return "unknown"
 

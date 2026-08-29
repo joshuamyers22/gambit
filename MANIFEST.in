@@ -1,4 +1,4 @@
-include LICENSE.txt README.rst pyproject.toml
+include LICENSE.txt README.rst THIRD_PARTY_NOTICES.md pyproject.toml
 recursive-include src/gambit *.pyx *.cpp *.hpp *.h
 global-exclude *.py[cod] .DS_Store
 prune documentation/generated
