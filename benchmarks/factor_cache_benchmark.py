@@ -22,7 +22,10 @@ from typing import Callable
 import numpy as np
 import polars as pl
 
+from gambit.configuration import fingerprint_polars_frame
 from gambit.factor_cache import MappedFloat64Column
+from gambit.factor_dag import PolarsFactorDagExecutor, PolarsFactorNode
+from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,72 @@ def calculate_factor_tree(data: pl.DataFrame) -> pl.DataFrame:
         )
         .collect()
     )
+
+
+def build_cached_factor_dag(data: pl.DataFrame) -> tuple[tuple[PolarsFactorNode, ...], tuple[str, ...]]:
+    """Build the benchmark DAG with explicit node lineage and source fingerprints."""
+    source_fingerprint = fingerprint_polars_frame(data)
+
+    def identity(name: str, columns: tuple[str, ...], *, parents: tuple[str, ...] = ()) -> FactorNodeIdentity:
+        return FactorNodeIdentity(
+            transform=f"gambit.benchmark.{name}",
+            transform_version="1",
+            parents=parents,
+            input_fingerprints={"market_data": source_fingerprint},
+            output_schema=tuple(FactorColumnSchema(column, "float64") for column in columns),
+            row_ordering=("row_index",),
+            research_context={"engine": "polars", "null_policy": "nan"},
+        )
+
+    returns = identity("returns", ("return",))
+    statistics = identity(
+        "statistics",
+        ("return_mean_20", "return_std_20", "price_mean_50"),
+        parents=(returns.node_key,),
+    )
+    signals = identity(
+        "signals",
+        ("return_zscore", "momentum_50", "volume_impulse"),
+        parents=(returns.node_key, statistics.node_key),
+    )
+    nodes = (
+        PolarsFactorNode(
+            returns,
+            lambda _: data.select(pl.col("price").log().diff().fill_null(float("nan")).alias("return")),
+        ),
+        PolarsFactorNode(
+            statistics,
+            lambda _: (
+                data.lazy()
+                .with_columns(pl.col("price").log().diff().alias("return"))
+                .select(
+                    pl.col("return").rolling_mean(20).alias("return_mean_20"),
+                    pl.col("return").rolling_std(20).alias("return_std_20"),
+                    pl.col("price").rolling_mean(50).alias("price_mean_50"),
+                )
+                .collect()
+                .fill_null(float("nan"))
+            ),
+        ),
+        PolarsFactorNode(
+            signals,
+            lambda parents: pl.DataFrame(
+                {
+                    "return_zscore": (
+                        (parents[returns.node_key]["return"] - parents[statistics.node_key]["return_mean_20"])
+                        / parents[statistics.node_key]["return_std_20"]
+                    ),
+                    "momentum_50": data["price"] / parents[statistics.node_key]["price_mean_50"] - 1,
+                    "volume_impulse": data["volume"] * parents[returns.node_key]["return"].abs(),
+                }
+            ).fill_null(float("nan")),
+        ),
+    )
+    return nodes, (returns.node_key, statistics.node_key, signals.node_key)
+
+
+def sum_cached_execution(execution, node_keys: tuple[str, ...]) -> float:
+    return sum(sum_frame(execution[node_key]) for node_key in node_keys)
 
 
 def sum_frame(frame: pl.DataFrame) -> float:
@@ -331,6 +400,30 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             _measure("native_committed_mmap_resident_read", rows, columns, byte_count, native_read, repeats)
         )
 
+        dag_cache = cache_directory / "factor-dag"
+        dag_nodes, dag_node_keys = build_cached_factor_dag(data)
+        dag_executor = PolarsFactorDagExecutor(dag_cache)
+        cold_telemetry = None
+        hit_telemetry = None
+
+        def cached_dag_cold() -> float:
+            nonlocal cold_telemetry
+            with dag_executor.execute(dag_nodes) as execution:
+                cold_telemetry = execution.telemetry
+                return sum_cached_execution(execution, dag_node_keys)
+
+        measurements.append(_measure("native_factor_dag_cache_cold", rows, columns, byte_count, cached_dag_cold, 1))
+
+        def cached_dag_hit() -> float:
+            nonlocal hit_telemetry
+            with dag_executor.execute(dag_nodes) as execution:
+                hit_telemetry = execution.telemetry
+                return sum_cached_execution(execution, dag_node_keys)
+
+        measurements.append(
+            _measure("native_factor_dag_cache_hit", rows, columns, byte_count, cached_dag_hit, repeats)
+        )
+
     ipc_equal = factors.equals(pl.read_ipc(ipc_path, memory_map=True))
     parquet_equal = factors.equals(pl.read_parquet(parquet_path))
     raw_equal = all(
@@ -338,6 +431,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
         for path, series in zip(raw_paths, factors)
     )
     native_equal = None
+    factor_dag_equal = None
     artifacts = {
         "polars_ipc": _artifact_stats([ipc_path], byte_count),
         "polars_parquet": _artifact_stats([parquet_path], byte_count),
@@ -349,10 +443,22 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             for path, series in zip(native_paths, factors)
         )
         artifacts["native_committed_mmap"] = _artifact_stats(native_paths, byte_count)
+        dag_paths = list((cache_directory / "factor-dag" / "generations").glob("*/*.bin"))
+        artifacts["native_factor_dag"] = _artifact_stats(dag_paths, byte_count)
+        with dag_executor.execute(dag_nodes) as cached_execution:
+            cached_frame = pl.concat(
+                [cached_execution[node_key] for node_key in dag_node_keys],
+                how="horizontal_extend",
+            )
+            factor_dag_equal = all(
+                np.array_equal(factors[name].to_numpy(), cached_frame[name].to_numpy(), equal_nan=True)
+                for name in factors.columns
+            )
     measurement_by_name = {measurement.name: measurement for measurement in measurements}
     recompute_seconds = measurement_by_name["polars_factor_dag"].median_seconds
     ipc_reuse_seconds = measurement_by_name["polars_ipc_mmap_read"].median_seconds
     native_reuse = measurement_by_name.get("native_committed_mmap_reopen_read")
+    dag_reuse = measurement_by_name.get("native_factor_dag_cache_hit")
     filesystem = os.statvfs(cache_directory)
     return {
         "environment": {
@@ -375,13 +481,28 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             "polars_parquet": parquet_equal,
             "numpy_raw_mmap": raw_equal,
             "native_committed_mmap": native_equal,
+            "native_factor_dag": factor_dag_equal,
         },
         "decision_metrics": {
             "ipc_reuse_speedup_vs_recompute": recompute_seconds / ipc_reuse_seconds,
             "native_reuse_speedup_vs_recompute": (
                 recompute_seconds / native_reuse.median_seconds if native_reuse is not None else None
             ),
+            "factor_dag_cache_hit_speedup_vs_recompute": (
+                recompute_seconds / dag_reuse.median_seconds if dag_reuse is not None else None
+            ),
         },
+        "factor_dag_cache": (
+            {
+                "nodes": len(dag_nodes),
+                "cold_hits": cold_telemetry.nodes_reused,
+                "cold_misses": cold_telemetry.nodes_computed,
+                "warm_hits": hit_telemetry.nodes_reused,
+                "warm_misses": hit_telemetry.nodes_computed,
+            }
+            if MappedFloat64Column is not None and cold_telemetry is not None and hit_telemetry is not None
+            else None
+        ),
     }
 
 

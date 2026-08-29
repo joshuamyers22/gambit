@@ -15,6 +15,8 @@ have not yet been released are collected below.
 - Backward-compatible v2 mapped columns with lazy per-chunk slice verification.
 - Canonical factor-DAG identities with manifest-backed node lookup, cross-process
   publication deduplication, and index-aware garbage collection.
+- A Polars factor-DAG executor with leased mapped-column reuse, cache telemetry,
+  and lineage-driven partial invalidation.
 
 ### Changed
 

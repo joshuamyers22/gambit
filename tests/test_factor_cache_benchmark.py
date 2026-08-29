@@ -25,6 +25,15 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
     assert "numpy_raw_mmap_reopen_read" in names
     if benchmark.MappedFloat64Column is not None:
         assert "native_chunked_mmap_reopen_prefix_read" in names
+        assert "native_factor_dag_cache_cold" in names
+        assert "native_factor_dag_cache_hit" in names
+        assert result["factor_dag_cache"] == {
+            "nodes": 3,
+            "cold_hits": 0,
+            "cold_misses": 3,
+            "warm_hits": 3,
+            "warm_misses": 0,
+        }
     assert result["workload"]["factor_columns"] == 7
     assert all(value is not False for value in result["equality"].values())
     for artifact in result["artifacts"].values():
@@ -34,4 +43,6 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
         assert artifact["file_size_amplification"] > 0
         assert artifact["filesystem_allocation_amplification"] > 0
     assert result["decision_metrics"]["ipc_reuse_speedup_vs_recompute"] > 0
+    if benchmark.MappedFloat64Column is not None:
+        assert result["decision_metrics"]["factor_dag_cache_hit_speedup_vs_recompute"] > 0
     assert result["environment"]["device_level_write_amplification_measured"] is False

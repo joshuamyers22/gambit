@@ -45,6 +45,21 @@ Index-aware capacity eviction will be a separate operation that first removes a
 node pointer atomically, then reclaims its unleased generation. Invalid index state
 aborts collection rather than risking live data.
 
+## Polars DAG execution
+
+`PolarsFactorDagExecutor` consumes explicitly topologically ordered nodes. Each
+node receives read-only mappings of only its declared parent outputs. A valid cache
+entry becomes a Polars `Float64` frame backed by leased mapped columns; a true
+`FactorNodeCacheMiss` runs the node callback, validates its exact schema and null
+contract, and publishes the result. Corruption exceptions propagate and are never
+converted into misses.
+
+`FactorDagExecution` owns all cache-hit leases and must remain alive while its
+frames are used. It provides context-manager and idempotent `close()` cleanup.
+Telemetry records exact hit and miss node keys. Changing a node identity changes
+the parent key embedded in every descendant identity, invalidating only that node
+and its dependent subgraph while unrelated ancestors remain reusable.
+
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;
 column bytes begin at the page-aligned offset 4096.

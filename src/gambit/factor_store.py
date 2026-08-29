@@ -30,6 +30,7 @@ _NODE_KEY_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 __all__ = [
     "FactorGenerationLease",
+    "FactorNodeCacheMiss",
     "FactorStoreError",
     "collect_garbage",
     "open_current_generation",
@@ -41,6 +42,10 @@ __all__ = [
 
 class FactorStoreError(RuntimeError):
     """Raised when a factor generation cannot be safely published or opened."""
+
+
+class FactorNodeCacheMiss(FactorStoreError):
+    """Raised only when a valid node key has no cache-index entry."""
 
 
 class FactorGenerationLease(MappingABC[str, Any]):
@@ -251,7 +256,7 @@ def _read_node_pointer(store: Path, node_key: str, *, missing_ok: bool) -> str |
     except FileNotFoundError:
         if missing_ok:
             return None
-        raise FactorStoreError("factor node is not cached") from None
+        raise FactorNodeCacheMiss("factor node is not cached") from None
     except OSError as error:
         raise FactorStoreError("factor node index is unreadable") from error
     if _GENERATION_PATTERN.fullmatch(generation) is None:

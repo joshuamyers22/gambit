@@ -388,7 +388,13 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   in generation manifests and atomically indexed by node key. Lookup reconstructs
   and re-hashes the identity, leases the generation, and fails closed on corruption.
   The writer lock deduplicates concurrent same-node publication, while garbage
-  collection preserves indexed nodes. Factor-execution integration is next.
+  collection preserves indexed nodes. A topologically ordered Polars executor now
+  performs identity lookup, retains mapped-generation leases, validates computed
+  schemas, records hit/miss telemetry, and partially invalidates descendants when
+  a branch identity changes. Initial 100K/1M-row measurements show warm native DAG
+  reuse at only 0.37×/0.42× the speed of recomputing this cheap Polars workload;
+  Polars IPC remains the full-result baseline. Broader integration is gated on a
+  cost-aware policy and workloads with genuinely expensive or highly shared nodes.
 - [x] Prototype page-aligned immutable `float64` column segments in an NVMe-backed `mmap`, with a Python format oracle.
 - [ ] Define segment headers, checksums, generations, leases, and crash recovery.
   Immutable v1 segments now have atomic generation publication, strict manifests,
