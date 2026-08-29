@@ -14,7 +14,8 @@ Publishing. Do not upload artifacts built on a workstation.
    - Workflow: `release.yml`
    - Environment: `pypi`
 4. Repeat on TestPyPI with environment `testpypi`.
-5. Configure GitHub Pages to deploy through GitHub Actions.
+5. Configure GitHub Pages to deploy through GitHub Actions, then set the
+   repository variable `ENABLE_PAGES` to `true`.
 6. Protect `main`; require CI and documentation checks before merge.
 
 TestPyPI and PyPI are separate services and require separate accounts and
