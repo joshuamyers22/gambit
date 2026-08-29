@@ -7,6 +7,7 @@
 - Record aggregate DAG admission/reuse decisions and applied eviction reclamation.
 - Add label-free OpenMetrics export, observability overhead benchmarks, and conservative Linux device-write telemetry.
 - Extend factor-cache decisions with resident-versus-verification measurements and a 1M/10M scale baseline.
+- Add backward-compatible native segment v3 with XXH64 chunk validation and use it for new factor-store generations.
 
 This project follows [Semantic Versioning](https://semver.org/). Changes that
 have not yet been released are collected below.

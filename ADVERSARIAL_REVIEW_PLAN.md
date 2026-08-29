@@ -461,8 +461,10 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   writes when available, while NAND writes and SMART wear remain explicitly unmeasured.
   A 1M/10M isolated scale run confirms native forced reuse is 0.41–0.42× recomputation
   while IPC mmap is about 6× faster. Native resident traversal is fast, isolating
-  serial first-access chunk validation as the dominant reopen cost. A versioned
-  faster-checksum experiment remains open; integrity checks must not be disabled.
+  serial first-access chunk validation as the dominant reopen cost. Format v3 now
+  uses portable XXH64 per chunk and is 5.50× faster than v2 reopen at 10M rows,
+  making verified reuse 2.25× faster than recomputation. V1/v2 remain readable,
+  touched-chunk corruption tests remain mandatory, and IPC remains the full-frame baseline.
   Destructive commands default to dry-run and require an explicit `--apply`.
   CI installs the built wheel in a clean environment
   and smoke-tests both package import and the installed console script.

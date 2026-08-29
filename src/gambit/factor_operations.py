@@ -412,7 +412,7 @@ def calibrate_factor_cache(
             for repeat in range(repeats):
                 path = calibration_root / f"{byte_count}-{repeat}.bin"
                 started = time.perf_counter()
-                MappedFloat64Column.create_chunked(str(path), values)
+                MappedFloat64Column.create_chunked_v3(str(path), values)
                 write_times.append(time.perf_counter() - started)
                 paths.append(path)
             read_times: list[float] = []

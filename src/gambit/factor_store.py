@@ -191,7 +191,7 @@ def publish_generation(
                     expected_rows = len(values)
                 elif len(values) != expected_rows:
                     raise ValueError("factor columns must have equal row counts")
-                column = MappedFloat64Column.create_chunked(str(path), values)
+                column = MappedFloat64Column.create_chunked_v3(str(path), values)
                 manifest_columns[name] = {
                     "file": path.name,
                     "rows": column.row_count,

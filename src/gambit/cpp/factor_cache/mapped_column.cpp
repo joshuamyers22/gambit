@@ -25,6 +25,7 @@ namespace {
 constexpr std::size_t HEADER_BYTES = 4096;
 constexpr std::uint32_t FORMAT_VERSION_V1 = 1;
 constexpr std::uint32_t FORMAT_VERSION_V2 = 2;
+constexpr std::uint32_t FORMAT_VERSION_V3 = 3;
 constexpr std::uint32_t STATE_COMMITTED = 1;
 constexpr std::uint64_t DEFAULT_CHUNK_BYTES = 256 * 1024;
 constexpr char MAGIC[8] = {'G', 'A', 'M', 'B', 'I', 'T', 'F', 'C'};
@@ -56,6 +57,110 @@ std::uint64_t checksum_bytes(const unsigned char* data, std::size_t size) {
     return hash;
 }
 
+std::uint64_t rotate_left(std::uint64_t value, unsigned int bits) {
+    return (value << bits) | (value >> (64U - bits));
+}
+
+std::uint64_t read_u64_le(const unsigned char* data) {
+    return static_cast<std::uint64_t>(data[0]) |
+        (static_cast<std::uint64_t>(data[1]) << 8U) |
+        (static_cast<std::uint64_t>(data[2]) << 16U) |
+        (static_cast<std::uint64_t>(data[3]) << 24U) |
+        (static_cast<std::uint64_t>(data[4]) << 32U) |
+        (static_cast<std::uint64_t>(data[5]) << 40U) |
+        (static_cast<std::uint64_t>(data[6]) << 48U) |
+        (static_cast<std::uint64_t>(data[7]) << 56U);
+}
+
+std::uint32_t read_u32_le(const unsigned char* data) {
+    return static_cast<std::uint32_t>(data[0]) |
+        (static_cast<std::uint32_t>(data[1]) << 8U) |
+        (static_cast<std::uint32_t>(data[2]) << 16U) |
+        (static_cast<std::uint32_t>(data[3]) << 24U);
+}
+
+std::uint64_t xxh64_round(std::uint64_t accumulator, std::uint64_t input) {
+    constexpr std::uint64_t prime1 = 11400714785074694791ULL;
+    constexpr std::uint64_t prime2 = 14029467366897019727ULL;
+    accumulator += input * prime2;
+    accumulator = rotate_left(accumulator, 31U);
+    return accumulator * prime1;
+}
+
+std::uint64_t xxh64_merge(std::uint64_t accumulator, std::uint64_t value) {
+    constexpr std::uint64_t prime1 = 11400714785074694791ULL;
+    constexpr std::uint64_t prime4 = 9650029242287828579ULL;
+    accumulator ^= xxh64_round(0, value);
+    return accumulator * prime1 + prime4;
+}
+
+std::uint64_t checksum_bytes_fast(const unsigned char* data, std::size_t size) {
+    constexpr std::uint64_t prime1 = 11400714785074694791ULL;
+    constexpr std::uint64_t prime2 = 14029467366897019727ULL;
+    constexpr std::uint64_t prime3 = 1609587929392839161ULL;
+    constexpr std::uint64_t prime4 = 9650029242287828579ULL;
+    constexpr std::uint64_t prime5 = 2870177450012600261ULL;
+    const auto* cursor = data;
+    const auto* end = data + size;
+    std::uint64_t hash;
+    if (size >= 32) {
+        std::uint64_t v1 = prime1 + prime2;
+        std::uint64_t v2 = prime2;
+        std::uint64_t v3 = 0;
+        std::uint64_t v4 = 0 - prime1;
+        const auto* limit = end - 32;
+        do {
+            v1 = xxh64_round(v1, read_u64_le(cursor));
+            cursor += 8;
+            v2 = xxh64_round(v2, read_u64_le(cursor));
+            cursor += 8;
+            v3 = xxh64_round(v3, read_u64_le(cursor));
+            cursor += 8;
+            v4 = xxh64_round(v4, read_u64_le(cursor));
+            cursor += 8;
+        } while (cursor <= limit);
+        hash = rotate_left(v1, 1U) + rotate_left(v2, 7U) +
+            rotate_left(v3, 12U) + rotate_left(v4, 18U);
+        hash = xxh64_merge(hash, v1);
+        hash = xxh64_merge(hash, v2);
+        hash = xxh64_merge(hash, v3);
+        hash = xxh64_merge(hash, v4);
+    } else {
+        hash = prime5;
+    }
+    hash += static_cast<std::uint64_t>(size);
+    while (static_cast<std::size_t>(end - cursor) >= 8) {
+        const auto value = xxh64_round(0, read_u64_le(cursor));
+        hash ^= value;
+        hash = rotate_left(hash, 27U) * prime1 + prime4;
+        cursor += 8;
+    }
+    if (static_cast<std::size_t>(end - cursor) >= 4) {
+        hash ^= static_cast<std::uint64_t>(read_u32_le(cursor)) * prime1;
+        hash = rotate_left(hash, 23U) * prime2 + prime3;
+        cursor += 4;
+    }
+    while (cursor < end) {
+        hash ^= static_cast<std::uint64_t>(*cursor) * prime5;
+        hash = rotate_left(hash, 11U) * prime1;
+        ++cursor;
+    }
+    hash ^= hash >> 33U;
+    hash *= prime2;
+    hash ^= hash >> 29U;
+    hash *= prime3;
+    hash ^= hash >> 32U;
+    return hash;
+}
+
+std::uint64_t checksum_for_version(
+    std::uint32_t version,
+    const unsigned char* data,
+    std::size_t size
+) {
+    return version == FORMAT_VERSION_V3 ? checksum_bytes_fast(data, size) : checksum_bytes(data, size);
+}
+
 class MappedFloat64Column {
 public:
     static MappedFloat64Column* create(const std::string& path, py::array_t<double, py::array::c_style | py::array::forcecast> values) {
@@ -67,6 +172,13 @@ public:
         py::array_t<double, py::array::c_style | py::array::forcecast> values
     ) {
         return create_impl(path, values, FORMAT_VERSION_V2);
+    }
+
+    static MappedFloat64Column* create_chunked_v3(
+        const std::string& path,
+        py::array_t<double, py::array::c_style | py::array::forcecast> values
+    ) {
+        return create_impl(path, values, FORMAT_VERSION_V3);
     }
 
     static MappedFloat64Column* create_impl(
@@ -115,8 +227,8 @@ public:
             header->data_bytes = data_bytes;
             auto* destination = static_cast<unsigned char*>(mapping) + HEADER_BYTES;
             std::memcpy(destination, info.ptr, data_bytes);
-            header->checksum = checksum_bytes(destination, data_bytes);
-            if (format_version == FORMAT_VERSION_V2) {
+            header->checksum = checksum_for_version(format_version, destination, data_bytes);
+            if (format_version == FORMAT_VERSION_V2 || format_version == FORMAT_VERSION_V3) {
                 const auto maximum_chunks = (HEADER_BYTES - sizeof(Header)) / sizeof(std::uint64_t);
                 const auto minimum_chunk_bytes = data_bytes == 0 ? 1 : 1 + (data_bytes - 1) / maximum_chunks;
                 header->chunk_bytes = std::max(DEFAULT_CHUNK_BYTES, minimum_chunk_bytes);
@@ -127,7 +239,9 @@ public:
                 for (std::uint64_t chunk = 0; chunk < header->chunk_count; ++chunk) {
                     const auto offset = chunk * header->chunk_bytes;
                     const auto length = std::min(header->chunk_bytes, data_bytes - offset);
-                    chunk_checksums[chunk] = checksum_bytes(destination + offset, static_cast<std::size_t>(length));
+                    chunk_checksums[chunk] = checksum_for_version(
+                        format_version, destination + offset, static_cast<std::size_t>(length)
+                    );
                 }
             }
 
@@ -248,14 +362,15 @@ private:
     MappedFloat64Column(std::string path, int fd, void* mapping, std::size_t mapping_bytes, bool created)
         : path_(std::move(path)), fd_(fd), mapping_(mapping), mapping_bytes_(mapping_bytes) {
         const auto* header = static_cast<const Header*>(mapping_);
-        const auto count = header->version == FORMAT_VERSION_V2 ? header->chunk_count : 1;
+        const auto count = header->version == FORMAT_VERSION_V1 ? 1 : header->chunk_count;
         verified_.assign(static_cast<std::size_t>(count), created || header->version == FORMAT_VERSION_V1 ? 1 : 0);
     }
 
     static void validate(const void* mapping, std::size_t mapping_bytes) {
         const auto* header = static_cast<const Header*>(mapping);
         if (std::memcmp(header->magic, MAGIC, sizeof(MAGIC)) != 0 ||
-            (header->version != FORMAT_VERSION_V1 && header->version != FORMAT_VERSION_V2)) {
+            (header->version != FORMAT_VERSION_V1 && header->version != FORMAT_VERSION_V2 &&
+             header->version != FORMAT_VERSION_V3)) {
             throw std::runtime_error("factor cache header is invalid or unsupported");
         }
         if (__atomic_load_n(&header->state, __ATOMIC_ACQUIRE) != STATE_COMMITTED) {
@@ -306,7 +421,9 @@ private:
             }
             const auto offset = chunk * header->chunk_bytes;
             const auto length = std::min(header->chunk_bytes, header->data_bytes - offset);
-            if (checksum_bytes(data + offset, static_cast<std::size_t>(length)) != chunk_checksums[chunk]) {
+            if (checksum_for_version(
+                    header->version, data + offset, static_cast<std::size_t>(length)
+                ) != chunk_checksums[chunk]) {
                 throw std::runtime_error("factor cache chunk checksum mismatch");
             }
             verified_[static_cast<std::size_t>(chunk)] = 1;
@@ -327,6 +444,7 @@ PYBIND11_MODULE(_factor_cache, module) {
     py::class_<MappedFloat64Column>(module, "MappedFloat64Column")
         .def_static("create", &MappedFloat64Column::create, py::arg("path"), py::arg("values"))
         .def_static("create_chunked", &MappedFloat64Column::create_chunked, py::arg("path"), py::arg("values"))
+        .def_static("create_chunked_v3", &MappedFloat64Column::create_chunked_v3, py::arg("path"), py::arg("values"))
         .def_static("open", &MappedFloat64Column::open_existing, py::arg("path"))
         .def_property_readonly("values", &MappedFloat64Column::values)
         .def_property_readonly("row_count", &MappedFloat64Column::row_count)

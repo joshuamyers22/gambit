@@ -400,6 +400,47 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             _measure("native_committed_mmap_resident_read", rows, columns, byte_count, native_read, repeats)
         )
 
+        fast_native_paths = [cache_directory / f"native-fast-{index}.bin" for index in range(columns)]
+
+        def fast_native_write() -> float:
+            total = 0.0
+            for path, series in zip(fast_native_paths, factors):
+                column = MappedFloat64Column.create_chunked_v3(str(path), series.to_numpy())
+                total += float(column.values[-1])
+            return total
+
+        measurements.append(
+            _measure("native_fast_chunked_mmap_write", rows, columns, byte_count, fast_native_write, 1)
+        )
+
+        def fast_native_reopen_read() -> float:
+            columns_to_read = [MappedFloat64Column.open(str(path)) for path in fast_native_paths]
+            return sum(float(column.values.sum()) for column in columns_to_read)
+
+        measurements.append(
+            _measure(
+                "native_fast_chunked_mmap_reopen_read",
+                rows,
+                columns,
+                byte_count,
+                fast_native_reopen_read,
+                repeats,
+            )
+        )
+        fast_native_columns = [MappedFloat64Column.open(str(path)) for path in fast_native_paths]
+        for column in fast_native_columns:
+            _ = column.values
+        measurements.append(
+            _measure(
+                "native_fast_chunked_mmap_resident_read",
+                rows,
+                columns,
+                byte_count,
+                lambda: sum(float(column.values.sum()) for column in fast_native_columns),
+                repeats,
+            )
+        )
+
         dag_cache = cache_directory / "factor-dag"
         dag_nodes, dag_node_keys = build_cached_factor_dag(data)
         dag_executor = PolarsFactorDagExecutor(dag_cache, FactorCacheAdmissionPolicy.always())
@@ -447,6 +488,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
         for path, series in zip(raw_paths, factors)
     )
     native_equal = None
+    native_fast_equal = None
     factor_dag_equal = None
     artifacts = {
         "polars_ipc": _artifact_stats([ipc_path], byte_count),
@@ -458,7 +500,12 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             np.array_equal(series.to_numpy(), MappedFloat64Column.open(str(path)).values, equal_nan=True)
             for path, series in zip(native_paths, factors)
         )
+        native_fast_equal = all(
+            np.array_equal(series.to_numpy(), MappedFloat64Column.open(str(path)).values, equal_nan=True)
+            for path, series in zip(fast_native_paths, factors)
+        )
         artifacts["native_committed_mmap"] = _artifact_stats(native_paths, byte_count)
+        artifacts["native_fast_chunked_mmap"] = _artifact_stats(fast_native_paths, byte_count)
         dag_paths = list((cache_directory / "factor-dag" / "generations").glob("*/*.bin"))
         artifacts["native_factor_dag"] = _artifact_stats(dag_paths, byte_count)
         with dag_executor.execute(dag_nodes) as cached_execution:
@@ -475,6 +522,8 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
     ipc_reuse_seconds = measurement_by_name["polars_ipc_mmap_read"].median_seconds
     native_reuse = measurement_by_name.get("native_committed_mmap_reopen_read")
     native_resident_reuse = measurement_by_name.get("native_committed_mmap_resident_read")
+    fast_native_reuse = measurement_by_name.get("native_fast_chunked_mmap_reopen_read")
+    fast_native_resident_reuse = measurement_by_name.get("native_fast_chunked_mmap_resident_read")
     dag_reuse = measurement_by_name.get("native_factor_dag_cache_hit")
     filesystem = os.statvfs(cache_directory)
     return {
@@ -498,6 +547,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             "polars_parquet": parquet_equal,
             "numpy_raw_mmap": raw_equal,
             "native_committed_mmap": native_equal,
+            "native_fast_chunked_mmap": native_fast_equal,
             "native_factor_dag": factor_dag_equal,
         },
         "decision_metrics": {
@@ -513,6 +563,19 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             "native_reopen_verification_fraction": (
                 1 - native_resident_reuse.median_seconds / native_reuse.median_seconds
                 if native_reuse is not None and native_resident_reuse is not None
+                else None
+            ),
+            "native_fast_reuse_speedup_vs_recompute": (
+                recompute_seconds / fast_native_reuse.median_seconds if fast_native_reuse is not None else None
+            ),
+            "native_fast_speedup_vs_v2_reopen": (
+                native_reuse.median_seconds / fast_native_reuse.median_seconds
+                if native_reuse is not None and fast_native_reuse is not None
+                else None
+            ),
+            "native_fast_reopen_verification_fraction": (
+                1 - fast_native_resident_reuse.median_seconds / fast_native_reuse.median_seconds
+                if fast_native_reuse is not None and fast_native_resident_reuse is not None
                 else None
             ),
             "factor_dag_cache_hit_speedup_vs_recompute": (

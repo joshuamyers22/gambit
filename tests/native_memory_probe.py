@@ -56,7 +56,7 @@ def main() -> None:
         if MappedFloat64Column is not None:
             for index in range(200):
                 path = root / f"column-{index}.bin"
-                create_column = MappedFloat64Column.create_chunked if index % 2 else MappedFloat64Column.create
+                create_column = MappedFloat64Column.create_chunked_v3 if index % 2 else MappedFloat64Column.create
                 column = tracked_call(create_column, str(path), np.arange(128, dtype=np.float64))
                 view = column.values
                 del column

@@ -50,13 +50,13 @@ def _publish_until_crash(root: str, stage: str) -> None:
     import gambit.factor_store as factor_store
 
     if stage == "column":
-        original_create = factor_store.MappedFloat64Column.create_chunked
+        original_create = factor_store.MappedFloat64Column.create_chunked_v3
 
         def create_then_terminate(path, values):
             original_create(path, values)
             _terminate_process()
 
-        factor_store.MappedFloat64Column.create_chunked = create_then_terminate
+        factor_store.MappedFloat64Column.create_chunked_v3 = create_then_terminate
     elif stage == "manifest":
         original_fsync_directory = factor_store._fsync_directory
 
@@ -148,6 +148,7 @@ def test_factor_store_persists_and_opens_strict_identity_by_node_key(tmp_path) -
         assert np.array_equal(cached["factor"].values, np.array([1.0, 2.0]))
     manifest = json.loads((tmp_path / "generations" / generation / "manifest.json").read_text())
     assert manifest["identity"] == identity.snapshot()
+    assert manifest["columns"]["factor"]["segment_version"] == 3
 
 
 def test_factor_store_rate_limits_persisted_access_metadata(tmp_path) -> None:

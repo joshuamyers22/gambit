@@ -169,12 +169,12 @@ reserved and zero-filled.
 | Field | Type | Meaning |
 | --- | --- | --- |
 | magic | 8 bytes | `GAMBITFC` |
-| version | uint32 | format version 1 |
+| version | uint32 | v1 whole-column FNV-1a; v2 chunked FNV-1a; v3 chunked XXH64 |
 | state | uint32 | 0 writing, 1 committed |
 | row count | uint64 | number of float64 values |
 | data offset | uint64 | 4096 |
 | data bytes | uint64 | row count × 8 |
-| checksum | uint64 | FNV-1a-64 over column bytes |
+| checksum | uint64 | algorithm selected by the format version |
 
 ## Publication protocol
 
@@ -186,8 +186,10 @@ reserved and zero-filled.
 6. Protect the writer mapping read-only.
 
 Readers map read-only, load state with acquire ordering, validate all bounds, and
-verify the checksum before returning a view. Uncommitted, truncated, extended, or
-corrupt segments are rejected. Published files are never modified in place.
+verify the checksum before returning a view. V2 and v3 verify only touched 256 KiB
+chunks and remember verified chunks for the mapping lifetime. Uncommitted,
+truncated, extended, or corrupt segments are rejected. Published files are never
+modified in place. New factor-store generations use v3 while v1/v2 remain readable.
 
 `mmap.flush`/`msync` does not by itself provide a complete cross-filesystem power-
 loss guarantee. A later manifest design must provide generation recovery and define
@@ -201,7 +203,7 @@ first supported topology will be SPSC with bounded spin/backoff/park behavior.
 
 ## Generation publication layer
 
-The experimental `gambit.factor_store` module groups immutable v1 column segments
+The experimental `gambit.factor_store` module groups immutable column segments
 into crash-safe generations:
 
 1. Create `generations/.staging-<generation>` on the store filesystem.

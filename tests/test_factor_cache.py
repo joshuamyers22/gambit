@@ -123,3 +123,38 @@ def test_chunked_segment_rejects_invalid_bounds_and_chunk_table(tmp_path) -> Non
         file.write(struct.pack("<Q", 0))
     with pytest.raises(RuntimeError, match="chunk table"):
         MappedFloat64Column.open(str(path))
+
+
+@pytest.mark.native
+def test_fast_chunked_segment_round_trips_and_detects_corruption(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    rows_per_chunk = 256 * 1024 // 8
+    values = np.arange(rows_per_chunk + 4, dtype=np.float64)
+    path = tmp_path / "fast-chunked.bin"
+    created = MappedFloat64Column.create_chunked_v3(str(path), values)
+
+    assert created.format_version == 3
+    assert np.array_equal(created.values, values)
+    del created
+    opened = MappedFloat64Column.open(str(path))
+    assert np.array_equal(opened.slice(0, 16), values[:16])
+    assert opened.verified_chunks == 1
+
+    with path.open("r+b") as file:
+        file.seek(HEADER_BYTES + rows_per_chunk * 8)
+        file.write(b"\xff")
+    reopened = MappedFloat64Column.open(str(path))
+    with pytest.raises(RuntimeError, match="chunk checksum"):
+        reopened.slice(rows_per_chunk, rows_per_chunk + 1)
+
+
+@pytest.mark.native
+def test_fast_chunked_segment_uses_standard_xxh64_empty_vector(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    created = MappedFloat64Column.create_chunked_v3(
+        str(tmp_path / "empty.bin"), np.array([], dtype=np.float64)
+    )
+
+    assert created.checksum == 0xEF46DB3751D8E999
