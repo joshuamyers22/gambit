@@ -128,3 +128,9 @@ jobs:
       - run: python -m pip install build twine
       - run: python -m build
       - run: python -m twine check dist/*
+      - name: Smoke-test installed wheel and console script
+        run: |
+          python -m venv /tmp/gambit-wheel-smoke
+          /tmp/gambit-wheel-smoke/bin/python -m pip install dist/*.whl
+          /tmp/gambit-wheel-smoke/bin/python -c "import gambit"
+          /tmp/gambit-wheel-smoke/bin/gambit-factor-cache --help

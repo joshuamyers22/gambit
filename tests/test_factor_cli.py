@@ -64,12 +64,22 @@ def test_factor_cache_cli_collection_preview_and_output_file(tmp_path, capsys) -
     staging.mkdir()
     output = tmp_path / "collection.json"
 
-    main(["collect", str(tmp_path), "--output", str(output)])
+    main(
+        [
+            "collect",
+            str(tmp_path),
+            "--metadata-retention-seconds",
+            "3600",
+            "--output",
+            str(output),
+        ]
+    )
 
     assert capsys.readouterr().out == ""
     preview = json.loads(output.read_text())
     assert preview["dry_run"] is True
     assert preview["removed_staging"] == [staging.name]
+    assert preview["removed_metadata"] == []
     assert staging.is_dir()
 
 

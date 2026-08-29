@@ -458,6 +458,41 @@ def test_factor_store_garbage_collection_dry_run_is_non_mutating(tmp_path) -> No
     assert staging.is_dir()
 
 
+def test_factor_store_collects_only_old_orphan_metadata(tmp_path) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    live_identity = _node_identity("live")
+    publish_factor_node(tmp_path, live_identity, {"factor": np.array([1.0])})
+    orphan_key = "f" * 64
+    old_paths = []
+    for directory_name in ("access", "admission"):
+        directory = tmp_path / directory_name
+        directory.mkdir(exist_ok=True)
+        orphan = directory / f"{orphan_key}.json"
+        orphan.write_text("{}")
+        os.utime(orphan, ns=(0, 0))
+        old_paths.append(orphan)
+    recent_orphan = tmp_path / "admission" / f"{'e' * 64}.json"
+    recent_orphan.write_text("{}")
+    live_access = tmp_path / "access" / f"{live_identity.node_key}.json"
+    os.utime(live_access, ns=(0, 0))
+
+    preview = collect_garbage(tmp_path, metadata_retention_seconds=1, dry_run=True)
+
+    assert preview["removed_metadata"] == [
+        f"access/{orphan_key}.json",
+        f"admission/{orphan_key}.json",
+    ]
+    assert all(path.is_file() for path in old_paths)
+
+    applied = collect_garbage(tmp_path, metadata_retention_seconds=1)
+
+    assert applied["removed_metadata"] == preview["removed_metadata"]
+    assert all(not path.exists() for path in old_paths)
+    assert recent_orphan.is_file()
+    assert live_access.is_file()
+
+
 def test_factor_store_eviction_protects_current_and_leased_generations(tmp_path) -> None:
     if MappedFloat64Column is None:
         pytest.skip("native factor cache extension is not built")
@@ -507,6 +542,8 @@ def test_factor_store_eviction_and_access_limits_validate_inputs(tmp_path) -> No
         evict_factor_nodes(tmp_path, max_bytes=0, max_nodes=-1)
     with pytest.raises(ValueError, match="access_update"):
         open_generation_by_node_key(tmp_path, NODE_A, access_update_interval_seconds=-1)
+    with pytest.raises(ValueError, match="metadata_retention_seconds"):
+        collect_garbage(tmp_path, metadata_retention_seconds=float("inf"))
 
 
 def test_factor_store_garbage_collection_respects_cross_process_lease(tmp_path) -> None:

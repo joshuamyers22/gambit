@@ -425,8 +425,9 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   Per-run hit/miss/admit/decline, compute-time, and output-byte telemetry now exists;
   persistent rejection hints now avoid repeated absent-node opens. Aggregated access
   samples now drive byte/node-bounded LRU eviction. Current and leased generations
-  fail safe when they prevent a requested bound. Compaction, filesystem-wide quota
-  accounting, and device-level wear telemetry remain open.
+  fail safe when they prevent a requested bound. Collection now bounds orphaned
+  access/admission metadata by age without removing records for indexed nodes.
+  Filesystem-wide quota accounting and device-level wear telemetry remain open.
   Read-only inventory now reports file/allocation bytes, filesystem capacity,
   indexed/unindexed/staging generations, leases, sampled access, rejection hints,
   per-node details, and structured findings. On-device native segment calibration
@@ -434,7 +435,8 @@ Exit criteria: public API and financial assumptions are documented, generated ar
   page-cache eviction request remains advisory and wear remains unmeasured.
   The `gambit-factor-cache` JSON CLI now exposes inventory, calibration, orphan
   collection, and bounded eviction. Destructive commands default to dry-run and
-  require an explicit `--apply`.
+  require an explicit `--apply`. CI installs the built wheel in a clean environment
+  and smoke-tests both package import and the installed console script.
 - [x] Add exact cross-format equality checks, host-visible file/allocation
   amplification, cache-device metadata, and advisory page-cache-eviction reads
   to the factor-cache benchmark. SSD-controller/NAND write amplification still

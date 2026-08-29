@@ -27,6 +27,7 @@ have not yet been released are collected below.
   policy parameters, with explicit page-cache and device-wear limitations.
 - A JSON `gambit-factor-cache` operations CLI whose collection and eviction
   commands default to dry-run and require explicit `--apply` mutation.
+- Bounded retention for orphaned factor-cache access and admission metadata.
 
 ### Changed
 

@@ -144,6 +144,9 @@ gambit-factor-cache evict /nvme/gambit-cache --max-bytes 250GiB --max-nodes 1000
 `collect` and `evict` are dry-run by default and require `--apply` to mutate the
 store. Size arguments accept bytes and KiB/MiB/GiB/TiB forms. `--output` writes the
 same JSON to a file; operational failures also return JSON and a nonzero exit code.
+Collection also removes orphaned access and admission records after 30 days by
+default. `--metadata-retention-seconds` adjusts that window; records belonging to
+an indexed node are never removed by retention cleanup.
 
 The initial primitive stores one immutable little-endian `float64` column in a
 dedicated file located on an NVMe-backed filesystem. The entire file is mapped;

@@ -498,17 +498,21 @@ def collect_garbage(
     root: str | Path,
     *,
     stale_lease_seconds: float = 86400.0,
+    metadata_retention_seconds: float = 30 * 86400.0,
     dry_run: bool = False,
 ) -> dict[str, object]:
     """Remove invisible unleased generations while failing safe on ambiguous leases."""
     if not np.isfinite(stale_lease_seconds) or stale_lease_seconds < 0:
         raise ValueError("stale_lease_seconds must be finite and non-negative")
+    if not np.isfinite(metadata_retention_seconds) or metadata_retention_seconds < 0:
+        raise ValueError("metadata_retention_seconds must be finite and non-negative")
     store = Path(root)
     removed_generations: list[str] = []
     removed_leases: list[str] = []
     removed_staging: list[str] = []
     removed_pointers: list[str] = []
     removed_node_staging: list[str] = []
+    removed_metadata: list[str] = []
     with _writer_lock(store):
         with _store_lock(store, exclusive=True):
             try:
@@ -521,6 +525,7 @@ def collect_garbage(
             leases_root = store / "leases"
             generations = store / "generations"
             indexed_generations: set[str] = set()
+            indexed_node_keys: set[str] = set()
             nodes = store / "nodes"
             if nodes.is_symlink():
                 raise FactorStoreError("factor node index may not use symbolic links")
@@ -534,6 +539,7 @@ def collect_garbage(
                         continue
                     if _NODE_KEY_PATTERN.fullmatch(node_pointer.name) is None:
                         raise FactorStoreError("factor node index contains an invalid key")
+                    indexed_node_keys.add(node_pointer.name)
                     generation = _read_node_pointer(store, node_pointer.name, missing_ok=False)
                     assert generation is not None
                     generation_path = generations / generation
@@ -589,18 +595,47 @@ def collect_garbage(
                     removed_pointers.append(pointer_path.name)
                     if not dry_run:
                         pointer_path.unlink()
+            metadata_cutoff_ns = now_ns - int(metadata_retention_seconds * 1_000_000_000)
+            for directory_name in ("access", "admission"):
+                metadata_root = store / directory_name
+                if metadata_root.is_symlink():
+                    raise FactorStoreError("factor metadata directories may not use symbolic links")
+                if not metadata_root.is_dir():
+                    continue
+                for metadata_path in metadata_root.iterdir():
+                    match = re.fullmatch(r"([0-9a-f]{64})\.json", metadata_path.name)
+                    if (
+                        match is None
+                        or match.group(1) in indexed_node_keys
+                        or metadata_path.is_symlink()
+                        or not metadata_path.is_file()
+                    ):
+                        continue
+                    try:
+                        old_enough = metadata_path.stat().st_mtime_ns <= metadata_cutoff_ns
+                    except OSError:
+                        continue
+                    if old_enough:
+                        removed_metadata.append(f"{directory_name}/{metadata_path.name}")
+                        if not dry_run:
+                            metadata_path.unlink(missing_ok=True)
             if not dry_run:
                 _fsync_directory(generations)
                 if removed_pointers:
                     _fsync_directory(store)
                 if removed_node_staging:
                     _fsync_directory(nodes)
+                for directory_name in ("access", "admission"):
+                    metadata_root = store / directory_name
+                    if any(path.startswith(f"{directory_name}/") for path in removed_metadata):
+                        _fsync_directory(metadata_root)
     return {
         "removed_generations": removed_generations,
         "removed_leases": removed_leases,
         "removed_staging": removed_staging,
         "removed_pointers": removed_pointers,
         "removed_node_staging": removed_node_staging,
+        "removed_metadata": removed_metadata,
         "dry_run": dry_run,
     }
 

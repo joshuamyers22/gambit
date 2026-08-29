@@ -53,6 +53,12 @@ def _parser() -> argparse.ArgumentParser:
     collect = subparsers.add_parser("collect", help="plan or apply orphan collection")
     collect.add_argument("root", type=Path)
     collect.add_argument("--stale-lease-seconds", type=float, default=86400.0)
+    collect.add_argument(
+        "--metadata-retention-seconds",
+        type=float,
+        default=30 * 86400.0,
+        help="retain orphan access/admission records for this long",
+    )
     collect.add_argument("--apply", action="store_true", help="perform deletion; default is dry-run")
     collect.add_argument("--output", type=Path, help="write JSON to this file instead of stdout")
 
@@ -89,6 +95,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
             result = collect_garbage(
                 parsed.root,
                 stale_lease_seconds=parsed.stale_lease_seconds,
+                metadata_retention_seconds=parsed.metadata_retention_seconds,
                 dry_run=not parsed.apply,
             )
         elif parsed.command == "evict":
