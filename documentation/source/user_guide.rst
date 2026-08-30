@@ -11,6 +11,7 @@ The user guide explains the model behind the API. Begin with
    market_data_guide
    strategy_guide
    risk_guide
+   risk_examples
    factor_research
    native_io
    pitfalls

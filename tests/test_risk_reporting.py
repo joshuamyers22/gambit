@@ -43,6 +43,7 @@ def test_risk_report_attributes_gross_and_net_exposure() -> None:
     assert report.attribution["gross_exposure"].sum() == 1700.0
     assert report.attribution["gross_share"].sum() == pytest.approx(1.0)
     assert report.summary()["net_exposure"][0] == -1300.0
+    assert report.summary()["timestamp"].to_numpy()[0] == TIMESTAMP.astype("datetime64[ns]")
 
 
 def test_stress_scenarios_match_symbol_before_asset_class_and_default() -> None:

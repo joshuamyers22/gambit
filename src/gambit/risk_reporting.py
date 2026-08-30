@@ -105,9 +105,10 @@ class PortfolioRiskReport:
         gross = self.exposures["gross_exposure"].sum() if self.exposures.height else 0.0
         net = self.exposures["net_exposure"].sum() if self.exposures.height else 0.0
         worst = self.scenario_results["stressed_pnl"].min() if self.scenario_results.height else 0.0
+        timestamp_ns = int(self.timestamp.astype("datetime64[ns]").astype(np.int64))
         return pl.DataFrame(
             {
-                "timestamp": [self.timestamp.astype("datetime64[ns]")],
+                "timestamp": pl.Series("timestamp", [timestamp_ns], dtype=pl.Int64).cast(pl.Datetime("ns")),
                 "gross_exposure": [gross],
                 "net_exposure": [net],
                 "worst_scenario_pnl": [worst],

@@ -3,6 +3,7 @@ Examples and recipes
 
 The repository's executable notebooks live in ``examples/notebooks``. The
 recipes below are intentionally small enough to adapt in a script or notebook.
+For complete, test-backed portfolio-risk recipes, see :doc:`risk_examples`.
 
 Deterministic random research data
 ----------------------------------
