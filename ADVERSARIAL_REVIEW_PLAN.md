@@ -519,8 +519,12 @@ the simplest correct baseline.
   into an explicit sizing stage without mutating raw forecasts. The sizing result
   retains forecasts, pre-overlay targets, final exposures, covariance time, and
   achieved risk; contract rounding and order construction remain later stages.
-- [ ] Add hierarchical portfolio/strategy/group/instrument limits, clip-to-limit
+- [x] Add hierarchical portfolio/strategy/group/instrument limits, clip-to-limit
   decisions, rolling trade budgets, and persisted reduce-only/no-trade overrides.
+  Child exposure is clipped proportionally before parent limits; every decision
+  retains its before/after exposure and multiplier. Override books use a versioned
+  JSON schema and atomic replacement, while rolling budgets count both executed
+  and still-pending absolute quantity.
 - [ ] Add historical and parametric VaR/expected shortfall only after return
   alignment, missing-data, FX, and covariance model policies are stable.
 - [ ] Integrate option Greeks, volatility-surface stresses, P&L explain, and

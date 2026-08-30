@@ -133,6 +133,24 @@ silently rewrite the research signal. Zero forecasts remain zero, and future
 covariance estimates, unknown symbols, mixed currencies, and invalid overlay
 multipliers fail closed.
 
+Hierarchical control plane
+--------------------------
+
+Apply monetary exposure limits after sizing and before converting exposure to
+orders. Then enforce operational overrides and rolling trade budgets in the
+pre-trade policy chain.
+
+.. literalinclude:: ../../examples/risk/control_plane.py
+   :language: python
+   :linenos:
+
+Instrument limits run before group, strategy, and portfolio limits. This makes
+each later multiplier operate on the exposure actually passed upward and keeps
+all earlier limits satisfied. The diagnostic frame records gross exposure
+before and after every decision. Persisted override books use a versioned JSON
+document and atomic file replacement; the most restrictive matching active
+override wins.
+
 Shared deterministic fixture
 ----------------------------
 

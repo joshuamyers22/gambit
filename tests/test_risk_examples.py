@@ -17,6 +17,7 @@ RISK_EXAMPLES = (
     "covariance_overlay.py",
     "currency_translation.py",
     "volatility_target_sizing.py",
+    "control_plane.py",
 )
 
 

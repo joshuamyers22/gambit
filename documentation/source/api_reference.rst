@@ -58,6 +58,9 @@ Execution and risk
 .. automodule:: gambit.position_sizing
    :members:
 
+.. automodule:: gambit.control_plane
+   :members:
+
 Market data and calendars
 -------------------------
 

@@ -17,6 +17,8 @@ have not yet been released are collected below.
 - Executable multi-currency risk examples and regression coverage.
 - Covariance-aware volatility-targeted exposure sizing with an explicit,
   auditable portfolio-overlay stage.
+- Hierarchical exposure clipping, atomically persisted trading overrides, and
+  rolling executed-and-pending quantity budgets.
 
 ### Changed
 

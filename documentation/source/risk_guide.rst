@@ -20,6 +20,73 @@ Rejected proposals remain auditable through immutable ``OrderDecision`` records.
 A policy is part of the simulation and must use only information available at
 its decision timestamp.
 
+Hierarchical exposure limits
+----------------------------
+
+Apply limits to proposed base-currency monetary exposure after volatility
+targeting and portfolio overlays::
+
+   limited = gambit.HierarchicalExposureLimiter(
+       [
+           gambit.ExposureLimit(gambit.ControlLevel.INSTRUMENT, 250_000, "AAPL"),
+           gambit.ExposureLimit(gambit.ControlLevel.GROUP, 750_000, "equities"),
+           gambit.ExposureLimit(gambit.ControlLevel.STRATEGY, 1_000_000, "trend"),
+           gambit.ExposureLimit(gambit.ControlLevel.PORTFOLIO, 2_000_000),
+       ]
+   ).apply(proposed_positions)
+
+Input rows require ``symbol``, ``contract_group``, ``strategy``, and
+``net_exposure``. Children are clipped proportionally before their parents.
+The result preserves ``pre_limit_net_exposure`` and records the cumulative
+``limit_multiplier`` and final gross exposure. Unmatched or duplicate limit
+identities fail as configuration errors instead of silently doing nothing.
+
+Operational overrides and trade budgets
+---------------------------------------
+
+Reduce-only and no-trade state is separate from research forecasts and sizing.
+Override books can target the whole portfolio or a strategy, group, or
+instrument::
+
+   book = gambit.TradingOverrideBook(
+       [
+           gambit.TradingOverride(
+               gambit.ControlLevel.INSTRUMENT,
+               gambit.TradingMode.NO_TRADE,
+               effective_from=timestamp,
+               reason="exchange halt",
+               key="AAPL",
+           )
+       ]
+   )
+   book.save("run-state/trading-overrides.json")
+   policy = gambit.TradingOverridePolicy(
+       gambit.TradingOverrideBook.load("run-state/trading-overrides.json"),
+       strategy="trend",
+   )
+
+Persistence uses a versioned JSON schema and writes a fully flushed temporary
+file before atomic replacement. Active overrides are inclusive of their start
+and optional expiry timestamps. When multiple scopes match, no-trade outranks
+reduce-only; a more specific scope breaks ties. Reduce-only orders must lower
+absolute projected position after pending orders.
+
+Use ``RollingTradeBudget`` in the same policy chain to limit churn::
+
+   builder.add_risk_policy(
+       gambit.RollingTradeBudget(
+           maximum_quantity=10_000,
+           window=np.timedelta64(1, "D"),
+           level=gambit.ControlLevel.GROUP,
+           key="equities",
+       )
+   )
+
+The budget counts absolute executed quantity inside the trailing window,
+remaining quantity on open matching orders, and the proposal. It intentionally
+does not net buys against sells. Quantity budgets do not substitute for
+notional, liquidity, or exposure limits when contract sizes differ.
+
 Instrument metadata
 -------------------
 

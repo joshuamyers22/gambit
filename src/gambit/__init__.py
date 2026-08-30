@@ -12,6 +12,17 @@ from gambit.account import Account, ContractPNL, df_roundtrip_trade, roundtrip_t
 from gambit.backtest_result import BacktestBundleError, BacktestResult, BacktestTelemetry, StageTelemetry
 from gambit.calculation import CalculationContext, CalculationMode, MissingDataPolicy
 from gambit.configuration import RunConfiguration, RunProvenance, fingerprint_polars_frame, load_run_configuration
+from gambit.control_plane import (
+    ControlLevel,
+    ExposureLimit,
+    ExposureLimitResult,
+    HierarchicalExposureLimiter,
+    RollingTradeBudget,
+    TradingMode,
+    TradingOverride,
+    TradingOverrideBook,
+    TradingOverridePolicy,
+)
 from gambit.covariance_risk import (
     ComponentVolatilityMeasure,
     CovarianceEstimate,
@@ -175,6 +186,7 @@ __all__ = [
     "Contract",
     "ContractGroup",
     "ContractPNL",
+    "ControlLevel",
     "ComponentVolatilityMeasure",
     "CovarianceEstimate",
     "CovarianceRiskModel",
@@ -186,6 +198,8 @@ __all__ = [
     "Evaluator",
     "ExecutionStage",
     "Experiment",
+    "ExposureLimit",
+    "ExposureLimitResult",
     "FixedPercentageSlippage",
     "FxRateSnapshot",
     "FactorColumnSchema",
@@ -198,6 +212,7 @@ __all__ = [
     "FactorDagTelemetry",
     "FactorNodeIdentity",
     "GrossExposureMeasure",
+    "HierarchicalExposureLimiter",
     "IndicatorStage",
     "IndicatorType",
     "InstrumentSpec",
@@ -248,6 +263,7 @@ __all__ = [
     "RiskPolicy",
     "RiskResult",
     "RollOrder",
+    "RollingTradeBudget",
     "RoundTripTrade",
     "RuleStage",
     "RuleType",
@@ -276,6 +292,10 @@ __all__ = [
     "TimeInForce",
     "Tradability",
     "Trade",
+    "TradingMode",
+    "TradingOverride",
+    "TradingOverrideBook",
+    "TradingOverridePolicy",
     "VWAPCloseRule",
     "VWAPEntryRule",
     "VWAPMarketSimulator",
