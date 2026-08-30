@@ -252,3 +252,69 @@ grouped output. An unqualified total requires exactly one measure, scenario,
 and unit. This prevents numerically valid but economically meaningless
 operations such as adding a market price to currency exposure or net exposure
 to gross exposure.
+
+Value at risk and expected shortfall
+------------------------------------
+
+Tail-risk models use aligned, complete return rows no newer than the explicit
+cutoff::
+
+   historical = gambit.TailRiskModel(
+       lookback=500,
+       min_observations=250,
+       confidence=0.99,
+       horizon_days=1,
+       method=gambit.TailRiskMethod.HISTORICAL,
+   ).fit(returns, as_of=context.market_data_as_of)
+
+   gaussian = gambit.TailRiskModel(
+       lookback=500,
+       min_observations=250,
+       confidence=0.99,
+       horizon_days=10,
+       method=gambit.TailRiskMethod.GAUSSIAN,
+   ).fit(returns, as_of=context.market_data_as_of)
+
+   tail_risk = gambit.calculate_risk(
+       base_currency_exposures,
+       [
+           gambit.PortfolioVaRMeasure(historical),
+           gambit.PortfolioExpectedShortfallMeasure(historical),
+       ],
+       context,
+   )
+
+Results use a positive-loss convention: a value at risk of 50,000 USD means
+the configured quantile loss is 50,000 USD, not negative P&L. Historical
+multi-day horizons use overlapping sums of fixed-exposure daily P&L. Gaussian
+horizons scale the sample mean linearly and standard deviation by the square
+root of time. Expected shortfall is the conditional tail mean and cannot be
+below VaR.
+
+Duplicate timestamps, mixed currencies, unknown instruments, non-finite rows,
+and insufficient complete observations fail closed. The fitted model retains
+the final usable timestamp, not merely the final input timestamp. Both methods
+assume current fixed exposures across the horizon and omit transaction costs,
+liquidity, regime changes, and nonlinear option repricing.
+
+VaR-targeted sizing
+-------------------
+
+Use the same fitted historical or Gaussian model to convert relative forecasts
+into exposure::
+
+   sizer = gambit.VaRTargetSizer(target_var=0.02)
+   proposed = sizer.size(
+       forecasts,
+       historical,
+       context,
+       capital=1_000_000,
+   )
+
+``target_var`` is a fraction of capital at the fitted model's confidence and
+horizon. The output retains ``raw_forecast``, pre-overlay
+``target_net_exposure``, final ``net_exposure``, and achieved VaR. An optional
+``PortfolioRiskOverlayResult`` is applied afterward as a separate multiplier,
+just as in volatility targeting. If the forecast direction has zero modeled
+VaR, the sizer returns zero exposure rather than dividing by zero or inventing
+risk capacity.

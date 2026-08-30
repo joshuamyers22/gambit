@@ -61,6 +61,9 @@ Execution and risk
 .. automodule:: gambit.control_plane
    :members:
 
+.. automodule:: gambit.var_risk
+   :members:
+
 Market data and calendars
 -------------------------
 

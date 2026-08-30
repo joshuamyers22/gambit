@@ -525,8 +525,12 @@ the simplest correct baseline.
   retains its before/after exposure and multiplier. Override books use a versioned
   JSON schema and atomic replacement, while rolling budgets count both executed
   and still-pending absolute quantity.
-- [ ] Add historical and parametric VaR/expected shortfall only after return
+- [x] Add historical and parametric VaR/expected shortfall only after return
   alignment, missing-data, FX, and covariance model policies are stable.
+  Models retain immutable complete-case point-in-time samples, positive-loss
+  conventions, explicit confidence and horizon policies, and unit-safe measures.
+  VaR-target sizing retains raw forecasts and supports the same explicit overlay
+  stage as volatility-target sizing.
 - [ ] Integrate option Greeks, volatility-surface stresses, P&L explain, and
   constrained hedge optimization after the cash-risk foundation is validated.
 

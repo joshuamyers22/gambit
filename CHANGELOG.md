@@ -19,6 +19,8 @@ have not yet been released are collected below.
   auditable portfolio-overlay stage.
 - Hierarchical exposure clipping, atomically persisted trading overrides, and
   rolling executed-and-pending quantity budgets.
+- Point-in-time historical and Gaussian value at risk and expected shortfall,
+  plus auditable VaR-targeted exposure sizing.
 
 ### Changed
 

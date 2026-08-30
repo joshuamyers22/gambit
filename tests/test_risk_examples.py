@@ -18,6 +18,7 @@ RISK_EXAMPLES = (
     "currency_translation.py",
     "volatility_target_sizing.py",
     "control_plane.py",
+    "var_and_expected_shortfall.py",
 )
 
 

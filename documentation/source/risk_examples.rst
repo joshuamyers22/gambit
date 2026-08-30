@@ -151,6 +151,23 @@ before and after every decision. Persisted override books use a versioned JSON
 document and atomic file replacement; the most restrictive matching active
 override wins.
 
+VaR, expected shortfall, and VaR sizing
+---------------------------------------
+
+Fit historical and Gaussian tail models only through the calculation cutoff,
+then use the historical model to scale relative forecasts to a maximum loss
+target.
+
+.. literalinclude:: ../../examples/risk/var_and_expected_shortfall.py
+   :language: python
+   :linenos:
+
+VaR and expected shortfall are positive loss amounts. Historical estimates use
+the configured empirical loss quantile and average all observations at or above
+that threshold. Gaussian estimates declare their distribution assumption and
+use sample mean and standard deviation. Neither method is a forecast guarantee;
+keep stress scenarios and hard exposure controls in the decision chain.
+
 Shared deterministic fixture
 ----------------------------
 
