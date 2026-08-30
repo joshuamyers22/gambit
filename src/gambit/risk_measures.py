@@ -13,7 +13,8 @@ from gambit.risk_reporting import StressScenario
 
 
 class RiskMeasure(Protocol):
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def calculate(self, exposures: pl.DataFrame) -> pl.DataFrame: ...
 
@@ -89,6 +90,14 @@ def calculate_risk(
     if not measures:
         raise ValueError("at least one risk measure is required")
     context = CalculationContext.coerce(timestamp)
+    for measure in measures:
+        measure_as_of = getattr(measure, "market_data_as_of", None)
+        if (
+            measure_as_of is not None
+            and not context.allow_lookahead
+            and np.datetime64(measure_as_of, "ns") > context.market_data_as_of
+        ):
+            raise ValueError(f"risk measure {measure.name} uses market data after the calculation cutoff")
     frames = [measure.calculate(exposures) for measure in measures]
     data = pl.concat(frames).with_columns(
         pl.lit(context.valuation_time).alias("timestamp"),

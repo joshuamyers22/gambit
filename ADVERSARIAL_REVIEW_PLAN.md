@@ -500,6 +500,31 @@ nulls, and ordering; interrupted writes cannot become visible; resource usage is
 bounded; and representative end-to-end workloads show a material improvement over
 the simplest correct baseline.
 
+### Phase 6 — portfolio risk and control plane
+
+- [x] Add point-in-time covariance estimation with explicit lookback,
+  observation minimums, annualization, diagonal shrinkage, immutable matrices,
+  and a market-data cutoff.
+- [x] Add portfolio volatility, additive component volatility, diversification
+  ratio, volatility stress, and position-sign-aware adverse correlation stress.
+- [x] Add a non-mutating portfolio overlay that selects the most conservative
+  multiplier across normal volatility, stressed volatility, sum-absolute-risk,
+  and gross-leverage limits while retaining diagnostics.
+- [ ] Add explicit FX translation and unit metadata before permitting
+  multi-currency covariance aggregation.
+- [ ] Add volatility-targeted position sizing and integrate the overlay multiplier
+  into an explicit sizing stage without mutating raw forecasts.
+- [ ] Add hierarchical portfolio/strategy/group/instrument limits, clip-to-limit
+  decisions, rolling trade budgets, and persisted reduce-only/no-trade overrides.
+- [ ] Add historical and parametric VaR/expected shortfall only after return
+  alignment, missing-data, FX, and covariance model policies are stable.
+- [ ] Integrate option Greeks, volatility-surface stresses, P&L explain, and
+  constrained hedge optimization after the cash-risk foundation is validated.
+
+Exit criteria: risk estimates are point-in-time and unit-safe, component risk
+reconciles to portfolio totals, overlays are auditable and non-mutating, and
+limits behave consistently in backtests and production-style order generation.
+
 ## Required adversarial test matrix
 
 | Surface | Cases that must be covered |

@@ -78,6 +78,25 @@ The proposed 250-share order is below the 500-share order limit and below the
 limit. The resulting ``OrderDecision`` retains the rejecting policy, stable
 machine-readable code, human-readable message, timestamp, and proposed size.
 
+Covariance risk overlay
+-----------------------
+
+This example estimates annualized covariance from deterministic synthetic
+returns, reconciles component risk to total volatility, constructs joint
+volatility/correlation stress, and calculates a position multiplier from four
+portfolio limits.
+
+.. literalinclude:: ../../examples/risk/covariance_overlay.py
+   :language: python
+   :linenos:
+
+The correlation stress is conditional on current position signs. It moves the
+matrix toward the rank-one correlation structure that aligns losses across the
+current portfolio, including long/short portfolios where a blanket move toward
+positive correlation could reduce rather than increase risk. The overlay is a
+control mechanism, not evidence that the covariance model predicts future
+returns.
+
 Shared deterministic fixture
 ----------------------------
 

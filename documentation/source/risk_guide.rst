@@ -81,3 +81,52 @@ Scenarios apply composable absolute or relative shocks to matching instruments::
 Stress P&L is a deterministic revaluation under the specified shock, not a
 probability forecast. Maintain scenarios that cover economic mechanisms rather
 than tuning them to the strategy's historical loss profile.
+
+Covariance risk and overlays
+----------------------------
+
+Fit covariance only through the market-data cutoff, then express portfolio
+volatility in account-currency terms using marked net exposures::
+
+   estimate = gambit.CovarianceRiskModel(
+       lookback=252,
+       min_observations=120,
+       diagonal_shrinkage=0.10,
+   ).fit(returns, as_of=context.market_data_as_of)
+
+   risk = gambit.calculate_risk(
+       exposures,
+       [
+           gambit.PortfolioVolatilityMeasure(estimate),
+           gambit.ComponentVolatilityMeasure(estimate),
+           gambit.DiversificationRatioMeasure(estimate),
+       ],
+       context,
+   )
+
+Component volatility is additive: its instrument rows sum to total portfolio
+volatility. Negative components identify positions that reduce estimated risk;
+they are not errors. Covariance estimation uses complete rows and reports the
+actual final observation in ``estimate.as_of``.
+
+Use stressed covariance and a portfolio overlay to convert breaches into a
+single conservative position multiplier::
+
+   stressed = (
+       estimate.with_volatility_stress(1.5)
+       .with_adverse_correlation_stress(exposures, 0.5)
+   )
+   overlay = gambit.PortfolioRiskOverlay(
+       gambit.PortfolioRiskLimits(
+           max_portfolio_volatility=0.10,
+           max_stressed_volatility=0.12,
+           max_sum_absolute_risk=0.20,
+           max_leverage=2.0,
+       )
+   ).evaluate(exposures, estimate, capital=1_000_000, stressed_estimate=stressed)
+
+The overlay chooses the smallest constraint multiplier but does not mutate
+positions or orders. Apply it explicitly in a sizing stage and retain
+``overlay.diagnostics`` with the backtest result. Covariance risk currently
+requires exposures translated into one currency; labels alone are not FX
+conversion.

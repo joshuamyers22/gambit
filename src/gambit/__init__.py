@@ -12,6 +12,16 @@ from gambit.account import Account, ContractPNL, df_roundtrip_trade, roundtrip_t
 from gambit.backtest_result import BacktestBundleError, BacktestResult, BacktestTelemetry, StageTelemetry
 from gambit.calculation import CalculationContext, CalculationMode, MissingDataPolicy
 from gambit.configuration import RunConfiguration, RunProvenance, fingerprint_polars_frame, load_run_configuration
+from gambit.covariance_risk import (
+    ComponentVolatilityMeasure,
+    CovarianceEstimate,
+    CovarianceRiskModel,
+    DiversificationRatioMeasure,
+    PortfolioRiskLimits,
+    PortfolioRiskOverlay,
+    PortfolioRiskOverlayResult,
+    PortfolioVolatilityMeasure,
+)
 from gambit.evaluator import Evaluator, compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.execution_costs import (
     BidAskSpreadSlippage,
@@ -163,8 +173,12 @@ __all__ = [
     "Contract",
     "ContractGroup",
     "ContractPNL",
+    "ComponentVolatilityMeasure",
+    "CovarianceEstimate",
+    "CovarianceRiskModel",
     "DateRangeType",
     "DecisionStatus",
+    "DiversificationRatioMeasure",
     "EminiFuture",
     "EminiOption",
     "Evaluator",
@@ -216,6 +230,10 @@ __all__ = [
     "PolarsFactorDagExecutor",
     "PolarsFactorNode",
     "PortfolioRiskReport",
+    "PortfolioRiskLimits",
+    "PortfolioRiskOverlay",
+    "PortfolioRiskOverlayResult",
+    "PortfolioVolatilityMeasure",
     "Price",
     "PriceFuncArrayDict",
     "PriceFuncArrays",

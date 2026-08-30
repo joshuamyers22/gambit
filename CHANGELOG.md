@@ -5,7 +5,18 @@ have not yet been released are collected below.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Point-in-time, shrinkable covariance estimates with immutable matrices,
+  volatility and adverse-correlation stress transformations, additive component
+  risk, diversification ratios, and conservative portfolio risk overlays.
+- Executable covariance-risk and overlay documentation with automated regression
+  coverage.
+
+### Changed
+
+- Risk calculations reject measures whose market data is newer than the explicit
+  calculation cutoff unless look-ahead is enabled.
 
 ## 1.0.0 - 2026-08-29
 

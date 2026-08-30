@@ -49,6 +49,9 @@ Execution and risk
 .. automodule:: gambit.risk_reporting
    :members:
 
+.. automodule:: gambit.covariance_risk
+   :members:
+
 Market data and calendars
 -------------------------
 

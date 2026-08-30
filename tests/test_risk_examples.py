@@ -14,6 +14,7 @@ RISK_EXAMPLES = (
     "stress_scenarios.py",
     "typed_measures.py",
     "pre_trade_controls.py",
+    "covariance_overlay.py",
 )
 
 
