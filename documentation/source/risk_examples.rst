@@ -115,6 +115,24 @@ without an actual rate are rejected, as are snapshots newer than the market-data
 cutoff. The example uses a fixed synthetic rate; applications should obtain a
 point-in-time rate from a controlled data source.
 
+Volatility-targeted sizing
+--------------------------
+
+Convert relative forecast direction into base-currency exposure with a
+portfolio volatility target. The example deliberately uses two passes: first
+construct proposed target exposures, then evaluate portfolio limits and apply
+their conservative multiplier in a separate sizing call.
+
+.. literalinclude:: ../../examples/risk/volatility_target_sizing.py
+   :language: python
+   :linenos:
+
+The output retains ``raw_forecast`` and ``target_net_exposure`` alongside final
+``net_exposure`` and ``overlay_multiplier``. A risk control therefore cannot
+silently rewrite the research signal. Zero forecasts remain zero, and future
+covariance estimates, unknown symbols, mixed currencies, and invalid overlay
+multipliers fail closed.
+
 Shared deterministic fixture
 ----------------------------
 

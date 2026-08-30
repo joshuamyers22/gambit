@@ -10,6 +10,7 @@ from gambit.covariance_risk import (
     DiversificationRatioMeasure,
     PortfolioRiskLimits,
     PortfolioRiskOverlay,
+    PortfolioRiskOverlayResult,
     PortfolioVolatilityMeasure,
 )
 from gambit.risk_measures import calculate_risk
@@ -115,6 +116,16 @@ def test_risk_overlay_uses_the_most_conservative_constraint() -> None:
 
     assert result.multiplier == pytest.approx(0.25 / 0.30)
     assert result.diagnostics.sort("multiplier")["constraint"][0] == "leverage"
+
+
+def test_overlay_result_rejects_inconsistent_diagnostics() -> None:
+    diagnostics = pl.DataFrame(
+        {"constraint": ["leverage"], "value": [2.0], "limit": [1.0], "multiplier": [0.5]}
+    )
+    with pytest.raises(ValueError, match="minimum diagnostic"):
+        PortfolioRiskOverlayResult(0.75, diagnostics)
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
+        PortfolioRiskOverlayResult(1.1, diagnostics)
 
 
 def test_covariance_risk_rejects_missing_symbols_and_mixed_currencies() -> None:

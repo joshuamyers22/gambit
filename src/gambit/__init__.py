@@ -67,6 +67,7 @@ from gambit.market_data import MarketDataValidationReport, ValidationFinding, Va
 from gambit.markets import EminiFuture, EminiOption, future_code_to_month, future_code_to_month_number, get_future_code
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
 from gambit.portfolio import Portfolio
+from gambit.position_sizing import VolatilityTargetSizer, VolatilityTargetSizingResult
 from gambit.pq_io import df_to_hdf5, hdf5_to_df, hdf5_to_np_arrays, np_arrays_to_hdf5
 from gambit.pq_types import (
     Contract,
@@ -283,6 +284,8 @@ __all__ = [
     "ValidationSeverity",
     "VectorIndicator",
     "VectorSignal",
+    "VolatilityTargetSizer",
+    "VolatilityTargetSizingResult",
     "account_exposures",
     "analyze_account_risk",
     "assert_",

@@ -15,6 +15,8 @@ have not yet been released are collected below.
 - Immutable point-in-time FX snapshots, explicit base-currency exposure
   translation, and retained local-value audit columns.
 - Executable multi-currency risk examples and regression coverage.
+- Covariance-aware volatility-targeted exposure sizing with an explicit,
+  auditable portfolio-overlay stage.
 
 ### Changed
 

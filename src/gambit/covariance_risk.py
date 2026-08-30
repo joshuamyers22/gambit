@@ -327,6 +327,24 @@ class PortfolioRiskOverlayResult:
     multiplier: float
     diagnostics: pl.DataFrame
 
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.multiplier) or not 0 <= self.multiplier <= 1:
+            raise ValueError("overlay multiplier must be finite and in [0, 1]")
+        required = {"constraint", "value", "limit", "multiplier"}
+        if missing := required - set(self.diagnostics.columns):
+            raise ValueError(f"overlay diagnostic columns are missing: {', '.join(sorted(missing))}")
+        if self.diagnostics.is_empty():
+            raise ValueError("overlay diagnostics cannot be empty")
+        diagnostic_values = self.diagnostics.select("value", "limit", "multiplier").to_numpy()
+        if not np.isfinite(diagnostic_values).all():
+            raise ValueError("overlay diagnostics must be finite")
+        multipliers = self.diagnostics["multiplier"].cast(pl.Float64)
+        if (multipliers < 0).any() or (multipliers > 1).any():
+            raise ValueError("overlay diagnostic multipliers must be in [0, 1]")
+        if not math.isclose(self.multiplier, float(multipliers.min()), rel_tol=1e-12, abs_tol=1e-15):
+            raise ValueError("overlay multiplier must equal the minimum diagnostic multiplier")
+        object.__setattr__(self, "diagnostics", self.diagnostics.clone())
+
 
 @dataclass(frozen=True)
 class PortfolioRiskOverlay:

@@ -55,6 +55,9 @@ Execution and risk
 .. automodule:: gambit.currency
    :members:
 
+.. automodule:: gambit.position_sizing
+   :members:
+
 Market data and calendars
 -------------------------
 

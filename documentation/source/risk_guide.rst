@@ -127,7 +127,37 @@ single conservative position multiplier::
 
 The overlay chooses the smallest constraint multiplier but does not mutate
 positions or orders. Apply it explicitly in a sizing stage and retain
-``overlay.diagnostics`` with the backtest result. Covariance risk currently
+``overlay.diagnostics`` with the backtest result::
+
+   sizer = gambit.VolatilityTargetSizer(target_volatility=0.10)
+   proposed = sizer.size(forecasts, estimate, context, capital=1_000_000)
+   overlay = risk_overlay.evaluate(
+       proposed.positions,
+       estimate,
+       capital=1_000_000,
+       stressed_estimate=stressed,
+   )
+   final = sizer.size(
+       forecasts,
+       estimate,
+       context,
+       capital=1_000_000,
+       overlay=overlay,
+   )
+
+``raw_forecast`` determines relative direction and conviction. The sizer
+chooses one common scale so annualized portfolio cash volatility equals capital
+times the target. It records the unmodified forecast, pre-overlay
+``target_net_exposure``, final ``net_exposure``, absolute ``gross_exposure``,
+and applied ``overlay_multiplier``. ``pre_overlay_volatility`` and
+``achieved_volatility`` are fractions of capital. The returned
+``overlay_diagnostics`` retains the constraint calculation. A zero-risk
+direction cannot be scaled to a finite target and therefore produces zero
+exposure.
+
+Sizing produces continuous monetary exposure, not executable contract
+quantities. Contract conversion, lot rounding, liquidity limits, and order
+decisions belong to later explicit stages. Covariance risk currently
 requires exposures translated into one currency; labels alone are not FX
 conversion. Use an explicit snapshot before aggregation::
 

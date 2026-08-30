@@ -515,8 +515,10 @@ the simplest correct baseline.
   now translate local monetary exposures into an explicit base currency while
   retaining local values and FX provenance; risk aggregation preserves measure,
   scenario, and unit boundaries.
-- [ ] Add volatility-targeted position sizing and integrate the overlay multiplier
-  into an explicit sizing stage without mutating raw forecasts.
+- [x] Add volatility-targeted position sizing and integrate the overlay multiplier
+  into an explicit sizing stage without mutating raw forecasts. The sizing result
+  retains forecasts, pre-overlay targets, final exposures, covariance time, and
+  achieved risk; contract rounding and order construction remain later stages.
 - [ ] Add hierarchical portfolio/strategy/group/instrument limits, clip-to-limit
   decisions, rolling trade budgets, and persisted reduce-only/no-trade overrides.
 - [ ] Add historical and parametric VaR/expected shortfall only after return
