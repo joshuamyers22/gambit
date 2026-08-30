@@ -243,8 +243,10 @@ class PortfolioVolatilityMeasure:
             }
         )
         return portfolio.with_columns(
-            pl.lit(self.name).alias("measure"), pl.lit(None, dtype=pl.String).alias("scenario")
-        ).select("symbol", "contract_group", "asset_class", "currency", "measure", "scenario", "value")
+            pl.lit(self.name).alias("measure"),
+            pl.lit(None, dtype=pl.String).alias("scenario"),
+            pl.lit(currency).alias("unit"),
+        ).select("symbol", "contract_group", "asset_class", "currency", "measure", "scenario", "unit", "value")
 
 
 @dataclass(frozen=True)
@@ -268,7 +270,7 @@ class ComponentVolatilityMeasure:
             components = vector * (self.estimate.matrix @ vector) / volatility
         component_by_symbol = dict(zip(self.estimate.symbols, components, strict=True))
         values = pl.col("symbol").replace_strict(component_by_symbol, default=0.0, return_dtype=pl.Float64)
-        return _measure_rows(exposures, self.name, values)
+        return _measure_rows(exposures, self.name, values, pl.col("currency"))
 
 
 @dataclass(frozen=True)
@@ -296,8 +298,10 @@ class DiversificationRatioMeasure:
             }
         )
         return portfolio.with_columns(
-            pl.lit(self.name).alias("measure"), pl.lit(None, dtype=pl.String).alias("scenario")
-        ).select("symbol", "contract_group", "asset_class", "currency", "measure", "scenario", "value")
+            pl.lit(self.name).alias("measure"),
+            pl.lit(None, dtype=pl.String).alias("scenario"),
+            pl.lit("ratio").alias("unit"),
+        ).select("symbol", "contract_group", "asset_class", "currency", "measure", "scenario", "unit", "value")
 
 
 @dataclass(frozen=True)

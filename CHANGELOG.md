@@ -12,11 +12,16 @@ have not yet been released are collected below.
   risk, diversification ratios, and conservative portfolio risk overlays.
 - Executable covariance-risk and overlay documentation with automated regression
   coverage.
+- Immutable point-in-time FX snapshots, explicit base-currency exposure
+  translation, and retained local-value audit columns.
+- Executable multi-currency risk examples and regression coverage.
 
 ### Changed
 
 - Risk calculations reject measures whose market data is newer than the explicit
   calculation cutoff unless look-ahead is enabled.
+- Risk results carry explicit units, and aggregation preserves measure, scenario,
+  and unit boundaries to prevent semantically invalid totals.
 
 ## 1.0.0 - 2026-08-29
 

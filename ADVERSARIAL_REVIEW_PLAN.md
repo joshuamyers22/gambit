@@ -510,8 +510,11 @@ the simplest correct baseline.
 - [x] Add a non-mutating portfolio overlay that selects the most conservative
   multiplier across normal volatility, stressed volatility, sum-absolute-risk,
   and gross-leverage limits while retaining diagnostics.
-- [ ] Add explicit FX translation and unit metadata before permitting
-  multi-currency covariance aggregation.
+- [x] Add explicit FX translation and unit metadata before permitting
+  multi-currency covariance aggregation. Immutable, point-in-time FX snapshots
+  now translate local monetary exposures into an explicit base currency while
+  retaining local values and FX provenance; risk aggregation preserves measure,
+  scenario, and unit boundaries.
 - [ ] Add volatility-targeted position sizing and integrate the overlay multiplier
   into an explicit sizing stage without mutating raw forecasts.
 - [ ] Add hierarchical portfolio/strategy/group/instrument limits, clip-to-limit

@@ -129,4 +129,29 @@ The overlay chooses the smallest constraint multiplier but does not mutate
 positions or orders. Apply it explicitly in a sizing stage and retain
 ``overlay.diagnostics`` with the backtest result. Covariance risk currently
 requires exposures translated into one currency; labels alone are not FX
-conversion.
+conversion. Use an explicit snapshot before aggregation::
+
+   fx = gambit.FxRateSnapshot(
+       base_currency="USD",
+       as_of=context.market_data_as_of,
+       rates={"EUR": 1.20, "GBP": 1.35},
+       source="closing-fix",
+   )
+   base_exposures = gambit.translate_exposures(exposures, fx, context)
+
+Rates are base-currency units per one local-currency unit. Translation retains
+``local_currency``, the local monetary columns, ``fx_rate``, ``fx_as_of``, and
+``fx_source``. Missing currencies, mismatched bases, non-positive rates, and
+future snapshots fail before calculation.
+
+Risk-result units
+-----------------
+
+Every typed risk row carries a ``unit``. Exposure, scenario P&L, and component
+volatility use their calculation currency; diversification ratios use ``ratio``;
+raw prices use ``market_price`` because quote conventions are instrument-specific.
+``RiskResult.aggregate`` retains measure, scenario, and unit boundaries in
+grouped output. An unqualified total requires exactly one measure, scenario,
+and unit. This prevents numerically valid but economically meaningless
+operations such as adding a market price to currency exposure or net exposure
+to gross exposure.

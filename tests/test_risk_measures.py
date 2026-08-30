@@ -2,7 +2,13 @@ import numpy as np
 import polars as pl
 import pytest
 
-from gambit.risk_measures import GrossExposureMeasure, NetExposureMeasure, ScenarioPnlMeasure, calculate_risk
+from gambit.risk_measures import (
+    GrossExposureMeasure,
+    NetExposureMeasure,
+    PriceMeasure,
+    ScenarioPnlMeasure,
+    calculate_risk,
+)
 from gambit.risk_reporting import MarketDataPattern, MarketDataShock, ShockType, StressScenario
 
 TIMESTAMP = np.datetime64("2024-01-02")
@@ -27,10 +33,11 @@ def _exposures():
 def test_typed_measures_share_a_long_form_result() -> None:
     result = calculate_risk(_exposures(), [NetExposureMeasure(), GrossExposureMeasure()], TIMESTAMP)
 
-    assert result.data.shape == (4, 10)
+    assert result.data.shape == (4, 11)
     assert result.data["market_data_as_of"].unique().to_numpy()[0] == TIMESTAMP
     assert result.filter(measure="net_exposure").aggregate()["value"][0] == -1300.0
     assert result.filter(measure="gross_exposure").aggregate(by=())["value"][0] == 1700.0
+    assert result.filter(measure="gross_exposure").data["unit"].unique().to_list() == ["USD"]
 
 
 def test_pattern_scenario_combines_absolute_and_relative_shocks() -> None:
@@ -53,3 +60,16 @@ def test_pattern_scenario_combines_absolute_and_relative_shocks() -> None:
 def test_market_pattern_requires_a_dimension() -> None:
     with pytest.raises(ValueError, match="at least one"):
         MarketDataPattern()
+
+
+def test_aggregation_separates_units_and_rejects_unitless_total() -> None:
+    result = calculate_risk(_exposures(), [PriceMeasure(), NetExposureMeasure()], TIMESTAMP)
+
+    grouped = result.aggregate(by=("asset_class",))
+    assert grouped.columns == ["asset_class", "measure", "scenario", "unit", "value"]
+    with pytest.raises(ValueError, match="one measure, scenario, and unit"):
+        result.aggregate(by=())
+
+    same_unit = calculate_risk(_exposures(), [NetExposureMeasure(), GrossExposureMeasure()], TIMESTAMP)
+    with pytest.raises(ValueError, match="one measure, scenario, and unit"):
+        same_unit.aggregate(by=())

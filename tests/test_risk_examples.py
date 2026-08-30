@@ -15,6 +15,7 @@ RISK_EXAMPLES = (
     "typed_measures.py",
     "pre_trade_controls.py",
     "covariance_overlay.py",
+    "currency_translation.py",
 )
 
 

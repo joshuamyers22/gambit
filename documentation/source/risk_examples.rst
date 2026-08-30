@@ -97,6 +97,24 @@ positive correlation could reduce rather than increase risk. The overlay is a
 control mechanism, not evidence that the covariance model predicts future
 returns.
 
+Multi-currency translation
+--------------------------
+
+Translate local monetary exposure into the calculation context's base currency
+before adding positions or applying covariance. Every FX rate is expressed as
+base-currency value per one unit of local currency: an ``EUR`` rate of ``1.20``
+under a ``USD`` base means one euro equals 1.20 US dollars.
+
+.. literalinclude:: ../../examples/risk/currency_translation.py
+   :language: python
+   :linenos:
+
+The translated frame retains local values and attaches the FX rate, timestamp,
+and source. This makes the conversion reversible for audit purposes. FX labels
+without an actual rate are rejected, as are snapshots newer than the market-data
+cutoff. The example uses a fixed synthetic rate; applications should obtain a
+point-in-time rate from a controlled data source.
+
 Shared deterministic fixture
 ----------------------------
 

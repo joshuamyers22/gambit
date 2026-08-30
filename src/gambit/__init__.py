@@ -22,6 +22,7 @@ from gambit.covariance_risk import (
     PortfolioRiskOverlayResult,
     PortfolioVolatilityMeasure,
 )
+from gambit.currency import FxRateSnapshot, translate_exposures
 from gambit.evaluator import Evaluator, compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.execution_costs import (
     BidAskSpreadSlippage,
@@ -185,6 +186,7 @@ __all__ = [
     "ExecutionStage",
     "Experiment",
     "FixedPercentageSlippage",
+    "FxRateSnapshot",
     "FactorColumnSchema",
     "FactorCacheAdmissionPolicy",
     "FactorCacheCalibration",
@@ -324,6 +326,7 @@ __all__ = [
     "run_stress_scenarios",
     "set_defaults",
     "theta",
+    "translate_exposures",
     "validate_market_data",
     "vega",
     "write_reference_float64",
