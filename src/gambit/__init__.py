@@ -173,6 +173,7 @@ from gambit.strategy_components import (
     get_contract_price_from_array_dict,
     get_contract_price_from_dict,
 )
+from gambit.universe import ContractGroupSpec, ContractSpec, ContractUniverse, create_contract_groups
 from gambit.var_risk import (
     FittedTailRiskModel,
     PortfolioExpectedShortfallMeasure,
@@ -200,7 +201,10 @@ __all__ = [
     "ClosePositionExitRule",
     "Contract",
     "ContractGroup",
+    "ContractGroupSpec",
     "ContractPNL",
+    "ContractSpec",
+    "ContractUniverse",
     "ControlLevel",
     "ComponentVolatilityMeasure",
     "CovarianceEstimate",
@@ -374,6 +378,7 @@ __all__ = [
     "theta",
     "translate_exposures",
     "validate_market_data",
+    "create_contract_groups",
     "vega",
     "write_reference_float64",
 ]

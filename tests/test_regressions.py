@@ -25,6 +25,15 @@ def test_contract_group_cache_clear_removes_contracts_without_replacing_default(
     assert not ContractGroup.exists("named")
 
 
+def test_contract_cache_clear_also_removes_group_references() -> None:
+    group = ContractGroup.get("sector")
+    Contract.create("AAPL", group)
+
+    Contract.clear_cache()
+
+    assert group.get_contracts() == []
+
+
 def _price(_contract, _timestamps, _index, _context):
     return 100.0
 

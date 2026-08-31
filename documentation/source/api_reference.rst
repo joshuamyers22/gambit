@@ -26,6 +26,9 @@ Instruments, orders, and accounting
 .. automodule:: gambit.instruments
    :members:
 
+.. automodule:: gambit.universe
+   :members:
+
 .. automodule:: gambit.pq_types
    :members:
    :show-inheritance:

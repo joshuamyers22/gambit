@@ -185,9 +185,11 @@ class Contract:
     @staticmethod
     def clear_cache() -> None:
         """
-        Remove the contract cache.
+        Remove the contract cache and every group's references to its contracts.
         """
-        Contract._instances = dict()
+        for contract_group in ContractGroup._instances.values():
+            contract_group.clear()
+        Contract._instances = {}
 
     def __repr__(self) -> str:
         expiry = self.expiry.astype("datetime64[us]").astype(datetime.datetime) if self.expiry is not None else None

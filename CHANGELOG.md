@@ -7,6 +7,9 @@ have not yet been released are collected below.
 
 ### Added
 
+- Preflight-validated bulk construction of ordered contract universes and
+  sector groups, with shared metadata defaults, per-contract overrides, and
+  direct ``StrategyBuilder`` integration for thousands of instruments.
 - Point-in-time, shrinkable covariance estimates with immutable matrices,
   volatility and adverse-correlation stress transformations, additive component
   risk, diversification ratios, and conservative portfolio risk overlays.
@@ -34,6 +37,8 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Clearing the global contract cache now also clears contract references held
+  by cached groups.
 - Missing account marks now carry the previous unrealized P&L instead of
   contaminating subsequent account equity with ``NaN``.
 

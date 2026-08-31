@@ -28,6 +28,7 @@ from gambit.strategy import (
     StrategyContextType,
 )
 from gambit.strategy_components import SimpleMarketSimulator, VectorIndicator, VectorSignal
+from gambit.universe import ContractUniverse
 
 _logger = get_child_logger(__name__)
 
@@ -142,6 +143,11 @@ class StrategyBuilder:
 
     def add_contract_group(self, contract_group: ContractGroup) -> None:
         self.contract_groups[contract_group.name] = contract_group
+
+    def add_contract_universe(self, universe: ContractUniverse) -> None:
+        """Register every group in a bulk-created contract universe."""
+        for contract_group in universe.groups.values():
+            self.add_contract_group(contract_group)
 
     def add_indicator(
         self,
