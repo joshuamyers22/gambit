@@ -19,7 +19,12 @@
 namespace py = pybind11;
 
 class TickRing;
-struct TickBatchLeaseState;
+#if defined(__GNUC__)
+#define GAMBIT_HIDDEN __attribute__((visibility("hidden")))
+#else
+#define GAMBIT_HIDDEN
+#endif
+struct GAMBIT_HIDDEN TickBatchLeaseState;
 
 class TickBatchLease {
 public:
@@ -350,7 +355,7 @@ private:
     std::condition_variable wakeup_;
 };
 
-struct TickBatchLeaseState {
+struct GAMBIT_HIDDEN TickBatchLeaseState {
     TickBatchLeaseState(
         TickRing* ring_value,
         py::object owner_value,
