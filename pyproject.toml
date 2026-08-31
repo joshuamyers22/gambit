@@ -25,35 +25,41 @@ classifiers = [
   "Topic :: Office/Business :: Financial :: Investment",
 ]
 dependencies = [
-  "h5py>=3.10",
-  "ipython>=8.18",
-  "ipywidgets>=8.1",
   "numpy>=1.26",
   "polars>=1.8",
-  "pandas-market-calendars>=4.4",
-  "plotly>=5.18",
+  "python-dateutil>=2.9",
   "pyyaml>=6.0",
-  "scipy>=1.11",
   "sortedcontainers>=2.4",
-  "statsmodels>=0.14",
-  "traitlets>=5.14",
 ]
 
 [project.optional-dependencies]
-notebooks = ["h5py>=3.11", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10"]
+calendars = ["pandas-market-calendars>=4.4"]
+persistence = ["h5py>=3.10"]
+research = ["scipy>=1.11", "statsmodels>=0.14"]
+visualization = ["ipython>=8.18", "ipywidgets>=8.1", "plotly>=5.18", "traitlets>=5.14"]
+notebooks = ["h5py>=3.10", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
+all = ["h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
 dev = [
   "build>=1.2",
   "cibuildwheel>=4.2; python_version >= '3.11'",
   "mypy>=1.11",
+  "h5py>=3.10",
+  "ipython>=8.18",
+  "ipywidgets>=8.1",
+  "pandas-market-calendars>=4.4",
   "pip-audit>=2.9",
+  "plotly>=5.18",
   "pytest>=8.3",
   "pytest-cov>=5.0",
   "ruff>=0.6",
+  "scipy>=1.11",
+  "statsmodels>=0.14",
+  "traitlets>=5.14",
   "twine>=5.1",
   "types-PyYAML>=6.0",
   "types-python-dateutil>=2.9",
 ]
-docs = ["pydata-sphinx-theme>=0.16", "sphinx>=7.4", "sphinx-autodoc-typehints>=2.2"]
+docs = ["h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "pydata-sphinx-theme>=0.16", "scipy>=1.11", "sphinx>=7.4", "sphinx-autodoc-typehints>=2.2", "statsmodels>=0.14", "traitlets>=5.14"]
 
 [project.urls]
 Repository = "https://github.com/joshuamyers22/gambit"

@@ -27,6 +27,11 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Core imports no longer require visualization, Statsmodels/SciPy, exchange
+  calendar, HDF5, or notebook dependencies; these are provided by granular
+  runtime extras and loaded only when their features are used.
+- Accounts and return evaluation now reject non-finite or non-positive starting
+  equity, and empty return or market-data inputs have explicit behavior.
 - Strategy timestamps, rule results, simulated trades, callback prices, and
   numeric market-data columns now fail early at their public boundaries with
   contextual errors.

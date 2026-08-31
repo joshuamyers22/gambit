@@ -9,11 +9,7 @@ from collections.abc import Sequence
 from typing import Any, Callable
 
 import numpy as np
-import plotly.graph_objects as go
 import polars as pl
-import statsmodels as sm
-import statsmodels.api as smapi
-from plotly.subplots import make_subplots
 
 from gambit.pq_utils import PQException, assert_, has_display, infer_frequency, monotonically_increasing
 
@@ -174,6 +170,10 @@ def compute_k_ratio(equity: np.ndarray, periods_per_year: int, halflife_years: f
     >>> assert(math.isclose(compute_k_ratio(equity, 252, None), 3.888, abs_tol=0.001))
     >>> assert(math.isclose(compute_k_ratio(equity, 252, 0.5), 602.140, abs_tol=0.001))
     """
+    try:
+        import statsmodels.api as smapi
+    except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+        raise ImportError("compute_k_ratio requires 'gambit-markets[research]'") from exc
     equity = equity[np.isfinite(equity)]
     equity = np.log(equity)
     t = np.arange(len(equity))
@@ -184,7 +184,7 @@ def compute_k_ratio(equity: np.ndarray, periods_per_year: int, halflife_years: f
         w = np.exp(k * t)
         w = w**2  # Statsmodels requires square of weights
         w = w[::-1]
-        fit = sm.regression.linear_model.WLS(endog=equity, exog=t, weights=w, hasconst=False).fit()
+        fit = smapi.WLS(endog=equity, exog=t, weights=w, hasconst=False).fit()
         k_ratio = fit.params[0] / fit.bse[0]
     else:
         fit = smapi.OLS(endog=equity, exog=np.arange(len(equity)), hasconst=False).fit()
@@ -487,13 +487,18 @@ def compute_return_metrics(
     >>> assert(round(metrics['sharpe'], 6) == 0.594366)
     >>> assert(all(metrics['returns_3yr'] == np.array([0.01, 0.02, 0, -0.015])))
     """
-    assert_(starting_equity > 0.0)
-    assert_(isinstance(rets, np.ndarray) and rets.dtype == np.float64)
-    assert_(
-        isinstance(timestamps, np.ndarray)
-        and np.issubdtype(timestamps.dtype, np.datetime64)
-        and monotonically_increasing(timestamps)
-    )
+    if not math.isfinite(starting_equity) or starting_equity <= 0:
+        raise ValueError("starting_equity must be finite and positive")
+    if not isinstance(rets, np.ndarray) or rets.dtype != np.float64:
+        raise TypeError("returns must be a float64 NumPy array")
+    if not isinstance(timestamps, np.ndarray) or not np.issubdtype(timestamps.dtype, np.datetime64):
+        raise TypeError("timestamps must be a datetime64 NumPy array")
+    if timestamps.size == 0 or rets.size == 0:
+        raise ValueError("timestamps and returns cannot be empty")
+    if timestamps.ndim != 1 or rets.ndim != 1 or len(timestamps) != len(rets):
+        raise ValueError("timestamps and returns must be one-dimensional and equally sized")
+    if not monotonically_increasing(timestamps):
+        raise ValueError("timestamps must be monotonically increasing")
     non_nan_rets = rets[np.isfinite(rets)]
     assert_(np.all(non_nan_rets > -1), f"found returns < -1: {non_nan_rets[non_nan_rets <= -1]}")  # type: ignore
 
@@ -652,7 +657,7 @@ def display_return_metrics(metrics: dict[str, Any], float_precision: int = 3, sh
 
 def plot_return_metrics(
     metrics: dict[str, Any], title="", height=1000, width=0, show_points=False, show=True
-) -> go.Figure:
+) -> Any:
     """
     Plot equity, rolling drawdowns and and a boxplot of annual returns given the output of compute_return_metrics.
 
@@ -671,6 +676,11 @@ def plot_return_metrics(
     years = metrics["bucketed_returns"][0]
     ann_rets = metrics["bucketed_returns"][1]
 
+    try:
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+        raise ImportError("plot_return_metrics requires 'gambit-markets[visualization]'") from exc
     fig = make_subplots(rows=3, cols=1)
     fig.update_layout(title=title)
 

@@ -10,7 +10,6 @@ from typing import Sequence
 import numpy as np
 import polars as pl
 from numpy.typing import NDArray
-from scipy.stats import norm
 
 from gambit.covariance_risk import _datetime_ns, _require_single_currency
 from gambit.risk_measures import _measure_rows
@@ -104,6 +103,10 @@ class FittedTailRiskModel:
             raw_es = float(tail.mean())
             observations = losses.size
         else:
+            try:
+                from scipy.stats import norm
+            except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+                raise ImportError("Gaussian tail risk requires 'gambit-markets[research]'") from exc
             mean_loss = -float(pnl.mean()) * self.horizon_days
             sigma = float(pnl.std(ddof=1)) * math.sqrt(self.horizon_days)
             quantile = float(norm.ppf(self.confidence))

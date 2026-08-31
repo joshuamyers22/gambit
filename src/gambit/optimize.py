@@ -11,16 +11,22 @@ from collections.abc import Sequence
 from typing import Any, Callable, Generator
 
 import numpy as np
-import plotly
-import plotly.graph_objects as go
 import polars as pl
-from plotly.subplots import make_subplots
 
 from gambit.pq_utils import get_child_logger, has_display
 
 _logger = get_child_logger(__name__)
 
-plotly.io.renderers.render_on_display = False
+
+def _plotting_modules():
+    try:
+        import plotly
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+    except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+        raise ImportError("optimizer plotting requires 'gambit-markets[visualization]'") from exc
+    plotly.io.renderers.render_on_display = False
+    return go, make_subplots
 
 
 def flatten_keys(experiments: Sequence[Any]) -> list[str]:
@@ -217,7 +223,7 @@ class Optimizer:
         ylim: tuple[float, float] | None = None,
         vertical_spacing: float = 0.05,
         show: bool = True,
-    ) -> go.Figure:
+    ) -> Any:
         """Creates a 3D plot of the optimization output for plotting 2 parameters and costs.
 
         Args:
@@ -233,6 +239,7 @@ class Optimizer:
             marker: Adds a marker to each point in x, y, z to show the actual data used for interpolation.  You can set this to None to turn markers off.
             vertical_spacing: Vertical space between subplots
         """
+        go, make_subplots = _plotting_modules()
         if len(self.experiments) == 0:
             _logger.warning("No experiments found")
             return go.Figure()
@@ -351,7 +358,7 @@ class Optimizer:
         height: int = 1000,
         width: int = 0,
         show: bool = True,
-    ) -> go.Figure:
+    ) -> Any:
         """Creates a 2D plot of the optimization output for plotting 1 parameter and costs
 
         Args:
@@ -372,6 +379,7 @@ class Optimizer:
         xvalues = [experiment.suggestion[x] for experiment in experiments]
         yvalues = []
 
+        go, make_subplots = _plotting_modules()
         if y == "all":
             yvalues.append(("cost", np.array([experiment.cost for experiment in experiments])))
             other_cost_keys = experiments[0].other_costs.keys()

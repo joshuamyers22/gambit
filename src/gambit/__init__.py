@@ -74,9 +74,7 @@ from gambit.factor_operations import (
 )
 from gambit.holiday_calendars import Calendar, get_date_from_weekday
 from gambit.instruments import AssetClass, InstrumentSpec, Tradability
-from gambit.interactive_plot import InteractivePlot, LineConfig, LineGraphWithDetailDisplay
 from gambit.market_data import MarketDataValidationReport, ValidationFinding, ValidationSeverity, validate_market_data
-from gambit.markets import EminiFuture, EminiOption, future_code_to_month, future_code_to_month_number, get_future_code
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
 from gambit.portfolio import Portfolio
 from gambit.position_sizing import (
@@ -382,3 +380,26 @@ __all__ = [
     "vega",
     "write_reference_float64",
 ]
+
+
+def __getattr__(name: str):
+    """Load notebook-only plotting classes on first access."""
+    if name in {"InteractivePlot", "LineConfig", "LineGraphWithDetailDisplay"}:
+        try:
+            from gambit import interactive_plot
+        except ImportError as exc:
+            raise ImportError(f"{name} requires 'gambit-markets[visualization]'") from exc
+        return getattr(interactive_plot, name)
+    if name in {
+        "EminiFuture",
+        "EminiOption",
+        "future_code_to_month",
+        "future_code_to_month_number",
+        "get_future_code",
+    }:
+        try:
+            from gambit import markets
+        except ImportError as exc:
+            raise ImportError(f"{name} requires 'gambit-markets[calendars]'") from exc
+        return getattr(markets, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

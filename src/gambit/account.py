@@ -450,7 +450,11 @@ class Account:
             starting_equity: Starting equity in account currency.  Default 1.e6
             pnl_calc_time: Number of minutes past midnight that we should calculate PNL at.  Default 15 * 60, i.e. 3 pm
         """
-        self.starting_equity = starting_equity
+        if isinstance(starting_equity, bool) or not isinstance(starting_equity, (int, float)):
+            raise TypeError("starting_equity must be numeric")
+        if not math.isfinite(starting_equity) or starting_equity <= 0:
+            raise ValueError("starting_equity must be finite and positive")
+        self.starting_equity = float(starting_equity)
         self._price_function = price_function
         self.strategy_context = strategy_context
 

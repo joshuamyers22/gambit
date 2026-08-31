@@ -111,7 +111,11 @@ class StrategyBuilder:
         self.timestamps = timestamps
 
     def set_starting_equity(self, starting_equity: float) -> None:
-        self.starting_equity = starting_equity
+        if isinstance(starting_equity, bool) or not isinstance(starting_equity, (int, float)):
+            raise TypeError("starting_equity must be numeric")
+        if not np.isfinite(starting_equity) or starting_equity <= 0:
+            raise ValueError("starting_equity must be finite and positive")
+        self.starting_equity = float(starting_equity)
 
     def set_pnl_calc_time(self, pnl_calc_time: int) -> None:
         self.pnl_calc_time = pnl_calc_time

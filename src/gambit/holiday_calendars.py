@@ -14,7 +14,6 @@ from typing import Union
 
 import dateutil.relativedelta as rd
 import numpy as np
-import pandas_market_calendars as mcal
 import polars as pl
 
 from gambit.pq_utils import assert_
@@ -138,6 +137,10 @@ class Calendar:
             calendar_name (str): name of calendar as defined in the pandas_market_calendars package
         """
         if calendar_name not in Calendar._bus_day_calendars:
+            try:
+                import pandas_market_calendars as mcal
+            except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+                raise ImportError("exchange calendars require 'gambit-markets[calendars]'") from exc
             cal = mcal.get_calendar(calendar_name)
             holidays = cal.holidays()
             _holidays = np.array([hol for hol in holidays.holidays])

@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Sequence
 
 import numpy as np
-import pandas_market_calendars as mcal
 import polars as pl
 
 
@@ -80,6 +79,12 @@ def validate_market_data(
                 f"{timestamp_column} must be a Polars Date or Datetime, got {timestamp_dtype}",
                 data.height,
             )
+        )
+        return MarketDataValidationReport(tuple(findings))
+
+    if data.is_empty():
+        findings.append(
+            ValidationFinding("empty_data", ValidationSeverity.ERROR, "market data contains no observations", 0)
         )
         return MarketDataValidationReport(tuple(findings))
 
@@ -198,6 +203,10 @@ def validate_market_data(
             )
 
     if calendar_name is not None and data.height and not null_timestamps:
+        try:
+            import pandas_market_calendars as mcal
+        except ImportError as exc:  # pragma: no cover - exercised in minimal-install CI
+            raise ImportError("calendar validation requires 'gambit-markets[calendars]'") from exc
         dates = data[timestamp_column].dt.date().unique().to_list()
         calendar = mcal.get_calendar(calendar_name)
         valid_dates = {date.date() for date in calendar.valid_days(min(dates), max(dates))}

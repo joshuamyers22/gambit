@@ -8,13 +8,22 @@ import os
 import string
 from typing import Any
 
-import h5py
 import numpy as np
 import polars as pl
 
 from gambit.pq_utils import assert_, get_child_logger, get_temp_dir
 
 _logger = get_child_logger(__name__)
+
+try:
+    import h5py
+except ImportError:  # pragma: no cover - exercised in minimal-install CI
+    h5py = None  # type: ignore[assignment]
+
+
+def _require_h5py() -> None:
+    if h5py is None:
+        raise ImportError("HDF5 persistence requires 'gambit-markets[persistence]'")
 
 
 def np_arrays_to_hdf5(
@@ -36,6 +45,7 @@ def np_arrays_to_hdf5(
         and store as a fixed length byte array with ascii encoding, i.e. a S[max length] datatype. This is much faster to read and process
         compression_args: if you want to compress the hdf5 file. You can use the hdf5plugin module and arguments such as hdf5plugin.Blosc()
     """
+    _require_h5py()
     if not len(data):
         return
     tmp_key = key + "_tmp"
@@ -93,6 +103,7 @@ def hdf5_to_np_arrays(filename: str, key: str) -> dict[str, np.ndarray]:
     Return:
         a list of numpy arrays along with their names
     """
+    _require_h5py()
     ret: dict[str, np.ndarray] = {}
     with h5py.File(filename, "r") as f:
         if key not in f:
@@ -149,6 +160,7 @@ def hdf5_repack(in_filename: str, out_filename: str) -> None:
     Serves the same purpose as the h5repack command line tool, i.e.
     discards empty space in the input file so the output file may be smaller
     """
+    _require_h5py()
     with h5py.File(in_filename, "r") as inf:
         num_items = len(list(inf.keys()))
         with h5py.File(out_filename + ".tmp", "w") as outf:
@@ -189,6 +201,7 @@ def hdf5_copy(
     """
     if out_key is None:
         out_key = in_key
+    _require_h5py()
     with h5py.File(in_filename, "r") as inf:
         assert_(in_key in inf, f"could not find {in_key} in {in_filename}")
         with h5py.File(out_filename, "a") as outf:

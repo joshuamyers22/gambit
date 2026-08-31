@@ -346,8 +346,8 @@ Exit criteria: each defect has a failing-before/passing-after regression test, a
 - [x] Replace reconstructed rule and market-simulator exceptions with contextual chained exceptions.
 - [x] Make multiprocessing spawn-portable and bound in-flight work.
 - [x] Cancel queued work and wait for worker cleanup on failure or interruption.
-- [ ] Make optional dependencies and imports granular.
-- [ ] Define tolerances and behavior for zero equity and empty datasets; NaN, Inf, and missing-mark execution behavior is now explicit.
+- [x] Make optional dependencies and imports granular, with a minimal-import regression test and feature-specific installation errors.
+- [x] Define tolerances and behavior for zero equity and empty datasets; NaN, Inf, and missing-mark execution behavior is explicit.
 - [x] Add preflight-validated, ordered bulk construction for sector and large-universe contract groups without partial mutation on validation failure.
 
 Exit criteria: invalid inputs fail early with stable, documented exceptions; multiprocessing tests pass under spawn; minimal imports work without visualization dependencies.

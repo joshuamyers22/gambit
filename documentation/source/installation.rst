@@ -49,7 +49,21 @@ Then create an isolated environment and install Gambit::
 Optional dependencies
 ---------------------
 
-The extras separate contributor tooling from runtime requirements::
+The base installation contains the NumPy/Polars backtesting, accounting,
+execution, factor-cache, and historical-risk paths. Install only the optional
+capabilities a deployment uses::
+
+   python -m pip install "gambit-markets[calendars]"      # exchange sessions
+   python -m pip install "gambit-markets[persistence]"    # HDF5
+   python -m pip install "gambit-markets[research]"       # SciPy and Statsmodels
+   python -m pip install "gambit-markets[visualization]"  # Plotly and widgets
+   python -m pip install "gambit-markets[all]"            # all runtime extras
+
+Optional modules load on demand. For example, importing ``gambit`` and running
+a core backtest does not import Plotly or Statsmodels. Calling an unavailable
+feature raises an ``ImportError`` naming the extra to install.
+
+Contributor extras are separate::
 
    python -m pip install -e ".[notebooks]"  # executable notebooks
    python -m pip install -e ".[docs]"       # Sphinx documentation

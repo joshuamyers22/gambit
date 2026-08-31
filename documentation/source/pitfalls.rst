@@ -35,6 +35,20 @@ errors. Negative prices remain valid because spreads and other synthetic
 instruments can legitimately cross zero; validate outright instrument prices
 with :func:`~gambit.validate_market_data`, which rejects non-positive values.
 
+Starting equity and empty datasets
+----------------------------------
+
+Starting equity must be a finite number greater than zero. This is enforced by
+accounts, strategy configuration, and the strategy builder because percentage
+returns, leverage, and risk budgets are undefined at zero equity. Use explicit
+cash flows or a nonzero research notional instead of treating zero as a special
+portfolio state.
+
+A strategy time grid and a return series must contain at least one observation.
+Typed but empty market-data frames produce an ``empty_data`` validation error;
+frames missing required columns produce ``missing_columns``. Empty trade lists
+remain valid because a strategy can legitimately make no trades.
+
 Final positions
 ---------------
 

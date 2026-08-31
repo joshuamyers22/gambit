@@ -12,7 +12,6 @@ from types import SimpleNamespace
 from typing import Any, Callable, Sequence, Union
 
 import numpy as np
-import plotly.graph_objects as go
 import polars as pl
 
 from gambit.account import Account
@@ -1125,7 +1124,7 @@ class Strategy:
             return ev.metrics()
         return None
 
-    def plot_returns(self, contract_group: ContractGroup | None = None) -> go.Figure:
+    def plot_returns(self, contract_group: ContractGroup | None = None) -> Any:
         """Display plots of equity, drawdowns and returns for the given contract group or for all contract groups if contract_group
         is None (default)"""
         if contract_group is None:
