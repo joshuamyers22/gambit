@@ -5,6 +5,10 @@ have not yet been released are collected below.
 
 ## Unreleased
 
+- Added fail-closed release artifact inspection and isolated installation gates
+  for core, optional extras, native extensions, the CLI, and source distributions.
+- Made manual TestPyPI publishing an explicit workflow opt-in after validation.
+
 ### Added
 
 - Deterministic CSV, ZIP, and HDF5 boundary fuzz smoke coverage in the native

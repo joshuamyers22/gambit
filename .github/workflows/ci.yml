@@ -193,12 +193,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: python -m pip install build twine
+      - run: python -m pip install build packaging twine
       - run: python -m build
       - run: python -m twine check dist/*
+      - name: Inspect distribution contents and metadata
+        run: python tools/verify_release_artifacts.py dist
       - name: Smoke-test installed wheel and console script
-        run: |
-          python -m venv /tmp/gambit-wheel-smoke
-          /tmp/gambit-wheel-smoke/bin/python -m pip install dist/*.whl
-          /tmp/gambit-wheel-smoke/bin/python -c "import gambit"
-          /tmp/gambit-wheel-smoke/bin/gambit-factor-cache --help
+        run: python tools/verify_release_installations.py dist

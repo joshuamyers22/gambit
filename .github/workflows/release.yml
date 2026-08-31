@@ -2,6 +2,12 @@ name: Release distributions
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_testpypi:
+        description: Publish verified artifacts to TestPyPI
+        required: true
+        type: boolean
+        default: false
   release:
     types: [published]
 
@@ -62,6 +68,9 @@ jobs:
     needs: [sdist, wheels]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: sdist
@@ -74,8 +83,13 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: python -m pip install --upgrade twine
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - run: python -m pip install --upgrade packaging twine
       - run: python -m twine check dist/*
+      - name: Inspect release contents, metadata, dependencies, and platform matrix
+        run: python tools/verify_release_artifacts.py dist --expected-matrix
+      - name: Verify isolated core, optional-extra, CLI, native, and sdist installs
+        run: python tools/verify_release_installations.py dist
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: python-package-distributions
@@ -83,7 +97,7 @@ jobs:
           if-no-files-found: error
 
   publish-testpypi:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_testpypi
     needs: verify
     runs-on: ubuntu-latest
     environment:

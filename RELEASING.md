@@ -35,12 +35,18 @@ trusted-publisher records.
    python -m sphinx -W --keep-going -b html documentation/source documentation/generated
    python -m build
    python -m twine check dist/*
+   python tools/verify_release_artifacts.py dist
+   python tools/verify_release_installations.py dist
    python -m pip_audit --strict .
    ```
 
 5. Push the release commit and wait for every required GitHub check.
-6. Run `Release distributions` manually. This publishes only to TestPyPI.
-7. In clean Linux and macOS environments, install the appropriate TestPyPI
+6. Run `Release distributions` manually with `publish_testpypi` disabled. The
+   workflow builds the complete nine-wheel platform/Python matrix, inspects the
+   archives, and tests core, optional-extra, native, CLI, and sdist installs.
+7. Re-run it with `publish_testpypi` enabled only after the validation run is
+   green. This explicit opt-in is the only manual path that publishes.
+8. In clean Linux and macOS environments, install the appropriate TestPyPI
    wheel without falling back to the source distribution and run an import/CLI
    smoke test.
 
@@ -53,6 +59,10 @@ dependencies, verifies metadata, and publishes with short-lived OIDC credentials
 
 PyPI files are immutable. If a release is wrong, increment the version and
 publish a corrective release; never attempt to replace an uploaded file.
+
+Option pricing and implied-volatility reference validation is intentionally
+deferred. Do not expand the release scope to include those features without a
+separate reviewed validation plan.
 
 ## Post-release verification
 

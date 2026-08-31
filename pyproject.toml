@@ -56,6 +56,7 @@ dev = [
   "statsmodels>=0.14",
   "traitlets>=5.14",
   "twine>=5.1",
+  "tomli>=2.0; python_version < '3.11'",
   "types-PyYAML>=6.0",
   "types-python-dateutil>=2.9",
 ]
@@ -72,6 +73,7 @@ gambit-factor-cache = "gambit.factor_cli:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
+include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -114,7 +116,7 @@ warn_unused_ignores = true
 build = ["cp310-*", "cp311-*", "cp312-*"]
 skip = ["*-musllinux_*", "*-win32", "*-win_amd64"]
 test-command = [
-  "python -c \"import gambit; from importlib.metadata import version; assert version('gambit-markets')\"",
+  "python -c \"import gambit, gambit._factor_cache, gambit._io, gambit._options, gambit.compute_pnl; from importlib.metadata import version; assert version('gambit-markets') == gambit.__version__\"",
   "gambit-factor-cache --help",
 ]
 
