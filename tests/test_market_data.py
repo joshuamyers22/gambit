@@ -69,3 +69,34 @@ def test_missing_columns_short_circuits_schema_checks() -> None:
     report = validate_market_data(pl.DataFrame({"timestamp": [dt.datetime(2024, 1, 2)]}))
 
     assert report.by_code("missing_columns").count == 1
+
+
+def test_non_numeric_market_columns_produce_schema_findings() -> None:
+    data = pl.DataFrame(
+        {
+            "timestamp": [dt.datetime(2024, 1, 2)],
+            "price": ["100.0"],
+            "volume": ["10"],
+        }
+    )
+
+    report = validate_market_data(data, volume_columns=("volume",))
+
+    assert report.by_code("invalid_price_type").count == 1
+    assert report.by_code("invalid_volume_type").count == 1
+
+
+def test_null_and_non_finite_volume_are_rejected() -> None:
+    data = pl.DataFrame(
+        {
+            "timestamp": [dt.datetime(2024, 1, 2), dt.datetime(2024, 1, 3)],
+            "price": [100.0, 101.0],
+            "volume": [None, np.inf],
+        },
+        schema_overrides={"volume": pl.Float64},
+    )
+
+    report = validate_market_data(data, volume_columns=("volume",))
+
+    assert report.by_code("null_volume").count == 1
+    assert report.by_code("non_finite_volume").count == 1

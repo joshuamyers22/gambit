@@ -14,6 +14,7 @@ from typing import Callable, Sequence
 import numpy as np
 
 from gambit.account import Account
+from gambit.boundaries import validate_price_value
 from gambit.execution_costs import ChargeModel, FixedPercentageSlippage, PerUnitCharge, SlippageModel
 from gambit.pq_types import Contract, ContractGroup, LimitOrder, MarketOrder, Order, TimeInForce, Trade, VWAPOrder
 from gambit.pq_utils import assert_, get_child_logger, np_indexof_sorted
@@ -287,17 +288,34 @@ class SimpleMarketSimulator:
                 continue
             contract = order.contract
             if not contract.is_basket():
-                raw_price = self.price_func(contract, timestamps, i, strategy_context)
+                raw_price = validate_price_value(
+                    self.price_func(contract, timestamps, i, strategy_context),
+                    symbol=contract.symbol,
+                    timestamp=timestamp,
+                    source="market simulator price callback",
+                )
             else:
                 raw_price = 0.0
                 for _contract, ratio in contract.components:
-                    raw_price += self.price_func(_contract, timestamps, i, strategy_context) * ratio
+                    component_price = validate_price_value(
+                        self.price_func(_contract, timestamps, i, strategy_context),
+                        symbol=_contract.symbol,
+                        timestamp=timestamp,
+                        source="market simulator basket price callback",
+                    )
+                    raw_price += component_price * ratio
                     if np.isnan(raw_price):
                         break
             if np.isnan(raw_price):
                 continue
             slippage = self.slippage_model.adjustment(order, raw_price)
-            price = raw_price + slippage
+            price = validate_price_value(
+                raw_price + slippage,
+                symbol=contract.symbol,
+                timestamp=timestamp,
+                source="slippage model",
+                allow_missing=False,
+            )
             price = round(price, self.price_rounding)
             if isinstance(order, LimitOrder) and np.isfinite(order.limit_price):
                 is_marketable = (order.qty > 0 and price <= order.limit_price) or (

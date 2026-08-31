@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import math
-import sys
 import time
 import types
 from collections import defaultdict
@@ -18,6 +17,7 @@ import polars as pl
 
 from gambit.account import Account
 from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
+from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamps
 from gambit.calculation import CalculationContext
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
@@ -117,9 +117,7 @@ class Strategy:
             log_orders=log_orders,
         )
         self.provenance = RunProvenance(self.run_configuration)
-        increasing_ts: bool = bool(np.all(np.diff(timestamps.astype(int)) > 0))
-        # print(increasing_ts, type(increasing_ts))
-        assert_(increasing_ts, f"timestamps must be monotonically increasing: {timestamps[:100]} ...")
+        validate_strategy_timestamps(timestamps)
         self.timestamps = timestamps
         assert_(len(contract_groups) > 0 and isinstance(contract_groups[0], ContractGroup))
         self.contract_groups = contract_groups
@@ -817,10 +815,23 @@ class Strategy:
                 self._current_orders,
                 self.strategy_context,
             )
-        except Exception as e:
-            raise type(e)(
-                f"Exception: {str(e)} at rule: {type(rule_function)} contract_group: {contract_group} index: {idx}"
-            ).with_traceback(sys.exc_info()[2])
+            if not isinstance(orders, Sequence) or isinstance(orders, (str, bytes)):
+                raise TypeError("rule callback must return a sequence of Order objects")
+            for order in orders:
+                if not isinstance(order, Order):
+                    raise TypeError(f"rule callback returned a non-Order value: {order!r}")
+                if order.contract.contract_group is not contract_group:
+                    raise ValueError(
+                        f"rule returned {order.contract.symbol} outside contract group {contract_group.name}"
+                    )
+                registered = contract_group.contracts.get(order.contract.symbol)
+                if registered is not order.contract:
+                    raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
+            orders = list(orders)
+        except Exception as exc:
+            raise BacktestCallbackError(
+                f"rule callback failed at index {idx} for contract group {contract_group.name}: {rule_function!r}"
+            ) from exc
         return orders
 
     def _sim_market(self, i: int) -> None:
@@ -860,6 +871,18 @@ class Strategy:
                     self.strategy_context,
                 )
 
+                if not isinstance(trades, Sequence) or isinstance(trades, (str, bytes)):
+                    raise TypeError("market simulator must return a sequence of Trade objects")
+                for trade in trades:
+                    if not isinstance(trade, Trade):
+                        raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
+                    if not any(trade.order is order for order in self._current_orders):
+                        raise ValueError("market simulator returned a trade for an order outside the open order set")
+                    if trade.contract is not trade.order.contract:
+                        raise ValueError("market simulator trade contract does not match its order")
+                    if trade.timestamp != self.timestamps[i]:
+                        raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
+
                 if self.log_trades and len(trades) > 0:
                     if len(trades) > 1:
                         _logger.info("TRADES:" + "".join([f"\n {trade}" for trade in trades]))
@@ -869,10 +892,10 @@ class Strategy:
                 if len(trades):
                     self.account.add_trades(trades)
                 self._trades += trades
-            except Exception as e:
-                raise type(e)(f"Exception: {str(e)} at index: {i} function: {market_sim_function}").with_traceback(
-                    sys.exc_info()[2]
-                )
+            except Exception as exc:
+                raise BacktestCallbackError(
+                    f"market simulator failed at index {i}: {market_sim_function!r}"
+                ) from exc
 
         self._update_current_orders()
 
@@ -884,7 +907,7 @@ class Strategy:
         end_date: str | np.datetime64 = NAT,
     ) -> pl.DataFrame:
         """
-        Add indicators and signals to end of market data and return as a pandas dataframe.
+        Add indicators and signals to market data and return a Polars DataFrame.
 
         Args:
             contract_groups (list of:obj:`ContractGroup`, optional): list of contract groups to include.  All if set to None (default)

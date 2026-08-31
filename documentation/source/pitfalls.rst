@@ -15,6 +15,26 @@ Rolling features have a warm-up region. Preserve nulls until the signal policy
 handles them explicitly. Filling a moving average backward imports future data;
 converting every null numeric value to zero creates artificial crossings.
 
+Runtime boundary contracts
+--------------------------
+
+The strategy time grid must be a non-empty, one-dimensional NumPy
+``datetime64`` array with unique, strictly increasing values and no ``NaT``.
+Rules must return a sequence of registered :class:`~gambit.Order` objects for
+the contract group being evaluated. A market simulator must return a sequence
+of :class:`~gambit.Trade` objects tied to currently open orders at the current
+strategy timestamp. Gambit raises :class:`~gambit.BacktestCallbackError` with
+the original callback exception available through ``__cause__`` when these
+contracts are broken.
+
+Price callbacks accept real scalar values. ``NaN`` has one narrow meaning: the
+mark is unavailable, or an order cannot execute at that timestamp. An account
+then carries its previous unrealized P&L, while the simple simulator emits no
+trade. Infinite prices, booleans, strings, arrays, and other non-real values are
+errors. Negative prices remain valid because spreads and other synthetic
+instruments can legitimately cross zero; validate outright instrument prices
+with :func:`~gambit.validate_market_data`, which rejects non-positive values.
+
 Final positions
 ---------------
 

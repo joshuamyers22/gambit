@@ -15,6 +15,7 @@ import polars as pl
 from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
+from gambit.boundaries import validate_price_value
 from gambit.compute_pnl import calc_trade_pnl
 from gambit.pq_types import Contract, ContractGroup, RoundTripTrade, Trade
 from gambit.pq_utils import assert_
@@ -199,22 +200,20 @@ class ContractPNL:
         if math.isclose(open_qty, 0):
             unrealized = 0.0
         else:
-            price = self._price_function(self.contract, self._account_timestamps, i, self.strategy_context)  # type: ignore
-            assert_(
-                bool(np.isreal(price)),
-                f"Unexpected price type: {price} {type(price)} for contract: {self.contract} timestamp: {self._account_timestamps[i]}",
+            price = validate_price_value(
+                self._price_function(self.contract, self._account_timestamps, i, self.strategy_context),  # type: ignore
+                symbol=self.contract.symbol,
+                timestamp=self._account_timestamps[i],
+                source="account price callback",
             )
 
             if math.isnan(price):
                 index = find_index_before(self._net_pnl, timestamp)  # Most recent unrealized pnl
                 if index == -1:
-                    prev_unrealized, prev_open_qty = 0, 0
+                    prev_unrealized = 0.0
                 else:
-                    _, (_, prev_open_qty, prev_unrealized, _) = self._net_pnl.peekitem(index)
-                unrealized = (
-                    prev_unrealized
-                    + (open_qty - prev_open_qty) * (price - weighted_avg_price) * self.contract.multiplier
-                )
+                    _, (_, _, prev_unrealized, _) = self._net_pnl.peekitem(index)
+                unrealized = prev_unrealized
             else:
                 unrealized = open_qty * (price - weighted_avg_price) * self.contract.multiplier
 

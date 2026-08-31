@@ -10,6 +10,7 @@ except PackageNotFoundError:  # pragma: no cover - source trees are normally ins
 from gambit._options import black_scholes_price, cdf, d1, d2, delta, gamma, implied_vol, rho, theta, vega
 from gambit.account import Account, ContractPNL, df_roundtrip_trade, roundtrip_trades
 from gambit.backtest_result import BacktestBundleError, BacktestResult, BacktestTelemetry, StageTelemetry
+from gambit.boundaries import BacktestCallbackError
 from gambit.calculation import CalculationContext, CalculationMode, MissingDataPolicy
 from gambit.configuration import RunConfiguration, RunProvenance, fingerprint_polars_frame, load_run_configuration
 from gambit.control_plane import (
@@ -187,6 +188,7 @@ __all__ = [
     "AccountingStage",
     "AssetClass",
     "BacktestBundleError",
+    "BacktestCallbackError",
     "BacktestResult",
     "BacktestTelemetry",
     "BidAskSpreadSlippage",

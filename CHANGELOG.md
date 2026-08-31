@@ -24,10 +24,18 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Strategy timestamps, rule results, simulated trades, callback prices, and
+  numeric market-data columns now fail early at their public boundaries with
+  contextual errors.
 - Risk calculations reject measures whose market data is newer than the explicit
   calculation cutoff unless look-ahead is enabled.
 - Risk results carry explicit units, and aggregation preserves measure, scenario,
   and unit boundaries to prevent semantically invalid totals.
+
+### Fixed
+
+- Missing account marks now carry the previous unrealized P&L instead of
+  contaminating subsequent account equity with ``NaN``.
 
 ## 1.0.0 - 2026-08-29
 

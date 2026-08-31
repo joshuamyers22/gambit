@@ -342,12 +342,12 @@ Exit criteria: each defect has a failing-before/passing-after regression test, a
 
 ### Phase 2 — harden execution and public boundaries
 
-- [ ] Validate timestamp ordering/uniqueness, finite prices/quantities, contract membership, and callback return types.
-- [ ] Replace reconstructed exceptions with contextual chained exceptions.
+- [x] Validate timestamp ordering/uniqueness, finite prices/quantities, contract membership, and callback return types.
+- [x] Replace reconstructed rule and market-simulator exceptions with contextual chained exceptions.
 - [x] Make multiprocessing spawn-portable and bound in-flight work.
 - [x] Cancel queued work and wait for worker cleanup on failure or interruption.
 - [ ] Make optional dependencies and imports granular.
-- [ ] Define tolerances and behavior for NaN, Inf, missing marks, zero equity, and empty datasets.
+- [ ] Define tolerances and behavior for zero equity and empty datasets; NaN, Inf, and missing-mark execution behavior is now explicit.
 
 Exit criteria: invalid inputs fail early with stable, documented exceptions; multiprocessing tests pass under spawn; minimal imports work without visualization dependencies.
 

@@ -116,6 +116,16 @@ def validate_market_data(
             )
 
     for column in price_columns:
+        if not data.schema[column].is_numeric():
+            findings.append(
+                ValidationFinding(
+                    "invalid_price_type",
+                    ValidationSeverity.ERROR,
+                    f"{column} must be numeric, got {data.schema[column]}",
+                    data.height,
+                )
+            )
+            continue
         null_count = data[column].null_count()
         non_finite = data.select((~pl.col(column).is_finite()).fill_null(False).sum()).item()
         non_positive = data.select((pl.col(column) <= 0).fill_null(False).sum()).item()
@@ -152,8 +162,30 @@ def validate_market_data(
                 )
 
     for column in volume_columns:
+        if not data.schema[column].is_numeric():
+            findings.append(
+                ValidationFinding(
+                    "invalid_volume_type",
+                    ValidationSeverity.ERROR,
+                    f"{column} must be numeric, got {data.schema[column]}",
+                    data.height,
+                )
+            )
+            continue
+        null_count = data[column].null_count()
+        non_finite = data.select((~pl.col(column).is_finite()).fill_null(False).sum()).item()
         negative_count = data.select((pl.col(column) < 0).fill_null(False).sum()).item()
         zero_count = data.select((pl.col(column) == 0).fill_null(False).sum()).item()
+        if null_count:
+            findings.append(
+                ValidationFinding("null_volume", ValidationSeverity.ERROR, f"{column} contains null volume", null_count)
+            )
+        if non_finite:
+            findings.append(
+                ValidationFinding(
+                    "non_finite_volume", ValidationSeverity.ERROR, f"{column} contains non-finite volume", non_finite
+                )
+            )
         if negative_count:
             findings.append(
                 ValidationFinding(
