@@ -49,12 +49,12 @@ jobs:
           - os: ubuntu-latest
             artifact: wheels-linux-x86_64
             deployment_target: ""
-          - os: macos-13
+          - os: macos-15-intel
             artifact: wheels-macos-x86_64
-            deployment_target: "13.0"
-          - os: macos-14
+            deployment_target: "15.0"
+          - os: macos-15
             artifact: wheels-macos-arm64
-            deployment_target: "14.0"
+            deployment_target: "15.0"
     runs-on: ${{ matrix.os }}
     env:
       CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ matrix.deployment_target }}

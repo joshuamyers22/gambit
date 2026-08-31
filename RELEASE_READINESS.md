@@ -13,10 +13,12 @@ The sdist is built and installed independently. TestPyPI upload requires an
 explicit workflow input and production PyPI remains restricted to a published
 GitHub release whose tag matches the package version.
 
-The first hosted matrix run exposed that current Homebrew libzip bottles target
-macOS 13 on x86-64 and macOS 14 on ARM64. The workflow now declares those same
-minimums so repaired wheels cannot advertise compatibility their bundled native
-libraries do not provide. A corrected full matrix run remains required.
+The first hosted matrix runs exposed two infrastructure constraints: current
+Homebrew native bottles require the builder's macOS deployment target, and the
+former macOS 13 Intel runner has been removed. Both macOS wheel lanes now use
+supported macOS 15 runners and declare a macOS 15 minimum so repaired wheels
+cannot advertise compatibility their bundled libraries do not provide. A
+corrected full matrix run remains required.
 
 ## Remaining release decisions and external checks
 

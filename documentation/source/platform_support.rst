@@ -8,9 +8,9 @@ runs the test suite on each supported platform and Python version.
 Release artifacts include manylinux x86-64 wheels and macOS x86-64 and ARM64
 wheels. Linux wheels are repaired with ``auditwheel`` and macOS wheels with
 ``delocate`` so libzip is included rather than referenced from a package-manager
-path. The binary wheels target macOS 13 or newer on x86-64 and macOS 14 or newer
-on ARM64 because the Homebrew libraries bundled by the hosted builders have
-those minimum deployment targets. Source distributions remain available for
+path. The binary wheels target macOS 15 or newer on both x86-64 and ARM64
+because the Homebrew libraries bundled by the supported hosted builders have
+that minimum deployment target. Source distributions remain available for
 other compatible POSIX systems with a suitable native toolchain and libzip.
 
 Native Windows builds are not currently supported. The I/O extension depends
