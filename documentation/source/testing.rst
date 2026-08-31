@@ -27,6 +27,20 @@ while native correctness runs on both Linux and macOS. Fuzz probes also run
 under ASan and UBSan. Performance testing is an opt-in, non-blocking GitHub
 Actions workflow so noisy hosted-runner timing does not block releases.
 
+Documentation and notebook drift
+--------------------------------
+
+Committed notebooks contain no outputs or execution counts. CI validates their
+schema, executes each notebook, applies the deterministic Polars migration and
+normalization pass, and then requires the notebook tree to match Git exactly.
+This catches stale migrations, execution-dependent source changes, and committed
+runtime artifacts without requiring byte-for-byte deterministic rich output.
+
+Sphinx builds with warnings treated as errors into ``documentation/generated``.
+After the build, CI requires ``documentation/source`` to remain clean, including
+untracked files. Autosummary or custom documentation code therefore cannot
+silently rewrite committed sources.
+
 Adding tests
 ------------
 

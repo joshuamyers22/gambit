@@ -18,6 +18,8 @@ have not yet been released are collected below.
   performance test suites with documented local selectors and dedicated CI lanes.
 - Architecture, heartbeat event-flow, and accounting/execution assumption
   documentation with explicit reconciliation requirements and model non-goals.
+- Documentation and notebook drift gates covering notebook validity and output
+  cleanliness, deterministic post-execution normalization, and Git-clean sources.
 - Schema-versioned HDF5 dataframe manifests, recoverable pending/backup group
   publication, bounded reads and writes, and corruption regression coverage.
 - Preflight-validated bulk construction of ordered contract universes and

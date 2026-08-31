@@ -373,7 +373,7 @@ Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are 
 - [x] Establish explicit root exports, semantic versioning, deprecation, and changelog policy.
 - [x] Separate unit, integration, native, notebook, fuzz/sanitizer, and opt-in non-blocking performance suites with documented pytest selectors and CI lanes. Plotting remains covered as ordinary unit/integration behavior because it has no independent runtime boundary.
 - [x] Add architecture and heartbeat-flow diagrams plus explicit FIFO accounting, mark-to-market, cost, currency, order-lifecycle, timing, and non-goal assumptions.
-- [ ] Automate docs/notebook regeneration checks.
+- [x] Enforce output-free valid notebooks, post-execution deterministic normalization, Git-clean notebook sources, strict Sphinx builds, and Git-clean documentation sources in CI.
 - [ ] Build and install wheels in clean environments before release.
 
 Exit criteria: public API and financial assumptions are documented, generated artifacts cannot silently drift, and release artifacts install and import on every supported platform.

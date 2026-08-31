@@ -18,6 +18,11 @@ python -m pip install -e ".[dev,docs,notebooks]"
 python -m pytest
 python -m ruff check src tests
 python -m mypy
+python tools/check_notebook_cleanliness.py
+python tools/migrate_notebooks.py
+python tools/check_clean_paths.py examples/notebooks
+python -m sphinx -W --keep-going -b html documentation/source documentation/generated
+python tools/check_clean_paths.py documentation/source
 python -m build
 python -m twine check dist/*
 ```
@@ -27,6 +32,12 @@ The optimizer example uses a one-point smoke grid so it validates the complete
 statsmodels/Polars path without turning routine CI into a parameter search.
 `data/create_data.ipynb` validates imports only; running `create_data(...)`
 requires the maintainer-owned source HDF5 archive.
+
+Committed notebooks contain source only: execution counts and outputs are build
+artifacts. After changing a notebook, run the migration/normalization command and
+commit its deterministic result. CI executes every notebook, normalizes it again,
+and rejects any remaining source or metadata difference. The strict Sphinx build
+similarly must not mutate or create files under `documentation/source`.
 
 Correctness changes to accounting, execution, filtering, or analytics must include
 a failing-before regression test and reconciliation assertions where applicable.
