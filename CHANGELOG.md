@@ -11,6 +11,9 @@ have not yet been released are collected below.
   sanitizer workflow, with checked-in seeds for reproducible failures.
 - Independent randomized reference comparisons for Cython FIFO P&L, native
   mapped columns, and multi-instrument tick-factor aggregation.
+- Linux and macOS CI gates that compile every project-owned C++ translation
+  unit with strict warnings-as-errors while explicitly excluding generated and
+  vendored sources.
 - Schema-versioned HDF5 dataframe manifests, recoverable pending/backup group
   publication, bounded reads and writes, and corruption regression coverage.
 - Preflight-validated bulk construction of ordered contract universes and

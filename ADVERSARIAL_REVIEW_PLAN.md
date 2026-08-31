@@ -356,7 +356,7 @@ Exit criteria: invalid inputs fail early with stable, documented exceptions; mul
 
 - [x] Add a checked-in, deterministic bounded fuzz corpus for native CSV/ZIP parsing and HDF5 schema operations; run its crash probe under ASan/UBSan in CI.
 - [x] Run ASan/UBSan native boundary tests in Linux CI and add a LeakSanitizer allocation/lifetime stress probe.
-- [ ] Make compiler warnings errors for all project-owned C/C++; the extracted SPSC core and standalone ThreadSanitizer target already use `-Wall -Wextra -Wpedantic -Werror`.
+- [x] Compile every project-owned C++ translation unit with `-Wall -Wextra -Wpedantic -Werror` on Linux and macOS; generated Cython, external headers, and vendored Lets Be Rational sources are explicitly outside this ownership gate.
 - [x] Audit native ownership/failure paths and add repeated-allocation, descriptor-lifetime, malformed-input, mmap-lifetime, and ring stress probes.
 - [x] Add resource limits and malformed-input tests for native CSV/ZIP and HDF5 dataframe boundaries.
 - [x] Make HDF5 group replacement schema-versioned, recoverable after interrupted swaps, and as crash-safe as documented.

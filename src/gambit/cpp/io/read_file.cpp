@@ -198,7 +198,7 @@ static PyObject* create_np_array(const std::string& dtype, void* data) {
 }
 
 static PyObject*
-read_file(PyObject* self, PyObject* args, PyObject* kwargs) {
+read_file(PyObject*, PyObject* args, PyObject* kwargs) {
     char* filename = NULL;
     PyObject* _col_indices = NULL;
     PyObject* _dtypes = NULL;
@@ -320,7 +320,7 @@ static time_t time_to_epoch(struct tm* value) {
 }
 
 static PyObject*
-parse_datetimes(PyObject* self, PyObject* args) {
+parse_datetimes(PyObject*, PyObject* args) {
     PyObject* datetime_object = NULL;
     if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &datetime_object)) return NULL;
 
@@ -378,7 +378,11 @@ static struct PyModuleDef io_module = {
     "_io",
     NULL,
     -1,
-    IOModuleMethods
+    IOModuleMethods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
 /* The classes below are exported */

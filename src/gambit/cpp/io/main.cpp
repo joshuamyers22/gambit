@@ -11,7 +11,7 @@
 
 using namespace std;
 
-int main(int argc, const char * argv[]) {
+int main() {
     //test_zip_reader();
     test_csv_reader_zip();
     std::cout << "done\n";
