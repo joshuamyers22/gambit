@@ -354,7 +354,7 @@ Exit criteria: invalid inputs fail early with stable, documented exceptions; mul
 
 ### Phase 3 — secure native and persistence boundaries
 
-- [ ] Fuzz native CSV/ZIP parsing and HDF5 schema operations.
+- [x] Add a checked-in, deterministic bounded fuzz corpus for native CSV/ZIP parsing and HDF5 schema operations; run its crash probe under ASan/UBSan in CI.
 - [x] Run ASan/UBSan native boundary tests in Linux CI and add a LeakSanitizer allocation/lifetime stress probe.
 - [ ] Make compiler warnings errors for all project-owned C/C++; the extracted SPSC core and standalone ThreadSanitizer target already use `-Wall -Wextra -Wpedantic -Werror`.
 - [x] Audit native ownership/failure paths and add repeated-allocation, descriptor-lifetime, malformed-input, mmap-lifetime, and ring stress probes.

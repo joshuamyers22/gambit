@@ -1,0 +1,5 @@
+{
+  "seeds": [0, 1, 7, 42, 31337, 20260831],
+  "cases_per_seed": 12,
+  "max_payload_bytes": 4096
+}

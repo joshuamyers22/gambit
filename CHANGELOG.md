@@ -7,6 +7,8 @@ have not yet been released are collected below.
 
 ### Added
 
+- Deterministic CSV, ZIP, and HDF5 boundary fuzz smoke coverage in the native
+  sanitizer workflow, with checked-in seeds for reproducible failures.
 - Schema-versioned HDF5 dataframe manifests, recoverable pending/backup group
   publication, bounded reads and writes, and corruption regression coverage.
 - Preflight-validated bulk construction of ordered contract universes and

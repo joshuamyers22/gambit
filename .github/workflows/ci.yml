@@ -77,6 +77,7 @@ jobs:
         run: >-
           LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY"
           python -m pytest -vv -s
+          tests/test_boundary_fuzz.py
           tests/test_native_io_hardening.py
           tests/test_factor_cache.py
           tests/test_tick_ring.py
