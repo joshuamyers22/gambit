@@ -26,7 +26,7 @@ class TickRing;
 #endif
 struct GAMBIT_HIDDEN TickBatchLeaseState;
 
-class TickBatchLease {
+class GAMBIT_HIDDEN TickBatchLease {
 public:
     explicit TickBatchLease(std::shared_ptr<TickBatchLeaseState> state)
         : state_(std::move(state)) {}
