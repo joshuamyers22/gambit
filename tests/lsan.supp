@@ -1,5 +1,9 @@
 # CPython and NumPy retain allocator arenas, free lists, and process-global
 # caches. These frames are not actionable C++ ownership leaks in Gambit.
+# NumPy 2.3 on CPython 3.12 also retains two small array-descriptor allocations
+# until process teardown. Keep this suppression frame-specific so allocations
+# from Gambit's native extension remain visible to LeakSanitizer.
+leak:PyArray_NewFromDescr_int
 leak:_PyMem_RawMalloc
 leak:PyMem_RawMalloc
 leak:_PyObject_Malloc
