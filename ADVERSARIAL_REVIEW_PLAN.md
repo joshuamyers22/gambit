@@ -360,7 +360,7 @@ Exit criteria: invalid inputs fail early with stable, documented exceptions; mul
 - [x] Audit native ownership/failure paths and add repeated-allocation, descriptor-lifetime, malformed-input, mmap-lifetime, and ring stress probes.
 - [x] Add resource limits and malformed-input tests for native CSV/ZIP and HDF5 dataframe boundaries.
 - [x] Make HDF5 group replacement schema-versioned, recoverable after interrupted swaps, and as crash-safe as documented.
-- [ ] Verify Cython/native results against independent reference implementations.
+- [ ] Verify Cython/native results against independent reference implementations. FIFO P&L, mapped columns, and tick factors are covered; option pricing and implied volatility are intentionally deferred.
 
 Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are checked in, and ownership/resource limits are documented.
 

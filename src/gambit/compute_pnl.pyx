@@ -54,8 +54,9 @@ cdef TradeVec create(const long[::1]& qtys, const double[::1]& prices, int extra
     cdef Py_ssize_t i
     cdef Py_ssize_t size = 0
     for i in range(qtys.shape[0]):
-        trades[i] = Trade(qtys[i], prices[i])
-        size += 1
+        if qtys[i] != 0:
+            trades[size] = Trade(qtys[i], prices[i])
+            size += 1
     return TradeVec(_start_idx=0, size=size, _trades=trades)
 
 cdef dealloc(TradeVec& self):
@@ -85,6 +86,11 @@ cpdef calc_trade_pnl(
     long[::1] new_qtys,
     double[::1] new_prices,
     double multiplier):
+
+    if open_qtys.shape[0] != open_prices.shape[0]:
+        raise ValueError("open quantities and prices must have the same length")
+    if new_qtys.shape[0] != new_prices.shape[0]:
+        raise ValueError("new quantities and prices must have the same length")
 
     cdef TradeVec trades = create(new_qtys, new_prices, 0)
     cdef TradeVec positions = create(open_qtys, open_prices, new_qtys.shape[0])
