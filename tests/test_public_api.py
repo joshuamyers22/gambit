@@ -9,7 +9,9 @@ import gambit
 
 
 def test_distribution_and_import_versions_match() -> None:
-    assert gambit.__version__ == version("gambit-markets") == "1.0.0"
+    expected = (Path(__file__).parents[1] / "version.txt").read_text().strip()
+
+    assert gambit.__version__ == version("gambit-markets") == expected
 
 
 def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
