@@ -81,9 +81,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--strict-config --strict-markers"
 markers = [
+  "fuzz: deterministic hostile-input crash and hang probes",
+  "integration: crosses package, process, persistence, or example boundaries",
   "native: requires compiled native extensions",
   "notebook: executes notebook examples",
+  "performance: benchmark correctness smoke tests and performance measurements",
   "slow: takes more than a few seconds",
+  "unit: isolated deterministic behavior with no external process or persistence boundary",
 ]
 
 [tool.ruff]

@@ -38,6 +38,7 @@ than hidden framework behavior.
    examples
    api_reference
    platform_support
+   testing
 
 Project documentation
 ---------------------

@@ -371,7 +371,7 @@ Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are 
 - [x] Add deterministic result-bundle serialization using atomic directory publication, a canonical manifest, and schema-versioned Polars IPC files.
 - [x] Attach explicitly requested risk/stress results and market-data validation findings to result bundles, with analytics timed separately from execution.
 - [x] Establish explicit root exports, semantic versioning, deprecation, and changelog policy.
-- [ ] Separate unit, integration, native, notebook, plotting, and performance suites.
+- [x] Separate unit, integration, native, notebook, fuzz/sanitizer, and opt-in non-blocking performance suites with documented pytest selectors and CI lanes. Plotting remains covered as ordinary unit/integration behavior because it has no independent runtime boundary.
 - [ ] Add architecture diagrams and document accounting/execution assumptions.
 - [ ] Automate docs/notebook regeneration checks.
 - [ ] Build and install wheels in clean environments before release.
