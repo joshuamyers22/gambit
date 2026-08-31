@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import datetime
+import json
+import math
 import os
 import string
 from typing import Any
@@ -14,6 +16,12 @@ import polars as pl
 from gambit.pq_utils import assert_, get_child_logger, get_temp_dir
 
 _logger = get_child_logger(__name__)
+
+HDF5_FORMAT = "gambit.dataframe"
+HDF5_SCHEMA_VERSION = 1
+DEFAULT_MAX_HDF5_COLUMNS = 10_000
+DEFAULT_MAX_HDF5_ROWS = 100_000_000
+DEFAULT_MAX_HDF5_BYTES = 8 * 1024**3
 
 try:
     import h5py
@@ -26,6 +34,66 @@ def _require_h5py() -> None:
         raise ImportError("HDF5 persistence requires 'gambit-markets[persistence]'")
 
 
+def _normalize_hdf5_key(key: str) -> str:
+    if not isinstance(key, str) or not key.strip("/"):
+        raise ValueError("HDF5 key must be a non-empty path")
+    parts = key.strip("/").split("/")
+    if any(not part or part in {".", ".."} or part.endswith((".__gambit_pending", ".__gambit_backup")) for part in parts):
+        raise ValueError(f"invalid HDF5 key: {key!r}")
+    return "/".join(parts)
+
+
+def _validate_resource_limits(max_columns: int, max_rows: int, max_bytes: int) -> None:
+    limits = (max_columns, max_rows, max_bytes)
+    if any(isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0 for limit in limits):
+        raise ValueError("HDF5 resource limits must be positive integers")
+
+
+def _validate_hdf5_arrays(
+    data: dict[str, np.ndarray], *, max_columns: int, max_rows: int, max_bytes: int
+) -> int:
+    if not isinstance(data, dict):
+        raise TypeError("HDF5 data must be a dictionary of NumPy arrays")
+    if len(data) > max_columns:
+        raise ValueError(f"HDF5 column count exceeds limit of {max_columns}")
+    row_count: int | None = None
+    total_bytes = 0
+    for name, array in data.items():
+        if not isinstance(name, str) or not name or "/" in name or name in {".", ".."}:
+            raise ValueError(f"invalid HDF5 column name: {name!r}")
+        if not isinstance(array, np.ndarray):
+            raise TypeError(f"HDF5 column {name} must be a NumPy array")
+        if array.ndim != 1:
+            raise ValueError(f"HDF5 column {name} must be one-dimensional")
+        if row_count is None:
+            row_count = len(array)
+        elif len(array) != row_count:
+            raise ValueError("all HDF5 columns must have the same row count")
+        if array.dtype.kind == "O":
+            total_bytes += sum(len(str(value).encode("utf-8")) for value in array)
+        else:
+            total_bytes += array.nbytes
+    rows = row_count or 0
+    if rows > max_rows:
+        raise ValueError(f"HDF5 row count exceeds limit of {max_rows}")
+    if total_bytes > max_bytes:
+        raise ValueError(f"HDF5 input size exceeds limit of {max_bytes} bytes")
+    return rows
+
+
+def _recover_hdf5_group(file, key: str) -> None:
+    pending_key = key + ".__gambit_pending"
+    backup_key = key + ".__gambit_backup"
+    if key not in file and backup_key in file:
+        file.move(backup_key, key)
+        file.flush()
+    if pending_key in file:
+        del file[pending_key]
+    if key in file and backup_key in file:
+        del file[backup_key]
+    file.flush()
+
+
 def np_arrays_to_hdf5(
     data: dict[str, np.ndarray],
     filename: str,
@@ -33,6 +101,10 @@ def np_arrays_to_hdf5(
     dtypes: dict[str, str] | None = None,
     as_utf8: list[str] | None = None,
     compression_args: dict[Any, Any] | None = None,
+    *,
+    max_columns: int = DEFAULT_MAX_HDF5_COLUMNS,
+    max_rows: int = DEFAULT_MAX_HDF5_ROWS,
+    max_bytes: int = DEFAULT_MAX_HDF5_BYTES,
 ) -> None:
     """
     Write a list of numpy arrays to hdf5
@@ -46,55 +118,87 @@ def np_arrays_to_hdf5(
         compression_args: if you want to compress the hdf5 file. You can use the hdf5plugin module and arguments such as hdf5plugin.Blosc()
     """
     _require_h5py()
+    key = _normalize_hdf5_key(key)
+    _validate_resource_limits(max_columns, max_rows, max_bytes)
+    row_count = _validate_hdf5_arrays(
+        data, max_columns=max_columns, max_rows=max_rows, max_bytes=max_bytes
+    )
     if not len(data):
         return
-    tmp_key = key + "_tmp"
+    pending_key = key + ".__gambit_pending"
+    backup_key = key + ".__gambit_backup"
 
     if compression_args is None:
         compression_args = {}
 
     if as_utf8 is None:
         as_utf8 = []
+    unknown_utf8 = set(as_utf8) - set(data)
+    if unknown_utf8:
+        raise ValueError(f"as_utf8 contains unknown columns: {', '.join(sorted(unknown_utf8))}")
+    if dtypes is not None:
+        unknown_dtypes = set(dtypes) - set(data)
+        if unknown_dtypes:
+            raise ValueError(f"dtypes contains unknown columns: {', '.join(sorted(unknown_dtypes))}")
+    utf8_columns = list(dict.fromkeys(as_utf8))
 
     with h5py.File(filename, "a") as f:
-        if tmp_key in f:
-            del f[tmp_key]
-        grp = f.create_group(tmp_key)
-        for colname, array in data.items():
-            if dtypes is not None and colname in dtypes:
-                dtype = np.dtype(dtypes[colname])
-                if dtype.kind == "M":  # datetime
-                    dtype = h5py.opaque_dtype(dtype)
-                    array = array.astype(dtype)
+        _recover_hdf5_group(f, key)
+        grp = f.create_group(pending_key)
+        try:
+            grp.attrs["format"] = HDF5_FORMAT
+            grp.attrs["schema_version"] = HDF5_SCHEMA_VERSION
+            grp.attrs["state"] = "writing"
+            for colname, source_array in data.items():
+                array = source_array
+                if dtypes is not None and colname in dtypes:
+                    dtype = np.dtype(dtypes[colname])
+                    array = array.astype(h5py.opaque_dtype(dtype) if dtype.kind == "M" else dtype)
                 else:
-                    array = array.astype(dtype)
-            else:  # we need to figure out datatype
-                dtype = array.dtype
-                if colname in as_utf8:
-                    array = np.char.encode(array.astype("U"), "utf-8")
-                elif dtype.kind == "O":
-                    array = np.where(array == None, "", array)  # noqa: E711 comparison to None should be 'if cond is None:'
-                    array = array.astype("S")
-                elif dtype.kind == "M":  # datetime
-                    dtype = h5py.opaque_dtype(dtype)
-                    array = array.astype(dtype)
-            if colname in grp:
-                del grp[colname]
-            grp.create_dataset(name=colname, data=array, shape=[len(array)], dtype=array.dtype, **compression_args)
+                    dtype = array.dtype
+                    if colname in utf8_columns or dtype.kind == "U":
+                        array = np.char.encode(array.astype("U"), "utf-8")
+                        if colname not in utf8_columns:
+                            utf8_columns.append(colname)
+                    elif dtype.kind == "O":
+                        array = np.where(array == None, "", array).astype("S")  # noqa: E711
+                    elif dtype.kind == "M":
+                        array = array.astype(h5py.opaque_dtype(dtype))
+                grp.create_dataset(colname, data=array, shape=[len(array)], dtype=array.dtype, **compression_args)
 
-        grp.attrs["type"] = "dataframe"
-        grp.attrs["timestamp"] = str(datetime.datetime.now())
-        grp.attrs["rows"] = len(array)
-        grp.attrs["columns"] = ",".join([colname for colname in data.keys()])
-        grp.attrs["utf8_cols"] = ",".join(as_utf8)
+            grp.attrs["type"] = "dataframe"
+            grp.attrs["timestamp"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            grp.attrs["rows"] = row_count
+            grp.attrs["columns_json"] = json.dumps(list(data), separators=(",", ":"))
+            grp.attrs["utf8_columns_json"] = json.dumps(utf8_columns, separators=(",", ":"))
+            grp.attrs["state"] = "committed"
+            f.flush()
 
-        if key in f:
-            del f[key]
-        f.move(tmp_key, key)
-        f.flush()
+            if backup_key in f:
+                del f[backup_key]
+            if key in f:
+                f.move(key, backup_key)
+                f.flush()
+            f.move(pending_key, key)
+            f.flush()
+            if backup_key in f:
+                del f[backup_key]
+            f.flush()
+        except Exception:
+            if pending_key in f:
+                del f[pending_key]
+                f.flush()
+            raise
 
 
-def hdf5_to_np_arrays(filename: str, key: str) -> dict[str, np.ndarray]:
+def hdf5_to_np_arrays(
+    filename: str,
+    key: str,
+    *,
+    max_columns: int = DEFAULT_MAX_HDF5_COLUMNS,
+    max_rows: int = DEFAULT_MAX_HDF5_ROWS,
+    max_bytes: int = DEFAULT_MAX_HDF5_BYTES,
+) -> dict[str, np.ndarray]:
     """
     Read a list of numpy arrays previously written out by np_arrays_to_hdf5
     Args:
@@ -104,19 +208,61 @@ def hdf5_to_np_arrays(filename: str, key: str) -> dict[str, np.ndarray]:
         a list of numpy arrays along with their names
     """
     _require_h5py()
+    key = _normalize_hdf5_key(key)
+    _validate_resource_limits(max_columns, max_rows, max_bytes)
     ret: dict[str, np.ndarray] = {}
     with h5py.File(filename, "r") as f:
-        if key not in f:
+        read_key = key
+        backup_key = key + ".__gambit_backup"
+        if read_key not in f and backup_key in f:
+            read_key = backup_key
+        if read_key not in f:
             _logger.info(f"{key} not found in {filename}")
             return dict()
-        grp = f[key]
-        assert_("type" in grp.attrs and grp.attrs["type"] == "dataframe", f"{key} not a dataframe")
-        columns = grp.attrs["columns"].split(",")
-        utf8_cols: list[str] = []
-        if "utf8_cols" in grp.attrs:
-            utf8_cols = grp.attrs["utf8_cols"].split(",")
+        grp = f[read_key]
+        if "type" not in grp.attrs or grp.attrs["type"] != "dataframe":
+            raise ValueError(f"HDF5 group is not a dataframe: {key}")
+        if "schema_version" in grp.attrs:
+            version = int(grp.attrs["schema_version"])
+            if grp.attrs.get("format") != HDF5_FORMAT or version != HDF5_SCHEMA_VERSION:
+                raise ValueError(f"unsupported HDF5 dataframe schema version: {version}")
+            if grp.attrs.get("state") != "committed":
+                raise ValueError(f"HDF5 dataframe group is not committed: {key}")
+            columns = json.loads(grp.attrs["columns_json"])
+            utf8_cols = json.loads(grp.attrs.get("utf8_columns_json", "[]"))
+        else:
+            if "columns" not in grp.attrs:
+                raise ValueError("legacy HDF5 dataframe is missing its column manifest")
+            columns = grp.attrs["columns"].split(",")
+            utf8_cols = grp.attrs.get("utf8_cols", "").split(",")
+        if (
+            not isinstance(columns, list)
+            or len(set(columns)) != len(columns)
+            or not all(isinstance(column, str) and column for column in columns)
+        ):
+            raise ValueError("invalid HDF5 dataframe column manifest")
+        if not isinstance(utf8_cols, list) or not all(isinstance(column, str) for column in utf8_cols):
+            raise ValueError("invalid HDF5 dataframe UTF-8 manifest")
+        if set(utf8_cols) - set(columns) - {""}:
+            raise ValueError("HDF5 UTF-8 manifest references unknown columns")
+        if len(columns) > max_columns:
+            raise ValueError(f"HDF5 column count exceeds limit of {max_columns}")
+        declared_rows = int(grp.attrs.get("rows", 0))
+        if declared_rows < 0 or declared_rows > max_rows:
+            raise ValueError(f"HDF5 row count exceeds limit of {max_rows}")
+        total_bytes = 0
         for col in columns:
-            array = grp[col][:]
+            if col not in grp or not isinstance(grp[col], h5py.Dataset):
+                raise ValueError(f"HDF5 dataframe column is missing or invalid: {col}")
+            dataset = grp[col]
+            if dataset.ndim != 1 or len(dataset) != declared_rows:
+                raise ValueError(f"HDF5 dataframe column has inconsistent rows: {col}")
+            if dataset.dtype.kind == "O":
+                raise ValueError(f"variable-length HDF5 columns are not supported: {col}")
+            total_bytes += math.prod(dataset.shape) * dataset.dtype.itemsize
+            if total_bytes > max_bytes:
+                raise ValueError(f"HDF5 dataset size exceeds limit of {max_bytes} bytes")
+            array = dataset[:]
             if col in utf8_cols:
                 array = np.char.decode(array, "utf-8")
                 dtype = f"U{array.dtype.itemsize}"

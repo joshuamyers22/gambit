@@ -7,6 +7,8 @@ have not yet been released are collected below.
 
 ### Added
 
+- Schema-versioned HDF5 dataframe manifests, recoverable pending/backup group
+  publication, bounded reads and writes, and corruption regression coverage.
 - Preflight-validated bulk construction of ordered contract universes and
   sector groups, with shared metadata defaults, per-contract overrides, and
   direct ``StrategyBuilder`` integration for thousands of instruments.

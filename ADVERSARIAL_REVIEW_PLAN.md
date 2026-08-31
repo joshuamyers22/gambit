@@ -358,8 +358,8 @@ Exit criteria: invalid inputs fail early with stable, documented exceptions; mul
 - [x] Run ASan/UBSan native boundary tests in Linux CI and add a LeakSanitizer allocation/lifetime stress probe.
 - [ ] Make compiler warnings errors for all project-owned C/C++; the extracted SPSC core and standalone ThreadSanitizer target already use `-Wall -Wextra -Wpedantic -Werror`.
 - [x] Audit native ownership/failure paths and add repeated-allocation, descriptor-lifetime, malformed-input, mmap-lifetime, and ring stress probes.
-- [ ] Add resource limits and malformed-input tests.
-- [ ] Make HDF5 writes schema-versioned and as crash-safe as documented.
+- [x] Add resource limits and malformed-input tests for native CSV/ZIP and HDF5 dataframe boundaries.
+- [x] Make HDF5 group replacement schema-versioned, recoverable after interrupted swaps, and as crash-safe as documented.
 - [ ] Verify Cython/native results against independent reference implementations.
 
 Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are checked in, and ownership/resource limits are documented.
