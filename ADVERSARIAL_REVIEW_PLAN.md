@@ -374,7 +374,7 @@ Exit criteria: fuzz smoke runs and sanitizers are clean, corpus regressions are 
 - [x] Separate unit, integration, native, notebook, fuzz/sanitizer, and opt-in non-blocking performance suites with documented pytest selectors and CI lanes. Plotting remains covered as ordinary unit/integration behavior because it has no independent runtime boundary.
 - [x] Add architecture and heartbeat-flow diagrams plus explicit FIFO accounting, mark-to-market, cost, currency, order-lifecycle, timing, and non-goal assumptions.
 - [x] Enforce output-free valid notebooks, post-execution deterministic normalization, Git-clean notebook sources, strict Sphinx builds, and Git-clean documentation sources in CI.
-- [ ] Run the automated release-candidate gate for the complete CPython 3.10-3.12 Linux x86_64 and macOS x86_64/arm64 wheel matrix before release. The gate now inspects archive contents and independently installs every optional dependency boundary plus the sdist; its first full hosted matrix run remains pending.
+- [x] Run the automated release-candidate gate for the complete CPython 3.10-3.12 Linux x86_64 and macOS x86_64/arm64 wheel matrix before release. The gate inspects archive contents and independently installs every optional dependency boundary plus the sdist; non-publishing run `33439901354` passed on 2026-08-31.
 
 Exit criteria: public API and financial assumptions are documented, generated artifacts cannot silently drift, and release artifacts install and import on every supported platform.
 

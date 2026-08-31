@@ -1,6 +1,6 @@
 # Release readiness
 
-Status: **release candidate 1.1.0; hosted matrix and TestPyPI validation pending**.
+Status: **release candidate 1.1.0; TestPyPI validation pending**.
 
 The repository now has automated release-candidate gates for the supported
 CPython 3.10-3.12 matrix on Linux x86_64 and macOS x86_64/arm64. Each wheel is
@@ -17,16 +17,19 @@ The first hosted matrix runs exposed two infrastructure constraints: current
 Homebrew native bottles require the builder's macOS deployment target, and the
 former macOS 13 Intel runner has been removed. Both macOS wheel lanes now use
 supported macOS 15 runners and declare a macOS 15 minimum so repaired wheels
-cannot advertise compatibility their bundled libraries do not provide. A
-corrected full matrix run remains required.
+cannot advertise compatibility their bundled libraries do not provide.
+
+The final non-publishing hosted release run `33439901354` passed on 2026-08-31.
+It built all nine expected wheels and the sdist, passed the combined archive and
+metadata audit, and completed isolated core, optional-extra, CLI, native, and
+sdist installation checks. Both publishing jobs were skipped.
 
 ## Remaining release decisions and external checks
 
 - Confirm the `testpypi` and `pypi` GitHub environments, maintainer approval,
   and Trusted Publisher records described in `RELEASING.md`. These settings
   cannot be proven from the repository checkout.
-- Run the manual release workflow once with publishing disabled. After its
-  complete matrix passes, run it with TestPyPI publishing enabled and verify
+- Run the manual release workflow with TestPyPI publishing enabled and verify
   direct wheel installation from TestPyPI on clean Linux and macOS hosts.
 - Review the TestPyPI project page rendering, file list, metadata, license,
   dependency declarations, provenance, and attestations before creating a
