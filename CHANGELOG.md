@@ -5,12 +5,12 @@ have not yet been released are collected below.
 
 ## Unreleased
 
-- Added fail-closed release artifact inspection and isolated installation gates
-  for core, optional extras, native extensions, the CLI, and source distributions.
-- Made manual TestPyPI publishing an explicit workflow opt-in after validation.
+## 1.1.0 - 2026-08-31
 
 ### Added
 
+- Fail-closed release artifact inspection and isolated installation gates for
+  core, optional extras, native extensions, the CLI, and source distributions.
 - Deterministic CSV, ZIP, and HDF5 boundary fuzz smoke coverage in the native
   sanitizer workflow, with checked-in seeds for reproducible failures.
 - Independent randomized reference comparisons for Cython FIFO P&L, native
@@ -46,6 +46,7 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Manual TestPyPI publishing is now an explicit workflow opt-in after validation.
 - Core imports no longer require visualization, Statsmodels/SciPy, exchange
   calendar, HDF5, or notebook dependencies; these are provided by granular
   runtime extras and loaded only when their features are used.

@@ -1,6 +1,6 @@
 # Release readiness
 
-Status: **not ready to publish**.
+Status: **release candidate 1.1.0; hosted matrix and TestPyPI validation pending**.
 
 The repository now has automated release-candidate gates for the supported
 CPython 3.10-3.12 matrix on Linux x86_64 and macOS x86_64/arm64. Each wheel is
@@ -15,10 +15,6 @@ GitHub release whose tag matches the package version.
 
 ## Remaining release decisions and external checks
 
-- Choose the next release version, update both `pyproject.toml` and
-  `version.txt`, and move the substantial `Unreleased` changelog into a dated
-  section. Publishing the current `1.0.0` metadata would misrepresent these
-  post-1.0 changes.
 - Confirm the `testpypi` and `pypi` GitHub environments, maintainer approval,
   and Trusted Publisher records described in `RELEASING.md`. These settings
   cannot be proven from the repository checkout.
