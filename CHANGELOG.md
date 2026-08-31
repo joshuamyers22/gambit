@@ -47,6 +47,8 @@ have not yet been released are collected below.
 ### Changed
 
 - Manual TestPyPI publishing is now an explicit workflow opt-in after validation.
+- macOS release wheels declare deployment targets matching the bundled Homebrew
+  libzip dependency: macOS 13 on x86-64 and macOS 14 on ARM64.
 - Core imports no longer require visualization, Statsmodels/SciPy, exchange
   calendar, HDF5, or notebook dependencies; these are provided by granular
   runtime extras and loaded only when their features are used.

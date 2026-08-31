@@ -13,6 +13,11 @@ The sdist is built and installed independently. TestPyPI upload requires an
 explicit workflow input and production PyPI remains restricted to a published
 GitHub release whose tag matches the package version.
 
+The first hosted matrix run exposed that current Homebrew libzip bottles target
+macOS 13 on x86-64 and macOS 14 on ARM64. The workflow now declares those same
+minimums so repaired wheels cannot advertise compatibility their bundled native
+libraries do not provide. A corrected full matrix run remains required.
+
 ## Remaining release decisions and external checks
 
 - Confirm the `testpypi` and `pypi` GitHub environments, maintainer approval,
