@@ -346,6 +346,8 @@ class Order:
         return self.status in [OrderStatus.OPEN, OrderStatus.CANCEL_REQUESTED, OrderStatus.PARTIALLY_FILLED]
 
     def request_cancel(self) -> None:
+        if self.status in (OrderStatus.FILLED, OrderStatus.CANCELLED, OrderStatus.CANCEL_REQUESTED):
+            return
         self.status = OrderStatus.CANCEL_REQUESTED
 
     def fill(self, fill_qty: float = math.nan) -> None:
@@ -365,6 +367,8 @@ class Order:
             self.status = OrderStatus.PARTIALLY_FILLED
 
     def cancel(self) -> None:
+        if self.status in (OrderStatus.FILLED, OrderStatus.CANCELLED):
+            return
         self.status = OrderStatus.CANCELLED
 
 

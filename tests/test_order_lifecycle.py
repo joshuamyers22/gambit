@@ -34,6 +34,25 @@ def test_partial_fill_transitions_to_filled() -> None:
     assert not order.is_open()
 
 
+def test_terminal_order_lifecycle_operations_are_idempotent() -> None:
+    timestamp = np.datetime64("2024-01-02T09:30")
+    contract = Contract.create("TERMINAL-LIFECYCLE", ContractGroup.get("orders"))
+    filled_order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    filled_order.fill()
+
+    filled_order.request_cancel()
+    filled_order.cancel()
+
+    assert filled_order.status is OrderStatus.FILLED
+
+    cancelled_order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    cancelled_order.cancel()
+    cancelled_order.request_cancel()
+    cancelled_order.cancel()
+
+    assert cancelled_order.status is OrderStatus.CANCELLED
+
+
 @pytest.mark.parametrize("qty", [0.0, np.nan, np.inf, -np.inf])
 def test_market_order_rejects_invalid_quantity(qty: float) -> None:
     contract = Contract.create("INVALID", ContractGroup.get("orders"))
@@ -149,6 +168,7 @@ def test_vwap_sell_uses_backup_price_when_market_data_is_missing() -> None:
     assert len(trades) == 1
     assert trades[0].qty == -2
     assert trades[0].price == 99.0
+    assert order.status is OrderStatus.FILLED
 
 
 def test_vwap_rejects_invalid_backup_price_before_mutating_order() -> None:
