@@ -238,6 +238,79 @@ def test_strategy_rejects_unconfigured_runtime_stage_group() -> None:
     assert not strategy.indicator_values
 
 
+@pytest.mark.parametrize("stage", ["indicator", "signal"])
+def test_strategy_rejects_duplicate_stage_registration_atomically(stage: str) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get(f"duplicate-{stage}-registration")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+
+    def original_callback(*_args: object) -> np.ndarray:
+        return np.array([1.0])
+
+    def replacement_callback(*_args: object) -> np.ndarray:
+        return np.array([2.0])
+
+    if stage == "indicator":
+        strategy.add_indicator("duplicate", original_callback)
+        with pytest.raises(ValueError, match="already registered"):
+            strategy.add_indicator("duplicate", replacement_callback, depends_on=["missing"])
+        assert strategy.indicators["duplicate"] is original_callback
+        assert strategy.indicator_deps["duplicate"] == []
+    else:
+        strategy.add_signal("duplicate", original_callback)
+        with pytest.raises(ValueError, match="already registered"):
+            strategy.add_signal("duplicate", replacement_callback, depends_on_signals=["missing"])
+        assert strategy.signals["duplicate"] is original_callback
+        assert strategy.signal_deps["duplicate"] == []
+
+
+@pytest.mark.parametrize("stage", ["indicator", "signal"])
+def test_strategy_rejects_non_callable_stage_atomically(stage: str) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get(f"non-callable-{stage}")],
+        _price,
+    )
+
+    with pytest.raises(TypeError, match="must be callable"):
+        if stage == "indicator":
+            strategy.add_indicator("invalid", 42)  # type: ignore[arg-type]
+        else:
+            strategy.add_signal("invalid", 42)  # type: ignore[arg-type]
+
+    assert "invalid" not in strategy.indicators
+    assert "invalid" not in strategy.signals
+
+
+def test_strategy_dispatches_same_indicator_name_by_contract_group() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    first_group = ContractGroup.get("first-indicator-dispatch")
+    second_group = ContractGroup.get("second-indicator-dispatch")
+    strategy = Strategy(np.array([timestamp]), [first_group, second_group], _price)
+    strategy.add_indicator("price", lambda *_args: np.array([100.0]), [first_group])
+    strategy.add_indicator("price", lambda *_args: np.array([200.0]), [second_group])
+
+    strategy.run_indicators()
+
+    assert strategy.indicator_values[first_group.name].price.tolist() == [100.0]
+    assert strategy.indicator_values[second_group.name].price.tolist() == [200.0]
+
+
+def test_strategy_dispatches_same_signal_name_by_contract_group() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    first_group = ContractGroup.get("first-signal-dispatch")
+    second_group = ContractGroup.get("second-signal-dispatch")
+    strategy = Strategy(np.array([timestamp]), [first_group, second_group], _price)
+    strategy.add_signal("entry", lambda *_args: np.array([True]), [first_group])
+    strategy.add_signal("entry", lambda *_args: np.array([False]), [second_group])
+
+    strategy.run_signals()
+
+    assert strategy.signal_values[first_group.name].entry.tolist() == [True]
+    assert strategy.signal_values[second_group.name].entry.tolist() == [False]
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

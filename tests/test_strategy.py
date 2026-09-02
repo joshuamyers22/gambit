@@ -223,9 +223,9 @@ def test_strategy() -> None:
 
     metrics = strategy.evaluate_returns(plot=False, display_summary=False, return_metrics=True)
     assert metrics is not None
-    assert math.isclose(metrics["gmean"], 4.346962, abs_tol=1e-5)
-    assert math.isclose(metrics["sharpe"], 3.921835, abs_tol=1e-5)
-    assert math.isclose(metrics["mdd_pct"], 0.012193, abs_tol=1e-5)
+    assert math.isclose(metrics["gmean"], 0.611110, abs_tol=1e-5)
+    assert math.isclose(metrics["sharpe"], 9.037849, abs_tol=1e-5)
+    assert math.isclose(metrics["mdd_pct"], 0.00120761, abs_tol=1e-5)
 
 
 def test_strategy_2() -> None:

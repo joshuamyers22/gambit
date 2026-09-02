@@ -137,7 +137,9 @@ class Strategy:
         self.log_trades = log_trades
         self.log_orders = log_orders
         self.indicators: dict[str, IndicatorType] = {}
+        self._indicator_functions: dict[tuple[str, int], IndicatorType] = {}
         self.signals: dict[str, SignalType] = {}
+        self._signal_functions: dict[tuple[str, int], SignalType] = {}
         self.signal_values: dict[str, SimpleNamespace] = defaultdict(types.SimpleNamespace)
         self.rule_names: list[str] = []
         self.rules: dict[str, RuleType] = {}
@@ -300,10 +302,20 @@ class Strategy:
             contract_groups: Contract groups that this indicator applies to.  If not set, it applies to all contract groups. Default None.
             depends_on: Names of other indicators that we need to compute this indicator. Default None.
         """
+        if not callable(indicator):
+            raise TypeError("indicator must be callable")
         validated_groups = self._validated_stage_groups(contract_groups, operation="indicator registration")
-        self.indicators[name] = indicator
-        self.indicator_deps[name] = [] if depends_on is None else list(depends_on)
-        self.indicator_cgroups[name] = validated_groups
+        dependencies = [] if depends_on is None else list(depends_on)
+        existing_groups = self.indicator_cgroups.get(name, ())
+        if any(group in existing_groups for group in validated_groups):
+            raise ValueError(f"indicator {name!r} is already registered for one or more contract groups")
+        if name in self.indicator_deps and self.indicator_deps[name] != dependencies:
+            raise ValueError(f"indicator {name!r} registrations must declare identical dependencies")
+        self.indicators.setdefault(name, indicator)
+        self.indicator_deps[name] = dependencies
+        self.indicator_cgroups[name] = (*existing_groups, *validated_groups)
+        for group in validated_groups:
+            self._indicator_functions[(name, id(group))] = indicator
 
     def add_signal(
         self,
@@ -324,11 +336,24 @@ class Strategy:
             depends_on_indicators (list of str, optional): Names of indicators that we need to compute this signal. Default None.
             depends_on_signals (list of str, optional): Names of other signals that we need to compute this signal. Default None.
         """
+        if not callable(signal_function):
+            raise TypeError("signal must be callable")
         validated_groups = self._validated_stage_groups(contract_groups, operation="signal registration")
-        self.signals[name] = signal_function
-        self.signal_indicator_deps[name] = [] if depends_on_indicators is None else list(depends_on_indicators)
-        self.signal_deps[name] = [] if depends_on_signals is None else list(depends_on_signals)
-        self.signal_cgroups[name] = validated_groups
+        indicator_dependencies = [] if depends_on_indicators is None else list(depends_on_indicators)
+        signal_dependencies = [] if depends_on_signals is None else list(depends_on_signals)
+        existing_groups = self.signal_cgroups.get(name, ())
+        if any(group in existing_groups for group in validated_groups):
+            raise ValueError(f"signal {name!r} is already registered for one or more contract groups")
+        if name in self.signal_indicator_deps and self.signal_indicator_deps[name] != indicator_dependencies:
+            raise ValueError(f"signal {name!r} registrations must declare identical indicator dependencies")
+        if name in self.signal_deps and self.signal_deps[name] != signal_dependencies:
+            raise ValueError(f"signal {name!r} registrations must declare identical signal dependencies")
+        self.signals.setdefault(name, signal_function)
+        self.signal_indicator_deps[name] = indicator_dependencies
+        self.signal_deps[name] = signal_dependencies
+        self.signal_cgroups[name] = (*existing_groups, *validated_groups)
+        for group in validated_groups:
+            self._signal_functions[(name, id(group))] = signal_function
 
     def add_rule(
         self,
@@ -450,7 +475,7 @@ class Strategy:
                 # Now run the actual indicator
                 if cgroup.name in self.indicator_values and hasattr(cgroup_ind_namespace, indicator_name):
                     continue
-                indicator_function = self.indicators[indicator_name]
+                indicator_function = self._indicator_functions[(indicator_name, id(cgroup))]
 
                 parent_values = types.SimpleNamespace()
 
@@ -515,7 +540,7 @@ class Strategy:
                 # Now run the actual signal
                 if cgroup.name in self.signal_values and hasattr(self.signal_values[cgroup.name], signal_name):
                     continue
-                signal_function = self.signals[signal_name]
+                signal_function = self._signal_functions[(signal_name, id(cgroup))]
                 parent_values = types.SimpleNamespace()
                 for parent_name in parent_names:
                     sig_vals = getattr(self.signal_values[cgroup.name], parent_name)
