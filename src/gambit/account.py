@@ -443,6 +443,10 @@ class Account:
     def symbols(self) -> list[str]:
         return list(self.contracts.keys())
 
+    def _require_configured_group(self, contract_group: ContractGroup) -> None:
+        if not any(contract_group is configured for configured in self.contract_groups):
+            raise ValueError(f"contract group {contract_group.name!r} is not configured for this account")
+
     def _add_contract(self, contract: Contract, timestamp: np.datetime64) -> None:
         if contract.symbol in self.symbol_pnls:
             raise ValueError(f"account already contains contract symbol {contract.symbol}: {contract}")
@@ -690,6 +694,7 @@ class Account:
         """
 
         if contract_group is not None:
+            self._require_configured_group(contract_group)
             symbols = list(contract_group.contracts.keys())
             symbol_pnls = [self.symbol_pnls[symbol] for symbol in symbols if symbol in self.symbol_pnls]
         else:

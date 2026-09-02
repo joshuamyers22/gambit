@@ -124,6 +124,20 @@ def test_account_pnl_query_rejects_unknown_group_without_registering_it() -> Non
     assert not ContractGroup.exists(unknown_name)
 
 
+def test_aggregate_account_pnl_rejects_unconfigured_group() -> None:
+    configured = ContractGroup.get("configured-aggregate-query")
+    account = Account(
+        [configured],
+        np.array(["2026-01-02"], dtype="datetime64[D]"),
+        _price,
+        SimpleNamespace(),
+    )
+    unconfigured = ContractGroup.get("unconfigured-aggregate-query")
+
+    with pytest.raises(ValueError, match="not configured for this account"):
+        account.df_account_pnl(unconfigured)
+
+
 def test_sparse_account_calculation_resumes_from_latest_ledger_timestamp() -> None:
     timestamps = np.array(
         [
