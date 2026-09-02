@@ -108,6 +108,28 @@ def test_vwap_stop_cancels_when_prorated_fill_is_below_one_contract() -> None:
     assert order.status is OrderStatus.CANCELLED
 
 
+def test_vwap_sell_uses_backup_price_when_market_data_is_missing() -> None:
+    group = ContractGroup.get("sell-vwap-backup")
+    contract = Contract.create("SELL-VWAP-BACKUP", group)
+    timestamp = np.datetime64("2024-01-02T09:30")
+    timestamps = np.array([timestamp])
+    order = VWAPOrder(contract=contract, timestamp=timestamp, qty=-2, vwap_end_time=timestamp)
+    indicators = {
+        group.name: SimpleNamespace(
+            price=np.array([0.0]),
+            volume=np.array([0.0]),
+            backup=np.array([99.0]),
+        )
+    }
+    simulator = VWAPMarketSimulator("price", "volume", "backup")
+
+    trades = simulator([order], 0, timestamps, indicators, {}, SimpleNamespace())
+
+    assert len(trades) == 1
+    assert trades[0].qty == -2
+    assert trades[0].price == 99.0
+
+
 def test_multiplier_aware_trade_reversal_reconciles_realized_and_unrealized_pnl() -> None:
     group = ContractGroup.get("reversal")
     contract = Contract.create("REVERSAL", group, multiplier=10.0)

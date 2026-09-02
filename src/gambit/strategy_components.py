@@ -461,8 +461,6 @@ class VWAPMarketSimulator:
                 mask &= (timestamps >= order.timestamp) & (timestamps <= order.vwap_end_time)
             amt = price_ind[mask] * volume_ind[mask]
             if not len(amt):
-                if order.qty <= 0:
-                    continue
                 _logger.info(f"using backup price for {cg} {timestamp} {i} qty: {order.qty} {order}")
                 assert_(
                     self.backup_price_indicator is not None,
