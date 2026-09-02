@@ -9,6 +9,7 @@ from gambit.callback_contracts import validate_market_trades, validate_rule_orde
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, Trade
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
+from gambit.strategy_inputs import PriceFuncArrayDict
 
 
 def _price(_contract, _timestamps, _index, _context):
@@ -123,6 +124,30 @@ def test_account_owns_read_only_timestamp_snapshot() -> None:
     assert np.array_equal(account.timestamps, original_timestamps)
     with pytest.raises(ValueError, match="read-only"):
         account.timestamps[0] = np.datetime64("2030-01-01")
+
+
+def test_array_price_function_owns_read_only_input_snapshot() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    prices = np.array([100.0, 101.0])
+    price_function = PriceFuncArrayDict({"SNAPSHOT": (timestamps, prices)})
+    contract = Contract.create("SNAPSHOT")
+
+    timestamps[0] = np.datetime64("2030-01-01")
+    prices[0] = 999.0
+
+    assert price_function(contract, np.array(["2026-01-01"], dtype="datetime64[D]"), 0, None) == 100.0
+    stored_timestamps, stored_prices = price_function.price_dict["SNAPSHOT"]
+    with pytest.raises(ValueError, match="read-only"):
+        stored_timestamps[0] = np.datetime64("2030-01-01")
+    with pytest.raises(ValueError, match="read-only"):
+        stored_prices[0] = 999.0
+
+
+def test_array_price_function_rejects_unsorted_timestamps() -> None:
+    timestamps = np.array(["2026-01-02", "2026-01-01"], dtype="datetime64[D]")
+
+    with pytest.raises(ValueError, match="strictly increasing and unique"):
+        PriceFuncArrayDict({"UNSORTED": (timestamps, np.array([101.0, 100.0]))})
 
 
 def test_account_rejects_non_callable_price_function() -> None:

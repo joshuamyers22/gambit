@@ -19,6 +19,36 @@ def _timestamp_at(timestamps: np.ndarray, index: int) -> np.datetime64:
     return cast(np.datetime64, timestamps[index])
 
 
+def _snapshot_price_series(
+    symbol: str,
+    timestamps: np.ndarray,
+    prices: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validate and detach one immutable, timestamp-indexed price series."""
+    timestamp_values = np.asarray(timestamps)
+    price_values = np.asarray(prices)
+    if timestamp_values.ndim != 1 or price_values.ndim != 1:
+        raise ValueError(f"price arrays for {symbol} must be one-dimensional")
+    if len(timestamp_values) != len(price_values):
+        raise ValueError(f"timestamp and price arrays for {symbol} must have equal lengths")
+    if not np.issubdtype(timestamp_values.dtype, np.datetime64):
+        raise TypeError(f"timestamps for {symbol} must have a datetime64 dtype")
+    normalized_timestamps = timestamp_values.astype("datetime64[ns]")
+    if np.isnat(normalized_timestamps).any():
+        raise ValueError(f"timestamps for {symbol} cannot contain NaT")
+    if len(normalized_timestamps) > 1 and not bool(
+        np.all(np.diff(normalized_timestamps.astype(np.int64)) > 0)
+    ):
+        raise ValueError(f"timestamps for {symbol} must be strictly increasing and unique")
+    try:
+        normalized_prices = price_values.astype(float)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(f"prices for {symbol} must be numeric") from exc
+    normalized_timestamps.flags.writeable = False
+    normalized_prices.flags.writeable = False
+    return normalized_timestamps, normalized_prices
+
+
 @dataclass
 class VectorIndicator:
     """
@@ -112,7 +142,8 @@ class PriceFuncArrays:
         price_dict: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         for symbol in np.unique(symbols):
             mask = symbols == symbol
-            price_dict[symbol] = (timestamps[mask], prices[mask])
+            symbol_name = str(symbol)
+            price_dict[symbol_name] = _snapshot_price_series(symbol_name, timestamps[mask], prices[mask])
         self.price_dict = price_dict
         self.allow_previous = allow_previous
 
@@ -156,7 +187,10 @@ class PriceFuncArrayDict:
     allow_previous: bool
 
     def __init__(self, price_dict: dict[str, tuple[np.ndarray, np.ndarray]], allow_previous: bool = False) -> None:
-        self.price_dict = price_dict
+        self.price_dict = {
+            symbol: _snapshot_price_series(symbol, timestamps, prices)
+            for symbol, (timestamps, prices) in price_dict.items()
+        }
         self.allow_previous = allow_previous
 
     def __call__(self, contract: Contract, timestamps: np.ndarray, i: int, context: StrategyContextType) -> float:
