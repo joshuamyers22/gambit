@@ -174,6 +174,21 @@ def test_immediate_vwap_stop_fills_without_dividing_by_zero() -> None:
     assert trades[0].price == 100.0
 
 
+@pytest.mark.parametrize(
+    ("timestamp", "end_time", "error", "message"),
+    [
+        (np.datetime64("2024-01-02T09:31"), np.datetime64("2024-01-02T09:30"), ValueError, "cannot precede"),
+        (np.datetime64("NaT"), np.datetime64("2024-01-02T09:30"), ValueError, "cannot be NaT"),
+        (np.datetime64("2024-01-02T09:30"), "2024-01-02T09:31", TypeError, "numpy datetime64"),
+    ],
+)
+def test_vwap_order_rejects_invalid_execution_window(timestamp, end_time, error, message) -> None:
+    contract = Contract.create("INVALID-VWAP-WINDOW", ContractGroup.get("invalid-vwap-window"))
+
+    with pytest.raises(error, match=message):
+        VWAPOrder(contract=contract, timestamp=timestamp, qty=1, vwap_end_time=end_time)
+
+
 def test_multiplier_aware_trade_reversal_reconciles_realized_and_unrealized_pnl() -> None:
     group = ContractGroup.get("reversal")
     contract = Contract.create("REVERSAL", group, multiplier=10.0)

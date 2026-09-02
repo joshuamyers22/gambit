@@ -447,6 +447,15 @@ class VWAPOrder(Order):
     vwap_stop: float = math.nan
     vwap_end_time: np.datetime64
 
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not isinstance(self.timestamp, np.datetime64) or not isinstance(self.vwap_end_time, np.datetime64):
+            raise TypeError("VWAP order timestamps must be numpy datetime64 values")
+        if np.isnat(self.timestamp) or np.isnat(self.vwap_end_time):
+            raise ValueError("VWAP order timestamps cannot be NaT")
+        if self.vwap_end_time < self.timestamp:
+            raise ValueError("VWAP end time cannot precede the order timestamp")
+
     def __repr__(self):
         timestamp = _python_datetime(self.timestamp)
         return (
