@@ -150,6 +150,42 @@ def test_array_price_function_rejects_unsorted_timestamps() -> None:
         PriceFuncArrayDict({"UNSORTED": (timestamps, np.array([101.0, 100.0]))})
 
 
+def test_strategy_rejects_indicator_length_mismatch() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get("indicator-length-boundary")
+    strategy = Strategy(timestamps, [group], _price)
+    strategy.add_indicator("short", lambda *_args: np.array([1.0]))
+
+    with pytest.raises(ValueError, match="1 values for 2 strategy timestamps"):
+        strategy.run_indicators()
+
+
+def test_strategy_owns_read_only_indicator_output() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("indicator-output-snapshot")
+    callback_values = np.array([1.0])
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    strategy.add_indicator("snapshot", lambda *_args: callback_values)
+
+    strategy.run_indicators()
+    callback_values[0] = 999.0
+    stored_values = strategy.indicator_values[group.name].snapshot
+
+    assert stored_values[0] == 1.0
+    with pytest.raises(ValueError, match="read-only"):
+        stored_values[0] = 999.0
+
+
+def test_strategy_rejects_signal_length_mismatch() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get("signal-length-boundary")
+    strategy = Strategy(timestamps, [group], _price)
+    strategy.add_signal("short", lambda *_args: np.array([True]))
+
+    with pytest.raises(ValueError, match="1 values for 2 strategy timestamps"):
+        strategy.run_signals()
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

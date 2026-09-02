@@ -18,7 +18,7 @@ from gambit.account import Account
 from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
 from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamps
 from gambit.calculation import CalculationContext
-from gambit.callback_contracts import validate_market_trades, validate_rule_orders
+from gambit.callback_contracts import validate_market_trades, validate_rule_orders, validate_stage_values
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.market_data import MarketDataValidationReport
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
@@ -440,9 +440,14 @@ class Strategy:
                 for parent_name in parent_names:
                     setattr(parent_values, parent_name, getattr(cgroup_ind_namespace, parent_name))
 
-                indicator_values = indicator_function(cgroup, self.timestamps, parent_values, self.strategy_context)
-
-                setattr(cgroup_ind_namespace, indicator_name, series_to_array(indicator_values))
+                indicator_values = series_to_array(
+                    indicator_function(cgroup, self.timestamps, parent_values, self.strategy_context)
+                )
+                setattr(
+                    cgroup_ind_namespace,
+                    indicator_name,
+                    validate_stage_values(indicator_values, len(self.timestamps), stage=f"indicator {indicator_name!r}"),
+                )
 
     def run_signals(
         self,
@@ -501,10 +506,16 @@ class Strategy:
                         indicator_values, indicator_name, getattr(self.indicator_values[cgroup.name], indicator_name)
                     )
 
-                signal_output = signal_function(
-                    cgroup, self.timestamps, indicator_values, parent_values, self.strategy_context
+                signal_output = series_to_array(
+                    signal_function(
+                        cgroup, self.timestamps, indicator_values, parent_values, self.strategy_context
+                    )
                 )
-                setattr(self.signal_values[cgroup.name], signal_name, series_to_array(signal_output))
+                setattr(
+                    self.signal_values[cgroup.name],
+                    signal_name,
+                    validate_stage_values(signal_output, len(self.timestamps), stage=f"signal {signal_name!r}"),
+                )
 
     def _generate_order_iterations(
         self,

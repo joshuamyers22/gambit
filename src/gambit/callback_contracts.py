@@ -4,7 +4,24 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+import numpy as np
+
 from gambit.pq_types import ContractGroup, Order, OrderStatus, Trade
+
+
+def validate_stage_values(result: object, expected_length: int, *, stage: str) -> np.ndarray:
+    """Require one detached, immutable value per strategy timestamp."""
+    if not isinstance(result, np.ndarray):
+        raise TypeError(f"{stage} callback must return a NumPy array or Polars Series")
+    if result.ndim != 1:
+        raise ValueError(f"{stage} callback must return a one-dimensional array")
+    if len(result) != expected_length:
+        raise ValueError(
+            f"{stage} callback returned {len(result)} values for {expected_length} strategy timestamps"
+        )
+    values = result.copy()
+    values.flags.writeable = False
+    return values
 
 
 def validate_rule_orders(
@@ -68,4 +85,4 @@ def validate_market_trades(
     return trades
 
 
-__all__ = ["validate_market_trades", "validate_rule_orders"]
+__all__ = ["validate_market_trades", "validate_rule_orders", "validate_stage_values"]
