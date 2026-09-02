@@ -49,3 +49,9 @@ def test_trade_reconciliation_does_not_depend_on_account_aggregate() -> None:
     imports = _gambit_imports(PACKAGE_ROOT / "trade_reconciliation.py")
 
     assert "gambit.account" not in imports
+
+
+def test_account_aggregate_does_not_depend_directly_on_native_pnl_kernel() -> None:
+    imports = _gambit_imports(PACKAGE_ROOT / "account.py")
+
+    assert "gambit.compute_pnl" not in imports

@@ -134,6 +134,7 @@ files = [
   "src/gambit/optimize.py",
   "src/gambit/pq_types.py",
   "src/gambit/portfolio.py",
+  "src/gambit/pnl_calculation.py",
   "src/gambit/position_sizing.py",
   "src/gambit/pq_io.py",
   "src/gambit/pq_utils.py",

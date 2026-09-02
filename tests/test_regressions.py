@@ -63,6 +63,26 @@ def test_roundtrip_reconciliation_preserves_fractional_quantities() -> None:
     assert result[0].net_pnl == 5.0
 
 
+def test_account_pnl_preserves_fractional_executions() -> None:
+    contract = Contract.create("FRACTIONAL-PNL", ContractGroup.get("fractional-pnl"))
+    timestamps = np.array(["2026-01-02", "2026-01-03"], dtype="datetime64[D]")
+    account = Account([contract.contract_group], timestamps, _price, SimpleNamespace())
+    entry = MarketOrder(contract=contract, timestamp=timestamps[0], qty=1.5)
+    partial_exit = MarketOrder(contract=contract, timestamp=timestamps[1], qty=-0.5)
+
+    account.add_trades(
+        [
+            Trade(contract, entry, timestamps[0], 1.5, 100.0),
+            Trade(contract, partial_exit, timestamps[1], -0.5, 110.0),
+        ]
+    )
+
+    contract_pnl = account.symbol_pnls[contract.symbol]
+    position, _, realized, *_ = contract_pnl.pnl(timestamps[1])
+    assert position == 1.0
+    assert realized == 5.0
+
+
 def _price(_contract, _timestamps, _index, _context):
     return 100.0
 
