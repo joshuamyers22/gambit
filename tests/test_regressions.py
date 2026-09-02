@@ -87,6 +87,32 @@ def test_account_indexes_each_trade_under_its_own_contract():
     assert account._trades_for_date[("SECOND", day)] == [trades[1]]
 
 
+def test_empty_account_pnl_queries_have_stable_results() -> None:
+    group = ContractGroup.get("empty-account")
+    Contract.create("NEVER-TRADED", group)
+    timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
+    account = Account([group], timestamps, _price, SimpleNamespace())
+
+    detailed = account.df_pnl()
+    aggregate = account.df_account_pnl(group)
+
+    assert detailed.is_empty()
+    assert detailed.schema == {
+        "timestamp": pl.Datetime("ns"),
+        "contract_group": pl.String,
+        "symbol": pl.String,
+        "position": pl.Float64,
+        "price": pl.Float64,
+        "unrealized": pl.Float64,
+        "realized": pl.Float64,
+        "commission": pl.Float64,
+        "fee": pl.Float64,
+        "net_pnl": pl.Float64,
+    }
+    assert aggregate["net_pnl"].to_list() == [0.0, 0.0]
+    assert aggregate["equity"].to_list() == [account.starting_equity, account.starting_equity]
+
+
 def test_orders_filters_by_contract_group():
     first_group = ContractGroup.get("first")
     second_group = ContractGroup.get("second")

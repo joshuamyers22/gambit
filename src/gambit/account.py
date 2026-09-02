@@ -22,6 +22,19 @@ from gambit.trade_reconciliation import df_roundtrip_trade, roundtrip_trades
 
 NAT = np.datetime64("NaT", "ns")
 
+DETAILED_PNL_SCHEMA = {
+    "timestamp": pl.Datetime("ns"),
+    "contract_group": pl.String,
+    "symbol": pl.String,
+    "position": pl.Float64,
+    "price": pl.Float64,
+    "unrealized": pl.Float64,
+    "realized": pl.Float64,
+    "commission": pl.Float64,
+    "fee": pl.Float64,
+    "net_pnl": pl.Float64,
+}
+
 
 def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
     for column in columns:
@@ -502,6 +515,8 @@ class Account:
                         df = df.head(last_index_ + 1)
                 df = df.with_columns(pl.lit(contract_group.name).alias("contract_group"))
                 dfs.append(df)
+        if not dfs:
+            return pl.DataFrame(schema=DETAILED_PNL_SCHEMA)
         ret_df = pl.concat(dfs)
         return ret_df.sort(["timestamp", "contract_group", "symbol"]).select(
             "timestamp",
@@ -526,7 +541,7 @@ class Account:
 
         if contract_group is not None:
             symbols = list(contract_group.contracts.keys())
-            symbol_pnls = [self.symbol_pnls[symbol] for symbol in symbols]
+            symbol_pnls = [self.symbol_pnls[symbol] for symbol in symbols if symbol in self.symbol_pnls]
         else:
             symbol_pnls = list(self.symbol_pnls.values())
 
