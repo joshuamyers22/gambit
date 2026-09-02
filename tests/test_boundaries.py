@@ -168,6 +168,35 @@ def test_account_rejects_retroactive_cross_contract_batch_before_mutation() -> N
     assert len(account.trades()) == 2
 
 
+def test_account_rolls_back_cross_contract_batch_when_price_callback_fails() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("callback-rollback")
+    first = Contract.create("ROLLBACK-FIRST", group)
+    second = Contract.create("ROLLBACK-SECOND", group)
+    reject_second = False
+
+    def price(contract, *_args):
+        if reject_second and contract is second:
+            raise RuntimeError("price unavailable")
+        return 110.0
+
+    def trade(contract: Contract) -> Trade:
+        order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+        return Trade(contract, order, timestamp, 1, 100.0)
+
+    account = Account([group], np.array([timestamp]), price, SimpleNamespace(), starting_equity=1_000.0)
+    account.add_trades([trade(first), trade(second)])
+    assert account.equity(timestamp) == 1_020.0
+
+    reject_second = True
+    with pytest.raises(RuntimeError, match="price unavailable"):
+        account.add_trades([trade(first), trade(second)])
+
+    assert account.position(group, timestamp) == 2
+    assert len(account.trades()) == 2
+    assert account.equity(timestamp) == 1_020.0
+
+
 @pytest.mark.parametrize(
     ("value", "error"),
     [(-1, ValueError), (1440, ValueError), (900.5, TypeError), (True, TypeError)],

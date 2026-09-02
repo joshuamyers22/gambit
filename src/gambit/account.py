@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Callable, cast
 
@@ -45,6 +46,17 @@ ACCOUNT_PNL_SCHEMA = {
     "net_pnl": pl.Float64,
     "equity": pl.Float64,
 }
+
+
+@dataclass(frozen=True)
+class _ContractPNLState:
+    trade_pnl: SortedDict
+    net_pnl: SortedDict
+    open_qtys: NDArray[np.int_]
+    open_prices: NDArray[np.float64]
+    first_trade_timestamp: np.datetime64 | None
+    final_pnl: float
+    new_trades_added: bool
 
 
 def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
@@ -135,6 +147,26 @@ class ContractPNL:
         self.first_trade_timestamp: np.datetime64 | None = None
         self.final_pnl = np.nan
         self.new_trades_added = False
+
+    def _snapshot_state(self) -> _ContractPNLState:
+        return _ContractPNLState(
+            trade_pnl=self._trade_pnl.copy(),
+            net_pnl=self._net_pnl.copy(),
+            open_qtys=self.open_qtys.copy(),
+            open_prices=self.open_prices.copy(),
+            first_trade_timestamp=self.first_trade_timestamp,
+            final_pnl=self.final_pnl,
+            new_trades_added=self.new_trades_added,
+        )
+
+    def _restore_state(self, state: _ContractPNLState) -> None:
+        self._trade_pnl = state.trade_pnl
+        self._net_pnl = state.net_pnl
+        self.open_qtys = state.open_qtys
+        self.open_prices = state.open_prices
+        self.first_trade_timestamp = state.first_trade_timestamp
+        self.final_pnl = state.final_pnl
+        self.new_trades_added = state.new_trades_added
 
     def _validate_trade_chronology(self, trades: Sequence[Trade]) -> None:
         if not len(trades):
@@ -334,6 +366,17 @@ def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarr
     return timestamps[calc_indices]
 
 
+@dataclass(frozen=True)
+class _AccountTradeState:
+    contract_states: dict[str, _ContractPNLState]
+    contracts: dict[str, Contract]
+    symbol_pnls: dict[str, ContractPNL]
+    group_pnls: dict[str, list[ContractPNL]]
+    trades: list[Trade]
+    trades_for_date: dict[tuple[str, np.datetime64], list[Trade]]
+    pnl: SortedDict
+
+
 def _validate_contract_groups(contract_groups: object) -> tuple[ContractGroup, ...]:
     if not isinstance(contract_groups, Sequence) or isinstance(contract_groups, (str, bytes)):
         raise TypeError("account contract_groups must be a sequence of ContractGroup objects")
@@ -415,6 +458,35 @@ class Account:
         self.symbol_pnls_by_contract_group[contract.contract_group.name].append(contract_pnl)
         self.contracts[contract.symbol] = contract
 
+    def _snapshot_trade_state(self, symbols: Sequence[str]) -> _AccountTradeState:
+        return _AccountTradeState(
+            contract_states={
+                symbol: self.symbol_pnls[symbol]._snapshot_state()
+                for symbol in symbols
+                if symbol in self.symbol_pnls
+            },
+            contracts=self.contracts.copy(),
+            symbol_pnls=self.symbol_pnls.copy(),
+            group_pnls={name: pnls.copy() for name, pnls in self.symbol_pnls_by_contract_group.items()},
+            trades=self._trades.copy(),
+            trades_for_date={key: dated_trades.copy() for key, dated_trades in self._trades_for_date.items()},
+            pnl=self._pnl.copy(),
+        )
+
+    def _restore_trade_state(self, state: _AccountTradeState) -> None:
+        for symbol, contract_state in state.contract_states.items():
+            state.symbol_pnls[symbol]._restore_state(contract_state)
+        self.contracts.clear()
+        self.contracts.update(state.contracts)
+        self.symbol_pnls.clear()
+        self.symbol_pnls.update(state.symbol_pnls)
+        self.symbol_pnls_by_contract_group.clear()
+        self.symbol_pnls_by_contract_group.update(state.group_pnls)
+        self._trades[:] = state.trades
+        self._trades_for_date.clear()
+        self._trades_for_date.update(state.trades_for_date)
+        self._pnl = state.pnl
+
     def add_trades(self, trades: Sequence[Trade]) -> None:
         for trade in trades:
             if not isinstance(trade, Trade):
@@ -440,22 +512,28 @@ class Account:
             if symbol in self.symbol_pnls:
                 self.symbol_pnls[symbol]._validate_trade_chronology(contract_trades)
 
-        for trade in trades:
-            if trade.contract.symbol not in self.contracts:
-                self._add_contract(trade.contract, trade.timestamp)
+        state = self._snapshot_trade_state(list(trades_by_contract))
 
-        for symbol, contract_trades in trades_by_contract.items():
-            self.symbol_pnls[symbol]._add_trades(contract_trades)
+        try:
+            for trade in trades:
+                if trade.contract.symbol not in self.contracts:
+                    self._add_contract(trade.contract, trade.timestamp)
 
-        for trade in trades:
-            self._trades_for_date[(trade.contract.symbol, trade.timestamp.astype("M8[D]"))].append(trade)
+            for symbol, contract_trades in trades_by_contract.items():
+                self.symbol_pnls[symbol]._add_trades(contract_trades)
 
-        self._trades += trades
-        if trades:
-            first_timestamp = trades[0].timestamp
-            for timestamp in list(self._pnl.keys()):
-                if timestamp >= first_timestamp:
-                    del self._pnl[timestamp]
+            for trade in trades:
+                self._trades_for_date[(trade.contract.symbol, trade.timestamp.astype("M8[D]"))].append(trade)
+
+            self._trades += trades
+            if trades:
+                first_timestamp = trades[0].timestamp
+                for timestamp in list(self._pnl.keys()):
+                    if timestamp >= first_timestamp:
+                        del self._pnl[timestamp]
+        except BaseException:  # account state must roll back on callback failure or interruption before reraising
+            self._restore_trade_state(state)
+            raise
 
     def calc(self, timestamp: np.datetime64) -> None:
         """
