@@ -301,6 +301,16 @@ def _whole_quantity(value: float, *, field_name: str) -> int:
     return int(value)
 
 
+def _finite_real(value: float, *, field_name: str) -> float:
+    if (
+        isinstance(value, (bool, np.bool_))
+        or not isinstance(value, (int, float, np.integer, np.floating))
+        or not np.isfinite(value)
+    ):
+        raise ValueError(f"{field_name} must be a finite real number")
+    return float(value)
+
+
 @dataclass(kw_only=True)
 class Order:
     """
@@ -489,13 +499,24 @@ class Trade:
             properties: Any data you want to store with this contract.
                 For example, you may want to store bid / ask prices at time of trade.  Default None
         """
-        # assert(isinstance(contract, Contract))
-        # assert(isinstance(order, Order))
+        if not isinstance(contract, Contract):
+            raise TypeError("trade contract must be a Contract")
+        if not isinstance(order, Order):
+            raise TypeError("trade order must be an Order")
+        if contract is not order.contract:
+            raise ValueError("trade contract must match its originating order")
+        if not isinstance(timestamp, np.datetime64):
+            raise TypeError("trade timestamp must be a numpy datetime64 value")
+        if np.isnat(timestamp):
+            raise ValueError("trade timestamp cannot be NaT")
+        if not isinstance(order.timestamp, np.datetime64) or np.isnat(order.timestamp):
+            raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
+        if timestamp < order.timestamp:
+            raise ValueError("trade timestamp cannot precede its originating order")
         qty = _whole_quantity(qty, field_name="trade qty")
-        assert_(np.isfinite(price))
-        assert_(np.isfinite(fee))
-        assert_(np.isfinite(commission))
-        # assert(isinstance(timestamp, np.datetime64))
+        price = _finite_real(price, field_name="trade price")
+        fee = _finite_real(fee, field_name="trade fee")
+        commission = _finite_real(commission, field_name="trade commission")
 
         self.contract = contract
         self.order = order

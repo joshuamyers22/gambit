@@ -529,6 +529,43 @@ def test_account_rejects_invalid_trade_batch_before_mutation() -> None:
     assert account.symbols() == []
 
 
+def test_trade_rejects_contract_mismatch_at_construction() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    first = Contract.create("TRADE-CONTRACT-FIRST")
+    second = Contract.create("TRADE-CONTRACT-SECOND")
+    order = MarketOrder(contract=first, timestamp=timestamp, qty=1)
+
+    with pytest.raises(ValueError, match="must match its originating order"):
+        Trade(second, order, timestamp, 1, 100.0)
+
+
+def test_trade_rejects_execution_before_order() -> None:
+    order_timestamp = np.datetime64("2026-01-02")
+    contract = Contract.create("TRADE-CAUSALITY")
+    order = MarketOrder(contract=contract, timestamp=order_timestamp, qty=1)
+
+    with pytest.raises(ValueError, match="cannot precede"):
+        Trade(contract, order, order_timestamp - np.timedelta64(1, "D"), 1, 100.0)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("price", np.inf),
+        ("fee", np.nan),
+        ("commission", True),
+    ],
+)
+def test_trade_rejects_invalid_financial_scalar(field: str, value: object) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    contract = Contract.create(f"INVALID-TRADE-{field}")
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    kwargs = {"price": 100.0, "fee": 0.0, "commission": 0.0, field: value}
+
+    with pytest.raises(ValueError, match=f"trade {field} must be a finite real number"):
+        Trade(contract, order, timestamp, 1, **kwargs)
+
+
 def test_account_rejects_trade_outside_configured_contract_groups() -> None:
     timestamp = np.datetime64("2026-01-01")
     configured_group = ContractGroup.get("configured-account-group")
