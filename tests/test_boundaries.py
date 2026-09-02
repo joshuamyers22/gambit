@@ -380,7 +380,7 @@ def test_callback_contracts_reject_trade_for_unknown_order_without_account_mutat
     trade = Trade(contract, unknown_order, timestamp, 1.0, 100.0)
 
     with pytest.raises(ValueError, match="outside the open order set"):
-        validate_market_trades([trade], [open_order], timestamp)
+        validate_market_trades([trade], [open_order], timestamp, {id(open_order): open_order.qty})
 
 
 def test_callback_contracts_normalize_market_trades_to_detached_list() -> None:
@@ -390,8 +390,26 @@ def test_callback_contracts_normalize_market_trades_to_detached_list() -> None:
     order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
     trade = Trade(contract, order, timestamp, 1, 100.0)
     callback_result = (trade,)
+    original_quantity = order.qty
+    order.fill(1)
 
-    result = validate_market_trades(callback_result, [order], timestamp)
+    result = validate_market_trades(callback_result, [order], timestamp, {id(order): original_quantity})
 
     assert result == [trade]
     assert isinstance(result, list)
+
+
+def test_strategy_applies_reported_trade_when_simulator_does_not_mutate_order() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("unapplied-simulator-fill")
+    contract = Contract.create("UNAPPLIED-SIMULATOR-FILL", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    strategy._current_orders = [order]
+    strategy.market_sims = [lambda *_args: [Trade(contract, order, timestamp, 1, 100.0)]]
+
+    strategy._sim_market(0)
+
+    assert order.qty == 0
+    assert order.status is OrderStatus.FILLED
+    assert len(strategy.trades()) == 1

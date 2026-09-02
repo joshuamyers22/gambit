@@ -884,7 +884,12 @@ class Strategy:
                     ),
                     current_orders,
                     self.timestamps[i],
+                    {id(order): qty for order, qty, _status in order_states},
                 )
+                for order, original_quantity, _status in order_states:
+                    reported_fill = sum(trade.qty for trade in trades if trade.order is order)
+                    if order.qty == original_quantity and reported_fill:
+                        order.fill(reported_fill)
 
                 if self.log_trades and len(trades) > 0:
                     if len(trades) > 1:
