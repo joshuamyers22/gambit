@@ -130,6 +130,28 @@ def test_vwap_sell_uses_backup_price_when_market_data_is_missing() -> None:
     assert trades[0].price == 99.0
 
 
+def test_vwap_rejects_invalid_backup_price_before_mutating_order() -> None:
+    group = ContractGroup.get("invalid-vwap-backup")
+    contract = Contract.create("INVALID-VWAP-BACKUP", group)
+    timestamp = np.datetime64("2024-01-02T09:30")
+    timestamps = np.array([timestamp])
+    order = VWAPOrder(contract=contract, timestamp=timestamp, qty=2, vwap_end_time=timestamp)
+    indicators = {
+        group.name: SimpleNamespace(
+            price=np.array([0.0]),
+            volume=np.array([0.0]),
+            backup=np.array([np.inf]),
+        )
+    }
+    simulator = VWAPMarketSimulator("price", "volume", "backup")
+
+    with pytest.raises(ValueError, match="non-finite price"):
+        simulator([order], 0, timestamps, indicators, {}, SimpleNamespace())
+
+    assert order.qty == 2
+    assert order.status is OrderStatus.OPEN
+
+
 def test_multiplier_aware_trade_reversal_reconciles_realized_and_unrealized_pnl() -> None:
     group = ContractGroup.get("reversal")
     contract = Contract.create("REVERSAL", group, multiplier=10.0)

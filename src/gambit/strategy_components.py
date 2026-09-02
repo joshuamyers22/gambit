@@ -471,7 +471,15 @@ class VWAPMarketSimulator:
                 vwap = _backup_price_ind[i]
             else:
                 vwap = np.sum(amt) / np.sum(volume_ind[mask])
-            assert_(vwap >= 0)
+            vwap = validate_price_value(
+                vwap,
+                symbol=order.contract.symbol,
+                timestamp=timestamp,
+                source="VWAP execution price",
+                allow_missing=False,
+            )
+            if vwap < 0:
+                raise ValueError(f"VWAP execution price cannot be negative for {order.contract.symbol}: {vwap}")
             fill_qty = order.qty
             if end_order:
                 timestamp_ns = int(timestamp.astype("datetime64[ns]").astype(np.int64))
