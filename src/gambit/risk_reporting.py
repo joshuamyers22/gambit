@@ -13,7 +13,7 @@ import numpy as np
 import polars as pl
 
 from gambit.account import Account
-from gambit.calculation import CalculationContext, MissingDataPolicy
+from gambit.calculation import CalculationContext, MissingDataPolicy, StressScenarioContract
 
 
 class ShockType(str, Enum):
@@ -181,7 +181,7 @@ def attribute_exposure(exposures: pl.DataFrame, by: Sequence[str] = ("contract_g
     )
 
 
-def run_stress_scenarios(exposures: pl.DataFrame, scenarios: Sequence[StressScenario]) -> pl.DataFrame:
+def run_stress_scenarios(exposures: pl.DataFrame, scenarios: Sequence[StressScenarioContract]) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     exposure_rows = exposures.iter_rows(named=True)
     cached_rows = list(exposure_rows)

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, cast
+from typing import Protocol, cast
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from gambit.risk_reporting import StressScenario
 
 
 def _to_nanosecond_timestamp(value: np.datetime64) -> np.datetime64:
@@ -28,6 +26,15 @@ class CalculationMode(str, Enum):
     HISTORICAL = "historical"
 
 
+class StressScenarioContract(Protocol):
+    """Behavior required by calculation contexts without depending on a reporting adapter."""
+
+    @property
+    def name(self) -> str: ...
+
+    def pnl_for(self, row: Mapping[str, object]) -> float: ...
+
+
 @dataclass(frozen=True)
 class CalculationContext:
     valuation_time: np.datetime64
@@ -36,7 +43,7 @@ class CalculationContext:
     end_time: np.datetime64 | None = None
     calendar: str | None = None
     base_currency: str = "USD"
-    scenarios: tuple[StressScenario, ...] = ()
+    scenarios: tuple[StressScenarioContract, ...] = ()
     missing_data_policy: MissingDataPolicy = MissingDataPolicy.ERROR
     mode: CalculationMode = CalculationMode.SINGLE
     allow_lookahead: bool = False

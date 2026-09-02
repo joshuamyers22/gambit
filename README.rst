@@ -275,6 +275,9 @@ Repository layout
   example migration and clears generated notebook output.
 * ``documentation`` contains Sphinx sources and previously generated docs.
 
+Dependency direction and the enforced stable-kernel boundary are described in
+``ARCHITECTURE.md``.
+
 Documentation
 -------------
 
