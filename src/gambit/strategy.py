@@ -70,6 +70,12 @@ def _concat_report_frames(reports: dict[str, PortfolioRiskReport], field: str) -
     return _concat_artifact_frames(frames)
 
 
+def _restore_order_states(states: Sequence[tuple[Order, float, OrderStatus]]) -> None:
+    for order, qty, status in states:
+        order.qty = qty
+        order.status = status
+
+
 class Strategy:
     def __init__(
         self,
@@ -890,16 +896,12 @@ class Strategy:
                     self.account.add_trades(trades)
                 self._trades += trades
             except Exception as exc:
-                for order, qty, status in order_states:
-                    order.qty = qty
-                    order.status = status
+                _restore_order_states(order_states)
                 raise BacktestCallbackError(
                     f"market simulator failed at index {i}: {market_sim_function!r}"
                 ) from exc
             except BaseException:  # order state must also roll back on cancellation and interpreter exit
-                for order, qty, status in order_states:
-                    order.qty = qty
-                    order.status = status
+                _restore_order_states(order_states)
                 raise
 
         self._update_current_orders()

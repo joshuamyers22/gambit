@@ -327,6 +327,30 @@ def test_invalid_market_simulator_output_restores_order_lifecycle_state() -> Non
     assert strategy._current_orders == [order]
 
 
+def test_market_simulator_interruption_restores_order_state_without_wrapping() -> None:
+    class ExecutionInterrupted(BaseException):
+        pass
+
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("sim-order-interruption")
+    contract = Contract.create("SIM-ORDER-INTERRUPTION", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=2)
+    strategy._current_orders = [order]
+
+    def interrupted_simulator(current_orders, *_args):
+        current_orders[0].fill(1)
+        raise ExecutionInterrupted
+
+    strategy.market_sims = [interrupted_simulator]
+
+    with pytest.raises(ExecutionInterrupted):
+        strategy._sim_market(0)
+
+    assert order.qty == 2
+    assert order.status is OrderStatus.OPEN
+
+
 def test_callback_contracts_normalize_rule_orders_without_strategy_state() -> None:
     timestamp = np.datetime64("2026-01-01")
     group = ContractGroup.get("pure-rule-contract")
