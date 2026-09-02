@@ -634,7 +634,7 @@ class Strategy:
                     # We don't need to call this rule for this contract group
                     continue
                 assert_(cgroup.name in self.signal_values, f"missing {cgroup.name} in signal_values")
-                sig_values = getattr(self.signal_values[cgroup.name], signal_name)
+                sig_values = getattr(self.signal_values[cgroup.name], signal_name).copy()
                 timestamps = self.timestamps
 
                 null_value = False if sig_values.dtype == np.dtype("bool") else np.nan

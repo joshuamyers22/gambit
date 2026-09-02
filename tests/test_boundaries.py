@@ -311,6 +311,32 @@ def test_strategy_dispatches_same_signal_name_by_contract_group() -> None:
     assert strategy.signal_values[second_group.name].entry.tolist() == [False]
 
 
+def test_date_filtered_rule_execution_does_not_mutate_signal_values() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get("date-filtered-rule-signals")
+    strategy = Strategy(timestamps, [group], _price)
+    callback_timestamps: list[np.datetime64] = []
+    strategy.add_signal("entry", lambda *_args: np.array([True, True]))
+
+    def record_rule(
+        _group: ContractGroup,
+        index: int,
+        stage_timestamps: np.ndarray,
+        *_args: object,
+    ) -> list[MarketOrder]:
+        callback_timestamps.append(stage_timestamps[index])
+        return []
+
+    strategy.add_rule("record", record_rule, "entry")
+    strategy.run_signals()
+    original_values = strategy.signal_values[group.name].entry.copy()
+
+    strategy.run_rules(start_date=timestamps[1])
+
+    assert callback_timestamps == [timestamps[1]]
+    assert np.array_equal(strategy.signal_values[group.name].entry, original_values)
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 
