@@ -36,6 +36,37 @@ def test_strategy_rejects_invalid_timestamp_grids(timestamps, error, message) ->
         Strategy(timestamps, [group], _price)
 
 
+@pytest.mark.parametrize(
+    ("timestamps", "error", "message"),
+    [
+        (np.array([], dtype="datetime64[ns]"), ValueError, "account timestamps cannot be empty"),
+        (
+            np.array(["2026-01-01", "2026-01-01"], dtype="datetime64[D]"),
+            ValueError,
+            "account timestamps must be strictly increasing",
+        ),
+        (np.array([1, 2]), TypeError, "account timestamps must have a datetime64 dtype"),
+    ],
+)
+def test_account_rejects_invalid_timestamp_grids(timestamps, error, message) -> None:
+    group = ContractGroup.get("account-timestamp-boundary")
+
+    with pytest.raises(error, match=message):
+        Account([group], timestamps, _price, SimpleNamespace())
+
+
+def test_account_rejects_off_grid_valuation_without_leaking_index_error() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("off-grid-account")
+    contract = Contract.create("OFF-GRID", group)
+    account = Account([group], np.array([timestamp]), _price, SimpleNamespace())
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    account.add_trades([Trade(contract, order, timestamp, 1, 100.0)])
+
+    with pytest.raises(ValueError, match="not present in the account timestamp grid"):
+        account.calc(timestamp + np.timedelta64(1, "D"))
+
+
 @pytest.mark.parametrize("value", [float("inf"), float("-inf"), "100", [100.0], True])
 def test_market_simulator_rejects_invalid_price_callback_values(value) -> None:
     timestamp = np.datetime64("2026-01-01")

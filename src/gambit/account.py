@@ -14,7 +14,7 @@ import polars as pl
 from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
-from gambit.boundaries import validate_price_value
+from gambit.boundaries import timestamp_index, validate_price_value, validate_timestamp_grid
 from gambit.pnl_calculation import calculate_trade_pnl
 from gambit.pq_types import Contract, ContractGroup, RoundTripTrade, Trade
 from gambit.pq_utils import assert_
@@ -94,7 +94,11 @@ class ContractPNL:
         account_timestamps: np.ndarray,
         price_function: Callable[[Contract, np.ndarray, int, SimpleNamespace | None], float],
         strategy_context: SimpleNamespace | None,
+        *,
+        _timestamps_validated: bool = False,
     ) -> None:
+        if not _timestamps_validated:
+            validate_timestamp_grid(account_timestamps, owner="account")
         self.contract = contract
         self._price_function = price_function
         self.strategy_context = strategy_context
@@ -185,8 +189,7 @@ class ContractPNL:
             return
 
         # make sure timestamp is in the sequence of timestamps we were given
-        i = int(np.searchsorted(self._account_timestamps, timestamp))
-        assert_(self._account_timestamps[i] == timestamp, f"timestamp {timestamp} not found")
+        i = timestamp_index(self._account_timestamps, timestamp, owner="account")
 
         # Find most current trade PNL, i.e. with the index before or equal to current timestamp.  If not found, set to 0's
         trade_pnl_index = find_index_before(self._trade_pnl, timestamp)
@@ -320,6 +323,7 @@ class Account:
             raise TypeError("starting_equity must be numeric")
         if not math.isfinite(starting_equity) or starting_equity <= 0:
             raise ValueError("starting_equity must be finite and positive")
+        validate_timestamp_grid(timestamps, owner="account")
         self.starting_equity = float(starting_equity)
         self._price_function = price_function
         self.strategy_context = strategy_context
@@ -341,7 +345,13 @@ class Account:
     def _add_contract(self, contract: Contract, timestamp: np.datetime64) -> None:
         if contract.symbol in self.symbol_pnls:
             raise Exception(f"Already have contract with symbol: {contract.symbol} {contract}")
-        contract_pnl = ContractPNL(contract, self.timestamps, self._price_function, self.strategy_context)
+        contract_pnl = ContractPNL(
+            contract,
+            self.timestamps,
+            self._price_function,
+            self.strategy_context,
+            _timestamps_validated=True,
+        )
         self.symbol_pnls[contract.symbol] = contract_pnl
         # For fast lookup in position function
         self.symbol_pnls_by_contract_group[contract.contract_group.name].append(contract_pnl)
