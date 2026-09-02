@@ -50,9 +50,9 @@ def test_trade_representation_omits_whitespace_for_absent_optional_fields() -> N
 def test_trade_rejects_non_whole_quantities(quantity) -> None:
     contract = Contract.create("WHOLE-UNITS", ContractGroup.get("whole-units"))
     timestamp = np.datetime64("2026-01-02")
-    order = MarketOrder(contract=contract, timestamp=timestamp, qty=quantity)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
 
-    with pytest.raises(ValueError, match="whole number"):
+    with pytest.raises(ValueError, match="whole shares or contracts"):
         Trade(contract, order, timestamp, quantity, 100.0)
 
 

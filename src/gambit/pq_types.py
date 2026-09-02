@@ -289,6 +289,18 @@ class TimeInForce(Enum):
     DAY = 3  # Cancel at EOD
 
 
+def _whole_quantity(value: float, *, field_name: str) -> int:
+    if (
+        isinstance(value, (bool, np.bool_))
+        or not isinstance(value, (int, float, np.integer, np.floating))
+        or not np.isfinite(value)
+        or math.isclose(float(value), 0)
+        or not float(value).is_integer()
+    ):
+        raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
+    return int(value)
+
+
 @dataclass(kw_only=True)
 class Order:
     """
@@ -309,6 +321,9 @@ class Order:
     properties: SimpleNamespace = field(default_factory=SimpleNamespace)
     status: OrderStatus = OrderStatus.OPEN
 
+    def __post_init__(self) -> None:
+        self.qty = _whole_quantity(self.qty, field_name="order qty")
+
     def is_open(self) -> bool:
         return self.status in [OrderStatus.OPEN, OrderStatus.CANCEL_REQUESTED, OrderStatus.PARTIALLY_FILLED]
 
@@ -322,6 +337,7 @@ class Order:
         )
         if math.isnan(fill_qty):
             fill_qty = self.qty
+        fill_qty = _whole_quantity(fill_qty, field_name="fill qty")
         assert_(self.qty * fill_qty >= 0, f"order qty: {self.qty} cannot be opposite sign of {fill_qty}")
         assert_(abs(fill_qty) <= abs(self.qty), f"cannot fill qty: {fill_qty} larger than order qty: {self.qty}")
         self.qty -= fill_qty
@@ -337,8 +353,7 @@ class Order:
 @dataclass(kw_only=True)
 class MarketOrder(Order):
     def __post_init__(self) -> None:
-        if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
-            raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
+        super().__post_init__()
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -361,8 +376,7 @@ class LimitOrder(Order):
     limit_price: float
 
     def __post_init__(self) -> None:
-        if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
-            raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
+        super().__post_init__()
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -379,13 +393,8 @@ class RollOrder(Order):
     reopen_qty: float
 
     def __post_init__(self) -> None:
-        if (
-            not np.isfinite(self.close_qty)
-            or math.isclose(self.close_qty, 0)
-            or not np.isfinite(self.reopen_qty)
-            or math.isclose(self.reopen_qty, 0)
-        ):
-            raise ValueError(f"order quantities must be non-zero and finite: {self.close_qty} {self.reopen_qty}")
+        self.close_qty = _whole_quantity(self.close_qty, field_name="roll close qty")
+        self.reopen_qty = _whole_quantity(self.reopen_qty, field_name="roll reopen qty")
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -412,8 +421,7 @@ class StopLimitOrder(Order):
     triggered: bool = False
 
     def __post_init__(self) -> None:
-        if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
-            raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
+        super().__post_init__()
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -474,9 +482,7 @@ class Trade:
         """
         # assert(isinstance(contract, Contract))
         # assert(isinstance(order, Order))
-        assert_(np.isfinite(qty))
-        if isinstance(qty, (bool, np.bool_)) or not float(qty).is_integer():
-            raise ValueError("trade qty must be a whole number of shares or contracts")
+        qty = _whole_quantity(qty, field_name="trade qty")
         assert_(np.isfinite(price))
         assert_(np.isfinite(fee))
         assert_(np.isfinite(commission))
@@ -485,7 +491,7 @@ class Trade:
         self.contract = contract
         self.order = order
         self.timestamp = timestamp
-        self.qty = int(qty)
+        self.qty = qty
         self.price = price
         self.fee = fee
         self.commission = commission

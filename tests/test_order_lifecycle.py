@@ -41,6 +41,25 @@ def test_market_order_rejects_invalid_quantity(qty: float) -> None:
         MarketOrder(contract=contract, qty=qty)
 
 
+@pytest.mark.parametrize("qty", [0.5, -1.5, True])
+def test_market_order_rejects_non_whole_quantity(qty) -> None:
+    contract = Contract.create("FRACTIONAL-ORDER", ContractGroup.get("orders"))
+
+    with pytest.raises(ValueError, match="whole shares or contracts"):
+        MarketOrder(contract=contract, qty=qty)
+
+
+def test_order_rejects_fractional_fill_without_mutating_remaining_quantity() -> None:
+    contract = Contract.create("FRACTIONAL-FILL", ContractGroup.get("orders"))
+    order = MarketOrder(contract=contract, qty=10)
+
+    with pytest.raises(ValueError, match="whole shares or contracts"):
+        order.fill(0.5)
+
+    assert order.qty == 10
+    assert order.status is OrderStatus.OPEN
+
+
 def test_unfilled_fok_order_is_cancelled_after_fill_window() -> None:
     group = ContractGroup.get("fok")
     contract = Contract.create("FOK", group)
