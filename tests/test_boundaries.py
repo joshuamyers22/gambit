@@ -156,8 +156,11 @@ def test_strategy_rejects_indicator_length_mismatch() -> None:
     strategy = Strategy(timestamps, [group], _price)
     strategy.add_indicator("short", lambda *_args: np.array([1.0]))
 
-    with pytest.raises(ValueError, match="1 values for 2 strategy timestamps"):
+    with pytest.raises(BacktestCallbackError, match="indicator callback 'short'.*indicator-length-boundary") as raised:
         strategy.run_indicators()
+
+    assert isinstance(raised.value.__cause__, ValueError)
+    assert "1 values for 2 strategy timestamps" in str(raised.value.__cause__)
 
 
 def test_strategy_owns_read_only_indicator_output() -> None:
@@ -182,8 +185,27 @@ def test_strategy_rejects_signal_length_mismatch() -> None:
     strategy = Strategy(timestamps, [group], _price)
     strategy.add_signal("short", lambda *_args: np.array([True]))
 
-    with pytest.raises(ValueError, match="1 values for 2 strategy timestamps"):
+    with pytest.raises(BacktestCallbackError, match="signal callback 'short'.*signal-length-boundary") as raised:
         strategy.run_signals()
+
+    assert isinstance(raised.value.__cause__, ValueError)
+    assert "1 values for 2 strategy timestamps" in str(raised.value.__cause__)
+
+
+def test_strategy_preserves_indicator_callback_failure_cause() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("indicator-failure-context")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+
+    def failed_indicator(*_args: object) -> np.ndarray:
+        raise LookupError("missing input")
+
+    strategy.add_indicator("failed", failed_indicator)
+
+    with pytest.raises(BacktestCallbackError, match="indicator callback 'failed'.*indicator-failure-context") as raised:
+        strategy.run_indicators()
+
+    assert isinstance(raised.value.__cause__, LookupError)
 
 
 def test_account_rejects_non_callable_price_function() -> None:

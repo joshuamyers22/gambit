@@ -440,14 +440,20 @@ class Strategy:
                 for parent_name in parent_names:
                     setattr(parent_values, parent_name, getattr(cgroup_ind_namespace, parent_name))
 
-                indicator_values = series_to_array(
-                    indicator_function(cgroup, self.timestamps, parent_values, self.strategy_context)
-                )
-                setattr(
-                    cgroup_ind_namespace,
-                    indicator_name,
-                    validate_stage_values(indicator_values, len(self.timestamps), stage=f"indicator {indicator_name!r}"),
-                )
+                try:
+                    indicator_values = series_to_array(
+                        indicator_function(cgroup, self.timestamps, parent_values, self.strategy_context)
+                    )
+                    validated_values = validate_stage_values(
+                        indicator_values,
+                        len(self.timestamps),
+                        stage=f"indicator {indicator_name!r}",
+                    )
+                except Exception as exc:
+                    raise BacktestCallbackError(
+                        f"indicator callback {indicator_name!r} failed for contract group {cgroup.name}"
+                    ) from exc
+                setattr(cgroup_ind_namespace, indicator_name, validated_values)
 
     def run_signals(
         self,
@@ -506,16 +512,22 @@ class Strategy:
                         indicator_values, indicator_name, getattr(self.indicator_values[cgroup.name], indicator_name)
                     )
 
-                signal_output = series_to_array(
-                    signal_function(
-                        cgroup, self.timestamps, indicator_values, parent_values, self.strategy_context
+                try:
+                    signal_output = series_to_array(
+                        signal_function(
+                            cgroup, self.timestamps, indicator_values, parent_values, self.strategy_context
+                        )
                     )
-                )
-                setattr(
-                    self.signal_values[cgroup.name],
-                    signal_name,
-                    validate_stage_values(signal_output, len(self.timestamps), stage=f"signal {signal_name!r}"),
-                )
+                    validated_values = validate_stage_values(
+                        signal_output,
+                        len(self.timestamps),
+                        stage=f"signal {signal_name!r}",
+                    )
+                except Exception as exc:
+                    raise BacktestCallbackError(
+                        f"signal callback {signal_name!r} failed for contract group {cgroup.name}"
+                    ) from exc
+                setattr(self.signal_values[cgroup.name], signal_name, validated_values)
 
     def _generate_order_iterations(
         self,
