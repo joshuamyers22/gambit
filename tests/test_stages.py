@@ -48,6 +48,28 @@ def test_stage_graph_reports_dependency_cycle() -> None:
         graph.topological_order()
 
 
+def test_strategy_stage_graph_rejects_indicator_dependency_scope_gap() -> None:
+    first_group = ContractGroup.get("indicator-parent-scope")
+    second_group = ContractGroup.get("indicator-child-scope")
+    strategy = Strategy(np.array([np.datetime64("2024-01-02")]), [first_group, second_group], _price)
+    strategy.add_indicator("parent", lambda *_args: np.array([1.0]), [first_group])
+    strategy.add_indicator("child", lambda *_args: np.array([2.0]), [second_group], depends_on=["parent"])
+
+    with pytest.raises(ValueError, match="indicator 'parent'.*indicator-child-scope"):
+        strategy.validate_stage_graph()
+
+
+def test_strategy_stage_graph_rejects_signal_dependency_scope_gap() -> None:
+    first_group = ContractGroup.get("signal-parent-scope")
+    second_group = ContractGroup.get("signal-child-scope")
+    strategy = Strategy(np.array([np.datetime64("2024-01-02")]), [first_group, second_group], _price)
+    strategy.add_signal("parent", lambda *_args: np.array([True]), [first_group])
+    strategy.add_signal("child", lambda *_args: np.array([True]), [second_group], depends_on_signals=["parent"])
+
+    with pytest.raises(ValueError, match="signal 'parent'.*signal-child-scope"):
+        strategy.validate_stage_graph()
+
+
 def test_strategy_exposes_complete_stage_metadata() -> None:
     group = ContractGroup.get("stages")
     timestamp = np.array([np.datetime64("2024-01-02")])

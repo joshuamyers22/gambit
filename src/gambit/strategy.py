@@ -430,7 +430,32 @@ class Strategy:
 
     def validate_stage_graph(self) -> tuple[str, ...]:
         """Validate dependencies and return deterministic execution order metadata."""
-        return self.stage_graph().topological_order()
+        order = self.stage_graph().topological_order()
+        for name, groups in self.indicator_cgroups.items():
+            for dependency in self.indicator_deps[name]:
+                dependency_groups = self.indicator_cgroups[dependency]
+                for group in groups:
+                    if not any(group is dependency_group for dependency_group in dependency_groups):
+                        raise ValueError(
+                            f"indicator {name!r} depends on indicator {dependency!r}, which is not registered "
+                            f"for contract group {group.name}"
+                        )
+        for name, groups in self.signal_cgroups.items():
+            scoped_dependencies = [
+                ("indicator", dependency, self.indicator_cgroups[dependency])
+                for dependency in self.signal_indicator_deps[name]
+            ]
+            scoped_dependencies.extend(
+                ("signal", dependency, self.signal_cgroups[dependency]) for dependency in self.signal_deps[name]
+            )
+            for dependency_kind, dependency, dependency_groups in scoped_dependencies:
+                for group in groups:
+                    if not any(group is dependency_group for dependency_group in dependency_groups):
+                        raise ValueError(
+                            f"signal {name!r} depends on {dependency_kind} {dependency!r}, which is not registered "
+                            f"for contract group {group.name}"
+                        )
+        return order
 
     def run_indicators(
         self,
