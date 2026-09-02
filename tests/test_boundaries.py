@@ -67,6 +67,21 @@ def test_account_rejects_off_grid_valuation_without_leaking_index_error() -> Non
         account.calc(timestamp + np.timedelta64(1, "D"))
 
 
+def test_empty_account_rejects_off_grid_valuation() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    account = Account(
+        [ContractGroup.get("empty-off-grid-account")],
+        np.array([timestamp]),
+        _price,
+        SimpleNamespace(),
+    )
+
+    with pytest.raises(ValueError, match="not present in the account timestamp grid"):
+        account.equity(timestamp + np.timedelta64(1, "D"))
+
+    assert not account._pnl
+
+
 @pytest.mark.parametrize(
     ("value", "error"),
     [(-1, ValueError), (1440, ValueError), (900.5, TypeError), (True, TypeError)],

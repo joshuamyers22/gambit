@@ -414,6 +414,7 @@ class Account:
                 between these and including timestamp. If there is more than one day between the last index and current index, we will
                 include pnl for at the defined pnl_calc_time for those dates as well.
         """
+        timestamp_index(self.timestamps, timestamp, owner="account")
         if timestamp in self._pnl:
             return
 
