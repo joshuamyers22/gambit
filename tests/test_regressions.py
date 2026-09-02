@@ -146,6 +146,36 @@ def test_account_daily_calculation_includes_exact_configured_time() -> None:
     assert np.array_equal(account.calc_timestamps, timestamps[[1, 3]])
 
 
+def test_account_daily_calculation_does_not_reuse_prior_days_bar() -> None:
+    timestamps = np.array(
+        ["2026-01-01T16:00", "2026-01-02T14:00", "2026-01-02T16:00"],
+        dtype="datetime64[m]",
+    )
+
+    account = Account([ContractGroup.get("daily-bar-boundary")], timestamps, _price, SimpleNamespace())
+
+    assert np.array_equal(account.calc_timestamps, timestamps[[1]])
+
+
+def test_account_pnl_is_typed_and_empty_when_no_daily_valuation_exists() -> None:
+    timestamps = np.array(["2026-01-01T16:00"], dtype="datetime64[m]")
+    account = Account([ContractGroup.get("no-daily-valuation")], timestamps, _price, SimpleNamespace())
+
+    aggregate = account.df_account_pnl()
+
+    assert aggregate.is_empty()
+    assert aggregate.schema == {
+        "timestamp": pl.Datetime("ns"),
+        "position": pl.Float64,
+        "unrealized": pl.Float64,
+        "realized": pl.Float64,
+        "commission": pl.Float64,
+        "fee": pl.Float64,
+        "net_pnl": pl.Float64,
+        "equity": pl.Float64,
+    }
+
+
 def test_empty_strategy_orders_have_stable_string_schema() -> None:
     timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
     strategy = Strategy(timestamps, [ContractGroup.get("empty-orders")], _price)

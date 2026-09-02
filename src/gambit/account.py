@@ -35,6 +35,17 @@ DETAILED_PNL_SCHEMA = {
     "net_pnl": pl.Float64,
 }
 
+ACCOUNT_PNL_SCHEMA = {
+    "timestamp": pl.Datetime("ns"),
+    "position": pl.Float64,
+    "unrealized": pl.Float64,
+    "realized": pl.Float64,
+    "commission": pl.Float64,
+    "fee": pl.Float64,
+    "net_pnl": pl.Float64,
+    "equity": pl.Float64,
+}
+
 
 def leading_nan_to_zero(df: pl.DataFrame, columns: Sequence[str]) -> pl.DataFrame:
     for column in columns:
@@ -302,13 +313,14 @@ class ContractPNL:
 
 def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarray:
     time_delta = np.timedelta64(pnl_calc_time, "m")
-    calc_timestamps = np.unique(timestamps.astype("M8[D]")) + time_delta
-    calc_indices: NDArray[np.intp] = np.asarray(
-        np.searchsorted(timestamps, calc_timestamps, side="right") - 1, dtype=np.intp
+    dates = np.unique(timestamps.astype("M8[D]"))
+    target_timestamps = dates + time_delta
+    day_starts: NDArray[np.intp] = np.asarray(np.searchsorted(timestamps, dates), dtype=np.intp)
+    target_ends: NDArray[np.intp] = np.asarray(
+        np.searchsorted(timestamps, target_timestamps, side="right"), dtype=np.intp
     )
-    if calc_indices[0] == -1:
-        calc_indices = calc_indices[1:]
-    return np.unique(timestamps[calc_indices])
+    calc_indices = target_ends[target_ends > day_starts] - 1
+    return timestamps[calc_indices]
 
 
 class Account:
@@ -550,6 +562,8 @@ class Account:
             symbol_pnls = list(self.symbol_pnls.values())
 
         timestamps = self.calc_timestamps
+        if not len(timestamps):
+            return pl.DataFrame(schema=ACCOUNT_PNL_SCHEMA)
         prev_date = self.calc_timestamps[0] - np.timedelta64(1, "D")
         timestamps = np.insert(timestamps, 0, prev_date)
         position: NDArray[np.float64] = np.full(len(timestamps), 0.0, dtype=float)
