@@ -39,6 +39,9 @@ in stateless collaborators such as `strategy_contracts` and
 receive external behavior as callables or protocols and should not add direct
 filesystem, subprocess, or UI operations.
 
+Trade-history reconciliation is isolated in `trade_reconciliation`; it consumes
+trade value objects and must not depend on the mutable `Account` aggregate.
+
 ## Edges and composition
 
 `factor_cli`, `pq_io`, `factor_store`, `return_reporting`, `interactive_plot`,

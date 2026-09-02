@@ -3,9 +3,8 @@
 # $$_ %%checkall
 from __future__ import annotations
 
-import copy
 import math
-from collections import defaultdict, deque
+from collections import defaultdict
 from collections.abc import Sequence
 from types import SimpleNamespace
 from typing import Any, Callable, cast
@@ -19,6 +18,7 @@ from gambit.boundaries import validate_price_value
 from gambit.compute_pnl import calc_trade_pnl
 from gambit.pq_types import Contract, ContractGroup, RoundTripTrade, Trade
 from gambit.pq_utils import assert_
+from gambit.trade_reconciliation import df_roundtrip_trade, roundtrip_trades
 
 NAT = np.datetime64("NaT", "ns")
 
@@ -293,141 +293,6 @@ def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarr
     if calc_indices[0] == -1:
         calc_indices = calc_indices[1:]
     return np.unique(timestamps[calc_indices])
-
-
-def _net_trade(stack: deque, trade: Trade) -> RoundTripTrade | None:
-    if not len(stack) or np.sign(trade.qty) == np.sign(stack[0].qty):
-        stack.append(trade)
-        return None
-
-    entry = stack[0]
-    qty = min(abs(entry.qty), abs(trade.qty)) * np.sign(entry.qty)
-    entry_fraction = abs(qty / entry.qty)
-    exit_fraction = abs(qty / trade.qty)
-    pnl = (
-        qty * (trade.price - entry.price) * entry.contract.multiplier
-        - trade.commission * exit_fraction
-        - entry.commission * entry_fraction
-    )
-    entry_reason_code = entry.order.reason_code if entry.order else ""
-    exit_reason_code = trade.order.reason_code if trade.order else ""
-    rt = RoundTripTrade(
-        entry.contract,
-        entry.order,
-        trade.order,
-        entry.timestamp,
-        trade.timestamp,
-        qty,
-        entry.price,
-        trade.price,
-        entry_reason_code,
-        exit_reason_code,
-        entry.commission * entry_fraction,
-        trade.commission * exit_fraction,
-        copy.deepcopy(entry.properties),
-        copy.deepcopy(trade.properties),
-        pnl,
-    )
-    resid = entry.qty - qty
-    entry.qty -= qty
-    entry.commission *= 1 - entry_fraction
-    trade.qty += qty
-    trade.commission *= 1 - exit_fraction
-    if resid == 0:
-        stack.popleft()
-    return rt
-
-
-def roundtrip_trades(trades: list[Trade]) -> list[RoundTripTrade]:
-    """
-    >>> qtys = [100, -50, 20, -120, 10]
-    >>> prices = [9, 10, 8, 11, 12]
-    >>> trades = []
-    >>> contract = SimpleNamespace(symbol='AAPL', multiplier=1)
-    >>> order = SimpleNamespace(reason_code='DUMMY')
-    >>> for i, qty in enumerate(qtys):
-    ...    timestamp = np.datetime64('2022-11-05 08:00') + np.timedelta64(i, 'm')
-    ...    trades.append(Trade(contract, order, timestamp, qty, prices[i]))
-    >>> rts = roundtrip_trades(trades)
-    >>> assert [(rt.qty, rt.entry_price, rt.exit_price, rt.net_pnl) for rt in rts] == [
-    ...    (50, 9, 10, 50.0), (50, 9, 11, 100.0), (20, 8, 11, 60.0), (-10, 11, 12, -10.0), (-40, 11, np.nan, 0.0)]
-    """
-    rtt: list[RoundTripTrade] = []
-    stacks: dict[str, deque] = defaultdict(deque)
-    working_trades = []
-    for index, source_trade in enumerate(trades):
-        trade = copy.copy(source_trade)
-        trade.properties = copy.deepcopy(source_trade.properties)
-        trade.properties.index = index
-        working_trades.append(trade)
-
-    for trade in working_trades:
-        while True:
-            rt = _net_trade(stacks[trade.contract.symbol], trade)
-            if rt is None:
-                break
-            rtt.append(rt)
-            if trade.qty == 0:
-                break
-
-    open_trades = [trade for trades in stacks.values() for trade in trades]
-
-    open_rtt = [
-        RoundTripTrade(
-            open_trade.contract,
-            open_trade.order,
-            None,
-            open_trade.timestamp,
-            np.datetime64("NaT", "ns"),
-            open_trade.qty,
-            open_trade.price,
-            np.nan,
-            open_trade.order.reason_code,
-            None,
-            open_trade.commission,
-            np.nan,
-            open_trade.properties,
-            SimpleNamespace(),
-            0.0,
-        )
-        for open_trade in open_trades
-    ]
-    rtt = rtt + open_rtt
-    rtt.sort(key=lambda rt: rt.entry_properties.index)
-    for i, rt in enumerate(rtt):
-        rt.entry_properties.entry_index = rt.entry_properties.index
-        rt.entry_properties.index = i
-
-    return rtt
-
-
-def df_roundtrip_trade(rt_trades: list[RoundTripTrade]) -> pl.DataFrame:
-    df_rts = pl.DataFrame(
-        {
-            "symbol": [trade.contract.symbol for trade in rt_trades],
-            "multiplier": np.asarray([trade.contract.multiplier for trade in rt_trades], dtype=float),
-            "entry_timestamp": np.asarray([trade.entry_timestamp for trade in rt_trades], dtype="datetime64[ns]"),
-            "exit_timestamp": np.asarray([trade.exit_timestamp for trade in rt_trades], dtype="datetime64[ns]"),
-            "qty": np.asarray([trade.qty for trade in rt_trades], dtype=float),
-            "entry_price": np.asarray([trade.entry_price for trade in rt_trades], dtype=float),
-            "exit_price": np.asarray([trade.exit_price for trade in rt_trades], dtype=float),
-            "entry_reason": [trade.entry_reason for trade in rt_trades],
-            "exit_reason": [trade.exit_reason for trade in rt_trades],
-            "entry_commission": np.asarray([trade.entry_commission for trade in rt_trades], dtype=float),
-            "exit_commission": np.asarray([trade.exit_commission for trade in rt_trades], dtype=float),
-            "net_pnl": np.asarray([trade.net_pnl for trade in rt_trades], dtype=float),
-        },
-        schema_overrides={
-            "symbol": pl.String,
-            "entry_timestamp": pl.Datetime("ns"),
-            "exit_timestamp": pl.Datetime("ns"),
-            "entry_reason": pl.String,
-            "exit_reason": pl.String,
-        },
-    )
-    if len(df_rts) > 0:
-        df_rts = df_rts.sort(["entry_timestamp", "symbol"])
-    return df_rts
 
 
 class Account:

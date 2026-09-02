@@ -43,3 +43,9 @@ def test_strategy_orchestrator_does_not_import_evaluator_adapter() -> None:
     imports = _gambit_imports(PACKAGE_ROOT / "strategy.py")
 
     assert "gambit.evaluator" not in imports
+
+
+def test_trade_reconciliation_does_not_depend_on_account_aggregate() -> None:
+    imports = _gambit_imports(PACKAGE_ROOT / "trade_reconciliation.py")
+
+    assert "gambit.account" not in imports

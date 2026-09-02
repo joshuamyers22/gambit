@@ -528,7 +528,7 @@ class RoundTripTrade:
     exit_order: Order | None
     entry_timestamp: np.datetime64
     exit_timestamp: np.datetime64
-    qty: int
+    qty: float
     entry_price: float
     exit_price: float
     entry_reason: str | None

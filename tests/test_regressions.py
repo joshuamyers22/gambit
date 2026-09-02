@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 
 from gambit import _io
-from gambit.account import Account
+from gambit.account import Account, roundtrip_trades
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
@@ -44,6 +44,23 @@ def test_trade_representation_omits_whitespace_for_absent_optional_fields() -> N
         "IBM 2019-01-01 15:00:00 qty: 100 prc: 10.213 fee: 0.01 "
         "order: IBM 2019-01-01 14:59:00 qty: 100 OrderStatus.OPEN"
     )
+
+
+def test_roundtrip_reconciliation_preserves_fractional_quantities() -> None:
+    contract = Contract.create("FRACTIONAL", ContractGroup.get("fractional"))
+    timestamp = np.datetime64("2026-01-02")
+    entry = MarketOrder(contract=contract, timestamp=timestamp, qty=1.5)
+    exit_order = MarketOrder(contract=contract, timestamp=timestamp, qty=-0.5)
+
+    result = roundtrip_trades(
+        [
+            Trade(contract, entry, timestamp, 1.5, 100.0),
+            Trade(contract, exit_order, timestamp, -0.5, 110.0),
+        ]
+    )
+
+    assert [trade.qty for trade in result] == [0.5, 1.0]
+    assert result[0].net_pnl == 5.0
 
 
 def _price(_contract, _timestamps, _index, _context):
