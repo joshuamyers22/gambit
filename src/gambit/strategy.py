@@ -828,6 +828,7 @@ class Strategy:
                     self.strategy_context,
                 ),
                 contract_group,
+                self.timestamps[idx],
             )
         except Exception as exc:
             raise BacktestCallbackError(

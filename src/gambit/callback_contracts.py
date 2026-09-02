@@ -7,7 +7,11 @@ from collections.abc import Sequence
 from gambit.pq_types import ContractGroup, Order, Trade
 
 
-def validate_rule_orders(result: object, contract_group: ContractGroup) -> list[Order]:
+def validate_rule_orders(
+    result: object,
+    contract_group: ContractGroup,
+    current_timestamp: object,
+) -> list[Order]:
     """Validate and normalize one rule callback result."""
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
         raise TypeError("rule callback must return a sequence of Order objects")
@@ -21,6 +25,8 @@ def validate_rule_orders(result: object, contract_group: ContractGroup) -> list[
         registered = contract_group.contracts.get(order.contract.symbol)
         if registered is not order.contract:
             raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
+        if order.timestamp != current_timestamp:
+            raise ValueError("rule order timestamp does not match the current strategy timestamp")
     return orders
 
 

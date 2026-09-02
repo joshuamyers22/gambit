@@ -281,9 +281,19 @@ def test_callback_contracts_normalize_rule_orders_without_strategy_state() -> No
     group = ContractGroup.get("pure-rule-contract")
     order = MarketOrder(contract=Contract.create("PURE-RULE", group), timestamp=timestamp, qty=1.0)
 
-    result = validate_rule_orders((order,), group)
+    result = validate_rule_orders((order,), group, timestamp)
 
     assert result == [order]
+
+
+def test_callback_contracts_reject_order_for_wrong_strategy_timestamp() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("wrong-rule-timestamp")
+    contract = Contract.create("WRONG-RULE-TIMESTAMP", group)
+    order = MarketOrder(contract=contract, timestamp=timestamp + np.timedelta64(1, "D"), qty=1)
+
+    with pytest.raises(ValueError, match="does not match the current strategy timestamp"):
+        validate_rule_orders([order], group, timestamp)
 
 
 def test_callback_contracts_reject_trade_for_unknown_order_without_account_mutation() -> None:
