@@ -260,6 +260,35 @@ def test_rule_contract_violation_is_chained_with_context() -> None:
     assert isinstance(raised.value.__cause__, ValueError)
 
 
+def test_rule_callback_cannot_mutate_current_order_membership() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("immutable-current-orders")
+    contract = Contract.create("IMMUTABLE-CURRENT-ORDERS", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    existing_order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    strategy._current_orders = [existing_order]
+    strategy.position_filters["mutating-rule"] = None
+
+    def mutating_rule(_group, _index, _timestamps, _indicators, _signals, _account, current_orders, _context):
+        current_orders.append(MarketOrder(contract=contract, timestamp=timestamp, qty=1))
+        return []
+
+    with pytest.raises(BacktestCallbackError, match="rule callback") as raised:
+        strategy._get_orders(
+            0,
+            mutating_rule,
+            group,
+            {
+                "indicator_values": SimpleNamespace(),
+                "signal_values": np.array([True]),
+                "rule_name": "mutating-rule",
+            },
+        )
+
+    assert isinstance(raised.value.__cause__, AttributeError)
+    assert strategy._current_orders == [existing_order]
+
+
 def test_invalid_market_simulator_output_is_chained_before_account_mutation() -> None:
     timestamp = np.datetime64("2026-01-01")
     group = ContractGroup.get("sim-boundary")

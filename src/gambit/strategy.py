@@ -824,7 +824,7 @@ class Strategy:
                     indicator_values,
                     signal_values,
                     self.account,
-                    self._current_orders,
+                    tuple(self._current_orders),
                     self.strategy_context,
                 ),
                 contract_group,
