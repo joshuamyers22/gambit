@@ -10,6 +10,7 @@ from typing import Any, cast
 import numpy as np
 import polars as pl
 
+from gambit.boundaries import validate_date_range
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.pq_utils import get_child_logger
 from gambit.strategy import Strategy
@@ -35,8 +36,28 @@ class Portfolio:
             name: Name of the strategy
             strategy: Strategy instance
         """
+        if not isinstance(name, str) or not name:
+            raise ValueError("portfolio strategy name must be a non-empty string")
+        if name in self.strategies:
+            raise ValueError(f"portfolio strategy {name!r} is already registered")
+        if not isinstance(strategy, Strategy):
+            raise TypeError("portfolio strategy must be a Strategy")
         self.strategies[name] = strategy
         strategy.name = name
+
+    def _selected_strategies(self, strategy_names: Sequence[str] | None) -> tuple[Strategy, ...]:
+        if strategy_names is None:
+            strategy_names = tuple(self.strategies)
+        if isinstance(strategy_names, (str, bytes)) or not isinstance(strategy_names, Sequence):
+            raise TypeError("portfolio strategy_names must be a sequence of strings")
+        if not strategy_names:
+            raise ValueError("a portfolio operation requires at least one strategy")
+        if not all(isinstance(name, str) for name in strategy_names):
+            raise TypeError("portfolio strategy_names must contain only strings")
+        unknown = [name for name in strategy_names if name not in self.strategies]
+        if unknown:
+            raise ValueError(f"unknown portfolio strategies: {', '.join(unknown)}")
+        return tuple(self.strategies[name] for name in dict.fromkeys(strategy_names))
 
     def run_indicators(self, strategy_names: Sequence[str] | None = None) -> None:
         """Compute indicators for the strategies specified
@@ -44,13 +65,9 @@ class Portfolio:
         Args:
             strategy_names: By default this is set to None and we use all strategies.
         """
-        if strategy_names is None:
-            strategy_names = list(self.strategies.keys())
-        if len(strategy_names) == 0:
-            raise Exception("a portfolio must have at least one strategy")
-        for name in strategy_names:
-            _logger.info(f"running strategy indicators: {name}")
-            self.strategies[name].run_indicators()
+        for strategy in self._selected_strategies(strategy_names):
+            _logger.info(f"running strategy indicators: {strategy.name}")
+            strategy.run_indicators()
 
     def run_signals(self, strategy_names: Sequence[str] | None = None) -> None:
         """Compute signals for the strategies specified.  Must be called after run_indicators
@@ -58,14 +75,9 @@ class Portfolio:
         Args:
             strategy_names: By default this is set to None and we use all strategies.
         """
-        if strategy_names is None:
-            strategy_names = list(self.strategies.keys())
-        if len(strategy_names) == 0:
-            raise Exception("a portfolio must have at least one strategy")
-        for name in strategy_names:
-            _logger.info(f"running signals: {name}")
-            self.strategies[name].run_indicators()
-            self.strategies[name].run_signals()
+        for strategy in self._selected_strategies(strategy_names):
+            _logger.info(f"running signals: {strategy.name}")
+            strategy.run_signals()
 
     def _generate_order_iterations(
         self,
@@ -89,6 +101,7 @@ class Portfolio:
         >>> assert(all(orders_iter[0][1] == np.array([0, 1, 2, 3])))
         >>> assert(all(orders_iter[1][1] == np.array([0, 0, 1, 2])))
         """
+        start_date, end_date = validate_date_range(start_date, end_date, owner="portfolio rule execution")
         if strategies is None:
             strategies = tuple(self.strategies.values())
 
@@ -119,12 +132,8 @@ class Portfolio:
         """Run rules for the strategies specified.  Must be called after run_indicators and run_signals.
         See run function for argument descriptions
         """
-        if strategy_names is None:
-            strategy_names = list(self.strategies.keys())
-        if len(strategy_names) == 0:
-            raise Exception("a portfolio must have at least one strategy")
-
-        strategies = [self.strategies[key] for key in strategy_names]
+        strategies = self._selected_strategies(strategy_names)
+        start_date, end_date = validate_date_range(start_date, end_date, owner="portfolio rule execution")
 
         _logger.info(f"generating order iterations: {start_date} {end_date}")
 
@@ -157,8 +166,8 @@ class Portfolio:
               so you can set this so they are all ready by this date.  Default None
             end_date: Don't run rules after this date.  Default None
         """
-        self.run_indicators()
-        self.run_signals()
+        self.run_indicators(strategy_names)
+        self.run_signals(strategy_names)
         self.run_rules(strategy_names, start_date, end_date)
 
     def df_returns(self, sampling_frequency: str = "D", strategy_names: Sequence[str] | None = None) -> pl.DataFrame:
@@ -169,17 +178,15 @@ class Portfolio:
             sampling_frequency: Date frequency for rows.  Default 'D' for daily so we will have one row per day
             strategy_names: By default this is set to None and we use all strategies.
         """
-        if strategy_names is None:
-            strategy_names = list(self.strategies.keys())
-        if len(strategy_names) == 0:
-            raise Exception("portfolio must have at least one strategy")
+        strategies = self._selected_strategies(strategy_names)
         equity_list = []
-        for name in strategy_names:
-            equity = self.strategies[name].df_returns(sampling_frequency=sampling_frequency)[["timestamp", "equity"]]
-            equity = equity.rename({"equity": name})
+        selected_names = [strategy.name for strategy in strategies]
+        for strategy in strategies:
+            equity = strategy.df_returns(sampling_frequency=sampling_frequency)[["timestamp", "equity"]]
+            equity = equity.rename({"equity": strategy.name})
             equity_list.append(equity)
         df = reduce(lambda left, right: left.join(right, on="timestamp", how="full", coalesce=True), equity_list)
-        return df.with_columns(pl.sum_horizontal(strategy_names).alias("equity")).with_columns(
+        return df.with_columns(pl.sum_horizontal(selected_names).alias("equity")).with_columns(
             pl.col("equity").pct_change().alias("ret")
         )
 
