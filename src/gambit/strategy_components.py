@@ -18,7 +18,7 @@ from gambit.boundaries import validate_price_value
 from gambit.execution_costs import ChargeModel, FixedPercentageSlippage, PerUnitCharge, SlippageModel
 from gambit.pq_types import Contract, ContractGroup, LimitOrder, MarketOrder, Order, TimeInForce, Trade, VWAPOrder
 from gambit.pq_utils import assert_, get_child_logger, np_indexof_sorted
-from gambit.strategy import PriceFunctionType, StrategyContextType
+from gambit.strategy_contracts import PriceFunctionType, StrategyContextType
 
 _logger = get_child_logger(__name__)
 

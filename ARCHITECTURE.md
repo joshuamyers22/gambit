@@ -33,10 +33,11 @@ without importing the package.
 ## Orchestration
 
 `strategy`, `account`, `risk`, `stages`, and the factor DAG coordinate use
-cases. They may depend on kernel contracts. Callback validation belongs in
-stateless collaborators such as `callback_contracts`, not in the strategy
-state machine. Orchestrators should receive external behavior as callables or
-protocols and should not add direct filesystem, subprocess, or UI operations.
+cases. They may depend on kernel contracts. Callback types and validation belong
+in stateless collaborators such as `strategy_contracts` and
+`callback_contracts`, not in the strategy state machine. Orchestrators should
+receive external behavior as callables or protocols and should not add direct
+filesystem, subprocess, or UI operations.
 
 ## Edges and composition
 

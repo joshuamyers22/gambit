@@ -144,6 +144,7 @@ files = [
   "src/gambit/strategy.py",
   "src/gambit/strategy_builder.py",
   "src/gambit/strategy_components.py",
+  "src/gambit/strategy_contracts.py",
   "src/gambit/universe.py",
   "src/gambit/var_risk.py",
   "tests/test_regressions.py",

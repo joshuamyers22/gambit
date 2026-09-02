@@ -31,3 +31,9 @@ def test_stable_contract_kernel_does_not_depend_on_outer_package_modules() -> No
             violations[module] = sorted(imports)
 
     assert violations == {}, f"stable contract modules must remain dependency-free: {violations}"
+
+
+def test_strategy_components_do_not_depend_on_strategy_orchestrator() -> None:
+    imports = _gambit_imports(PACKAGE_ROOT / "strategy_components.py")
+
+    assert "gambit.strategy" not in imports

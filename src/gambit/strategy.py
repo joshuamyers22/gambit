@@ -22,16 +22,13 @@ from gambit.callback_contracts import validate_market_trades, validate_rule_orde
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.market_data import MarketDataValidationReport
-from gambit.pq_types import Contract, ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
+from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
 from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 from gambit.risk_reporting import PortfolioRiskReport, StressScenario, analyze_account_risk
 from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
-
-StrategyContextType = SimpleNamespace
-
-PriceFunctionType = Callable[[Contract, np.ndarray, int, StrategyContextType | None], float]
+from gambit.strategy_contracts import PriceFunctionType, StrategyContextType
 
 IndicatorType: TypeAlias = IndicatorStage
 SignalType: TypeAlias = SignalStage
