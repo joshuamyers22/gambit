@@ -265,7 +265,7 @@ class PolarsFactorDagExecutor:
                     outputs[node_key] = frame
                     leases.append(lease)
                     hits.append(node_key)
-        except Exception:
+        except BaseException:  # cached leases must close on cancellation and interpreter exit before reraising
             for lease in leases:
                 lease.close()
             raise

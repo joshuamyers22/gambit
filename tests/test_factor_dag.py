@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
+from types import SimpleNamespace
 
 import polars as pl
 import pytest
@@ -140,6 +141,44 @@ def test_closed_factor_dag_execution_rejects_access(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match="closed"):
         execution[identities[0].node_key]
+
+
+def test_factor_dag_closes_cached_leases_when_computation_is_interrupted(tmp_path, monkeypatch) -> None:
+    root = _identity("cached_root")
+    child = _identity("interrupted_child", parents=(root.node_key,))
+
+    class ExecutionInterrupted(BaseException):
+        pass
+
+    class FakeLease:
+        closed = False
+
+        def __getitem__(self, _name: str) -> SimpleNamespace:
+            return SimpleNamespace(values=[1.0])
+
+        def close(self) -> None:
+            self.closed = True
+
+    lease = FakeLease()
+
+    def open_generation(_cache_root, node_key):
+        if node_key == root.node_key:
+            return lease
+        raise factor_dag_module.FactorNodeCacheMiss("cache miss")
+
+    def interrupt(_parents):
+        raise ExecutionInterrupted
+
+    monkeypatch.setattr(factor_dag_module, "open_generation_by_node_key", open_generation)
+    nodes = (
+        PolarsFactorNode(root, lambda _: pl.DataFrame({"cached_root": [1.0]})),
+        PolarsFactorNode(child, interrupt),
+    )
+
+    with pytest.raises(ExecutionInterrupted):
+        PolarsFactorDagExecutor(tmp_path).execute(nodes)
+
+    assert lease.closed
 
 
 def test_cost_aware_policy_reuses_persisted_rejection_hints(tmp_path, monkeypatch) -> None:
