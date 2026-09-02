@@ -582,6 +582,20 @@ def test_strategy_returns_detached_order_snapshots() -> None:
     assert order.qty == 2
 
 
+@pytest.mark.parametrize("query", ["orders", "df_data"])
+def test_strategy_rejects_unconfigured_query_group(query: str) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get(f"configured-{query}-query")
+    unconfigured_group = ContractGroup(f"configured-{query}-query")
+    strategy = Strategy(np.array([timestamp]), [configured_group], _price)
+
+    with pytest.raises(ValueError, match="not configured for this strategy"):
+        if query == "orders":
+            strategy.orders(unconfigured_group)
+        else:
+            strategy.df_data([unconfigured_group], add_pnl=False)
+
+
 def test_trade_rejects_contract_mismatch_at_construction() -> None:
     timestamp = np.datetime64("2026-01-01")
     first = Contract.create("TRADE-CONTRACT-FIRST")

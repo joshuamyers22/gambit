@@ -1003,8 +1003,7 @@ class Strategy:
             end_date: string or numpy datetime64: Default None
         """
         _start_date, _end_date = np.datetime64(start_date), np.datetime64(end_date)
-        if contract_groups is None:
-            contract_groups = self.contract_groups
+        contract_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="data query")
 
         timestamps = self.timestamps
 
@@ -1103,6 +1102,8 @@ class Strategy:
         orders: list[Order] = []
         _start_date = NAT if start_date is None else np.datetime64(start_date)
         _end_date = NAT if end_date is None else np.datetime64(end_date)
+        if contract_group is not None:
+            validated_stage_groups([contract_group], self.contract_groups, operation="order query")
         if contract_group is None:
             orders += [
                 order
@@ -1111,14 +1112,13 @@ class Strategy:
                 and (np.isnat(_end_date) or np.datetime64(order.timestamp) <= _end_date)
             ]
         else:
-            for contract in contract_group.contracts.values():
-                orders += [
-                    order
-                    for order in self._orders
-                    if (contract is None or order.contract == contract)
-                    and (np.isnat(_start_date) or np.datetime64(order.timestamp) >= _start_date)
-                    and (np.isnat(_end_date) or np.datetime64(order.timestamp) <= _end_date)
-                ]
+            orders += [
+                order
+                for order in self._orders
+                if order.contract.contract_group is contract_group
+                and (np.isnat(_start_date) or np.datetime64(order.timestamp) >= _start_date)
+                and (np.isnat(_end_date) or np.datetime64(order.timestamp) <= _end_date)
+            ]
         return [snapshot_order(order) for order in orders]
 
     def df_orders(
