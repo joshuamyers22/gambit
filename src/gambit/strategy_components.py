@@ -295,8 +295,7 @@ class VWAPEntryRule:
         timestamp = _timestamp_at(timestamps, i)
         if self.single_entry_per_day:
             date = cast(np.datetime64, timestamp.astype("M8[D]"))
-            trades = account.get_trades_for_date(contract_group.name, date)
-            if len(trades):
+            if any(account.get_trades_for_date(contract.symbol, date) for contract in contract_group.get_contracts()):
                 return []
 
         for order in current_orders:
@@ -615,7 +614,7 @@ class BracketOrderEntryRule:
         orders: list[Order] = []
         for contract in contracts:
             if self.single_entry_per_day:
-                trades = account.get_trades_for_date(contract_group.name, date)
+                trades = account.get_trades_for_date(contract.symbol, date)
                 if len(trades):
                     continue
 

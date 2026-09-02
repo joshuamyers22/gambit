@@ -9,6 +9,7 @@ from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
+from gambit.strategy_components import BracketOrderEntryRule, VWAPEntryRule
 
 
 def test_contract_group_cache_clear_removes_contracts_without_replacing_default() -> None:
@@ -218,6 +219,46 @@ def test_adding_trades_invalidates_cached_future_equity() -> None:
 
     assert account.position(group, timestamps[-1]) == 2
     assert account.equity(timestamps[-1]) == 1_020.0
+
+
+def test_bracket_entry_rule_honors_single_entry_per_contract_per_day() -> None:
+    timestamp = np.datetime64("2026-01-02T10:00")
+    group = ContractGroup.get("single-daily-entry")
+    contract = Contract.create("SINGLE-DAILY-ENTRY", group)
+    timestamps = np.array([timestamp])
+    account = Account([group], timestamps, _price, SimpleNamespace())
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    account.add_trades([Trade(contract, order, timestamp, 1, 100.0)])
+    rule = BracketOrderEntryRule("ENTRY", _price, single_entry_per_day=True)
+
+    orders = rule(
+        group,
+        0,
+        timestamps,
+        SimpleNamespace(),
+        np.array([True]),
+        account,
+        [],
+        SimpleNamespace(),
+    )
+
+    assert orders == []
+
+
+def test_vwap_entry_rule_honors_single_entry_per_group_per_day() -> None:
+    timestamp = np.datetime64("2026-01-02T10:00")
+    group = ContractGroup.get("single-daily-group-entry")
+    traded_contract = Contract.create("GROUP-ENTRY-FIRST", group)
+    Contract.create("GROUP-ENTRY-SECOND", group)
+    timestamps = np.array([timestamp])
+    account = Account([group], timestamps, _price, SimpleNamespace())
+    order = MarketOrder(contract=traded_contract, timestamp=timestamp, qty=1)
+    account.add_trades([Trade(traded_contract, order, timestamp, 1, 100.0)])
+    rule = VWAPEntryRule("ENTRY", 5, _price, single_entry_per_day=True)
+
+    orders = rule(group, 0, timestamps, SimpleNamespace(), np.array([True]), account, [], SimpleNamespace())
+
+    assert orders == []
 
 
 def test_account_pnl_is_typed_and_empty_when_no_daily_valuation_exists() -> None:
