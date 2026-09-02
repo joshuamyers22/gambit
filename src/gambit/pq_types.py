@@ -332,6 +332,14 @@ class Order:
     status: OrderStatus = OrderStatus.OPEN
 
     def __post_init__(self) -> None:
+        if not isinstance(self.contract, Contract):
+            raise TypeError("order contract must be a Contract")
+        if not isinstance(self.timestamp, np.datetime64):
+            raise TypeError("order timestamp must be a numpy datetime64 value")
+        if not isinstance(self.time_in_force, TimeInForce):
+            raise TypeError("order time_in_force must be a TimeInForce")
+        if not isinstance(self.status, OrderStatus):
+            raise TypeError("order status must be an OrderStatus")
         self.qty = _whole_quantity(self.qty, field_name="order qty")
 
     def is_open(self) -> bool:

@@ -50,6 +50,27 @@ def test_market_order_rejects_non_whole_quantity(qty) -> None:
         MarketOrder(contract=contract, qty=qty)
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("contract", object(), "contract must be a Contract"),
+        ("timestamp", "2024-01-02", "timestamp must be a numpy datetime64 value"),
+        ("time_in_force", "GTC", "time_in_force must be a TimeInForce"),
+        ("status", "OPEN", "status must be an OrderStatus"),
+    ],
+)
+def test_order_rejects_invalid_entity_fields(field: str, value: object, message: str) -> None:
+    kwargs = {
+        "contract": Contract.create("INVALID-ORDER-FIELD", ContractGroup.get("orders")),
+        "timestamp": np.datetime64("2024-01-02"),
+        "qty": 1,
+        field: value,
+    }
+
+    with pytest.raises(TypeError, match=message):
+        MarketOrder(**kwargs)
+
+
 def test_order_rejects_fractional_fill_without_mutating_remaining_quantity() -> None:
     contract = Contract.create("FRACTIONAL-FILL", ContractGroup.get("orders"))
     order = MarketOrder(contract=contract, qty=10)
