@@ -3,6 +3,7 @@
 # $$_ %%checkall
 from __future__ import annotations
 
+import copy
 import math
 from collections import defaultdict
 from collections.abc import Sequence
@@ -85,6 +86,12 @@ def _validate_contract_groups(contract_groups: object) -> tuple[ContractGroup, .
     if len(set(names)) != len(names):
         raise ValueError("account contract group names must be unique")
     return groups
+
+
+def _snapshot_trade(trade: Trade) -> Trade:
+    snapshot = copy.copy(trade)
+    snapshot.properties = copy.deepcopy(trade.properties)
+    return snapshot
 
 
 class Account:
@@ -203,7 +210,7 @@ class Account:
             if contract is not trade.order.contract:
                 raise ValueError("trade contract does not match its order")
 
-        trades = sorted(trades, key=lambda x: x.timestamp)
+        trades = sorted((_snapshot_trade(trade) for trade in trades), key=lambda x: x.timestamp)
         # Break up trades by contract so we can add them in a batch
         trades_by_contract: dict[str, list[Trade]] = defaultdict(list)
         for trade in trades:
@@ -304,7 +311,7 @@ class Account:
         ret = self._trades_for_date.get((symbol, date))
         if ret is None:
             return []
-        return ret
+        return [_snapshot_trade(trade) for trade in ret]
 
     def trades(
         self,
@@ -317,7 +324,7 @@ class Account:
         if contract_group is not None:
             self._require_configured_group(contract_group)
         return [
-            trade
+            _snapshot_trade(trade)
             for trade in self._trades
             if (np.isnat(start_date) or trade.timestamp >= start_date)
             and (np.isnat(end_date) or trade.timestamp <= end_date)

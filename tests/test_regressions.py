@@ -84,8 +84,8 @@ def test_account_indexes_each_trade_under_its_own_contract():
     account.add_trades(trades)
 
     day = timestamps[0]
-    assert account._trades_for_date[("FIRST", day)] == [trades[0]]
-    assert account._trades_for_date[("SECOND", day)] == [trades[1]]
+    assert [trade.contract for trade in account._trades_for_date[("FIRST", day)]] == [first]
+    assert [trade.contract for trade in account._trades_for_date[("SECOND", day)]] == [second]
 
 
 def test_empty_account_pnl_queries_have_stable_results() -> None:
