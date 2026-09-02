@@ -397,19 +397,24 @@ class Strategy:
                 If not set, we don't look at the position before triggering the rule. Default None
         """
 
-        if sig_true_values is None:
-            sig_true_values = [True]
+        if not isinstance(name, str) or not name:
+            raise ValueError("rule name must be a non-empty string")
+        if name in self.rule_names:
+            raise ValueError(f"rule {name!r} is already registered")
+        if not callable(rule_function):
+            raise TypeError("rule must be callable")
+        if not isinstance(signal_name, str) or not signal_name:
+            raise ValueError("rule signal_name must be a non-empty string")
+        if position_filter not in (None, "", "zero", "nonzero", "positive", "negative"):
+            raise ValueError(f"invalid rule position_filter: {position_filter!r}")
+        trigger_values = (True,) if sig_true_values is None else tuple(sig_true_values)
+        normalized_position_filter = None if position_filter == "" else position_filter
 
-        assert_(name not in self.rule_names, f"rule {name} already exists")
         # Rules should be run in order
         self.rule_names.append(name)
-        self.rule_signals[name] = (signal_name, sig_true_values)
+        self.rule_signals[name] = (signal_name, trigger_values)
         self.rules[name] = rule_function
-        if position_filter is not None:
-            assert_(position_filter in ["zero", "nonzero", "positive", "negative", ""])
-        if position_filter == "":
-            position_filter = None
-        self.position_filters[name] = position_filter
+        self.position_filters[name] = normalized_position_filter
 
     def add_market_sim(self, market_sim_function: MarketSimulatorType) -> None:
         """Add a market simulator.  A market simulator is a function that takes orders as input and returns trades."""

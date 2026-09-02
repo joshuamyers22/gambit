@@ -362,6 +362,58 @@ def test_strategy_rejects_unconfigured_rule_execution_group() -> None:
         strategy.run_rules(contract_groups=[unconfigured_group])
 
 
+def test_strategy_rejects_invalid_rule_filter_atomically() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get("invalid-rule-filter")],
+        _price,
+    )
+
+    with pytest.raises(ValueError, match="invalid rule position_filter"):
+        strategy.add_rule("invalid", lambda *_args: [], "entry", position_filter="sideways")
+
+    assert "invalid" not in strategy.rule_names
+    assert "invalid" not in strategy.rules
+    assert "invalid" not in strategy.rule_signals
+    assert "invalid" not in strategy.position_filters
+
+
+def test_strategy_owns_rule_trigger_value_snapshot() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get("rule-trigger-snapshot")],
+        _price,
+    )
+    trigger_values = [1]
+
+    strategy.add_rule("entry", lambda *_args: [], "signal", trigger_values)
+    trigger_values.append(2)
+
+    assert strategy.rule_signals["entry"] == ("signal", (1,))
+
+
+def test_strategy_rejects_duplicate_rule_atomically() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get("duplicate-rule-registration")],
+        _price,
+    )
+
+    def original_rule(*_args: object) -> list[MarketOrder]:
+        return []
+
+    strategy.add_rule("entry", original_rule, "signal")
+
+    with pytest.raises(ValueError, match="already registered"):
+        strategy.add_rule("entry", lambda *_args: [], "replacement")
+
+    assert strategy.rules["entry"] is original_rule
+    assert strategy.rule_signals["entry"] == ("signal", (True,))
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 
