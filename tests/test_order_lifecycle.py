@@ -101,6 +101,37 @@ def test_order_rejects_fractional_fill_without_mutating_remaining_quantity() -> 
     assert order.status is OrderStatus.OPEN
 
 
+@pytest.mark.parametrize(
+    ("fill_qty", "message"),
+    [
+        (-1, "opposite sign"),
+        (11, "larger than order qty"),
+        ("one", "whole shares or contracts"),
+    ],
+)
+def test_order_rejects_invalid_fill_atomically(fill_qty: object, message: str) -> None:
+    contract = Contract.create("INVALID-FILL", ContractGroup.get("orders"))
+    order = MarketOrder(contract=contract, qty=10)
+
+    with pytest.raises(ValueError, match=message):
+        order.fill(fill_qty)  # type: ignore[arg-type]
+
+    assert order.qty == 10
+    assert order.status is OrderStatus.OPEN
+
+
+def test_order_rejects_fill_after_terminal_state() -> None:
+    contract = Contract.create("TERMINAL-FILL", ContractGroup.get("orders"))
+    order = MarketOrder(contract=contract, qty=1)
+    order.fill()
+
+    with pytest.raises(ValueError, match="cannot fill an order in status"):
+        order.fill()
+
+    assert order.qty == 0
+    assert order.status is OrderStatus.FILLED
+
+
 def test_unfilled_fok_order_is_cancelled_after_fill_window() -> None:
     group = ContractGroup.get("fok")
     contract = Contract.create("FOK", group)

@@ -351,15 +351,15 @@ class Order:
         self.status = OrderStatus.CANCEL_REQUESTED
 
     def fill(self, fill_qty: float = math.nan) -> None:
-        assert_(
-            self.status in [OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED],
-            f"cannot fill an order in status: {self.status}",
-        )
-        if math.isnan(fill_qty):
+        if self.status not in (OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED):
+            raise ValueError(f"cannot fill an order in status: {self.status}")
+        if isinstance(fill_qty, (float, np.floating)) and math.isnan(float(fill_qty)):
             fill_qty = self.qty
         fill_qty = _whole_quantity(fill_qty, field_name="fill qty")
-        assert_(self.qty * fill_qty >= 0, f"order qty: {self.qty} cannot be opposite sign of {fill_qty}")
-        assert_(abs(fill_qty) <= abs(self.qty), f"cannot fill qty: {fill_qty} larger than order qty: {self.qty}")
+        if self.qty * fill_qty < 0:
+            raise ValueError(f"order qty: {self.qty} cannot be opposite sign of {fill_qty}")
+        if abs(fill_qty) > abs(self.qty):
+            raise ValueError(f"cannot fill qty: {fill_qty} larger than order qty: {self.qty}")
         self.qty -= fill_qty
         if math.isclose(self.qty, 0):
             self.status = OrderStatus.FILLED
