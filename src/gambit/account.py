@@ -330,6 +330,20 @@ def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarr
     return timestamps[calc_indices]
 
 
+def _validate_contract_groups(contract_groups: object) -> tuple[ContractGroup, ...]:
+    if not isinstance(contract_groups, Sequence) or isinstance(contract_groups, (str, bytes)):
+        raise TypeError("account contract_groups must be a sequence of ContractGroup objects")
+    groups = tuple(contract_groups)
+    if not groups:
+        raise ValueError("account requires at least one contract group")
+    if not all(isinstance(group, ContractGroup) for group in groups):
+        raise TypeError("account contract_groups must contain only ContractGroup objects")
+    names = [group.name for group in groups]
+    if len(set(names)) != len(names):
+        raise ValueError("account contract group names must be unique")
+    return groups
+
+
 class Account:
     """An Account calculates pnl for a set of contracts"""
 
@@ -359,11 +373,12 @@ class Account:
             raise TypeError("pnl_calc_time must be an integer number of minutes")
         if not 0 <= pnl_calc_time < 24 * 60:
             raise ValueError("pnl_calc_time must be between 0 and 1439")
+        validated_contract_groups = _validate_contract_groups(contract_groups)
         validate_timestamp_grid(timestamps, owner="account")
         self.starting_equity = float(starting_equity)
         self._price_function = price_function
         self.strategy_context = strategy_context
-        self.contract_groups = tuple(contract_groups)
+        self.contract_groups = validated_contract_groups
 
         self.timestamps = timestamps
         self.calc_timestamps = _get_calc_timestamps(timestamps, pnl_calc_time)

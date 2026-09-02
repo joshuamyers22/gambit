@@ -55,6 +55,30 @@ def test_account_rejects_invalid_timestamp_grids(timestamps, error, message) -> 
         Account([group], timestamps, _price, SimpleNamespace())
 
 
+@pytest.mark.parametrize(
+    ("contract_groups", "error", "message"),
+    [
+        ([], ValueError, "requires at least one contract group"),
+        ([object()], TypeError, "only ContractGroup objects"),
+        ("not-a-sequence-of-groups", TypeError, "must be a sequence"),
+    ],
+)
+def test_account_rejects_invalid_contract_groups(contract_groups, error, message) -> None:
+    timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
+
+    with pytest.raises(error, match=message):
+        Account(contract_groups, timestamps, _price, SimpleNamespace())
+
+
+def test_account_rejects_duplicate_contract_group_names() -> None:
+    timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
+    first = ContractGroup("duplicate-account-group")
+    second = ContractGroup("duplicate-account-group")
+
+    with pytest.raises(ValueError, match="contract group names must be unique"):
+        Account([first, second], timestamps, _price, SimpleNamespace())
+
+
 def test_account_rejects_off_grid_valuation_without_leaking_index_error() -> None:
     timestamp = np.datetime64("2026-01-01")
     group = ContractGroup.get("off-grid-account")
