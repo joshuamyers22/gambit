@@ -6,8 +6,9 @@ import numpy as np
 import pytest
 
 from gambit.account import Account
-from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, TimeInForce, Trade
+from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, TimeInForce, Trade, VWAPOrder
 from gambit.strategy import Strategy
+from gambit.strategy_components import VWAPMarketSimulator
 
 
 def _constant_price(_contract, _timestamps, _index, _context):
@@ -84,6 +85,26 @@ def test_cancel_request_is_acknowledged_before_market_simulation() -> None:
 
     strategy._sim_market(0)
 
+    assert order.status is OrderStatus.CANCELLED
+
+
+def test_vwap_stop_cancels_when_prorated_fill_is_below_one_contract() -> None:
+    group = ContractGroup.get("zero-vwap-fill")
+    contract = Contract.create("ZERO-VWAP-FILL", group)
+    timestamps = np.array(["2024-01-02T09:30", "2024-01-02T09:31"], dtype="datetime64[ns]")
+    order = VWAPOrder(
+        contract=contract,
+        timestamp=timestamps[0],
+        qty=1,
+        vwap_end_time=timestamps[0] + np.timedelta64(10, "m"),
+        vwap_stop=101.0,
+    )
+    indicators = {group.name: SimpleNamespace(price=np.array([100.0, 100.0]), volume=np.array([10.0, 10.0]))}
+    simulator = VWAPMarketSimulator("price", "volume")
+
+    trades = simulator([order], 1, timestamps, indicators, {}, SimpleNamespace())
+
+    assert trades == []
     assert order.status is OrderStatus.CANCELLED
 
 

@@ -419,8 +419,8 @@ class VWAPMarketSimulator:
         orders: Sequence[Order],
         i: int,
         timestamps: np.ndarray,
-        indicators: dict[ContractGroup, SimpleNamespace],
-        signals: dict[ContractGroup, SimpleNamespace],
+        indicators: dict[str, SimpleNamespace],
+        signals: dict[str, SimpleNamespace],
         strategy_context: SimpleNamespace,
     ) -> list[Trade]:
         trades = []
@@ -429,7 +429,7 @@ class VWAPMarketSimulator:
             if not isinstance(order, VWAPOrder):
                 continue
             cg = order.contract.contract_group
-            inds = indicators.get(cg)
+            inds = indicators.get(cg.name)
             assert_(inds is not None, f"indicators not found for contract group: {cg} {timestamp} {i}")
             price_ind = getattr(inds, self.price_indicator)
             assert_(
@@ -482,6 +482,9 @@ class VWAPMarketSimulator:
                 fill_fraction = (timestamp_ns - order_timestamp_ns) / (vwap_end_ns - order_timestamp_ns)
                 fill_fraction = min(fill_fraction, 1)
                 fill_qty = float(np.fix(order.qty * fill_fraction))
+                if math.isclose(fill_qty, 0.0):
+                    order.cancel()
+                    continue
             order.fill(fill_qty)
             order.cancel()
             trade = Trade(order.contract, order, timestamp, fill_qty, vwap)
