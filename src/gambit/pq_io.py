@@ -186,7 +186,7 @@ def np_arrays_to_hdf5(
             if backup_key in f:
                 del f[backup_key]
             f.flush()
-        except Exception:
+        except BaseException:  # incomplete transactional groups must be removed on interruption before reraising
             if pending_key in f:
                 del f[pending_key]
                 f.flush()

@@ -258,7 +258,7 @@ def publish_generation(
                     _fsync_directory(nodes)
                     _record_node_access(store, node_key, generation, minimum_interval_seconds=0)
             return generation
-        except Exception:
+        except BaseException:  # publication staging must be removed on interruption before reraising
             shutil.rmtree(staging, ignore_errors=True)
             pointer_staging.unlink(missing_ok=True)
             raise
