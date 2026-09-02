@@ -157,9 +157,13 @@ class ContractPNL:
             return
         self._validate_trade_chronology(trades)
         timestamps = np.unique([trade.timestamp for trade in trades])
+        first_timestamp = timestamps[0]
+        for timestamp in list(self._net_pnl.keys()):
+            if timestamp >= first_timestamp:
+                del self._net_pnl[timestamp]
 
         if self.first_trade_timestamp is None:
-            self.first_trade_timestamp = timestamps[0]
+            self.first_trade_timestamp = first_timestamp
 
         self.new_trades_added = True
 
@@ -447,6 +451,11 @@ class Account:
             self._trades_for_date[(trade.contract.symbol, trade.timestamp.astype("M8[D]"))].append(trade)
 
         self._trades += trades
+        if trades:
+            first_timestamp = trades[0].timestamp
+            for timestamp in list(self._pnl.keys()):
+                if timestamp >= first_timestamp:
+                    del self._pnl[timestamp]
 
     def calc(self, timestamp: np.datetime64) -> None:
         """

@@ -157,6 +157,25 @@ def test_account_daily_calculation_does_not_reuse_prior_days_bar() -> None:
     assert np.array_equal(account.calc_timestamps, timestamps[[1]])
 
 
+def test_adding_trades_invalidates_cached_future_equity() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get("cached-account-equity")
+    contract = Contract.create("CACHED-EQUITY", group)
+    account = Account([group], timestamps, lambda *_args: 110.0, SimpleNamespace(), starting_equity=1_000.0)
+
+    def trade() -> Trade:
+        order = MarketOrder(contract=contract, timestamp=timestamps[0], qty=1)
+        return Trade(contract, order, timestamps[0], 1, 100.0)
+
+    account.add_trades([trade()])
+    assert account.equity(timestamps[-1]) == 1_010.0
+
+    account.add_trades([trade()])
+
+    assert account.position(group, timestamps[-1]) == 2
+    assert account.equity(timestamps[-1]) == 1_020.0
+
+
 def test_account_pnl_is_typed_and_empty_when_no_daily_valuation_exists() -> None:
     timestamps = np.array(["2026-01-01T16:00"], dtype="datetime64[m]")
     account = Account([ContractGroup.get("no-daily-valuation")], timestamps, _price, SimpleNamespace())
