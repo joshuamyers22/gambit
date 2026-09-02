@@ -185,7 +185,7 @@ class ContractPNL:
             return
 
         # make sure timestamp is in the sequence of timestamps we were given
-        i = np.searchsorted(self._account_timestamps, timestamp)
+        i = int(np.searchsorted(self._account_timestamps, timestamp))
         assert_(self._account_timestamps[i] == timestamp, f"timestamp {timestamp} not found")
 
         # Find most current trade PNL, i.e. with the index before or equal to current timestamp.  If not found, set to 0's
@@ -200,10 +200,11 @@ class ContractPNL:
         if math.isclose(open_qty, 0):
             unrealized = 0.0
         else:
+            valuation_timestamp = cast(np.datetime64, self._account_timestamps[i])
             price = validate_price_value(
-                self._price_function(self.contract, self._account_timestamps, i, self.strategy_context),  # type: ignore
+                self._price_function(self.contract, self._account_timestamps, i, self.strategy_context),
                 symbol=self.contract.symbol,
-                timestamp=self._account_timestamps[i],
+                timestamp=valuation_timestamp,
                 source="account price callback",
             )
 

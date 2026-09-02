@@ -66,7 +66,10 @@ def set_ipython_defaults(jupyter_multiple_display=True) -> None:
 
 
 def set_defaults(
-    df_float_sf: int = 9, df_display_max_rows: int = 200, df_display_max_columns: int = 99, np_seterr: str = "raise"
+    df_float_sf: int = 9,
+    df_display_max_rows: int = 200,
+    df_display_max_columns: int = 99,
+    np_seterr: Literal["ignore", "warn", "raise", "call", "print", "log"] = "raise",
 ) -> None:
     """
     Set some display defaults to make it easier to view dataframes and graphs.
@@ -84,8 +87,7 @@ def set_defaults(
         pl.Config.set_tbl_rows(df_display_max_rows)
     if df_display_max_columns is not None:
         pl.Config.set_tbl_cols(df_display_max_columns)
-    if np_seterr is not None:
-        np.seterr(np_seterr)  # type: ignore
+    np.seterr(all=np_seterr)
 
 
 def str2date(s: np.datetime64 | str | None) -> np.datetime64:

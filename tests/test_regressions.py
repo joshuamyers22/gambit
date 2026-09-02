@@ -35,6 +35,17 @@ def test_contract_cache_clear_also_removes_group_references() -> None:
     assert group.get_contracts() == []
 
 
+def test_trade_representation_omits_whitespace_for_absent_optional_fields() -> None:
+    contract = Contract.create("IBM", ContractGroup.get("repr"))
+    order = MarketOrder(contract=contract, timestamp=np.datetime64("2019-01-01T14:59"), qty=100)
+    trade = Trade(contract, order, np.datetime64("2019-01-01T15:00"), 100, 10.213, fee=0.01)
+
+    assert repr(trade) == (
+        "IBM 2019-01-01 15:00:00 qty: 100 prc: 10.213 fee: 0.01 "
+        "order: IBM 2019-01-01 14:59:00 qty: 100 OrderStatus.OPEN"
+    )
+
+
 def _price(_contract, _timestamps, _index, _context):
     return 100.0
 

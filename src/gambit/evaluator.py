@@ -253,7 +253,7 @@ def compute_mar(returns: np.ndarray, periods_per_year: float, mdd_pct: float) ->
     if not len(returns) or np.isnan(mdd_pct) or mdd_pct == 0:
         return np.nan
     ret = np.mean(returns) * periods_per_year / mdd_pct
-    return ret  # type: ignore
+    return float(ret)
 
 
 def compute_dates_3yr(timestamps: np.ndarray) -> np.ndarray:

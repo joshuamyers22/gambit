@@ -180,12 +180,8 @@ class Contract:
         instrument_spec: InstrumentSpec | None = None,
     ) -> Contract:
         if symbol in Contract._instances:
-            contract = Contract._instances.get(symbol)
-        else:
-            contract = Contract.create(
-                symbol, contract_group, expiry, multiplier, components, properties, instrument_spec
-            )
-        return contract  # type: ignore
+            return Contract._instances[symbol]
+        return Contract.create(symbol, contract_group, expiry, multiplier, components, properties, instrument_spec)
 
     @staticmethod
     def clear_cache() -> None:
@@ -344,11 +340,19 @@ class MarketOrder(Order):
         if not np.isfinite(self.qty) or math.isclose(self.qty, 0):
             raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
-        return (
-            f"{self.contract.symbol} {timestamp:%Y-%m-%d %H:%M:%S} qty: {self.qty} {self.reason_code}"
-            f" {_format(self.properties)} {self.status}"
+        return " ".join(
+            part
+            for part in (
+                self.contract.symbol,
+                f"{timestamp:%Y-%m-%d %H:%M:%S}",
+                f"qty: {self.qty}",
+                self.reason_code,
+                _format(self.properties),
+                str(self.status),
+            )
+            if part
         )
 
 
@@ -500,9 +504,20 @@ class Trade:
         timestamp = _python_datetime(self.timestamp)
         fee = f"fee: {self.fee:.6g}" if self.fee else ""
         commission = f"commission: {self.commission:.6g}" if self.commission else ""
-        return (
-            f"{self.contract.symbol} {_format(self.contract.properties)} {timestamp:%Y-%m-%d %H:%M:%S}"
-            f" qty: {self.qty} prc: {self.price:.6g} {fee} {commission} order: {self.order} {_format(self.properties)}"
+        return " ".join(
+            part
+            for part in (
+                self.contract.symbol,
+                _format(self.contract.properties),
+                f"{timestamp:%Y-%m-%d %H:%M:%S}",
+                f"qty: {self.qty}",
+                f"prc: {self.price:.6g}",
+                fee,
+                commission,
+                f"order: {str(self.order).strip()}",
+                _format(self.properties),
+            )
+            if part
         )
 
 

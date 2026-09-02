@@ -7,10 +7,9 @@ from __future__ import annotations
 # import inspect
 import calendar as cal
 import datetime
-from collections.abc import Iterable
 
 # from types import FrameType
-from typing import Union
+from typing import Any, Union, cast
 
 import dateutil.relativedelta as rd
 import numpy as np
@@ -112,7 +111,7 @@ def _normalize(
     if include_last and e is not None:
         e += np.timedelta64(1, "D")
 
-    return s, e  # type: ignore
+    return cast(tuple[np.datetime64, np.datetime64] | tuple[np.ndarray, np.ndarray], (s, e))
 
 
 class Calendar:
@@ -186,25 +185,24 @@ class Calendar:
         >>> np.nan_to_num(result, nan=-1).tolist()
         [3.0, 0.0, 1.0, 5.0, -1.0, 8.0, -1.0, 20.0]
         """
-        iterable = isinstance(start, Iterable) and not isinstance(start, str)
         s_tmp, e_tmp = _normalize(start, end, include_first, include_last)
         # np.busday_count does not like nat dates
-        if iterable:
-            assert_(isinstance(s_tmp, Iterable))
-            # ret = np.full(len(s_tmp), np.nan)  # type: ignore
-            # mask = ~(np.isnat(s_tmp) | np.isnat(e_tmp))
-            mask = np.isnat(s_tmp) | np.isnat(e_tmp)
+        if isinstance(s_tmp, np.ndarray) or isinstance(e_tmp, np.ndarray):
+            s_array, e_array = (value.copy() for value in np.broadcast_arrays(s_tmp, e_tmp))
+            mask = np.isnat(s_array) | np.isnat(e_array)
             dummy_date = np.datetime64("1900-01-01")
-            s_tmp[mask] = dummy_date  # type: ignore
-            e_tmp[mask] = dummy_date  # type: ignore
-            count = np.busday_count(s_tmp, e_tmp, busdaycal=self.bus_day_cal).astype(float)  # type: ignore
-            count[mask] = np.nan
-            return count
+            s_array[mask] = dummy_date
+            e_array[mask] = dummy_date
+            vector_count: np.ndarray = np.busday_count(
+                s_array, e_array, busdaycal=self.bus_day_cal
+            ).astype(float)
+            vector_count[mask] = np.nan
+            return vector_count
         else:
-            if np.isnat(s_tmp) or np.isnat(s_tmp):
+            if np.isnat(s_tmp) or np.isnat(e_tmp):
                 return np.nan
-            count = np.busday_count(s_tmp, e_tmp, busdaycal=self.bus_day_cal)
-            return count.astype(float)
+            scalar_count = np.busday_count(s_tmp, e_tmp, busdaycal=self.bus_day_cal)
+            return float(scalar_count)
 
     def get_trading_days(
         self, start: DateTimeType, end: DateTimeType, include_first: bool = False, include_last: bool = True
@@ -237,7 +235,7 @@ class Calendar:
         third_friday_date = first_friday + datetime.timedelta(days=14)
         third_friday_dt = third_friday_date.date()
         third_friday = self.add_trading_days(third_friday_dt, 0, roll)
-        return third_friday  # type: ignore
+        return cast(np.datetime64, third_friday)
 
     def add_trading_days(
         self, start: DateTimeType, num_days: int | np.ndarray, roll: str = "raise"
@@ -277,7 +275,7 @@ class Calendar:
             # If today is a holiday, roll forward but subtract 1 day so
             num_days = np.where(self.is_trading_day(start) | (num_days < 1), num_days, num_days - 1)
             roll = "forward"
-        out = np.busday_offset(start_date, num_days, roll=roll, busdaycal=self.bus_day_cal)  # type: ignore
+        out = np.busday_offset(start_date, num_days, roll=cast(Any, roll), busdaycal=self.bus_day_cal)
         out = out + time_delta  # for some reason += does not work correctly here.
         return out
 

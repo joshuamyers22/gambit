@@ -85,9 +85,9 @@ def get_contract_price_from_array_dict(
     timestamp: np.datetime64,
     allow_previous: bool,
 ) -> float:
-    tup: tuple[np.ndarray, np.ndarray] | None = price_dict.get(contract.symbol)
-    assert_(tup is not None, f"{contract.symbol} not found in price_dict")
-    _timestamps, _prices = tup  # type: ignore
+    value = price_dict.get(contract.symbol)
+    assert_(value is not None, f"{contract.symbol} not found in price_dict")
+    _timestamps, _prices = cast(tuple[np.ndarray, np.ndarray], value)
     idx: int
     if allow_previous:
         idx = int(np.searchsorted(_timestamps, timestamp, side="right")) - 1
@@ -98,7 +98,7 @@ def get_contract_price_from_array_dict(
         #     if idx >= len(_prices):
         #         import pdb
         #         pdb.set_trace()
-    return _prices[idx]  # type: ignore
+    return float(_prices[idx])
 
 
 @dataclass
@@ -654,7 +654,7 @@ class VWAPMarketSimulator:
                     self.backup_price_indicator is not None,
                     f"backup price indicator not found and no vwap found for: {cg} {timestamp} {i}",
                 )
-                _backup_price_ind = getattr(inds, self.backup_price_indicator)  # type: ignore
+                _backup_price_ind = getattr(inds, cast(str, self.backup_price_indicator))
                 assert_(_backup_price_ind is not None, f"backup price indicator not found for: {cg} {timestamp} {i}")
                 vwap = _backup_price_ind[i]
             else:

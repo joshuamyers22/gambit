@@ -572,11 +572,11 @@ class Strategy:
                 null_value = False if sig_values.dtype == np.dtype("bool") else np.nan
 
                 if not np.isnat(_start_date):
-                    start_idx: int = np.searchsorted(timestamps, _start_date)  # type: ignore
+                    start_idx = int(np.searchsorted(timestamps, _start_date))
                     sig_values[0:start_idx] = null_value
 
                 if not np.isnat(_end_date):
-                    end_idx: int = np.searchsorted(timestamps, _end_date)  # type: ignore
+                    end_idx = int(np.searchsorted(timestamps, _end_date))
                     sig_values[end_idx:] = null_value
 
                 indices = np.nonzero(np.isin(sig_values[:num_timestamps], sig_true_values))[0]
