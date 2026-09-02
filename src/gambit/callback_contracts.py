@@ -34,12 +34,13 @@ def validate_market_trades(
     result: object,
     open_orders: Sequence[Order],
     current_timestamp: object,
-) -> Sequence[Trade]:
+) -> list[Trade]:
     """Validate one market-simulator result without mutating account state."""
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
         raise TypeError("market simulator must return a sequence of Trade objects")
 
-    for trade in result:
+    trades = list(result)
+    for trade in trades:
         if not isinstance(trade, Trade):
             raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
         if not any(trade.order is order for order in open_orders):
@@ -48,7 +49,7 @@ def validate_market_trades(
             raise ValueError("market simulator trade contract does not match its order")
         if trade.timestamp != current_timestamp:
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
-    return result
+    return trades
 
 
 __all__ = ["validate_market_trades", "validate_rule_orders"]

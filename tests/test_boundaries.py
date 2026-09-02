@@ -381,3 +381,17 @@ def test_callback_contracts_reject_trade_for_unknown_order_without_account_mutat
 
     with pytest.raises(ValueError, match="outside the open order set"):
         validate_market_trades([trade], [open_order], timestamp)
+
+
+def test_callback_contracts_normalize_market_trades_to_detached_list() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("normalized-market-trades")
+    contract = Contract.create("NORMALIZED-MARKET-TRADES", group)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    trade = Trade(contract, order, timestamp, 1, 100.0)
+    callback_result = (trade,)
+
+    result = validate_market_trades(callback_result, [order], timestamp)
+
+    assert result == [trade]
+    assert isinstance(result, list)
