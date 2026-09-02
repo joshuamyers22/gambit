@@ -28,6 +28,7 @@ from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 from gambit.risk_reporting import PortfolioRiskReport, StressScenario, analyze_account_risk
 from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
 from gambit.strategy_contracts import PriceFunctionType, ReturnReporter, StrategyContextType
+from gambit.strategy_validation import validate_dependency_scopes, validated_stage_groups, validated_stage_names
 
 IndicatorType: TypeAlias = IndicatorStage
 SignalType: TypeAlias = SignalStage
@@ -267,44 +268,6 @@ class Strategy:
             self._recorded_risk_results.pop(name, None)
             self.record_risk_result(name, self.calculate_risk(context, measures))
 
-    def _validated_stage_groups(
-        self,
-        contract_groups: Sequence[ContractGroup] | None,
-        *,
-        operation: str,
-    ) -> tuple[ContractGroup, ...]:
-        if contract_groups is None:
-            return self.contract_groups
-        if isinstance(contract_groups, (str, bytes)) or not isinstance(contract_groups, Sequence):
-            raise TypeError(f"{operation} contract_groups must be a sequence of ContractGroup objects")
-        groups = tuple(contract_groups)
-        if not groups:
-            raise ValueError(f"{operation} requires at least one contract group")
-        if not all(isinstance(group, ContractGroup) for group in groups):
-            raise TypeError(f"{operation} contract_groups must contain only ContractGroup objects")
-        for group in groups:
-            if not any(group is configured for configured in self.contract_groups):
-                raise ValueError(f"contract group {group.name!r} is not configured for this strategy")
-        return groups
-
-    @staticmethod
-    def _validated_stage_names(
-        names: Sequence[str] | None,
-        registered_names: Sequence[str],
-        *,
-        operation: str,
-    ) -> tuple[str, ...]:
-        if names is None:
-            return tuple(registered_names)
-        if isinstance(names, (str, bytes)) or not isinstance(names, Sequence):
-            raise TypeError(f"{operation} names must be a sequence of strings")
-        if not all(isinstance(name, str) for name in names):
-            raise TypeError(f"{operation} names must contain only strings")
-        unknown = [name for name in names if name not in registered_names]
-        if unknown:
-            raise ValueError(f"unknown {operation} names: {', '.join(unknown)}")
-        return tuple(dict.fromkeys(names))
-
     def add_indicator(
         self,
         name: str,
@@ -322,7 +285,9 @@ class Strategy:
         """
         if not callable(indicator):
             raise TypeError("indicator must be callable")
-        validated_groups = self._validated_stage_groups(contract_groups, operation="indicator registration")
+        validated_groups = validated_stage_groups(
+            contract_groups, self.contract_groups, operation="indicator registration"
+        )
         dependencies = [] if depends_on is None else list(depends_on)
         existing_groups = self.indicator_cgroups.get(name, ())
         if any(group in existing_groups for group in validated_groups):
@@ -356,7 +321,7 @@ class Strategy:
         """
         if not callable(signal_function):
             raise TypeError("signal must be callable")
-        validated_groups = self._validated_stage_groups(contract_groups, operation="signal registration")
+        validated_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="signal registration")
         indicator_dependencies = [] if depends_on_indicators is None else list(depends_on_indicators)
         signal_dependencies = [] if depends_on_signals is None else list(depends_on_signals)
         existing_groups = self.signal_cgroups.get(name, ())
@@ -461,30 +426,13 @@ class Strategy:
     def validate_stage_graph(self) -> tuple[str, ...]:
         """Validate dependencies and return deterministic execution order metadata."""
         order = self.stage_graph().topological_order()
-        for name, groups in self.indicator_cgroups.items():
-            for dependency in self.indicator_deps[name]:
-                dependency_groups = self.indicator_cgroups[dependency]
-                for group in groups:
-                    if not any(group is dependency_group for dependency_group in dependency_groups):
-                        raise ValueError(
-                            f"indicator {name!r} depends on indicator {dependency!r}, which is not registered "
-                            f"for contract group {group.name}"
-                        )
-        for name, groups in self.signal_cgroups.items():
-            scoped_dependencies = [
-                ("indicator", dependency, self.indicator_cgroups[dependency])
-                for dependency in self.signal_indicator_deps[name]
-            ]
-            scoped_dependencies.extend(
-                ("signal", dependency, self.signal_cgroups[dependency]) for dependency in self.signal_deps[name]
-            )
-            for dependency_kind, dependency, dependency_groups in scoped_dependencies:
-                for group in groups:
-                    if not any(group is dependency_group for dependency_group in dependency_groups):
-                        raise ValueError(
-                            f"signal {name!r} depends on {dependency_kind} {dependency!r}, which is not registered "
-                            f"for contract group {group.name}"
-                        )
+        validate_dependency_scopes(
+            self.indicator_cgroups,
+            self.indicator_deps,
+            self.signal_cgroups,
+            self.signal_indicator_deps,
+            self.signal_deps,
+        )
         return order
 
     def run_indicators(
@@ -500,12 +448,14 @@ class Strategy:
             contract_groups: Contract group to run this indicator for.  If None (default), we run it for all contract groups.
             clear_all: If set, clears all indicator values before running.  Default False.
         """
-        indicator_names = self._validated_stage_names(
+        indicator_names = validated_stage_names(
             indicator_names,
             tuple(self.indicators),
             operation="indicator",
         )
-        contract_groups = self._validated_stage_groups(contract_groups, operation="indicator execution")
+        contract_groups = validated_stage_groups(
+            contract_groups, self.contract_groups, operation="indicator execution"
+        )
 
         if clear_all:
             self.indicator_values = defaultdict(types.SimpleNamespace)
@@ -568,12 +518,12 @@ class Strategy:
             contract_groups: Contract groups to run this signal for. If None (default), we run it for all contract groups.
             clear_all: If set, clears all signal values before running.  Default False.
         """
-        signal_names = self._validated_stage_names(
+        signal_names = validated_stage_names(
             signal_names,
             tuple(self.signals),
             operation="signal",
         )
-        contract_groups = self._validated_stage_groups(contract_groups, operation="signal execution")
+        contract_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="signal execution")
 
         if clear_all:
             self.signal_values = defaultdict(types.SimpleNamespace)
@@ -740,8 +690,8 @@ class Strategy:
             start_date: Run rules starting from this date. Default None
             end_date: Don't run rules after this date.  Default None
         """
-        validated_rule_names = self._validated_stage_names(rule_names, self.rule_names, operation="rule")
-        validated_groups = self._validated_stage_groups(contract_groups, operation="rule execution")
+        validated_rule_names = validated_stage_names(rule_names, self.rule_names, operation="rule")
+        validated_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="rule execution")
         self._generate_order_iterations(validated_rule_names, validated_groups, start_date, end_date)
 
         # Now we know which rules, contract groups need to be applied for each iteration, go through each iteration and apply them
