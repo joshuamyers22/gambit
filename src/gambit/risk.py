@@ -42,6 +42,14 @@ class PolicyResult:
     code: str = "accepted"
     message: str = ""
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.accepted, bool):
+            raise TypeError("policy result accepted must be a bool")
+        if not isinstance(self.code, str) or not self.code:
+            raise ValueError("policy result code must be a non-empty string")
+        if not isinstance(self.message, str):
+            raise TypeError("policy result message must be a string")
+
 
 class RiskPolicy(Protocol):
     @property
@@ -162,6 +170,8 @@ class InstrumentTradabilityPolicy:
 def decide_order(order: Order, context: RiskContext, policies: Sequence[RiskPolicy]) -> OrderDecision:
     for policy in policies:
         result = policy.evaluate(order, context)
+        if not isinstance(result, PolicyResult):
+            raise TypeError(f"risk policy {policy.name!r} must return a PolicyResult")
         if not result.accepted:
             return OrderDecision(
                 order,

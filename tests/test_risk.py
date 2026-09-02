@@ -1,9 +1,10 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus
-from gambit.risk import DecisionStatus, MaxOrderQuantity, MaxPositionQuantity, RiskContext, decide_order
+from gambit.risk import DecisionStatus, MaxOrderQuantity, MaxPositionQuantity, PolicyResult, RiskContext, decide_order
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
 
@@ -74,3 +75,33 @@ def test_strategy_rejects_order_before_market_simulation() -> None:
     assert order.status is OrderStatus.CANCELLED
     assert strategy.trades() == []
     assert strategy.order_decisions[0].status is DecisionStatus.REJECTED
+
+
+def test_decide_order_rejects_invalid_policy_result() -> None:
+    group = ContractGroup.get("invalid-policy-result")
+    contract = Contract.create("INVALID-POLICY-RESULT", group)
+    timestamp = np.datetime64("2024-01-02")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+
+    class InvalidPolicy:
+        name = "invalid_result"
+
+        def evaluate(self, _order, _context):
+            return object()
+
+    with pytest.raises(TypeError, match="invalid_result.*PolicyResult"):
+        decide_order(order, RiskContext(strategy.account, timestamp, []), [InvalidPolicy()])  # type: ignore[list-item]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "message"),
+    [
+        ({"accepted": 1}, TypeError, "accepted must be a bool"),
+        ({"accepted": False, "code": ""}, ValueError, "code must be a non-empty string"),
+        ({"accepted": False, "message": 42}, TypeError, "message must be a string"),
+    ],
+)
+def test_policy_result_validates_audit_fields(kwargs, error, message) -> None:
+    with pytest.raises(error, match=message):
+        PolicyResult(**kwargs)
