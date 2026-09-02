@@ -79,6 +79,18 @@ def test_account_rejects_duplicate_contract_group_names() -> None:
         Account([first, second], timestamps, _price, SimpleNamespace())
 
 
+def test_strategy_owns_validated_contract_group_snapshot() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get("strategy-configured-group")
+    caller_groups = [configured_group]
+
+    strategy = Strategy(np.array([timestamp]), caller_groups, _price)
+    caller_groups.append(ContractGroup.get("late-caller-group"))
+
+    assert strategy.contract_groups == (configured_group,)
+    assert strategy.contract_groups is strategy.account.contract_groups
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 
