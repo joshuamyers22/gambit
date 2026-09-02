@@ -67,6 +67,17 @@ def test_account_rejects_off_grid_valuation_without_leaking_index_error() -> Non
         account.calc(timestamp + np.timedelta64(1, "D"))
 
 
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [(-1, ValueError), (1440, ValueError), (900.5, TypeError), (True, TypeError)],
+)
+def test_account_rejects_invalid_daily_calculation_time(value, error) -> None:
+    timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
+
+    with pytest.raises(error, match="pnl_calc_time"):
+        Account([ContractGroup.get("invalid-calc-time")], timestamps, _price, SimpleNamespace(), pnl_calc_time=value)
+
+
 @pytest.mark.parametrize("value", [float("inf"), float("-inf"), "100", [100.0], True])
 def test_market_simulator_rejects_invalid_price_callback_values(value) -> None:
     timestamp = np.datetime64("2026-01-01")

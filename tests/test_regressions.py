@@ -132,7 +132,18 @@ def test_sparse_account_calculation_resumes_from_latest_ledger_timestamp() -> No
 
     ledger_timestamps = list(account._pnl.keys())
     assert timestamps[1] not in ledger_timestamps
-    assert ledger_timestamps == [timestamps[3], timestamps[4], timestamps[-1]]
+    assert ledger_timestamps == [timestamps[3], timestamps[-1]]
+
+
+def test_account_daily_calculation_includes_exact_configured_time() -> None:
+    timestamps = np.array(
+        ["2026-01-01T09:00", "2026-01-01T15:00", "2026-01-02T09:00", "2026-01-02T15:00"],
+        dtype="datetime64[m]",
+    )
+
+    account = Account([ContractGroup.get("exact-calc-time")], timestamps, _price, SimpleNamespace())
+
+    assert np.array_equal(account.calc_timestamps, timestamps[[1, 3]])
 
 
 def test_empty_strategy_orders_have_stable_string_schema() -> None:

@@ -92,7 +92,7 @@ class Strategy:
             contract_groups: The contract groups we will potentially trade.
             price_function: A function that returns the price of a contract at a given timestamp
             starting_equity: Starting equity in Strategy currency.  Default 1.e6
-            pnl_calc_time: Time of day used to calculate PNL.  Default 15 * 60 (3 pm)
+            pnl_calc_time: Time of day used to calculate PNL. Default 16 * 60 + 1 (4:01 pm).
             trade_lag: Number of bars you want between the order and the trade.  For example, if you think it will take
                 5 seconds to place your order in the market, and your bar size is 1 second, set this to 5.  Set this to 0 if you
                 want to execute your trade at the same time as you place the order, for example, if you have daily bars.  Default 0.

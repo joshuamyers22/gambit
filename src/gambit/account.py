@@ -304,7 +304,7 @@ def _get_calc_timestamps(timestamps: np.ndarray, pnl_calc_time: int) -> np.ndarr
     time_delta = np.timedelta64(pnl_calc_time, "m")
     calc_timestamps = np.unique(timestamps.astype("M8[D]")) + time_delta
     calc_indices: NDArray[np.intp] = np.asarray(
-        np.searchsorted(timestamps, calc_timestamps, side="left") - 1, dtype=np.intp
+        np.searchsorted(timestamps, calc_timestamps, side="right") - 1, dtype=np.intp
     )
     if calc_indices[0] == -1:
         calc_indices = calc_indices[1:]
@@ -336,6 +336,10 @@ class Account:
             raise TypeError("starting_equity must be numeric")
         if not math.isfinite(starting_equity) or starting_equity <= 0:
             raise ValueError("starting_equity must be finite and positive")
+        if isinstance(pnl_calc_time, bool) or not isinstance(pnl_calc_time, (int, np.integer)):
+            raise TypeError("pnl_calc_time must be an integer number of minutes")
+        if not 0 <= pnl_calc_time < 24 * 60:
+            raise ValueError("pnl_calc_time must be between 0 and 1439")
         validate_timestamp_grid(timestamps, owner="account")
         self.starting_equity = float(starting_equity)
         self._price_function = price_function
