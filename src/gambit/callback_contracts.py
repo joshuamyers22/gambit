@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from gambit.pq_types import ContractGroup, Order, Trade
+from gambit.pq_types import ContractGroup, Order, OrderStatus, Trade
 
 
 def validate_rule_orders(
@@ -34,7 +34,7 @@ def validate_market_trades(
     result: object,
     open_orders: Sequence[Order],
     current_timestamp: object,
-    original_quantities: dict[int, float],
+    original_states: dict[int, tuple[float, OrderStatus]],
 ) -> list[Trade]:
     """Validate one market-simulator result without mutating account state."""
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
@@ -52,9 +52,18 @@ def validate_market_trades(
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
     for order in open_orders:
         filled_quantity = sum(trade.qty for trade in trades if trade.order is order)
-        original_quantity = original_quantities[id(order)]
+        original_quantity, original_status = original_states[id(order)]
         expected_remaining = original_quantity - filled_quantity
-        if order.qty not in (original_quantity, expected_remaining):
+        simulator_did_not_apply_fill = order.qty == original_quantity and order.status is original_status
+        expected_fill_status = OrderStatus.FILLED if expected_remaining == 0 else OrderStatus.PARTIALLY_FILLED
+        simulator_applied_fill = filled_quantity != 0 and order.qty == expected_remaining and order.status in (
+            expected_fill_status,
+            OrderStatus.CANCELLED,
+        )
+        simulator_cancelled_order = (
+            filled_quantity == 0 and order.qty == original_quantity and order.status is OrderStatus.CANCELLED
+        )
+        if not simulator_did_not_apply_fill and not simulator_applied_fill and not simulator_cancelled_order:
             raise ValueError("market simulator trades do not match the originating order quantity changes")
     return trades
 

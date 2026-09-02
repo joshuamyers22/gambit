@@ -380,7 +380,12 @@ def test_callback_contracts_reject_trade_for_unknown_order_without_account_mutat
     trade = Trade(contract, unknown_order, timestamp, 1.0, 100.0)
 
     with pytest.raises(ValueError, match="outside the open order set"):
-        validate_market_trades([trade], [open_order], timestamp, {id(open_order): open_order.qty})
+        validate_market_trades(
+            [trade],
+            [open_order],
+            timestamp,
+            {id(open_order): (open_order.qty, open_order.status)},
+        )
 
 
 def test_callback_contracts_normalize_market_trades_to_detached_list() -> None:
@@ -393,7 +398,12 @@ def test_callback_contracts_normalize_market_trades_to_detached_list() -> None:
     original_quantity = order.qty
     order.fill(1)
 
-    result = validate_market_trades(callback_result, [order], timestamp, {id(order): original_quantity})
+    result = validate_market_trades(
+        callback_result,
+        [order],
+        timestamp,
+        {id(order): (original_quantity, OrderStatus.OPEN)},
+    )
 
     assert result == [trade]
     assert isinstance(result, list)
@@ -413,3 +423,46 @@ def test_strategy_applies_reported_trade_when_simulator_does_not_mutate_order() 
     assert order.qty == 0
     assert order.status is OrderStatus.FILLED
     assert len(strategy.trades()) == 1
+
+
+def test_strategy_rejects_simulator_fill_with_incoherent_order_status() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("incoherent-simulator-fill")
+    contract = Contract.create("INCOHERENT-SIMULATOR-FILL", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    strategy._current_orders = [order]
+
+    def incoherent_simulator(*_args: object) -> list[Trade]:
+        order.qty = 0
+        return [Trade(contract, order, timestamp, 1, 100.0)]
+
+    strategy.market_sims = [incoherent_simulator]
+
+    with pytest.raises(BacktestCallbackError, match="market simulator failed"):
+        strategy._sim_market(0)
+
+    assert order.qty == 1
+    assert order.status is OrderStatus.OPEN
+    assert strategy.trades() == []
+
+
+def test_strategy_rejects_partial_status_without_reported_fill() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("unreported-simulator-fill")
+    contract = Contract.create("UNREPORTED-SIMULATOR-FILL", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=2)
+    strategy._current_orders = [order]
+
+    def incoherent_simulator(*_args: object) -> list[Trade]:
+        order.status = OrderStatus.PARTIALLY_FILLED
+        return []
+
+    strategy.market_sims = [incoherent_simulator]
+
+    with pytest.raises(BacktestCallbackError, match="market simulator failed"):
+        strategy._sim_market(0)
+
+    assert order.qty == 2
+    assert order.status is OrderStatus.OPEN
