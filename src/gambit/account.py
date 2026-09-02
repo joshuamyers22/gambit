@@ -147,6 +147,11 @@ class Account:
     def symbols(self) -> list[str]:
         return list(self.contracts.keys())
 
+    @property
+    def trade_count(self) -> int:
+        """Return the number of executions owned by this account."""
+        return len(self._trades)
+
     def _require_configured_group(self, contract_group: ContractGroup) -> None:
         if not any(contract_group is configured for configured in self.contract_groups):
             raise ValueError(f"contract group {contract_group.name!r} is not configured for this account")

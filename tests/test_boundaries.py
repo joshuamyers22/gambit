@@ -553,6 +553,7 @@ def test_account_owns_and_returns_detached_trade_snapshots() -> None:
     stable_trade = account.trades()[0]
     assert stable_trade.qty == 1
     assert stable_trade.properties.source == "original"
+    assert account.trade_count == 1
     assert account.position(group, timestamp) == 1
 
 

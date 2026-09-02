@@ -147,7 +147,6 @@ class Strategy:
         self.position_filters: dict[str, str | None] = {}
         self.rule_signals: dict[str, tuple[str, Sequence[Any]]] = {}
         self.market_sims: list[MarketSimulatorType] = []
-        self._trades: list[Trade] = []
         # a list of all orders created used for display
         self._orders: list[Order] = []
         self._current_orders: list[Order] = []
@@ -796,7 +795,7 @@ class Strategy:
             orders_filled=filled,
             orders_cancelled=cancelled,
             orders_open=open_orders,
-            trades_executed=len(self._trades),
+            trades_executed=self.account.trade_count,
         )
         orders = self.df_orders().with_columns(
             pl.Series("status", [order.status.name.lower() for order in self._orders], dtype=pl.String)
@@ -975,7 +974,6 @@ class Strategy:
 
                 if len(trades):
                     self.account.add_trades(trades)
-                self._trades += trades
             except Exception as exc:
                 _restore_order_states(order_states)
                 raise BacktestCallbackError(
