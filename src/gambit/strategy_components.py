@@ -485,8 +485,12 @@ class VWAPMarketSimulator:
                 timestamp_ns = int(timestamp.astype("datetime64[ns]").astype(np.int64))
                 order_timestamp_ns = int(order.timestamp.astype("datetime64[ns]").astype(np.int64))
                 vwap_end_ns = int(order.vwap_end_time.astype("datetime64[ns]").astype(np.int64))
-                fill_fraction = (timestamp_ns - order_timestamp_ns) / (vwap_end_ns - order_timestamp_ns)
-                fill_fraction = min(fill_fraction, 1)
+                duration_ns = vwap_end_ns - order_timestamp_ns
+                if duration_ns <= 0:
+                    fill_fraction = 1.0
+                else:
+                    elapsed_fraction = (timestamp_ns - order_timestamp_ns) / duration_ns
+                    fill_fraction = min(max(elapsed_fraction, 0.0), 1.0)
                 fill_qty = float(np.fix(order.qty * fill_fraction))
                 if math.isclose(fill_qty, 0.0):
                     order.cancel()

@@ -152,6 +152,28 @@ def test_vwap_rejects_invalid_backup_price_before_mutating_order() -> None:
     assert order.status is OrderStatus.OPEN
 
 
+def test_immediate_vwap_stop_fills_without_dividing_by_zero() -> None:
+    group = ContractGroup.get("immediate-vwap-stop")
+    contract = Contract.create("IMMEDIATE-VWAP-STOP", group)
+    timestamp = np.datetime64("2024-01-02T09:30")
+    timestamps = np.array([timestamp])
+    order = VWAPOrder(
+        contract=contract,
+        timestamp=timestamp,
+        qty=2,
+        vwap_end_time=timestamp,
+        vwap_stop=101.0,
+    )
+    indicators = {group.name: SimpleNamespace(price=np.array([100.0]), volume=np.array([10.0]))}
+    simulator = VWAPMarketSimulator("price", "volume")
+
+    trades = simulator([order], 0, timestamps, indicators, {}, SimpleNamespace())
+
+    assert len(trades) == 1
+    assert trades[0].qty == 2
+    assert trades[0].price == 100.0
+
+
 def test_multiplier_aware_trade_reversal_reconciles_realized_and_unrealized_pnl() -> None:
     group = ContractGroup.get("reversal")
     contract = Contract.create("REVERSAL", group, multiplier=10.0)
