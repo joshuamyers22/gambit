@@ -208,6 +208,36 @@ def test_strategy_preserves_indicator_callback_failure_cause() -> None:
     assert isinstance(raised.value.__cause__, LookupError)
 
 
+@pytest.mark.parametrize("stage", ["indicator", "signal"])
+def test_strategy_rejects_unconfigured_stage_group_atomically(stage: str) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get(f"configured-{stage}-scope")
+    unconfigured_group = ContractGroup(f"configured-{stage}-scope")
+    strategy = Strategy(np.array([timestamp]), [configured_group], _price)
+
+    with pytest.raises(ValueError, match="not configured for this strategy"):
+        if stage == "indicator":
+            strategy.add_indicator("foreign", lambda *_args: np.array([1.0]), [unconfigured_group])
+        else:
+            strategy.add_signal("foreign", lambda *_args: np.array([True]), [unconfigured_group])
+
+    assert "foreign" not in strategy.indicators
+    assert "foreign" not in strategy.signals
+
+
+def test_strategy_rejects_unconfigured_runtime_stage_group() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get("configured-runtime-stage-scope")
+    unconfigured_group = ContractGroup("configured-runtime-stage-scope")
+    strategy = Strategy(np.array([timestamp]), [configured_group], _price)
+    strategy.add_indicator("value", lambda *_args: np.array([1.0]))
+
+    with pytest.raises(ValueError, match="not configured for this strategy"):
+        strategy.run_indicators(contract_groups=[unconfigured_group])
+
+    assert not strategy.indicator_values
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

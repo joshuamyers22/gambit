@@ -158,11 +158,11 @@ class Strategy:
             str, tuple[CalculationContext, tuple[StressScenario, ...] | None, tuple[str, ...]]
         ] = {}
         self.indicator_deps: dict[str, list[str]] = {}
-        self.indicator_cgroups: dict[str, list[ContractGroup]] = {}
+        self.indicator_cgroups: dict[str, tuple[ContractGroup, ...]] = {}
         self.indicator_values: dict[str, SimpleNamespace] = defaultdict(types.SimpleNamespace)
         self.signal_indicator_deps: dict[str, list[str]] = {}
         self.signal_deps: dict[str, list[str]] = {}
-        self.signal_cgroups: dict[str, list[ContractGroup]] = {}
+        self.signal_cgroups: dict[str, tuple[ContractGroup, ...]] = {}
         self.trades_iter: list[list] = [
             [] for x in range(len(timestamps))
         ]  # For debugging, we don't really need this as a member variable
@@ -265,6 +265,26 @@ class Strategy:
             self._recorded_risk_results.pop(name, None)
             self.record_risk_result(name, self.calculate_risk(context, measures))
 
+    def _validated_stage_groups(
+        self,
+        contract_groups: Sequence[ContractGroup] | None,
+        *,
+        operation: str,
+    ) -> tuple[ContractGroup, ...]:
+        if contract_groups is None:
+            return self.contract_groups
+        if isinstance(contract_groups, (str, bytes)) or not isinstance(contract_groups, Sequence):
+            raise TypeError(f"{operation} contract_groups must be a sequence of ContractGroup objects")
+        groups = tuple(contract_groups)
+        if not groups:
+            raise ValueError(f"{operation} requires at least one contract group")
+        if not all(isinstance(group, ContractGroup) for group in groups):
+            raise TypeError(f"{operation} contract_groups must contain only ContractGroup objects")
+        for group in groups:
+            if not any(group is configured for configured in self.contract_groups):
+                raise ValueError(f"contract group {group.name!r} is not configured for this strategy")
+        return groups
+
     def add_indicator(
         self,
         name: str,
@@ -280,11 +300,10 @@ class Strategy:
             contract_groups: Contract groups that this indicator applies to.  If not set, it applies to all contract groups. Default None.
             depends_on: Names of other indicators that we need to compute this indicator. Default None.
         """
+        validated_groups = self._validated_stage_groups(contract_groups, operation="indicator registration")
         self.indicators[name] = indicator
         self.indicator_deps[name] = [] if depends_on is None else list(depends_on)
-        if contract_groups is None:
-            contract_groups = self.contract_groups
-        self.indicator_cgroups[name] = list(contract_groups)
+        self.indicator_cgroups[name] = validated_groups
 
     def add_signal(
         self,
@@ -305,12 +324,11 @@ class Strategy:
             depends_on_indicators (list of str, optional): Names of indicators that we need to compute this signal. Default None.
             depends_on_signals (list of str, optional): Names of other signals that we need to compute this signal. Default None.
         """
+        validated_groups = self._validated_stage_groups(contract_groups, operation="signal registration")
         self.signals[name] = signal_function
         self.signal_indicator_deps[name] = [] if depends_on_indicators is None else list(depends_on_indicators)
         self.signal_deps[name] = [] if depends_on_signals is None else list(depends_on_signals)
-        if contract_groups is None:
-            contract_groups = self.contract_groups
-        self.signal_cgroups[name] = list(contract_groups)
+        self.signal_cgroups[name] = validated_groups
 
     def add_rule(
         self,
@@ -404,8 +422,7 @@ class Strategy:
         """
         if indicator_names is None:
             indicator_names = list(self.indicators.keys())
-        if contract_groups is None:
-            contract_groups = self.contract_groups
+        contract_groups = self._validated_stage_groups(contract_groups, operation="indicator execution")
 
         if clear_all:
             self.indicator_values = defaultdict(types.SimpleNamespace)
@@ -470,8 +487,7 @@ class Strategy:
         """
         if signal_names is None:
             signal_names = list(self.signals.keys())
-        if contract_groups is None:
-            contract_groups = self.contract_groups
+        contract_groups = self._validated_stage_groups(contract_groups, operation="signal execution")
 
         if clear_all:
             self.signal_values = defaultdict(types.SimpleNamespace)
