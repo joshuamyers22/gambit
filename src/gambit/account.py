@@ -574,6 +574,7 @@ class Account:
 
     def position(self, contract_group: ContractGroup, timestamp: np.datetime64) -> float:
         """Returns netted position for a contract_group at a given date in number of contracts or shares."""
+        self._require_configured_group(contract_group)
         position = 0.0
         for symbol_pnl in self.symbol_pnls_by_contract_group[contract_group.name]:
             position += symbol_pnl.position(timestamp)
@@ -583,6 +584,7 @@ class Account:
         """
         Returns all non-zero positions in a contract group
         """
+        self._require_configured_group(contract_group)
         positions = []
         for symbol, contract in contract_group.contracts.items():
             if symbol not in self.symbol_pnls:
@@ -615,6 +617,8 @@ class Account:
     ) -> list[Trade]:
         """Returns a list of trades with the given symbol and with trade date between (and including) start date
         and end date if they are specified. If symbol is None trades for all symbols are returned"""
+        if contract_group is not None:
+            self._require_configured_group(contract_group)
         return [
             trade
             for trade in self._trades
@@ -632,6 +636,8 @@ class Account:
         """Returns a list of round trip trades with the given symbol and with trade date
         between (and including) start date and end date if they are specified.
         If symbol is None trades for all symbols are returned"""
+        if contract_group is not None:
+            self._require_configured_group(contract_group)
         trades = self._trades.copy()
         if contract_group is not None:
             trades = [trade for trade in trades if trade.order.contract.contract_group == contract_group]

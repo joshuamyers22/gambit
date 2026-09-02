@@ -138,6 +138,25 @@ def test_aggregate_account_pnl_rejects_unconfigured_group() -> None:
         account.df_account_pnl(unconfigured)
 
 
+def test_account_position_and_trade_queries_reject_unconfigured_group() -> None:
+    timestamp = np.datetime64("2026-01-02")
+    configured = ContractGroup.get("configured-position-query")
+    unconfigured = ContractGroup.get("unconfigured-position-query")
+    account = Account([configured], np.array([timestamp]), _price, SimpleNamespace())
+    queries = [
+        lambda: account.position(unconfigured, timestamp),
+        lambda: account.positions(unconfigured, timestamp),
+        lambda: account.trades(unconfigured),
+        lambda: account.roundtrip_trades(unconfigured),
+        lambda: account.df_trades(unconfigured),
+        lambda: account.df_roundtrip_trades(unconfigured),
+    ]
+
+    for query in queries:
+        with pytest.raises(ValueError, match="not configured for this account"):
+            query()
+
+
 def test_sparse_account_calculation_resumes_from_latest_ledger_timestamp() -> None:
     timestamps = np.array(
         [
