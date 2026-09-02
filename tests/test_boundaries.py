@@ -82,6 +82,41 @@ def test_empty_account_rejects_off_grid_valuation() -> None:
     assert not account._pnl
 
 
+def test_account_rejects_invalid_trade_batch_before_mutation() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get("atomic-trade-batch")
+    contract = Contract.create("ATOMIC-TRADE", group)
+    account = Account([group], timestamps, _price, SimpleNamespace())
+    valid_order = MarketOrder(contract=contract, timestamp=timestamps[0], qty=1)
+    off_grid_timestamp = timestamps[-1] + np.timedelta64(1, "D")
+    invalid_order = MarketOrder(contract=contract, timestamp=off_grid_timestamp, qty=1)
+
+    with pytest.raises(ValueError, match="not present in the account timestamp grid"):
+        account.add_trades(
+            [
+                Trade(contract, valid_order, timestamps[0], 1, 100.0),
+                Trade(contract, invalid_order, off_grid_timestamp, 1, 100.0),
+            ]
+        )
+
+    assert account.trades() == []
+    assert account.symbols() == []
+
+
+def test_account_rejects_trade_outside_configured_contract_groups() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get("configured-account-group")
+    outside_group = ContractGroup.get("outside-account-group")
+    contract = Contract.create("OUTSIDE-ACCOUNT", outside_group)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    account = Account([configured_group], np.array([timestamp]), _price, SimpleNamespace())
+
+    with pytest.raises(ValueError, match="outside the account's configured contract groups"):
+        account.add_trades([Trade(contract, order, timestamp, 1, 100.0)])
+
+    assert account.symbols() == []
+
+
 @pytest.mark.parametrize(
     ("value", "error"),
     [(-1, ValueError), (1440, ValueError), (900.5, TypeError), (True, TypeError)],

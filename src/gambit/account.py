@@ -356,6 +356,7 @@ class Account:
         self.starting_equity = float(starting_equity)
         self._price_function = price_function
         self.strategy_context = strategy_context
+        self.contract_groups = tuple(contract_groups)
 
         self.timestamps = timestamps
         self.calc_timestamps = _get_calc_timestamps(timestamps, pnl_calc_time)
@@ -387,6 +388,20 @@ class Account:
         self.contracts[contract.symbol] = contract
 
     def add_trades(self, trades: Sequence[Trade]) -> None:
+        for trade in trades:
+            if not isinstance(trade, Trade):
+                raise TypeError(f"account trades must be Trade objects: {trade!r}")
+            timestamp_index(self.timestamps, trade.timestamp, owner="account")
+            contract = trade.contract
+            if not any(contract.contract_group is group for group in self.contract_groups):
+                raise ValueError(
+                    f"trade contract {contract.symbol} is outside the account's configured contract groups"
+                )
+            if contract.contract_group.contracts.get(contract.symbol) is not contract:
+                raise ValueError(f"trade contract {contract.symbol} is not registered in its contract group")
+            if contract is not trade.order.contract:
+                raise ValueError("trade contract does not match its order")
+
         trades = sorted(trades, key=lambda x: getattr(x, "timestamp"))
         # Break up trades by contract so we can add them in a batch
         trades_by_contract: dict[str, list[Trade]] = defaultdict(list)
