@@ -79,6 +79,13 @@ def test_account_rejects_duplicate_contract_group_names() -> None:
         Account([first, second], timestamps, _price, SimpleNamespace())
 
 
+def test_account_rejects_non_callable_price_function() -> None:
+    timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
+
+    with pytest.raises(TypeError, match="price_function must be callable"):
+        Account([ContractGroup.get("invalid-price-function")], timestamps, 100.0, SimpleNamespace())
+
+
 def test_account_rejects_off_grid_valuation_without_leaking_index_error() -> None:
     timestamp = np.datetime64("2026-01-01")
     group = ContractGroup.get("off-grid-account")

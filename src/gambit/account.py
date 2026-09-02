@@ -225,7 +225,7 @@ class ContractPNL:
         # Find most current trade PNL, i.e. with the index before or equal to current timestamp.  If not found, set to 0's
         trade_pnl_index = find_index_before(self._trade_pnl, timestamp)
         if trade_pnl_index == -1:
-            realized, fee, commission, open_qty, open_qty, weighted_avg_price = 0, 0, 0, 0, 0, 0
+            realized, fee, commission, open_qty, weighted_avg_price = 0, 0, 0, 0, 0
         else:
             _, (_, realized, fee, commission, open_qty, weighted_avg_price) = self._trade_pnl.peekitem(trade_pnl_index)
 
@@ -373,6 +373,8 @@ class Account:
             raise TypeError("pnl_calc_time must be an integer number of minutes")
         if not 0 <= pnl_calc_time < 24 * 60:
             raise ValueError("pnl_calc_time must be between 0 and 1439")
+        if not callable(price_function):
+            raise TypeError("account price_function must be callable")
         validated_contract_groups = _validate_contract_groups(contract_groups)
         validate_timestamp_grid(timestamps, owner="account")
         self.starting_equity = float(starting_equity)
