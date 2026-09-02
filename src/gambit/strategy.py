@@ -16,7 +16,7 @@ import polars as pl
 
 from gambit.account import Account
 from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
-from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamps
+from gambit.boundaries import BacktestCallbackError, validate_date_range, validate_strategy_timestamps
 from gambit.calculation import CalculationContext
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders, validate_stage_values
 from gambit.configuration import RunConfiguration, RunProvenance
@@ -626,7 +626,7 @@ class Strategy:
         >>> assert_(orders_iter[1][1][1] == aapl)
         >>> assert_(len(orders_iter[2]) == 2)
         """
-        _start_date, _end_date = np.datetime64(start_date), np.datetime64(end_date)
+        _start_date, _end_date = validate_date_range(start_date, end_date, owner="rule execution")
         if rule_names is None:
             rule_names = self.rule_names
         if contract_groups is None:
@@ -1002,7 +1002,7 @@ class Strategy:
             start_date: string or numpy datetime64. Default None
             end_date: string or numpy datetime64: Default None
         """
-        _start_date, _end_date = np.datetime64(start_date), np.datetime64(end_date)
+        _start_date, _end_date = validate_date_range(start_date, end_date, owner="strategy data query")
         contract_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="data query")
 
         timestamps = self.timestamps
@@ -1100,8 +1100,7 @@ class Strategy:
         end date if they are specified.
         If contract_group is None orders for all contract_groups are returned"""
         orders: list[Order] = []
-        _start_date = NAT if start_date is None else np.datetime64(start_date)
-        _end_date = NAT if end_date is None else np.datetime64(end_date)
+        _start_date, _end_date = validate_date_range(start_date, end_date, owner="strategy order query")
         if contract_group is not None:
             validated_stage_groups([contract_group], self.contract_groups, operation="order query")
         if contract_group is None:

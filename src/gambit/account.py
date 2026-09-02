@@ -15,7 +15,7 @@ import polars as pl
 from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
-from gambit.boundaries import timestamp_index, validate_timestamp_grid
+from gambit.boundaries import timestamp_index, validate_date_range, validate_timestamp_grid
 from gambit.contract_pnl import ContractPNL, ContractPNLState, find_index_before
 from gambit.execution_snapshots import snapshot_trade
 from gambit.pq_types import Contract, ContractGroup, RoundTripTrade, Trade
@@ -322,6 +322,7 @@ class Account:
         and end date if they are specified. If symbol is None trades for all symbols are returned"""
         if contract_group is not None:
             self._require_configured_group(contract_group)
+        start_date, end_date = validate_date_range(start_date, end_date, owner="account trade query")
         return [
             snapshot_trade(trade)
             for trade in self._trades
@@ -341,6 +342,7 @@ class Account:
         If symbol is None trades for all symbols are returned"""
         if contract_group is not None:
             self._require_configured_group(contract_group)
+        start_date, end_date = validate_date_range(start_date, end_date, owner="account round-trip query")
         trades = self._trades.copy()
         if contract_group is not None:
             trades = [trade for trade in trades if trade.order.contract.contract_group == contract_group]

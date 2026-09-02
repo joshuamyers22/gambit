@@ -12,6 +12,23 @@ class BacktestCallbackError(RuntimeError):
     """Add stable execution context while retaining the original exception cause."""
 
 
+def validate_date_range(
+    start: str | np.datetime64 | None,
+    end: str | np.datetime64 | None,
+    *,
+    owner: str,
+) -> tuple[np.datetime64, np.datetime64]:
+    """Normalize optional date bounds and reject reversed ranges."""
+    try:
+        start_timestamp = np.datetime64("NaT", "ns") if start is None else np.datetime64(start)
+        end_timestamp = np.datetime64("NaT", "ns") if end is None else np.datetime64(end)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{owner} date range contains an invalid timestamp") from exc
+    if not np.isnat(start_timestamp) and not np.isnat(end_timestamp) and start_timestamp > end_timestamp:
+        raise ValueError(f"{owner} start date cannot be after end date")
+    return start_timestamp, end_timestamp
+
+
 def validate_timestamp_grid(timestamps: np.ndarray, *, owner: str) -> None:
     """Require a non-empty, one-dimensional, strictly increasing datetime grid."""
     if not isinstance(timestamps, np.ndarray):

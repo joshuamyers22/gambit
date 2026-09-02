@@ -596,6 +596,23 @@ def test_strategy_rejects_unconfigured_query_group(query: str) -> None:
             strategy.df_data([unconfigured_group], add_pnl=False)
 
 
+@pytest.mark.parametrize("query", ["account_trades", "strategy_orders", "strategy_data", "rules"])
+def test_queries_reject_reversed_date_range(query: str) -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    group = ContractGroup.get(f"reversed-date-range-{query}")
+    strategy = Strategy(timestamps, [group], _price)
+
+    with pytest.raises(ValueError, match="start date cannot be after end date"):
+        if query == "account_trades":
+            strategy.account.trades(start_date=timestamps[1], end_date=timestamps[0])
+        elif query == "strategy_orders":
+            strategy.orders(start_date=timestamps[1], end_date=timestamps[0])
+        elif query == "strategy_data":
+            strategy.df_data(add_pnl=False, start_date=timestamps[1], end_date=timestamps[0])
+        else:
+            strategy.run_rules(start_date=timestamps[1], end_date=timestamps[0])
+
+
 def test_trade_rejects_contract_mismatch_at_construction() -> None:
     timestamp = np.datetime64("2026-01-01")
     first = Contract.create("TRADE-CONTRACT-FIRST")
