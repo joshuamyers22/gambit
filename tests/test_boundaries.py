@@ -548,13 +548,38 @@ def test_account_owns_and_returns_detached_trade_snapshots() -> None:
     assert returned_trade.properties.source == "original"
 
     returned_trade.qty = 50
+    returned_trade.order.qty = 50
     returned_trade.properties.source = "returned mutation"
 
     stable_trade = account.trades()[0]
     assert stable_trade.qty == 1
+    assert stable_trade.order.qty == 1
     assert stable_trade.properties.source == "original"
     assert account.trade_count == 1
     assert account.position(group, timestamp) == 1
+
+
+def test_strategy_returns_detached_order_snapshots() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("strategy-order-snapshot")
+    contract = Contract.create("STRATEGY-ORDER-SNAPSHOT", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(
+        contract=contract,
+        timestamp=timestamp,
+        qty=2,
+        properties=SimpleNamespace(source="original"),
+    )
+    strategy._orders = [order]
+
+    returned_order = strategy.orders()[0]
+    returned_order.qty = 99
+    returned_order.properties.source = "mutated"
+
+    stable_order = strategy.orders()[0]
+    assert stable_order.qty == 2
+    assert stable_order.properties.source == "original"
+    assert order.qty == 2
 
 
 def test_trade_rejects_contract_mismatch_at_construction() -> None:

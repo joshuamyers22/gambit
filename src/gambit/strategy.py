@@ -20,6 +20,7 @@ from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamp
 from gambit.calculation import CalculationContext
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders, validate_stage_values
 from gambit.configuration import RunConfiguration, RunProvenance
+from gambit.execution_snapshots import snapshot_order
 from gambit.market_data import MarketDataValidationReport
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
@@ -1118,7 +1119,7 @@ class Strategy:
                     and (np.isnat(_start_date) or np.datetime64(order.timestamp) >= _start_date)
                     and (np.isnat(_end_date) or np.datetime64(order.timestamp) <= _end_date)
                 ]
-        return orders
+        return [snapshot_order(order) for order in orders]
 
     def df_orders(
         self,
