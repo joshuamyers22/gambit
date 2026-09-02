@@ -20,7 +20,6 @@ from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamp
 from gambit.calculation import CalculationContext
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders
 from gambit.configuration import RunConfiguration, RunProvenance
-from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.market_data import MarketDataValidationReport
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
@@ -28,7 +27,7 @@ from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, 
 from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 from gambit.risk_reporting import PortfolioRiskReport, StressScenario, analyze_account_risk
 from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
-from gambit.strategy_contracts import PriceFunctionType, StrategyContextType
+from gambit.strategy_contracts import PriceFunctionType, ReturnReporter, StrategyContextType
 
 IndicatorType: TypeAlias = IndicatorStage
 SignalType: TypeAlias = SignalStage
@@ -84,6 +83,7 @@ class Strategy:
         log_trades: bool = True,
         log_orders: bool = False,
         strategy_context: StrategyContextType | None = None,
+        return_reporter: ReturnReporter | None = None,
     ) -> None:
         """
         Args:
@@ -103,6 +103,7 @@ class Strategy:
                 If not set, the __init__ function will create an empty member strategy_context object that you can access.
             log_trades: If set, we log orders as they are created
             log_orders: If set, we log trades as they are created
+            return_reporter: Optional analytics/presentation adapter. The evaluator-backed default is loaded lazily.
         """
         self.name = "main"  # Set by portfolio when running multiple strategies
         self.run_configuration = RunConfiguration(
@@ -121,6 +122,7 @@ class Strategy:
         if strategy_context is None:
             strategy_context = types.SimpleNamespace()
         self.strategy_context = strategy_context
+        self._return_reporter = return_reporter
         self.account = Account(
             contract_groups, timestamps, price_function, strategy_context, starting_equity, pnl_calc_time
         )
@@ -1094,18 +1096,18 @@ class Strategy:
             return_metrics (bool, optional): If set, we return the computed metrics as a dictionary
         """
         returns = self.df_returns(contract_group)
-        ev = compute_return_metrics(
+        metrics = self._reporter().metrics(
             returns["timestamp"].to_numpy(),
             returns["ret"].to_numpy(),
             self.account.starting_equity,
             periods_per_year=periods_per_year,
         )
         if display_summary:
-            display_return_metrics(ev.metrics(), float_precision=float_precision)
+            self._reporter().display(metrics, float_precision=float_precision)
         if plot:
-            plot_return_metrics(ev.metrics())
+            self._reporter().plot(metrics)
         if return_metrics:
-            return ev.metrics()
+            return metrics
         return None
 
     def plot_returns(self, contract_group: ContractGroup | None = None) -> Any:
@@ -1116,10 +1118,19 @@ class Strategy:
         else:
             returns = self.df_returns(contract_group)
 
-        ev = compute_return_metrics(
-            returns["timestamp"].to_numpy(), returns["ret"].to_numpy(), self.account.starting_equity
+        metrics = self._reporter().metrics(
+            returns["timestamp"].to_numpy(),
+            returns["ret"].to_numpy(),
+            self.account.starting_equity,
         )
-        return plot_return_metrics(ev.metrics())
+        return self._reporter().plot(metrics)
+
+    def _reporter(self) -> ReturnReporter:
+        if self._return_reporter is None:
+            from gambit.return_reporting import EvaluatorReturnReporter
+
+            self._return_reporter = EvaluatorReturnReporter()
+        return self._return_reporter
 
     def __repr__(self):
         return f"{pformat(self.indicators)} {pformat(self.rules)} {pformat(self.account)}"

@@ -41,8 +41,8 @@ filesystem, subprocess, or UI operations.
 
 ## Edges and composition
 
-`factor_cli`, `pq_io`, `factor_store`, `interactive_plot`, and notebook-facing
-helpers are adapters. They may depend inward on orchestration and contracts.
+`factor_cli`, `pq_io`, `factor_store`, `return_reporting`, `interactive_plot`,
+and notebook-facing helpers are adapters. They may depend inward on orchestration and contracts.
 Keep serialization, widget rendering, logging, and process lifecycle at these
 edges. Translate expected adapter failures with operation context; unexpected
 programming errors should remain observable. A broad exception catch is allowed

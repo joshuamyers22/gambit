@@ -37,3 +37,9 @@ def test_strategy_components_do_not_depend_on_strategy_orchestrator() -> None:
     imports = _gambit_imports(PACKAGE_ROOT / "strategy_components.py")
 
     assert "gambit.strategy" not in imports
+
+
+def test_strategy_orchestrator_does_not_import_evaluator_adapter() -> None:
+    imports = _gambit_imports(PACKAGE_ROOT / "strategy.py")
+
+    assert "gambit.evaluator" not in imports

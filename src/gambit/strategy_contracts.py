@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import TypeAlias
+from typing import Any, Protocol, TypeAlias
 
 import numpy as np
 
@@ -16,4 +16,22 @@ PriceFunctionType: TypeAlias = Callable[
     float,
 ]
 
-__all__ = ["PriceFunctionType", "StrategyContextType"]
+
+class ReturnReporter(Protocol):
+    """Analytics and presentation operations used by the strategy facade."""
+
+    def metrics(
+        self,
+        timestamps: np.ndarray,
+        returns: np.ndarray,
+        starting_equity: float,
+        *,
+        periods_per_year: int = 0,
+    ) -> dict[str, Any]: ...
+
+    def display(self, metrics: dict[str, Any], *, float_precision: int = 4) -> None: ...
+
+    def plot(self, metrics: dict[str, Any]) -> Any: ...
+
+
+__all__ = ["PriceFunctionType", "ReturnReporter", "StrategyContextType"]
