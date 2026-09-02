@@ -61,3 +61,10 @@ def test_account_aggregate_does_not_depend_directly_on_native_pnl_kernel() -> No
     imports = _gambit_imports(PACKAGE_ROOT / "account.py")
 
     assert "gambit.compute_pnl" not in imports
+
+
+def test_factor_store_runtime_invariants_do_not_use_optimizable_asserts() -> None:
+    path = PACKAGE_ROOT / "factor_store.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+    assert not any(isinstance(node, ast.Assert) for node in ast.walk(tree))

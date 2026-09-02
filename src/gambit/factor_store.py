@@ -287,8 +287,7 @@ def _legacy_node_plan(store: Path, selected_node_keys: set[str] | None) -> list[
         node_key = pointer.name
         if node_key.startswith(".") or (selected_node_keys is not None and node_key not in selected_node_keys):
             continue
-        generation = _read_node_pointer(store, node_key, missing_ok=False)
-        assert generation is not None
+        generation = _require_node_pointer(store, node_key)
         generation_path = store / "generations" / generation
         manifest_path = generation_path / "manifest.json"
         if generation_path.is_symlink() or manifest_path.is_symlink():
@@ -568,6 +567,13 @@ def _read_node_pointer(store: Path, node_key: str, *, missing_ok: bool) -> str |
     return generation
 
 
+def _require_node_pointer(store: Path, node_key: str) -> str:
+    generation = _read_node_pointer(store, node_key, missing_ok=False)
+    if generation is None:
+        raise FactorStoreError("factor node pointer is missing")
+    return generation
+
+
 def _record_node_access(
     store: Path,
     node_key: str,
@@ -712,8 +718,7 @@ def open_generation_by_node_key(
         raise ValueError("access_update_interval_seconds must be finite and non-negative")
     store = Path(root)
     with _store_lock(store, exclusive=False):
-        generation = _read_node_pointer(store, node_key, missing_ok=False)
-        assert generation is not None
+        generation = _require_node_pointer(store, node_key)
         lease = _open_and_lease_generation(
             store,
             generation,
@@ -860,8 +865,7 @@ def collect_garbage(
                     if _NODE_KEY_PATTERN.fullmatch(node_pointer.name) is None:
                         raise FactorStoreError("factor node index contains an invalid key")
                     indexed_node_keys.add(node_pointer.name)
-                    generation = _read_node_pointer(store, node_pointer.name, missing_ok=False)
-                    assert generation is not None
+                    generation = _require_node_pointer(store, node_pointer.name)
                     generation_path = generations / generation
                     if not generation_path.is_dir() or generation_path.is_symlink():
                         raise FactorStoreError("factor node index references a missing generation")
@@ -1012,8 +1016,7 @@ def evict_factor_nodes(
                         continue
                     if _NODE_KEY_PATTERN.fullmatch(node_key) is None:
                         raise FactorStoreError("factor node index contains an invalid key")
-                    generation = _read_node_pointer(store, node_key, missing_ok=False)
-                    assert generation is not None
+                    generation = _require_node_pointer(store, node_key)
                     generation_path = generations / generation
                     manifest_path = generation_path / "manifest.json"
                     if generation_path.is_symlink() or manifest_path.is_symlink():
