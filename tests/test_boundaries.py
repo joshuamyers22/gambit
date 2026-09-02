@@ -337,6 +337,31 @@ def test_date_filtered_rule_execution_does_not_mutate_signal_values() -> None:
     assert np.array_equal(strategy.signal_values[group.name].entry, original_values)
 
 
+@pytest.mark.parametrize("stage", ["indicator", "signal", "rule"])
+def test_strategy_rejects_unknown_selective_stage_name(stage: str) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get(f"unknown-selective-{stage}")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+
+    with pytest.raises(ValueError, match=f"unknown {stage} names: missing"):
+        if stage == "indicator":
+            strategy.run_indicators(["missing"])
+        elif stage == "signal":
+            strategy.run_signals(["missing"])
+        else:
+            strategy.run_rules(["missing"])
+
+
+def test_strategy_rejects_unconfigured_rule_execution_group() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    configured_group = ContractGroup.get("configured-rule-execution")
+    unconfigured_group = ContractGroup("configured-rule-execution")
+    strategy = Strategy(np.array([timestamp]), [configured_group], _price)
+
+    with pytest.raises(ValueError, match="not configured for this strategy"):
+        strategy.run_rules(contract_groups=[unconfigured_group])
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

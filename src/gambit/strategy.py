@@ -287,6 +287,24 @@ class Strategy:
                 raise ValueError(f"contract group {group.name!r} is not configured for this strategy")
         return groups
 
+    @staticmethod
+    def _validated_stage_names(
+        names: Sequence[str] | None,
+        registered_names: Sequence[str],
+        *,
+        operation: str,
+    ) -> tuple[str, ...]:
+        if names is None:
+            return tuple(registered_names)
+        if isinstance(names, (str, bytes)) or not isinstance(names, Sequence):
+            raise TypeError(f"{operation} names must be a sequence of strings")
+        if not all(isinstance(name, str) for name in names):
+            raise TypeError(f"{operation} names must contain only strings")
+        unknown = [name for name in names if name not in registered_names]
+        if unknown:
+            raise ValueError(f"unknown {operation} names: {', '.join(unknown)}")
+        return tuple(dict.fromkeys(names))
+
     def add_indicator(
         self,
         name: str,
@@ -470,22 +488,25 @@ class Strategy:
             contract_groups: Contract group to run this indicator for.  If None (default), we run it for all contract groups.
             clear_all: If set, clears all indicator values before running.  Default False.
         """
-        if indicator_names is None:
-            indicator_names = list(self.indicators.keys())
+        indicator_names = self._validated_stage_names(
+            indicator_names,
+            tuple(self.indicators),
+            operation="indicator",
+        )
         contract_groups = self._validated_stage_groups(contract_groups, operation="indicator execution")
 
         if clear_all:
             self.indicator_values = defaultdict(types.SimpleNamespace)
 
-        ind_names = []
-
-        cg_names = set([cg.name for cg in contract_groups])
-        for ind_name, cgroup_list in self.indicator_cgroups.items():
-            cg_list_names = set([cg.name for cg in cgroup_list])
-            if len(cg_names.intersection(cg_list_names)):
-                ind_names.append(ind_name)
-
-        indicator_names = list(set(ind_names).intersection(indicator_names))
+        indicator_names = tuple(
+            name
+            for name in indicator_names
+            if any(
+                requested_group is stage_group
+                for requested_group in contract_groups
+                for stage_group in self.indicator_cgroups[name]
+            )
+        )
 
         for cgroup in contract_groups:
             cgroup_ind_namespace = self.indicator_values[cgroup.name]
@@ -535,22 +556,25 @@ class Strategy:
             contract_groups: Contract groups to run this signal for. If None (default), we run it for all contract groups.
             clear_all: If set, clears all signal values before running.  Default False.
         """
-        if signal_names is None:
-            signal_names = list(self.signals.keys())
+        signal_names = self._validated_stage_names(
+            signal_names,
+            tuple(self.signals),
+            operation="signal",
+        )
         contract_groups = self._validated_stage_groups(contract_groups, operation="signal execution")
 
         if clear_all:
             self.signal_values = defaultdict(types.SimpleNamespace)
 
-        sig_names = []
-
-        cg_names = set([cg.name for cg in contract_groups])
-        for sig_name, cgroup_list in self.signal_cgroups.items():
-            cg_list_names = set([cg.name for cg in cgroup_list])
-            if len(cg_names.intersection(cg_list_names)):
-                sig_names.append(sig_name)
-
-        signal_names = list(set(sig_names).intersection(signal_names))
+        signal_names = tuple(
+            name
+            for name in signal_names
+            if any(
+                requested_group is stage_group
+                for requested_group in contract_groups
+                for stage_group in self.signal_cgroups[name]
+            )
+        )
 
         for cgroup in contract_groups:
             for signal_name in signal_names:
@@ -704,7 +728,9 @@ class Strategy:
             start_date: Run rules starting from this date. Default None
             end_date: Don't run rules after this date.  Default None
         """
-        self._generate_order_iterations(rule_names, contract_groups, start_date, end_date)
+        validated_rule_names = self._validated_stage_names(rule_names, self.rule_names, operation="rule")
+        validated_groups = self._validated_stage_groups(contract_groups, operation="rule execution")
+        self._generate_order_iterations(validated_rule_names, validated_groups, start_date, end_date)
 
         # Now we know which rules, contract groups need to be applied for each iteration, go through each iteration and apply them
         # in the same order they were added to the strategy
