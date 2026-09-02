@@ -135,7 +135,8 @@ class StrategyBuilder:
     def add_contract(self, symbol: str, instrument_spec: InstrumentSpec | None = None) -> Contract:
         if Contract.exists(symbol):
             contract = Contract.get(symbol)
-            assert contract is not None  # keep mypy happy
+            if contract is None:
+                raise RuntimeError(f"contract registry lost existing symbol {symbol}")
             if instrument_spec is not None and contract.instrument_spec != instrument_spec:
                 raise ValueError(f"contract {symbol} already exists with different instrument metadata")
         else:

@@ -210,7 +210,8 @@ class EminiOption:
         expiry += np.where(
             expiry < np.datetime64("2015-09-20"), np.timedelta64(15 * 60 + 15, "m"), np.timedelta64(15, "h")
         )
-        assert isinstance(expiry, np.datetime64)
+        if not isinstance(expiry, np.datetime64):
+            raise TypeError(f"option expiry calculation returned {type(expiry).__name__}")
         return expiry
 
 
