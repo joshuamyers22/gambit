@@ -59,6 +59,9 @@ class VectorIndicator:
 
     vector: np.ndarray
 
+    def __post_init__(self) -> None:
+        self.vector = _snapshot_vector(self.vector, owner="indicator")
+
     def __call__(
         self,
         contract_group: ContractGroup,
@@ -79,6 +82,9 @@ class VectorSignal:
 
     vector: np.ndarray
 
+    def __post_init__(self) -> None:
+        self.vector = _snapshot_vector(self.vector, owner="signal")
+
     def __call__(
         self,
         contract_group: ContractGroup,
@@ -98,6 +104,15 @@ def get_contract_price_from_dict(
     if ret is None:
         return math.nan
     return ret
+
+
+def _snapshot_vector(vector: np.ndarray, *, owner: str) -> np.ndarray:
+    values = np.asarray(vector)
+    if values.ndim != 1:
+        raise ValueError(f"vector {owner} values must be one-dimensional")
+    snapshot = values.copy()
+    snapshot.flags.writeable = False
+    return snapshot
 
 
 def get_contract_price_from_array_dict(
@@ -230,7 +245,25 @@ class PriceFuncDict:
     price_dict: dict[str, dict[np.datetime64, float]]
 
     def __init__(self, price_dict: dict[str, dict[np.datetime64, float]]) -> None:
-        self.price_dict = price_dict
+        snapshot: dict[str, dict[np.datetime64, float]] = {}
+        for symbol, values in price_dict.items():
+            if not isinstance(symbol, str) or not symbol:
+                raise ValueError("price dictionary symbols must be non-empty strings")
+            symbol_prices: dict[np.datetime64, float] = {}
+            for timestamp, price in values.items():
+                if not isinstance(timestamp, np.datetime64):
+                    raise TypeError(f"price timestamps for {symbol} must be numpy datetime64 values")
+                if np.isnat(timestamp):
+                    raise ValueError(f"price timestamps for {symbol} cannot be NaT")
+                if isinstance(price, (bool, np.bool_)) or not isinstance(
+                    price, (int, float, np.integer, np.floating)
+                ):
+                    raise TypeError(f"prices for {symbol} must be real numeric values")
+                if not math.isfinite(float(price)) and not math.isnan(float(price)):
+                    raise ValueError(f"prices for {symbol} cannot be infinite")
+                symbol_prices[timestamp] = float(price)
+            snapshot[symbol] = symbol_prices
+        self.price_dict = snapshot
 
     def __call__(self, contract: Contract, timestamps: np.ndarray, i: int, context: StrategyContextType) -> float:
         timestamp = _timestamp_at(timestamps, i)

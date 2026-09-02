@@ -9,7 +9,7 @@ from gambit.callback_contracts import validate_market_trades, validate_rule_orde
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, Trade
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
-from gambit.strategy_inputs import PriceFuncArrayDict
+from gambit.strategy_inputs import PriceFuncArrayDict, PriceFuncDict, VectorIndicator, VectorSignal
 
 
 def _price(_contract, _timestamps, _index, _context):
@@ -148,6 +148,31 @@ def test_array_price_function_rejects_unsorted_timestamps() -> None:
 
     with pytest.raises(ValueError, match="strictly increasing and unique"):
         PriceFuncArrayDict({"UNSORTED": (timestamps, np.array([101.0, 100.0]))})
+
+
+def test_dictionary_price_function_owns_nested_input_snapshot() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    caller_prices = {"DICT-SNAPSHOT": {timestamp: 100.0}}
+    price_function = PriceFuncDict(caller_prices)
+    contract = Contract.create("DICT-SNAPSHOT")
+
+    caller_prices["DICT-SNAPSHOT"][timestamp] = 999.0
+    caller_prices["DICT-SNAPSHOT"][np.datetime64("2026-01-02")] = 101.0
+
+    assert price_function(contract, np.array([timestamp]), 0, None) == 100.0
+    assert len(price_function.price_dict["DICT-SNAPSHOT"]) == 1
+
+
+@pytest.mark.parametrize("adapter", [VectorIndicator, VectorSignal])
+def test_vector_stage_adapter_owns_read_only_input_snapshot(adapter) -> None:
+    caller_values = np.array([1.0, 2.0])
+    stage = adapter(caller_values)
+
+    caller_values[0] = 999.0
+
+    assert stage.vector.tolist() == [1.0, 2.0]
+    with pytest.raises(ValueError, match="read-only"):
+        stage.vector[0] = 999.0
 
 
 def test_strategy_rejects_indicator_length_mismatch() -> None:
