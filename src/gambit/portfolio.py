@@ -42,6 +42,8 @@ class Portfolio:
             raise ValueError(f"portfolio strategy {name!r} is already registered")
         if not isinstance(strategy, Strategy):
             raise TypeError("portfolio strategy must be a Strategy")
+        if any(strategy is registered for registered in self.strategies.values()):
+            raise ValueError("strategy instance is already registered in this portfolio")
         self.strategies[name] = strategy
         strategy.name = name
 
@@ -134,6 +136,8 @@ class Portfolio:
         """
         strategies = self._selected_strategies(strategy_names)
         start_date, end_date = validate_date_range(start_date, end_date, owner="portfolio rule execution")
+        for strategy in strategies:
+            strategy.validate_stage_graph()
 
         _logger.info(f"generating order iterations: {start_date} {end_date}")
 
@@ -166,9 +170,13 @@ class Portfolio:
               so you can set this so they are all ready by this date.  Default None
             end_date: Don't run rules after this date.  Default None
         """
-        self.run_indicators(strategy_names)
-        self.run_signals(strategy_names)
-        self.run_rules(strategy_names, start_date, end_date)
+        strategies = self._selected_strategies(strategy_names)
+        for strategy in strategies:
+            strategy.validate_stage_graph()
+        selected_names = tuple(strategy.name for strategy in strategies)
+        self.run_indicators(selected_names)
+        self.run_signals(selected_names)
+        self.run_rules(selected_names, start_date, end_date)
 
     def df_returns(self, sampling_frequency: str = "D", strategy_names: Sequence[str] | None = None) -> pl.DataFrame:
         """
