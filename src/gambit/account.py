@@ -125,8 +125,9 @@ class Account:
         self.strategy_context = strategy_context
         self.contract_groups = validated_contract_groups
 
-        self.timestamps = timestamps
-        self.calc_timestamps = _get_calc_timestamps(timestamps, pnl_calc_time)
+        self.timestamps = timestamps.copy()
+        self.timestamps.flags.writeable = False
+        self.calc_timestamps = _get_calc_timestamps(self.timestamps, pnl_calc_time)
 
         self.contracts: dict[str, Contract] = {}
         self._trades: list[Trade] = []

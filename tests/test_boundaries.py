@@ -91,6 +91,40 @@ def test_strategy_owns_validated_contract_group_snapshot() -> None:
     assert strategy.contract_groups is strategy.account.contract_groups
 
 
+def test_strategy_owns_read_only_timestamp_snapshot() -> None:
+    caller_timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    original_timestamps = caller_timestamps.copy()
+    strategy = Strategy(
+        caller_timestamps,
+        [ContractGroup.get("strategy-timestamp-snapshot")],
+        _price,
+    )
+
+    caller_timestamps[0] = np.datetime64("2030-01-01")
+
+    assert np.array_equal(strategy.timestamps, original_timestamps)
+    assert strategy.timestamps is strategy.account.timestamps
+    with pytest.raises(ValueError, match="read-only"):
+        strategy.timestamps[0] = np.datetime64("2030-01-01")
+
+
+def test_account_owns_read_only_timestamp_snapshot() -> None:
+    caller_timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    original_timestamps = caller_timestamps.copy()
+    account = Account(
+        [ContractGroup.get("account-timestamp-snapshot")],
+        caller_timestamps,
+        _price,
+        SimpleNamespace(),
+    )
+
+    caller_timestamps[0] = np.datetime64("2030-01-01")
+
+    assert np.array_equal(account.timestamps, original_timestamps)
+    with pytest.raises(ValueError, match="read-only"):
+        account.timestamps[0] = np.datetime64("2030-01-01")
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

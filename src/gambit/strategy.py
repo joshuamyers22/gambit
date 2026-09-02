@@ -122,7 +122,6 @@ class Strategy:
         )
         self.provenance = RunProvenance(self.run_configuration)
         validate_strategy_timestamps(timestamps)
-        self.timestamps = timestamps
         if strategy_context is None:
             strategy_context = types.SimpleNamespace()
         self.strategy_context = strategy_context
@@ -130,6 +129,7 @@ class Strategy:
         self.account = Account(
             contract_groups, timestamps, price_function, strategy_context, starting_equity, pnl_calc_time
         )
+        self.timestamps = self.account.timestamps
         self.contract_groups = self.account.contract_groups
         assert_(trade_lag >= 0, f"trade_lag cannot be negative: {trade_lag}")
         self.trade_lag = trade_lag
