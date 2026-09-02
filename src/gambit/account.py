@@ -136,6 +136,18 @@ class ContractPNL:
         self.final_pnl = np.nan
         self.new_trades_added = False
 
+    def _validate_trade_chronology(self, trades: Sequence[Trade]) -> None:
+        if not len(trades):
+            return
+        timestamps = np.unique([trade.timestamp for trade in trades])
+        if len(self._trade_pnl):
+            prev_max_timestamp, _ = self._trade_pnl.peekitem(-1)
+            if timestamps[0] < prev_max_timestamp:
+                raise ValueError(
+                    "trades can only be added with non-decreasing timestamps "
+                    f"for {self.contract.symbol}: current {timestamps[0]}, previous {prev_max_timestamp}"
+                )
+
     def _add_trades(self, trades: Sequence[Trade]) -> None:
         """
         Args:
@@ -143,13 +155,8 @@ class ContractPNL:
         """
         if not len(trades):
             return
+        self._validate_trade_chronology(trades)
         timestamps = np.unique([trade.timestamp for trade in trades])
-        if len(self._trade_pnl):
-            prev_max_timestamp, _ = self._trade_pnl.peekitem(-1)
-            assert_(
-                timestamps[0] >= prev_max_timestamp,
-                f"Trades can only be added with non-decreasing timestamps current: {timestamps[0]} prev max: {prev_max_timestamp}",
-            )
 
         if self.first_trade_timestamp is None:
             self.first_trade_timestamp = timestamps[0]
@@ -402,17 +409,21 @@ class Account:
             if contract is not trade.order.contract:
                 raise ValueError("trade contract does not match its order")
 
-        trades = sorted(trades, key=lambda x: getattr(x, "timestamp"))
+        trades = sorted(trades, key=lambda x: x.timestamp)
         # Break up trades by contract so we can add them in a batch
         trades_by_contract: dict[str, list[Trade]] = defaultdict(list)
         for trade in trades:
-            contract = trade.contract
-            if contract.symbol not in self.contracts:
-                self._add_contract(contract, trade.timestamp)
-            trades_by_contract[contract.symbol].append(trade)
+            trades_by_contract[trade.contract.symbol].append(trade)
 
         for symbol, contract_trades in trades_by_contract.items():
-            contract_trades.sort(key=lambda x: x.timestamp)
+            if symbol in self.symbol_pnls:
+                self.symbol_pnls[symbol]._validate_trade_chronology(contract_trades)
+
+        for trade in trades:
+            if trade.contract.symbol not in self.contracts:
+                self._add_contract(trade.contract, trade.timestamp)
+
+        for symbol, contract_trades in trades_by_contract.items():
             self.symbol_pnls[symbol]._add_trades(contract_trades)
 
         for trade in trades:

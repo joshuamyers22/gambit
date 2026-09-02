@@ -117,6 +117,26 @@ def test_account_rejects_trade_outside_configured_contract_groups() -> None:
     assert account.symbols() == []
 
 
+def test_account_rejects_retroactive_cross_contract_batch_before_mutation() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02", "2026-01-03"], dtype="datetime64[D]")
+    group = ContractGroup.get("chronological-trade-batch")
+    first = Contract.create("CHRONO-FIRST", group)
+    second = Contract.create("CHRONO-SECOND", group)
+    account = Account([group], timestamps, _price, SimpleNamespace())
+
+    def trade(contract: Contract, timestamp: np.datetime64) -> Trade:
+        order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+        return Trade(contract, order, timestamp, 1, 100.0)
+
+    account.add_trades([trade(first, timestamps[1]), trade(second, timestamps[1])])
+
+    with pytest.raises(ValueError, match="non-decreasing timestamps"):
+        account.add_trades([trade(first, timestamps[2]), trade(second, timestamps[0])])
+
+    assert account.position(group, timestamps[2]) == 2
+    assert len(account.trades()) == 2
+
+
 @pytest.mark.parametrize(
     ("value", "error"),
     [(-1, ValueError), (1440, ValueError), (900.5, TypeError), (True, TypeError)],
