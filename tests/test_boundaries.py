@@ -6,7 +6,7 @@ import pytest
 from gambit.account import Account
 from gambit.boundaries import BacktestCallbackError
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders
-from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
+from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, Trade
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
 
@@ -303,6 +303,28 @@ def test_invalid_market_simulator_output_is_chained_before_account_mutation() ->
 
     assert isinstance(raised.value.__cause__, TypeError)
     assert strategy.trades() == []
+
+
+def test_invalid_market_simulator_output_restores_order_lifecycle_state() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("sim-order-rollback")
+    contract = Contract.create("SIM-ORDER-ROLLBACK", group)
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=2)
+    strategy._current_orders = [order]
+
+    def invalid_simulator(current_orders, *_args):
+        current_orders[0].fill(1)
+        return [object()]
+
+    strategy.market_sims = [invalid_simulator]
+
+    with pytest.raises(BacktestCallbackError, match="market simulator"):
+        strategy._sim_market(0)
+
+    assert order.qty == 2
+    assert order.status is OrderStatus.OPEN
+    assert strategy._current_orders == [order]
 
 
 def test_callback_contracts_normalize_rule_orders_without_strategy_state() -> None:

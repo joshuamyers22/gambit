@@ -861,19 +861,22 @@ class Strategy:
                     order.cancel()
 
         for market_sim_function in self.market_sims:
+            order_states: list[tuple[Order, float, OrderStatus]] = []
             try:
                 self._update_current_orders()
+                order_states = [(order, order.qty, order.status) for order in self._current_orders]
+                current_orders = tuple(self._current_orders)
 
                 trades = validate_market_trades(
                     market_sim_function(
-                        self._current_orders,
+                        current_orders,
                         i,
                         self.timestamps,
                         self.indicator_values,
                         self.signal_values,
                         self.strategy_context,
                     ),
-                    self._current_orders,
+                    current_orders,
                     self.timestamps[i],
                 )
 
@@ -887,9 +890,17 @@ class Strategy:
                     self.account.add_trades(trades)
                 self._trades += trades
             except Exception as exc:
+                for order, qty, status in order_states:
+                    order.qty = qty
+                    order.status = status
                 raise BacktestCallbackError(
                     f"market simulator failed at index {i}: {market_sim_function!r}"
                 ) from exc
+            except BaseException:  # order state must also roll back on cancellation and interpreter exit
+                for order, qty, status in order_states:
+                    order.qty = qty
+                    order.status = status
+                raise
 
         self._update_current_orders()
 
