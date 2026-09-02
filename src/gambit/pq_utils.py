@@ -10,7 +10,7 @@ import os
 import pathlib
 import sys
 import tempfile
-from typing import Any, Callable
+from typing import Any, Callable, Literal, TypeAlias, cast
 
 import numpy as np
 import polars as pl
@@ -19,6 +19,7 @@ SEC_PER_DAY = 3600 * 24
 EPOCH = datetime.datetime.fromtimestamp(0, datetime.timezone.utc).replace(tzinfo=None)
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FORMAT = "[%(asctime)s.%(msecs)03d %(funcName)s] %(message)s"
+TimeUnit: TypeAlias = Literal["D", "M", "m", "s"]
 
 
 def has_display() -> bool:
@@ -61,7 +62,7 @@ def set_ipython_defaults(jupyter_multiple_display=True) -> None:
     from IPython.core.interactiveshell import InteractiveShell
 
     if jupyter_multiple_display:
-        InteractiveShell.ast_node_interactivity = "all"  # type: ignore # not sure why this is needed
+        InteractiveShell.ast_node_interactivity = "all"
 
 
 def set_defaults(
@@ -155,7 +156,7 @@ def np_indexof_sorted(array: np.ndarray, value: Any) -> int:
         return -1
     if array[idx] != value:
         return -1
-    return idx
+    return int(idx)
 
 
 def np_find_closest(a: np.ndarray, v: Any) -> int | np.ndarray:
@@ -170,7 +171,7 @@ def np_find_closest(a: np.ndarray, v: Any) -> int | np.ndarray:
     left = a[idx - 1]
     right = a[idx]
     idx -= v - left < right - v
-    return idx  # type: ignore
+    return idx
 
 
 def np_rolling_window(a: np.ndarray, window: int) -> np.ndarray:
@@ -182,7 +183,7 @@ def np_rolling_window(a: np.ndarray, window: int) -> np.ndarray:
     """
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
-    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)  # type: ignore
+    return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
 
 
 def np_round(a: np.ndarray, clip: float):
@@ -192,7 +193,7 @@ def np_round(a: np.ndarray, clip: float):
     Args:
         a: array with elements to round
         clip: rounding value
-    >>> np_round(15.8, 0.25)
+    >>> float(np_round(15.8, 0.25))
     15.75
     """
 
@@ -313,10 +314,9 @@ def day_of_week_num(a: np.datetime64 | np.ndarray) -> int | np.ndarray:
     >>> day_of_week_num(np.datetime64('2015-01-04'))
     6
     """
-    int_date: int = a.astype("datetime64[D]").view("int64")  # type: ignore
+    int_date = a.astype("datetime64[D]").view("int64")
     ret = (int_date - 4) % 7
-    # if np.isscalar(ret): ret = ret.item()
-    return ret
+    return int(cast(np.generic, ret).item()) if np.isscalar(ret) else ret
 
 
 def percentile_of_score(a: np.ndarray) -> np.ndarray | None:
@@ -362,30 +362,26 @@ def resample_trade_bars(
     """Downsample trade bars using sampling frequency
 
     Args:
-        df (pd.DataFrame): Must contain an index of numpy datetime64 type which is monotonically increasing
-            sampling_frequency (str): See pandas frequency strings
-        resample_funcs (dict of str: int): a dictionary of column name -> resampling function for any columns that are custom defined.  Default None.
-            If there is no entry for a custom column, defaults to 'last' for that column
+        df: Polars DataFrame with a ``timestamp`` or ``date`` column.
+        sampling_frequency: Polars duration string.
+        resample_funcs: Names of custom columns handled by a caller-specific aggregation.
     Returns:
-        pd.DataFrame: Resampled dataframe
+        Polars DataFrame containing resampled bars.
 
     >>> import math
-    >>> df = pd.DataFrame({'date': np.array(['2018-01-08 15:00:00', '2018-01-09 13:30:00', '2018-01-09 15:00:00', '2018-01-11 15:00:00'], dtype = 'M8[ns]'),
+    >>> df = pl.DataFrame({'date': np.array(['2018-01-08 15:00:00', '2018-01-09 13:30:00', '2018-01-09 15:00:00', '2018-01-11 15:00:00'], dtype = 'M8[ns]'),
     ...          'o': np.array([8.9, 9.1, 9.3, 8.6]),
     ...          'h': np.array([9.0, 9.3, 9.4, 8.7]),
     ...          'l': np.array([8.8, 9.0, 9.2, 8.4]),
     ...          'c': np.array([8.95, 9.2, 9.35, 8.5]),
     ...          'v': np.array([200, 100, 150, 300]),
-    ...          'x': np.array([300, 200, 100, 400])
     ...         })
-    >>> df['vwap'] =  0.5 * (df.l + df.h)
-    >>> df.set_index('date', inplace = True)
-    >>> df = resample_trade_bars(df, sampling_frequency = 'D', resample_funcs={'x': lambda df,
-    ...   sampling_frequency: df.x.resample(sampling_frequency).agg('mean')})
-    >>> assert(len(df) == 4)
-    >>> assert(math.isclose(df.vwap.iloc[1], 9.24))
-    >>> assert(np.isnan(df.vwap.iloc[2]))
-    >>> assert(math.isclose(df.l[3], 8.4))
+    >>> df = df.with_columns((0.5 * (pl.col('l') + pl.col('h'))).alias('vwap'))
+    >>> result = resample_trade_bars(df, sampling_frequency='1d')
+    >>> len(result) == 4 and math.isclose(result['vwap'][1], 9.24)
+    True
+    >>> result['vwap'][2] is None and math.isclose(result['l'][3], 8.4)
+    True
     """
     if sampling_frequency is None:
         return df
@@ -452,21 +448,27 @@ def monotonically_increasing(array: np.ndarray) -> bool:
     """
     if not len(array):
         return False
-    ret: bool = np.all(np.diff(array).astype(float) > 0).astype(bool)  # type: ignore
-    return ret
+    return bool(np.all(np.diff(array).astype(float) > 0))
 
 
-def try_frequency(timestamps: np.ndarray, period: str, threshold: float) -> float:
-    diff_dates = np.diff(timestamps.astype(f"M8[{period}]")) / np.timedelta64(1, period)
+def try_frequency(
+    timestamps: np.ndarray,
+    period: TimeUnit,
+    threshold: float,
+) -> float:
+    units = {
+        "D": ("datetime64[D]", np.timedelta64(1, "D"), 1.0),
+        "M": ("datetime64[M]", np.timedelta64(1, "M"), 30.0),
+        "m": ("datetime64[m]", np.timedelta64(1, "m"), 1.0 / (24 * 60)),
+        "s": ("datetime64[s]", np.timedelta64(1, "s"), 1.0 / SEC_PER_DAY),
+    }
+    dtype, unit, fraction_of_day = units[period]
+    diff_dates = np.diff(timestamps.astype(dtype)) / unit
     (values, counts) = np.unique(diff_dates, return_counts=True)
     max_i = np.argmax(counts)
     if math.isclose(values[max_i], 0.0) or counts[max_i] / np.sum(counts) < threshold:
         return np.nan
-    if period == "M":
-        fraction_of_day = 30.0
-    else:
-        fraction_of_day = float(np.timedelta64(1, period) / np.timedelta64(1, "D"))
-    return values[max_i] * fraction_of_day
+    return float(values[max_i] * fraction_of_day)
 
 
 def infer_frequency(timestamps: np.ndarray) -> float:
@@ -487,7 +489,8 @@ def infer_frequency(timestamps: np.ndarray) -> float:
     assert_(monotonically_increasing(timestamps))
     assert_(len(timestamps) > 0, "cannot infer frequency from empty timestamps array")
     threshold = 0.75
-    for period in ["D", "M", "m", "s"]:
+    periods: tuple[TimeUnit, ...] = ("D", "M", "m", "s")
+    for period in periods:
         ret = try_frequency(timestamps, period, threshold)
         if math.isfinite(ret):
             return ret
@@ -599,8 +602,8 @@ def get_empty_np_value(np_dtype: np.dtype) -> Any:
     """
     Get empty value for a given numpy datatype
     >>> a = np.array(['2018-01-01', '2018-01-03'], dtype = 'M8[D]')
-    >>> get_empty_np_value(a.dtype)
-    numpy.datetime64('NaT')
+    >>> bool(np.isnat(get_empty_np_value(a.dtype)))
+    True
     """
     kind = np_dtype.kind
     if kind == "f":
@@ -648,8 +651,8 @@ def linear_interpolate(
 
 
 def bootstrap_ci(
-    a: np.ndarray, ci_level: float = 0.95, n: int = 1000, func: Callable[[np.ndarray], np.ndarray] = np.mean
-) -> tuple[float, float]:  # type: ignore
+    a: np.ndarray, ci_level: float = 0.95, n: int = 1000, func: Callable[[np.ndarray], float] = np.mean
+) -> tuple[float, float]:
     """
     Non parametric bootstrap for confidence intervals
     Args:
@@ -675,7 +678,7 @@ def bootstrap_ci(
     l_pval = 1 - u_pval
     l_indx = int(np.floor(n * l_pval))
     u_indx = int(np.floor(n * u_pval))
-    return (simulations[l_indx], simulations[u_indx])
+    return float(simulations[l_indx]), float(simulations[u_indx])
 
 
 def _add_stream_handler(
@@ -787,7 +790,7 @@ def get_config() -> dict[str, Any]:
     your home directory. Next it looks for a file called gambit.yml in your local working directory.
     If found, it overrides any values in the config data from any data it finds in this file.
     """
-    import yaml  # type: ignore
+    import yaml
 
     home = pathlib.Path.home()
     assert_(home.is_dir(), "home dir not found")

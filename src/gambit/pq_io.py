@@ -24,9 +24,11 @@ DEFAULT_MAX_HDF5_ROWS = 100_000_000
 DEFAULT_MAX_HDF5_BYTES = 8 * 1024**3
 
 try:
-    import h5py
+    import h5py as _h5py
 except ImportError:  # pragma: no cover - exercised in minimal-install CI
-    h5py = None  # type: ignore[assignment]
+    _h5py = None
+
+h5py: Any = _h5py
 
 
 def _require_h5py() -> None:
@@ -152,7 +154,7 @@ def np_arrays_to_hdf5(
             for colname, source_array in data.items():
                 array = source_array
                 if dtypes is not None and colname in dtypes:
-                    dtype = np.dtype(dtypes[colname])
+                    dtype: np.dtype[Any] = np.dtype(dtypes[colname])
                     array = array.astype(h5py.opaque_dtype(dtype) if dtype.kind == "M" else dtype)
                 else:
                     dtype = array.dtype
@@ -370,7 +372,7 @@ def test_hdf5_to_df():
     a = np.random.randint(0, 10000, size)
     b = a * 1.1
     letters = np.random.choice(list(string.ascii_letters), (size, 5))
-    c = np.empty(size, dtype="O")
+    c: np.ndarray = np.empty(size, dtype="O")
     for i, row in enumerate(letters):
         c[i] = "".join(row)
     c[1] = None

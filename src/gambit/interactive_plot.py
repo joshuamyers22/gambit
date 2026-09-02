@@ -75,7 +75,7 @@ UpdateFormFuncType = Callable[[int], None]
 CreateSelectionWidgetsFunctype = Callable[[dict[str, str], dict[str, str], UpdateFormFuncType], dict[str, Any]]
 
 
-def percentile_buckets(a: np.ndarray, n=10) -> np.ndarray:
+def percentile_buckets(a: np.ndarray, n: int = 10) -> np.ndarray:
     """
     >>> np.random.seed(0)
     >>> a = np.random.uniform(size=10000)
@@ -84,7 +84,7 @@ def percentile_buckets(a: np.ndarray, n=10) -> np.ndarray:
     if not len(a):
         return np.empty(0)
     pctiles = np.arange(0, 100, int(round(100 / n)))
-    buckets = np.nanpercentile(a, pctiles)
+    buckets = np.asarray(np.nanpercentile(a, pctiles))
     conditions: list[Any] = []
     for i, bucket in enumerate(buckets[:-1]):
         if buckets[i] == buckets[i + 1]:
@@ -149,7 +149,7 @@ class MeanWithCI:
     Computes mean (or median) and optionally confidence intervals for plotting
     """
 
-    def __init__(self, mean_func: Callable[[np.ndarray], np.ndarray] = np.nanmean, ci_level: int = 0) -> None:  # type: ignore
+    def __init__(self, mean_func: Callable[[np.ndarray], Any] = np.nanmean, ci_level: int = 0) -> None:
         """
         Args:
             mean: The function to compute ci for
@@ -211,7 +211,7 @@ class SimpleDetailTable:
         self.colnames = colnames
         self.float_format = float_format
         self.min_rows = min_rows
-        self.copy_to_clipboard = True
+        self.copy_to_clipboard = copy_to_clipboard
 
     def __call__(self, detail_widget: widgets.Widget, data: pl.DataFrame, debug=False) -> None:
         """
@@ -290,12 +290,6 @@ def _lighten_color(r: int, g: int, b: int) -> tuple[int, int, int]:
     return rgb
 
 
-def foo(name, old, new):
-    import datetime
-
-    print(f"hello: {datetime.datetime.now()} {name} {old} {new}")
-
-
 class LineGraphWithDetailDisplay:
     """
     Draws line graphs and also includes a detail pane.
@@ -304,8 +298,8 @@ class LineGraphWithDetailDisplay:
 
     def __init__(
         self,
-        display_detail_func: DetailDisplayType = SimpleDetailTable(),
-        line_configs: dict[str, LineConfig] = {},
+        display_detail_func: DetailDisplayType | None = None,
+        line_configs: dict[str, LineConfig] | None = None,
         title: str | None = None,
         hovertemplate: str | None = None,
         debug=False,
@@ -317,8 +311,8 @@ class LineGraphWithDetailDisplay:
             title: Title of the graph. Default None
             hovertemplate: What to display when we hover over a point on the graph.  See plotly hovertemplate
         """
-        self.display_detail_func = display_detail_func
-        self.line_configs = line_configs
+        self.display_detail_func = display_detail_func or SimpleDetailTable()
+        self.line_configs = {} if line_configs is None else line_configs
         self.title = title
         self.hovertemplate = hovertemplate
         self.debug = debug
@@ -440,12 +434,12 @@ class InteractivePlot:
         self,
         data: pl.DataFrame,
         labels: dict[str, str] | None = None,
-        transform_func: DataFrameTransformFuncType = SimpleTransform(),
+        transform_func: DataFrameTransformFuncType | None = None,
         create_selection_widgets_func: CreateSelectionWidgetsFunctype = create_selection_dropdowns,
         dim_filter_func: DimensionFilterType = simple_dimension_filter,
         data_filter_func: DataFilterType = simple_data_filter,
-        stat_func: StatFuncType = MeanWithCI(),
-        plot_func: PlotFuncType = LineGraphWithDetailDisplay(),
+        stat_func: StatFuncType | None = None,
+        plot_func: PlotFuncType | None = None,
         display_form_func: DisplayFormFuncType = display_form,
         debug=False,
     ) -> None:
@@ -467,15 +461,15 @@ class InteractivePlot:
             debug: Dont clear forms if this is true so we can see print output
         """
         self.data = data
-        self.transform_func = transform_func
+        self.transform_func = transform_func or SimpleTransform()
         self.create_selection_widgets_func = create_selection_widgets_func
         if labels is None:
             labels = {}
         self.labels = labels
         self.dim_filter_func = dim_filter_func
         self.data_filter_func = data_filter_func
-        self.stat_func = stat_func
-        self.plot_func = plot_func
+        self.stat_func = stat_func or MeanWithCI()
+        self.plot_func = plot_func or LineGraphWithDetailDisplay()
         self.display_form_func = display_form_func
         self.selection_widgets: dict[str, Any] = {}
         self.debug = debug

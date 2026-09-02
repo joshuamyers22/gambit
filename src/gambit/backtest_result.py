@@ -265,7 +265,7 @@ class BacktestResult:
             _fsync_directory(temporary_path)
             os.replace(temporary_path, destination_path)
             _fsync_directory(destination_path.parent)
-        except BaseException:
+        except BaseException:  # cleanup must also run for cancellation and interpreter exit
             if temporary_path.exists():
                 for child in temporary_path.iterdir():
                     child.unlink()

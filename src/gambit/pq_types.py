@@ -9,7 +9,7 @@ import types
 from dataclasses import dataclass, field
 from enum import Enum
 from types import SimpleNamespace
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import numpy as np
 
@@ -17,6 +17,11 @@ from gambit.instruments import InstrumentSpec
 from gambit.pq_utils import assert_, get_child_logger
 
 _logger = get_child_logger(__name__)
+
+
+def _python_datetime(value: np.datetime64) -> datetime.datetime:
+    """Convert a NumPy timestamp for human-readable representations."""
+    return cast(datetime.datetime, value.astype("datetime64[us]").astype(datetime.datetime))
 
 
 @dataclass
@@ -340,7 +345,7 @@ class MarketOrder(Order):
             raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
 
     def __repr__(self):
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         return (
             f"{self.contract.symbol} {timestamp:%Y-%m-%d %H:%M:%S} qty: {self.qty} {self.reason_code}"
             f" {_format(self.properties)} {self.status}"
@@ -356,7 +361,7 @@ class LimitOrder(Order):
             raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
 
     def __repr__(self) -> str:
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         symbol = self.contract.symbol if self.contract else ""
         return (
             f"{symbol} {timestamp:%Y-%m-%d %H:%M:%S} qty: {self.qty} lmt_prc: {self.limit_price}"
@@ -379,7 +384,7 @@ class RollOrder(Order):
             raise ValueError(f"order quantities must be non-zero and finite: {self.close_qty} {self.reopen_qty}")
 
     def __repr__(self) -> str:
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         symbol = self.contract.symbol if self.contract else ""
         return (
             f"{symbol} {timestamp:%Y-%m-%d %H:%M:%S} close_qty: {self.close_qty} reopen_qty: {self.reopen_qty}"
@@ -407,7 +412,7 @@ class StopLimitOrder(Order):
             raise ValueError(f"order qty must be finite and nonzero: {self.qty}")
 
     def __repr__(self) -> str:
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         symbol = self.contract.symbol if self.contract else ""
         return (
             f"{symbol} {timestamp:%Y-%m-%d %H:%M:%S} qty: {self.qty} trigger_prc: {self.trigger_price} limit_prc: {self.limit_price}"
@@ -431,7 +436,7 @@ class VWAPOrder(Order):
     vwap_end_time: np.datetime64
 
     def __repr__(self):
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         return (
             f"{self.contract.symbol} {timestamp:%Y-%m-%d %H:%M:%S} "
             f"limit: {self.vwap_stop:.3f} end: {self.vwap_end_time} qty: {self.qty}"
@@ -492,7 +497,7 @@ class Trade:
         >>> print(Trade(contract, order, np.datetime64('2019-01-01 15:00'), 100, 10.2130000, 0.01))
         IBM 2019-01-01 15:00:00 qty: 100 prc: 10.213 fee: 0.01 order: IBM 2019-01-01 14:59:00 qty: 100 OrderStatus.OPEN
         """
-        timestamp = self.timestamp.astype("datetime64[us]").astype(datetime.datetime)
+        timestamp = _python_datetime(self.timestamp)
         fee = f"fee: {self.fee:.6g}" if self.fee else ""
         commission = f"commission: {self.commission:.6g}" if self.commission else ""
         return (

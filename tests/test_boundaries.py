@@ -5,6 +5,7 @@ import pytest
 
 from gambit.account import Account
 from gambit.boundaries import BacktestCallbackError
+from gambit.callback_contracts import validate_market_trades, validate_rule_orders
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
@@ -101,3 +102,25 @@ def test_invalid_market_simulator_output_is_chained_before_account_mutation() ->
 
     assert isinstance(raised.value.__cause__, TypeError)
     assert strategy.trades() == []
+
+
+def test_callback_contracts_normalize_rule_orders_without_strategy_state() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("pure-rule-contract")
+    order = MarketOrder(contract=Contract.create("PURE-RULE", group), timestamp=timestamp, qty=1.0)
+
+    result = validate_rule_orders((order,), group)
+
+    assert result == [order]
+
+
+def test_callback_contracts_reject_trade_for_unknown_order_without_account_mutation() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("pure-trade-contract")
+    contract = Contract.create("PURE-TRADE", group)
+    open_order = MarketOrder(contract=contract, timestamp=timestamp, qty=1.0)
+    unknown_order = MarketOrder(contract=contract, timestamp=timestamp, qty=1.0)
+    trade = Trade(contract, unknown_order, timestamp, 1.0, 100.0)
+
+    with pytest.raises(ValueError, match="outside the open order set"):
+        validate_market_trades([trade], [open_order], timestamp)

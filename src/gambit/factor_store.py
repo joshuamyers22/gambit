@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from collections.abc import Mapping as MappingABC
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,6 +49,16 @@ class FactorStoreError(RuntimeError):
 
 class FactorNodeCacheMiss(FactorStoreError):
     """Raised only when a valid node key has no cache-index entry."""
+
+
+class _MigrationPlanEntry(TypedDict):
+    """Validated work item used only by the in-process v3 migration planner."""
+
+    node_key: str
+    generation: str
+    segment_versions: list[int]
+    estimated_write_bytes: int
+    leased: bool
 
 
 class FactorGenerationLease(MappingABC[str, Any]):
@@ -268,11 +278,11 @@ def publish_factor_node(
     return publish_generation(root, identity.node_key, columns, identity=identity)
 
 
-def _legacy_node_plan(store: Path, selected_node_keys: set[str] | None) -> list[dict[str, object]]:
+def _legacy_node_plan(store: Path, selected_node_keys: set[str] | None) -> list[_MigrationPlanEntry]:
     nodes = store / "nodes"
     if not nodes.is_dir() or nodes.is_symlink():
         raise FactorStoreError("factor node index is missing or invalid")
-    plan: list[dict[str, object]] = []
+    plan: list[_MigrationPlanEntry] = []
     for pointer in sorted(nodes.iterdir()):
         node_key = pointer.name
         if node_key.startswith(".") or (selected_node_keys is not None and node_key not in selected_node_keys):
@@ -396,7 +406,7 @@ def migrate_factor_nodes_to_v3(
         keys_to_plan = sorted(path.name for path in nodes_root.iterdir() if not path.name.startswith("."))
     else:
         keys_to_plan = sorted(selected)
-    plan: list[dict[str, object]] = []
+    plan: list[_MigrationPlanEntry] = []
     failures: list[dict[str, str]] = []
     for node_key in keys_to_plan:
         try:
@@ -415,10 +425,10 @@ def migrate_factor_nodes_to_v3(
     budget = max(0, free_bytes - reserve_free_bytes)
     if max_additional_bytes is not None:
         budget = min(budget, max_additional_bytes)
-    planned: list[dict[str, object]] = []
+    planned: list[_MigrationPlanEntry] = []
     planned_bytes = 0
     for entry in plan:
-        write_bytes = int(entry["estimated_write_bytes"])
+        write_bytes = entry["estimated_write_bytes"]
         if max_nodes is not None and len(planned) >= max_nodes:
             break
         if planned_bytes + write_bytes > budget:
@@ -512,7 +522,7 @@ def migrate_factor_nodes_to_v3(
             store,
             migration_nodes=len(migrated),
             migration_bytes=sum(
-                int(entry["estimated_write_bytes"])
+                entry["estimated_write_bytes"]
                 for entry in planned
                 if entry["node_key"] in migrated_node_keys
             ),

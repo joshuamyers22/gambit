@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 if TYPE_CHECKING:
     from gambit.risk_reporting import StressScenario
+
+
+def _to_nanosecond_timestamp(value: np.datetime64) -> np.datetime64:
+    """Normalize timestamp precision at the NumPy typing boundary."""
+    return cast(np.datetime64, value.astype("datetime64[ns]"))
 
 
 class MissingDataPolicy(str, Enum):
@@ -38,17 +43,21 @@ class CalculationContext:
     provenance_reference: str | None = None
 
     def __post_init__(self) -> None:
-        valuation_time = np.datetime64(self.valuation_time, "ns")
+        valuation_time = _to_nanosecond_timestamp(self.valuation_time)
         if np.isnat(valuation_time):
             raise ValueError("valuation_time cannot be NaT")
-        market_data_as_of = valuation_time if self.market_data_as_of is None else np.datetime64(self.market_data_as_of, "ns")
+        market_data_as_of = (
+            valuation_time
+            if self.market_data_as_of is None
+            else _to_nanosecond_timestamp(self.market_data_as_of)
+        )
         if np.isnat(market_data_as_of):
             raise ValueError("market_data_as_of cannot be NaT")
         if not self.allow_lookahead and market_data_as_of > valuation_time:
             raise ValueError("market_data_as_of cannot be after valuation_time unless look-ahead is enabled")
 
-        start = None if self.start_time is None else np.datetime64(self.start_time, "ns")
-        end = None if self.end_time is None else np.datetime64(self.end_time, "ns")
+        start = None if self.start_time is None else _to_nanosecond_timestamp(self.start_time)
+        end = None if self.end_time is None else _to_nanosecond_timestamp(self.end_time)
         if start is not None and np.isnat(start) or end is not None and np.isnat(end):
             raise ValueError("calculation range cannot contain NaT")
         if start is not None and end is not None and start > end:
@@ -68,7 +77,9 @@ class CalculationContext:
 
     @classmethod
     def coerce(cls, value: CalculationContext | np.datetime64) -> CalculationContext:
-        return value if isinstance(value, cls) else cls(np.datetime64(value))
+        if isinstance(value, cls):
+            return value
+        return cls(cast(np.datetime64, value))
 
     def snapshot(self) -> dict[str, object]:
         return {

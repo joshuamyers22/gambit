@@ -9,7 +9,7 @@ import types
 from collections import defaultdict
 from pprint import pformat
 from types import SimpleNamespace
-from typing import Any, Callable, Sequence, Union
+from typing import Any, Callable, Sequence, TypeAlias, Union, cast
 
 import numpy as np
 import polars as pl
@@ -18,6 +18,7 @@ from gambit.account import Account
 from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
 from gambit.boundaries import BacktestCallbackError, validate_strategy_timestamps
 from gambit.calculation import CalculationContext
+from gambit.callback_contracts import validate_market_trades, validate_rule_orders
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.market_data import MarketDataValidationReport
@@ -30,12 +31,12 @@ from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage
 
 StrategyContextType = SimpleNamespace
 
-PriceFunctionType = Callable[[Contract, np.ndarray, int, StrategyContextType], float]
+PriceFunctionType = Callable[[Contract, np.ndarray, int, StrategyContextType | None], float]
 
-IndicatorType = IndicatorStage
-SignalType = SignalStage
-RuleType = RuleStage
-MarketSimulatorType = ExecutionStage
+IndicatorType: TypeAlias = IndicatorStage
+SignalType: TypeAlias = SignalStage
+RuleType: TypeAlias = RuleStage
+MarketSimulatorType: TypeAlias = ExecutionStage
 
 DateRangeType = Union[tuple[str, str], tuple[np.datetime64, np.datetime64]]
 
@@ -618,7 +619,7 @@ class Strategy:
             self._run_iteration(i)
 
         if self.run_final_calc:
-            self.account.calc(self.timestamps[-1])
+            self.account.calc(cast(np.datetime64, self.timestamps[-1]))
 
     def _run_iteration(self, i: int) -> None:
         # first execute open orders so that positions get updated before running rules
@@ -640,7 +641,11 @@ class Strategy:
 
             accepted_orders: list[Order] = []
             for order in orders:
-                context = RiskContext(self.account, self.timestamps[i], [*self._current_orders, *accepted_orders])
+                context = RiskContext(
+                    self.account,
+                    cast(np.datetime64, self.timestamps[i]),
+                    [*self._current_orders, *accepted_orders],
+                )
                 decision = decide_order(order, context, self.risk_policies)
                 self.order_decisions.append(decision)
                 if decision.status is DecisionStatus.ACCEPTED:
@@ -794,7 +799,7 @@ class Strategy:
             position_filter = self.position_filters[rule_name]
 
             if position_filter is not None:
-                curr_pos = self.account.position(contract_group, self.timestamps[idx])
+                curr_pos = self.account.position(contract_group, cast(np.datetime64, self.timestamps[idx]))
                 if position_filter == "zero" and not math.isclose(curr_pos, 0):
                     return []
                 elif position_filter == "nonzero" and math.isclose(curr_pos, 0):
@@ -804,29 +809,19 @@ class Strategy:
                 elif position_filter == "negative" and (curr_pos > 0 or math.isclose(curr_pos, 0)):
                     return []
 
-            orders = rule_function(
+            orders = validate_rule_orders(
+                rule_function(
+                    contract_group,
+                    idx,
+                    self.timestamps,
+                    indicator_values,
+                    signal_values,
+                    self.account,
+                    self._current_orders,
+                    self.strategy_context,
+                ),
                 contract_group,
-                idx,
-                self.timestamps,
-                indicator_values,
-                signal_values,
-                self.account,
-                self._current_orders,
-                self.strategy_context,
             )
-            if not isinstance(orders, Sequence) or isinstance(orders, (str, bytes)):
-                raise TypeError("rule callback must return a sequence of Order objects")
-            for order in orders:
-                if not isinstance(order, Order):
-                    raise TypeError(f"rule callback returned a non-Order value: {order!r}")
-                if order.contract.contract_group is not contract_group:
-                    raise ValueError(
-                        f"rule returned {order.contract.symbol} outside contract group {contract_group.name}"
-                    )
-                registered = contract_group.contracts.get(order.contract.symbol)
-                if registered is not order.contract:
-                    raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
-            orders = list(orders)
         except Exception as exc:
             raise BacktestCallbackError(
                 f"rule callback failed at index {idx} for contract group {contract_group.name}: {rule_function!r}"
@@ -861,26 +856,18 @@ class Strategy:
             try:
                 self._update_current_orders()
 
-                trades = market_sim_function(
+                trades = validate_market_trades(
+                    market_sim_function(
+                        self._current_orders,
+                        i,
+                        self.timestamps,
+                        self.indicator_values,
+                        self.signal_values,
+                        self.strategy_context,
+                    ),
                     self._current_orders,
-                    i,
-                    self.timestamps,
-                    self.indicator_values,
-                    self.signal_values,
-                    self.strategy_context,
+                    self.timestamps[i],
                 )
-
-                if not isinstance(trades, Sequence) or isinstance(trades, (str, bytes)):
-                    raise TypeError("market simulator must return a sequence of Trade objects")
-                for trade in trades:
-                    if not isinstance(trade, Trade):
-                        raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
-                    if not any(trade.order is order for order in self._current_orders):
-                        raise ValueError("market simulator returned a trade for an order outside the open order set")
-                    if trade.contract is not trade.order.contract:
-                        raise ValueError("market simulator trade contract does not match its order")
-                    if trade.timestamp != self.timestamps[i]:
-                        raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
 
                 if self.log_trades and len(trades) > 0:
                     if len(trades) > 1:

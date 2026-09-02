@@ -238,7 +238,7 @@ class TradingOverrideBook:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary_name, path)
-        except BaseException:
+        except BaseException:  # cleanup must also run for cancellation and interpreter exit
             Path(temporary_name).unlink(missing_ok=True)
             raise
 

@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 
 import numpy as np
+import polars as pl
 import pytest
 
 from gambit import _io
 from gambit.account import Account
-from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
+from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
 
@@ -90,6 +91,15 @@ def test_optimizer_cost_order_names_match_sort_direction():
 
     assert [item.cost for item in optimizer.experiment_list("lowest_cost")] == [-2.0, 1.0, 4.0]
     assert [item.cost for item in optimizer.experiment_list("highest_cost")] == [4.0, 1.0, -2.0]
+
+
+def test_optimizer_empty_results_and_auxiliary_columns_are_deterministic():
+    optimizer = Optimizer("empty", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
+
+    assert optimizer.df_experiments().schema == {"cost": pl.Float64}
+    assert flatten_keys(
+        [Experiment({"x": 1}, 1.0, {"zeta": 2.0}), Experiment({"x": 2}, 2.0, {"alpha": 3.0})]
+    ) == ["alpha", "zeta"]
 
 
 def test_optimizer_runs_with_spawn_and_bounded_pending_work():

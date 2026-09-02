@@ -1,0 +1,29 @@
+import polars as pl
+
+from gambit.interactive_plot import InteractivePlot, LineConfig, LineGraphWithDetailDisplay, SimpleDetailTable
+
+
+def test_detail_table_respects_copy_to_clipboard_option() -> None:
+    table = SimpleDetailTable(copy_to_clipboard=False)
+
+    assert table.copy_to_clipboard is False
+
+
+def test_line_graph_default_configuration_is_not_shared() -> None:
+    first = LineGraphWithDetailDisplay()
+    second = LineGraphWithDetailDisplay()
+
+    first.line_configs["first"] = LineConfig()
+
+    assert second.line_configs == {}
+
+
+def test_interactive_plot_default_services_are_not_shared() -> None:
+    data = pl.DataFrame({"x": [1], "y": [2], "series": ["a"]})
+
+    first = InteractivePlot(data)
+    second = InteractivePlot(data)
+
+    assert first.transform_func is not second.transform_func
+    assert first.stat_func is not second.stat_func
+    assert first.plot_func is not second.plot_func

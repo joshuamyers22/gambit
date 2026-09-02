@@ -9,7 +9,7 @@
 # $$_ %%checkall
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 import numpy as np
 import polars as pl
@@ -219,6 +219,7 @@ class StrategyBuilder:
         Generates a strategy object that we can then run and evaluate
         """
         assert_(self.price_function is not None, "price function must be set")
+        price_function = cast(PriceFunctionType, self.price_function)
         if self.timestamps is None:
             assert_(self.data is not None, "data cannot be None if timestamps is not set")
         _timestamps = (
@@ -232,7 +233,7 @@ class StrategyBuilder:
         strat = Strategy(
             _timestamps,
             _contract_groups,
-            self.price_function,  # type: ignore
+            price_function,
             self.starting_equity,
             self.pnl_calc_time,
             self.trade_lag,
@@ -258,7 +259,7 @@ class StrategyBuilder:
             strat.add_risk_policy(risk_policy)
 
         if not len(self.market_sims):
-            strat.add_market_sim(SimpleMarketSimulator(self.price_function))  # type: ignore
+            strat.add_market_sim(SimpleMarketSimulator(price_function))
         else:
             for market_sim in self.market_sims:
                 strat.add_market_sim(market_sim)

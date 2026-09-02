@@ -103,7 +103,51 @@ ignore = ["E501", "E701", "E741"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["setup.py", "src/gambit/account.py", "tests/test_regressions.py"]
+files = [
+  "setup.py",
+  "src/gambit/__init__.py",
+  "src/gambit/account.py",
+  "src/gambit/backtest_result.py",
+  "src/gambit/boundaries.py",
+  "src/gambit/calculation.py",
+  "src/gambit/callback_contracts.py",
+  "src/gambit/configuration.py",
+  "src/gambit/control_plane.py",
+  "src/gambit/covariance_risk.py",
+  "src/gambit/currency.py",
+  "src/gambit/factor_admission.py",
+  "src/gambit/factor_cache.py",
+  "src/gambit/factor_cli.py",
+  "src/gambit/factor_dag.py",
+  "src/gambit/factor_device.py",
+  "src/gambit/factor_identity.py",
+  "src/gambit/factor_metrics.py",
+  "src/gambit/factor_operations.py",
+  "src/gambit/factor_store.py",
+  "src/gambit/holiday_calendars.py",
+  "src/gambit/execution_costs.py",
+  "src/gambit/evaluator.py",
+  "src/gambit/instruments.py",
+  "src/gambit/interactive_plot.py",
+  "src/gambit/market_data.py",
+  "src/gambit/markets.py",
+  "src/gambit/optimize.py",
+  "src/gambit/pq_types.py",
+  "src/gambit/portfolio.py",
+  "src/gambit/position_sizing.py",
+  "src/gambit/pq_io.py",
+  "src/gambit/pq_utils.py",
+  "src/gambit/risk.py",
+  "src/gambit/risk_measures.py",
+  "src/gambit/risk_reporting.py",
+  "src/gambit/stages.py",
+  "src/gambit/strategy.py",
+  "src/gambit/strategy_builder.py",
+  "src/gambit/strategy_components.py",
+  "src/gambit/universe.py",
+  "src/gambit/var_risk.py",
+  "tests/test_regressions.py",
+]
 mypy_path = "src"
 ignore_missing_imports = true
 follow_imports = "skip"

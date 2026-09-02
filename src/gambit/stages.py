@@ -22,6 +22,7 @@ class IndicatorStage(Protocol):
         timestamps: np.ndarray,
         parent_values: SimpleNamespace,
         strategy_context: SimpleNamespace,
+        /,
     ) -> np.ndarray: ...
 
 
@@ -34,6 +35,7 @@ class SignalStage(Protocol):
         indicator_values: SimpleNamespace,
         parent_values: SimpleNamespace,
         strategy_context: SimpleNamespace,
+        /,
     ) -> np.ndarray: ...
 
 
@@ -49,6 +51,7 @@ class RuleStage(Protocol):
         account: Account,
         open_orders: Sequence[Order],
         strategy_context: SimpleNamespace,
+        /,
     ) -> list[Order]: ...
 
 
@@ -62,6 +65,7 @@ class ExecutionStage(Protocol):
         indicators: dict[str, SimpleNamespace],
         signals: dict[str, SimpleNamespace],
         strategy_context: SimpleNamespace,
+        /,
     ) -> list[Trade]: ...
 
 

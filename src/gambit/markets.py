@@ -89,7 +89,7 @@ class EminiFuture:
         month = curr_date.month
         day = curr_date.day
         third_friday_ = EminiFuture.calendar.third_friday_of_month(month, year)
-        third_friday: datetime.date = third_friday_.astype(datetime.date)  # type: ignore
+        third_friday: datetime.date = third_friday_.astype(datetime.date)
         if month < 3 or (month == 3 and day < third_friday.day):
             month_str = "H"
         elif month < 6 or (month == 6 and day < third_friday.day):
@@ -144,7 +144,7 @@ class EminiFuture:
         year = int(year_str)
         year_base = 2020 if year < 5 else 2010
         year = year_base + int(year_str)
-        expiry_date = EminiFuture.calendar.third_friday_of_month(month, year).astype(datetime.date)
+        expiry_date: datetime.date = EminiFuture.calendar.third_friday_of_month(month, year).astype(datetime.date)
         return np.datetime64(expiry_date) + np.timedelta64(8 * 60 + 30, "m")
 
 

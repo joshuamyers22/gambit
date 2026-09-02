@@ -7,8 +7,8 @@ import concurrent.futures
 import itertools
 import multiprocessing as mp
 import os
-from collections.abc import Sequence
-from typing import Any, Callable, Generator
+from collections.abc import Generator, Iterator, Sequence
+from typing import Any, Callable, TypeAlias
 
 import numpy as np
 import polars as pl
@@ -16,6 +16,9 @@ import polars as pl
 from gambit.pq_utils import get_child_logger, has_display
 
 _logger = get_child_logger(__name__)
+
+Suggestion: TypeAlias = dict[str, Any]
+SuggestionSource: TypeAlias = Iterator[Suggestion] | Generator[Suggestion, tuple[float, dict[str, float]], None]
 
 
 def _plotting_modules():
@@ -37,7 +40,7 @@ def flatten_keys(experiments: Sequence[Any]) -> list[str]:
     keys = set()
     for exp in experiments:
         keys.update(list(exp.other_costs.keys()))
-    return list(keys)
+    return sorted(keys)
 
 
 class Experiment:
@@ -81,7 +84,7 @@ class Optimizer:
     def __init__(
         self,
         name: str,
-        generator: Generator[dict[str, Any], tuple[float, dict[str, float]], None],
+        generator: SuggestionSource,
         cost_func: Callable[[dict[str, Any]], tuple[float, dict[str, float]]],
         max_processes: int | None = None,
         process_start_method: str = "spawn",
@@ -117,7 +120,9 @@ class Optimizer:
                 if suggestion is None:
                     continue
                 cost, other_costs = self.cost_func(suggestion)
-                self.generator.send((cost, other_costs))
+                send_feedback = getattr(self.generator, "send", None)
+                if send_feedback is not None:
+                    send_feedback((cost, other_costs))
                 self.experiments.append(Experiment(suggestion, cost, other_costs))
         except StopIteration:
             # Exhausted generator
@@ -157,7 +162,7 @@ class Optimizer:
                             _logger.exception(worker_error, exc_info=error)
                             continue
                         self.experiments.append(Experiment(suggestion, cost, other_costs))
-            except BaseException:
+            except BaseException:  # pending workers must be cancelled on interruption or interpreter exit
                 for future in pending:
                     future.cancel()
                 executor.shutdown(wait=True, cancel_futures=True)
@@ -197,7 +202,7 @@ class Optimizer:
         Returns a dataframe containing experiment data, sorted by sort_column (default "cost")
         """
         if len(self.experiments) == 0:
-            return None
+            return pl.DataFrame(schema={"cost": pl.Float64})
         pc_keys = flatten_keys(self.experiments)
         # pc_keys = list(self.experiments[0].other_costs.keys())
         sugg_keys = list(self.experiments[0].suggestion.keys())
@@ -306,8 +311,8 @@ class Optimizer:
         for i, metric in enumerate(metrics):
             zmatrix = _z[i]
             row = i + 1
-            min_z = np.nanmin(zmatrix)
-            max_z = np.nanmax(zmatrix)
+            min_z: float = float(np.nanmin(zmatrix))
+            max_z: float = float(np.nanmax(zmatrix))
 
             zero: float = np.nan
             if np.sign(min_z) != np.sign(max_z):

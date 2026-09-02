@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import reduce
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -68,7 +68,10 @@ class Portfolio:
             self.strategies[name].run_signals()
 
     def _generate_order_iterations(
-        self, strategies: Sequence[Strategy], start_date: np.datetime64 = NAT, end_date: np.datetime64 = NAT
+        self,
+        strategies: Sequence[Strategy] | None,
+        start_date: np.datetime64 = NAT,
+        end_date: np.datetime64 = NAT,
     ) -> tuple[np.ndarray, Sequence[tuple[Strategy, np.ndarray]]]:
         """
         >>> class Strategy:
@@ -87,7 +90,7 @@ class Portfolio:
         >>> assert(all(orders_iter[1][1] == np.array([0, 0, 1, 2])))
         """
         if strategies is None:
-            strategies = self.strategies.values
+            strategies = tuple(self.strategies.values())
 
         timestamps_list = [strategy.timestamps for strategy in strategies]
 
@@ -98,10 +101,10 @@ class Portfolio:
         if not np.isnat(end_date):
             all_timestamps = all_timestamps[(all_timestamps <= end_date)]
 
-        iterations = []
+        iterations: list[tuple[Strategy, np.ndarray]] = []
 
         for strategy in strategies:
-            indices = np.searchsorted(strategy.timestamps, all_timestamps)
+            indices = np.asarray(np.searchsorted(strategy.timestamps, all_timestamps))
             iterations.append((strategy, indices))
             strategy._generate_order_iterations(start_date=start_date, end_date=end_date)
 
@@ -123,13 +126,6 @@ class Portfolio:
 
         strategies = [self.strategies[key] for key in strategy_names]
 
-        min_date = min([strategy.timestamps[0] for strategy in strategies])
-        if start_date:
-            min_date = max(min_date, start_date)
-        max_date = max([strategy.timestamps[-1] for strategy in strategies])
-        if end_date:
-            max_date = min(max_date, end_date)
-
         _logger.info(f"generating order iterations: {start_date} {end_date}")
 
         all_timestamps, iterations = self._generate_order_iterations(strategies, start_date, end_date)
@@ -139,11 +135,11 @@ class Portfolio:
                 # index into strategy timestamps
                 idx = indices[i]
                 if idx != len(strategy.timestamps) and strategy.timestamps[idx] == timestamp:
-                    strategy._run_iteration(idx)
+                    strategy._run_iteration(int(idx))
 
         # Make sure we calc to the end for each strategy
         for strategy in strategies:
-            strategy.account.calc(strategy.timestamps[-1])
+            strategy.account.calc(cast(np.datetime64, strategy.timestamps[-1]))
 
     def run(
         self,

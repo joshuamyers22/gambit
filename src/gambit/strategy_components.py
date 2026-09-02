@@ -9,7 +9,7 @@
 import math
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Callable, Sequence
+from typing import Callable, Sequence, cast
 
 import numpy as np
 
@@ -21,6 +21,11 @@ from gambit.pq_utils import assert_, get_child_logger, np_indexof_sorted
 from gambit.strategy import PriceFunctionType, StrategyContextType
 
 _logger = get_child_logger(__name__)
+
+
+def _timestamp_at(timestamps: np.ndarray, index: int) -> np.datetime64:
+    """Return a scalar timestamp from an array with an explicit typing boundary."""
+    return cast(np.datetime64, timestamps[index])
 
 
 @dataclass
@@ -122,7 +127,7 @@ class PriceFuncArrays:
 
     def __call__(self, contract: Contract, timestamps: np.ndarray, i: int, context: StrategyContextType) -> float:
         price: float = 0.0
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         if contract.is_basket():
             for _contract, ratio in contract.components:
                 price += (
@@ -165,7 +170,7 @@ class PriceFuncArrayDict:
 
     def __call__(self, contract: Contract, timestamps: np.ndarray, i: int, context: StrategyContextType) -> float:
         price: float = 0.0
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         if contract.is_basket():
             for _contract, ratio in contract.components:
                 price += (
@@ -203,7 +208,7 @@ class PriceFuncDict:
         self.price_dict = price_dict
 
     def __call__(self, contract: Contract, timestamps: np.ndarray, i: int, context: StrategyContextType) -> float:
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         price: float = 0.0
         if contract.is_basket():
             for _contract, ratio in contract.components:
@@ -282,7 +287,7 @@ class SimpleMarketSimulator:
     ) -> list[Trade]:
         """TODO: code for stop orders"""
         trades = []
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         for order in orders:
             if not isinstance(order, MarketOrder) and not isinstance(order, LimitOrder):
                 continue
@@ -375,7 +380,7 @@ class PercentOfEquityTradingRule:
         strategy_context: StrategyContextType,
     ) -> list[Order]:
 
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
 
         contracts = contract_group.get_contracts()
         orders: list[Order] = []
@@ -472,9 +477,9 @@ class VWAPEntryRule:
         current_orders: Sequence[Order],
         strategy_context: StrategyContextType,
     ) -> list[Order]:
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         if self.single_entry_per_day:
-            date = timestamp.astype("M8[D]")
+            date = cast(np.datetime64, timestamp.astype("M8[D]"))
             trades = account.get_trades_for_date(contract_group.name, date)
             if len(trades):
                 return []
@@ -548,7 +553,7 @@ class VWAPCloseRule:
         current_orders: Sequence[Order],
         strategy_context: StrategyContextType,
     ) -> list[Order]:
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         for order in current_orders:
             if order.contract.contract_group == contract_group and order.is_open():
                 return []
@@ -558,7 +563,7 @@ class VWAPCloseRule:
             # assert len(positions) == 1, f'expected 1 positions, got: {positions}'
             vwap_end_time = timestamp + np.timedelta64(self.vwap_minutes, "m")
             order = VWAPOrder(
-                contract=contract,  # type: ignore
+                contract=contract,
                 timestamp=timestamp,
                 vwap_end_time=vwap_end_time,
                 qty=-qty,
@@ -605,19 +610,19 @@ class VWAPMarketSimulator:
         strategy_context: SimpleNamespace,
     ) -> list[Trade]:
         trades = []
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         for order in orders:
             if not isinstance(order, VWAPOrder):
                 continue
             cg = order.contract.contract_group
             inds = indicators.get(cg)
             assert_(inds is not None, f"indicators not found for contract group: {cg} {timestamp} {i}")
-            price_ind = getattr(inds, self.price_indicator)  # type: ignore
+            price_ind = getattr(inds, self.price_indicator)
             assert_(
                 price_ind is not None,
                 f"indicator: {self.price_indicator} not found for contract group: {cg} {timestamp} {i}",
             )
-            volume_ind = getattr(inds, self.volume_indicator)  # type: ignore
+            volume_ind = getattr(inds, self.volume_indicator)
             assert_(
                 volume_ind is not None,
                 f"indicator: {self.volume_indicator} not found for contract group: {cg} {timestamp} {i}",
@@ -657,9 +662,12 @@ class VWAPMarketSimulator:
             assert_(vwap >= 0)
             fill_qty = order.qty
             if end_order:
-                fill_fraction = (timestamp - order.timestamp) / (order.vwap_end_time - order.timestamp)
+                timestamp_ns = int(timestamp.astype("datetime64[ns]").astype(np.int64))
+                order_timestamp_ns = int(order.timestamp.astype("datetime64[ns]").astype(np.int64))
+                vwap_end_ns = int(order.vwap_end_time.astype("datetime64[ns]").astype(np.int64))
+                fill_fraction = (timestamp_ns - order_timestamp_ns) / (vwap_end_ns - order_timestamp_ns)
                 fill_fraction = min(fill_fraction, 1)
-                fill_qty = np.fix(order.qty * fill_fraction)
+                fill_qty = float(np.fix(order.qty * fill_fraction))
             order.fill(fill_qty)
             order.cancel()
             trade = Trade(order.contract, order, timestamp, fill_qty, vwap)
@@ -766,8 +774,8 @@ class BracketOrderEntryRule:
         current_orders: Sequence[Order],
         strategy_context: StrategyContextType,
     ) -> list[Order]:
-        timestamp = timestamps[i]
-        date = timestamp.astype("M8[D]")
+        timestamp = _timestamp_at(timestamps, i)
+        date = cast(np.datetime64, timestamp.astype("M8[D]"))
 
         contracts: list[Contract] = []
         if self.contract_filter is not None:
@@ -796,13 +804,13 @@ class BracketOrderEntryRule:
                 if len(trades):
                     continue
 
-            entry_price_est = self.price_func(contract, timestamps, i, strategy_context)  # type: ignore
+            entry_price_est = self.price_func(contract, timestamps, i, strategy_context)
             if math.isnan(entry_price_est):
                 continue
 
             stop_price = 0.0
             if self.stop_return_func is not None:
-                stop_return = self.stop_return_func(contract, timestamps, i, strategy_context)  # type: ignore
+                stop_return = self.stop_return_func(contract, timestamps, i, strategy_context)
                 assert_(stop_return < 0, f"stop_return must be negative: {stop_return} {timestamp} {contract.symbol}")
                 if stop_return > self.min_stop_return:
                     _logger.info(
@@ -838,7 +846,7 @@ class BracketOrderEntryRule:
             if math.isclose(order_qty, 0.0):
                 continue
             order = MarketOrder(
-                contract=contract,  # type: ignore
+                contract=contract,
                 timestamp=timestamp,
                 qty=order_qty,
                 reason_code=self.reason_code,
@@ -883,7 +891,7 @@ class ClosePositionExitRule:
         current_orders: Sequence[Order],
         strategy_context: StrategyContextType,
     ) -> list[Order]:
-        timestamp = timestamps[i]
+        timestamp = _timestamp_at(timestamps, i)
         positions = account.positions(contract_group, timestamp)
         orders: list[Order] = []
         for contract, qty in positions:
@@ -930,8 +938,8 @@ class StopReturnExitRule:
         context: StrategyContextType,
     ) -> list[Order]:
 
-        timestamp = timestamps[i]
-        date = timestamp.astype("M8[D]")
+        timestamp = _timestamp_at(timestamps, i)
+        date = cast(np.datetime64, timestamp.astype("M8[D]"))
         entry_prices: dict[str, float] = context.entry_prices[date]
         assert_(len(entry_prices) > 0, f"no symbols entered for: {date}")
         positions = account.positions(contract_group, timestamp)

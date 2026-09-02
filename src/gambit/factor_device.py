@@ -51,26 +51,30 @@ def inspect_factor_cache_device(
     measured_at_ns = time.time_ns()
     device_id = store.stat().st_dev
     system = platform.system()
-    unavailable = {
-        "root": resolved,
-        "measured_at_ns": measured_at_ns,
-        "device_id": device_id,
-        "platform": system,
-        "available": False,
-        "source": None,
-        "sectors_written": None,
-        "device_bytes_written": None,
-        "sector_bytes": None,
-    }
+
+    def unavailable(reason: str) -> FactorCacheDeviceTelemetry:
+        return FactorCacheDeviceTelemetry(
+            root=resolved,
+            measured_at_ns=measured_at_ns,
+            device_id=device_id,
+            platform=system,
+            available=False,
+            source=None,
+            reason=reason,
+            sectors_written=None,
+            device_bytes_written=None,
+            sector_bytes=None,
+        )
+
     if system != "Linux":
-        return FactorCacheDeviceTelemetry(**unavailable, reason="Linux sysfs block statistics are unavailable")
+        return unavailable("Linux sysfs block statistics are unavailable")
     device_link = Path(sysfs_root) / "dev" / "block" / f"{os.major(device_id)}:{os.minor(device_id)}"
     try:
         device_path = device_link.resolve(strict=True)
         stat_path = device_path / "stat"
         sectors = _linux_sectors_written(stat_path.read_text())
     except (OSError, ValueError) as error:
-        return FactorCacheDeviceTelemetry(**unavailable, reason=f"block statistics unavailable: {error}")
+        return unavailable(f"block statistics unavailable: {error}")
     sector_bytes = 512  # Linux diskstats defines sectors in 512-byte units.
     return FactorCacheDeviceTelemetry(
         root=resolved,

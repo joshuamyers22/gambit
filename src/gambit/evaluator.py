@@ -6,12 +6,18 @@ from __future__ import annotations
 import datetime
 import math
 from collections.abc import Sequence
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import numpy as np
 import polars as pl
 
 from gambit.pq_utils import PQException, assert_, has_display, infer_frequency, monotonically_increasing
+
+
+def _python_datetime(value: object) -> datetime.datetime:
+    """Convert a NumPy timestamp scalar for calendar arithmetic."""
+    timestamp = cast(np.datetime64, value)
+    return cast(datetime.datetime, timestamp.astype("datetime64[us]").astype(datetime.datetime))
 
 
 def compute_periods_per_year(timestamps: np.ndarray) -> float:
@@ -37,7 +43,7 @@ def compute_periods_per_year(timestamps: np.ndarray) -> float:
         )
     if freq == 31:
         return 12
-    return 252.0 / freq if freq != 0 else np.nan
+    return float(252.0 / freq) if freq != 0 else np.nan
 
 
 def compute_amean(returns: np.ndarray, periods_per_year: int) -> float:
@@ -53,7 +59,7 @@ def compute_amean(returns: np.ndarray, periods_per_year: int) -> float:
     """
     if not len(returns):
         return np.nan
-    return np.nanmean(returns) * periods_per_year
+    return float(np.nanmean(returns) * periods_per_year)
 
 
 def compute_num_periods(timestamps: np.ndarray, periods_per_year: float) -> float:
@@ -93,18 +99,18 @@ def compute_gmean(timestamps: np.ndarray, returns: np.ndarray, periods_per_year:
     mask = np.isfinite(returns)
     timestamps = timestamps[mask]
     returns = returns[mask]
-    assert_(np.all(returns[np.isfinite(returns)] > -1), f"found returns < -1: {returns[np.isfinite(returns) < -1]}")  # type: ignore
+    assert_(bool(np.all(returns[np.isfinite(returns)] > -1)), f"found returns < -1: {returns[np.isfinite(returns) < -1]}")
     num_periods = compute_num_periods(timestamps, periods_per_year)
     g_mean = ((1.0 + returns).prod()) ** (1.0 / num_periods)
     g_mean = np.power(g_mean, periods_per_year) - 1.0
-    return g_mean
+    return float(g_mean)
 
 
 def compute_std(returns: np.ndarray) -> float:
     """Computes standard deviation of an array of returns, ignoring nans"""
     if not len(returns):
         return np.nan
-    return np.nanstd(returns)
+    return float(np.nanstd(returns))
 
 
 def compute_sortino(returns: np.ndarray, amean: float, periods_per_year: float) -> float:
@@ -125,7 +131,7 @@ def compute_sortino(returns: np.ndarray, amean: float, periods_per_year: float) 
     normalized_rets = np.where(returns > 0.0, 0.0, returns)
     sortino_denom = np.nanstd(normalized_rets)
     sortino = np.nan if sortino_denom == 0 else amean / (sortino_denom * np.sqrt(periods_per_year))
-    return sortino
+    return float(sortino)
 
 
 def compute_sharpe(returns: np.ndarray, amean: float, periods_per_year: float) -> float:
@@ -145,7 +151,7 @@ def compute_sharpe(returns: np.ndarray, amean: float, periods_per_year: float) -
     returns = np.where((~np.isfinite(returns)), 0.0, returns)
     s = np.std(returns)
     sharpe = np.nan if s == 0 else amean / (s * np.sqrt(periods_per_year))
-    return sharpe
+    return float(sharpe)
 
 
 def compute_k_ratio(equity: np.ndarray, periods_per_year: int, halflife_years: float | None = None) -> float:
@@ -180,7 +186,7 @@ def compute_k_ratio(equity: np.ndarray, periods_per_year: int, halflife_years: f
     if halflife_years:
         halflife = halflife_years * periods_per_year
         k = math.log(0.5) / halflife
-        w = np.empty(len(equity), dtype=float)
+        w: np.ndarray = np.empty(len(equity), dtype=float)
         w = np.exp(k * t)
         w = w**2  # Statsmodels requires square of weights
         w = w[::-1]
@@ -254,8 +260,7 @@ def compute_dates_3yr(timestamps: np.ndarray) -> np.ndarray:
     """Given an array of numpy datetimes, return those that are within 3 years of the last date in the array"""
     if not len(timestamps):
         return np.array([], dtype="M8[D]")
-    last_date = timestamps[-1]
-    d = last_date.astype("datetime64[us]").astype(datetime.datetime)
+    d = _python_datetime(timestamps[-1])
     start_3yr = np.datetime64(d.replace(year=d.year - 3))
     return timestamps[timestamps > start_3yr]
 
@@ -274,8 +279,7 @@ def compute_rolling_dd_3yr(timestamps: np.ndarray, equity: np.ndarray) -> tuple[
     """Compute rolling drawdowns over the last 3 years"""
     if not len(timestamps):
         return np.array([], dtype="M8[D]"), np.array([], dtype=float)
-    last_date = timestamps[-1]
-    d = last_date.astype("datetime64[us]").astype(datetime.datetime)
+    d = _python_datetime(timestamps[-1])
     start_3yr = np.datetime64(d.replace(year=d.year - 3))
     equity = equity[timestamps >= start_3yr]
     timestamps = timestamps[timestamps >= start_3yr]
@@ -315,7 +319,7 @@ def compute_bucketed_returns(timestamps: np.ndarray, returns: np.ndarray) -> tup
     assert_(len(timestamps) == len(returns))
     if not len(timestamps):
         return [], [np.array([], dtype=float)]
-    timestamp_years = timestamps.astype("datetime64[Y]").astype(int) + 1970
+    timestamp_years: np.ndarray = timestamps.astype("datetime64[Y]").astype(int) + 1970
     years_list = np.unique(timestamp_years).tolist()
     rets_list = [returns[timestamp_years == year] for year in years_list]
 
@@ -337,9 +341,9 @@ def compute_annual_returns(
         return np.array([], dtype=int), np.array([], dtype=float)
 
     non_nan_rets = returns[np.isfinite(returns)]
-    assert_(np.all(non_nan_rets > -1), f"found returns < -1: {non_nan_rets[non_nan_rets <= -1]}")  # type: ignore
+    assert_(bool(np.all(non_nan_rets > -1)), f"found returns < -1: {non_nan_rets[non_nan_rets <= -1]}")
 
-    timestamp_years = timestamps.astype("datetime64[Y]").astype(int) + 1970
+    timestamp_years: np.ndarray = timestamps.astype("datetime64[Y]").astype(int) + 1970
     years = np.unique(timestamp_years).tolist()
     gmeans = [compute_gmean(timestamps[timestamp_years == year], returns[timestamp_years == year], periods_per_year)
               for year in years]
@@ -415,26 +419,25 @@ def handle_non_finite_returns(
     timestamps: np.ndarray, rets: np.ndarray, leading_non_finite_to_zeros: bool, subsequent_non_finite_to_zeros: bool
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    >>> np.set_printoptions(formatter={'float': '{: .6g}'.format})
     >>> timestamps = np.arange(np.datetime64('2019-01-01'), np.datetime64('2019-01-07'))
     >>> rets = np.array([np.nan, np.nan, 3, 4, np.nan, 5])
-    >>> handle_non_finite_returns(timestamps, rets, leading_non_finite_to_zeros = False, subsequent_non_finite_to_zeros = True)
-    (array(['2019-01-03', '2019-01-04', '2019-01-05', '2019-01-06'], dtype='datetime64[D]'), array([ 3,  4,  0,  5]))
-    >>> handle_non_finite_returns(timestamps, rets, leading_non_finite_to_zeros = True, subsequent_non_finite_to_zeros = False)
-    (array(['2019-01-01', '2019-01-02', '2019-01-03', '2019-01-04', '2019-01-06'], dtype='datetime64[D]'), array([ 0,  0,  3,  4,  5]))
-    >>> handle_non_finite_returns(timestamps, rets, leading_non_finite_to_zeros = False, subsequent_non_finite_to_zeros = False)
-    (array(['2019-01-01', '2019-01-02', '2019-01-03', '2019-01-04', '2019-01-06'], dtype='datetime64[D]'), array([ 0,  0,  3,  4,  5]))
+    >>> cleaned_ts, cleaned = handle_non_finite_returns(timestamps, rets.copy(), False, True)
+    >>> np.array_equal(cleaned_ts, timestamps[2:]) and np.array_equal(cleaned, [3, 4, 0, 5])
+    True
+    >>> cleaned_ts, cleaned = handle_non_finite_returns(timestamps, rets.copy(), True, False)
+    >>> np.array_equal(cleaned_ts, timestamps[[0, 1, 2, 3, 5]]) and np.array_equal(cleaned, [0, 0, 3, 4, 5])
+    True
+    >>> cleaned_ts, cleaned = handle_non_finite_returns(timestamps, rets.copy(), False, False)
+    >>> np.array_equal(cleaned_ts, timestamps[[2, 3, 5]]) and np.array_equal(cleaned, [3, 4, 5])
+    True
     >>> rets = np.array([1, 2, 3, 4, 4.5,  5])
-    >>> handle_non_finite_returns(timestamps, rets, leading_non_finite_to_zeros = False, subsequent_non_finite_to_zeros = True)
-    (array(['2019-01-01', '2019-01-02', '2019-01-03', '2019-01-04', '2019-01-05', '2019-01-06'],
-        dtype='datetime64[D]'), array([ 1,  2,  3,  4,  4.5,  5]))
+    >>> cleaned_ts, cleaned = handle_non_finite_returns(timestamps, rets.copy(), False, True)
+    >>> np.array_equal(cleaned_ts, timestamps) and np.array_equal(cleaned, rets)
+    True
     """
 
-    first_non_nan_index_ = np.ravel(np.nonzero(~np.isnan(rets)))  # type: ignore
-    if len(first_non_nan_index_):
-        first_non_nan_index = first_non_nan_index_[0]
-    else:
-        first_non_nan_index = -1
+    first_non_nan_indices = np.ravel(np.nonzero(~np.isnan(rets)))
+    first_non_nan_index = int(first_non_nan_indices[0]) if len(first_non_nan_indices) else -1
 
     if first_non_nan_index > 0 and first_non_nan_index < len(rets):
         if leading_non_finite_to_zeros:
@@ -500,7 +503,7 @@ def compute_return_metrics(
     if not monotonically_increasing(timestamps):
         raise ValueError("timestamps must be monotonically increasing")
     non_nan_rets = rets[np.isfinite(rets)]
-    assert_(np.all(non_nan_rets > -1), f"found returns < -1: {non_nan_rets[non_nan_rets <= -1]}")  # type: ignore
+    assert_(bool(np.all(non_nan_rets > -1)), f"found returns < -1: {non_nan_rets[non_nan_rets <= -1]}")
 
     timestamps, rets = handle_non_finite_returns(
         timestamps, rets, leading_non_finite_to_zeros, subsequent_non_finite_to_zeros
@@ -670,7 +673,7 @@ def plot_return_metrics(
     """
     timestamps = metrics["timestamps"]
     equity = metrics["equity"]
-    ts_type = np.dtype("M8[m]")
+    ts_type: np.dtype[np.datetime64] = np.dtype("M8[m]")
     mdd_date, mdd_start = metrics["mdd_date"].astype(ts_type), metrics["mdd_start"].astype(ts_type)
     mdd_date_3yr, mdd_start_3yr = metrics["mdd_date_3yr"].astype(ts_type), metrics["mdd_start_3yr"].astype(ts_type)
     years = metrics["bucketed_returns"][0]
@@ -731,7 +734,7 @@ def plot_return_metrics(
     return fig
 
 
-def test_evaluator() -> None:
+def _run_evaluator_example() -> None:
     from datetime import datetime, timedelta
 
     np.random.seed(10)
@@ -741,8 +744,8 @@ def test_evaluator() -> None:
 
     ev = compute_return_metrics(timestamps, rets, starting_equity)
     display_return_metrics(ev.metrics())
-    plot_return_metrics(ev.metrics(), show_points=False)
-    plot_return_metrics(ev.metrics(), show_points=True)
+    plot_return_metrics(ev.metrics(), show_points=False, show=False)
+    plot_return_metrics(ev.metrics(), show_points=True, show=False)
 
     assert_(round(ev.metric("sharpe"), 6) == 2.932954)
     assert_(round(ev.metric("sortino"), 6) == 5.690878)
@@ -753,7 +756,7 @@ def test_evaluator() -> None:
 
 
 if __name__ == "__main__":
-    test_evaluator()
+    _run_evaluator_example()
     import doctest
 
     doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
