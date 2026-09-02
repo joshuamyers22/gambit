@@ -414,6 +414,41 @@ def test_strategy_rejects_duplicate_rule_atomically() -> None:
     assert strategy.rule_signals["entry"] == ("signal", (True,))
 
 
+def test_strategy_rejects_non_callable_market_simulator_atomically() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get("non-callable-market-simulator")],
+        _price,
+    )
+
+    with pytest.raises(TypeError, match="market simulator must be callable"):
+        strategy.add_market_sim(42)  # type: ignore[arg-type]
+
+    assert strategy.market_sims == []
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        SimpleNamespace(name="invalid"),
+        SimpleNamespace(name="", evaluate=lambda *_args: None),
+    ],
+)
+def test_strategy_rejects_invalid_risk_policy_atomically(policy: object) -> None:
+    timestamp = np.datetime64("2026-01-01")
+    strategy = Strategy(
+        np.array([timestamp]),
+        [ContractGroup.get(f"invalid-risk-policy-{id(policy)}")],
+        _price,
+    )
+
+    with pytest.raises(TypeError, match="risk policy must expose"):
+        strategy.add_risk_policy(policy)  # type: ignore[arg-type]
+
+    assert strategy.risk_policies == []
+
+
 def test_account_rejects_non_callable_price_function() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
 

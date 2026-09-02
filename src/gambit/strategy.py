@@ -418,10 +418,17 @@ class Strategy:
 
     def add_market_sim(self, market_sim_function: MarketSimulatorType) -> None:
         """Add a market simulator.  A market simulator is a function that takes orders as input and returns trades."""
+        if not callable(market_sim_function):
+            raise TypeError("market simulator must be callable")
         self.market_sims.append(market_sim_function)
 
     def add_risk_policy(self, risk_policy: RiskPolicy) -> None:
         """Add a pre-trade policy, evaluated in registration order."""
+        policy_name = getattr(risk_policy, "name", None)
+        if not isinstance(policy_name, str) or not policy_name:
+            raise TypeError("risk policy must expose a non-empty string name")
+        if not callable(getattr(risk_policy, "evaluate", None)):
+            raise TypeError("risk policy must expose a callable evaluate method")
         self.risk_policies.append(risk_policy)
 
     def stage_graph(self) -> StageGraph:
