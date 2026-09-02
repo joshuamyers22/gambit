@@ -113,6 +113,17 @@ def test_empty_account_pnl_queries_have_stable_results() -> None:
     assert aggregate["equity"].to_list() == [account.starting_equity, account.starting_equity]
 
 
+def test_account_pnl_query_rejects_unknown_group_without_registering_it() -> None:
+    group = ContractGroup.get("configured-pnl-query")
+    account = Account([group], np.array(["2026-01-02"], dtype="datetime64[D]"), _price, SimpleNamespace())
+    unknown_name = "unknown-pnl-query"
+
+    assert not ContractGroup.exists(unknown_name)
+    with pytest.raises(ValueError, match="not configured for this account"):
+        account.df_pnl([unknown_name])
+    assert not ContractGroup.exists(unknown_name)
+
+
 def test_sparse_account_calculation_resumes_from_latest_ledger_timestamp() -> None:
     timestamps = np.array(
         [

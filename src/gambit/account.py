@@ -647,9 +647,12 @@ class Account:
         if contract_groups is None:
             contract_groups = list(set([contract.contract_group.name for contract in self.contracts.values()]))
 
+        configured_groups = {group.name: group for group in self.contract_groups}
         dfs = []
         for name in contract_groups:
-            contract_group = ContractGroup.get(name)
+            contract_group = configured_groups.get(name)
+            if contract_group is None:
+                raise ValueError(f"contract group {name!r} is not configured for this account")
             for symbol, contract in contract_group.contracts.items():
                 if symbol not in self.symbol_pnls:
                     continue
