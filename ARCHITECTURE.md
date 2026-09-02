@@ -41,9 +41,9 @@ filesystem, subprocess, or UI operations.
 
 Trade-history reconciliation is isolated in `trade_reconciliation`; it consumes
 trade value objects and must not depend on the mutable `Account` aggregate.
-Native-versus-reference FIFO dispatch belongs in `pnl_calculation`, keeping the
-account aggregate independent of compiled-kernel details while preserving the
-native fast path for integral quantities.
+Whole-unit FIFO dispatch belongs in `pnl_calculation`, keeping the account
+aggregate independent of compiled-kernel details. `Trade` rejects fractional
+quantities before they can reach accounting.
 
 ## Edges and composition
 

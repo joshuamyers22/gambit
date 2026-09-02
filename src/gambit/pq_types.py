@@ -475,6 +475,8 @@ class Trade:
         # assert(isinstance(contract, Contract))
         # assert(isinstance(order, Order))
         assert_(np.isfinite(qty))
+        if isinstance(qty, (bool, np.bool_)) or not float(qty).is_integer():
+            raise ValueError("trade qty must be a whole number of shares or contracts")
         assert_(np.isfinite(price))
         assert_(np.isfinite(fee))
         assert_(np.isfinite(commission))
@@ -483,7 +485,7 @@ class Trade:
         self.contract = contract
         self.order = order
         self.timestamp = timestamp
-        self.qty = qty
+        self.qty = int(qty)
         self.price = price
         self.fee = fee
         self.commission = commission
@@ -528,7 +530,7 @@ class RoundTripTrade:
     exit_order: Order | None
     entry_timestamp: np.datetime64
     exit_timestamp: np.datetime64
-    qty: float
+    qty: int
     entry_price: float
     exit_price: float
     entry_reason: str | None

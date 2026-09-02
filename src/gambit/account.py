@@ -102,7 +102,7 @@ class ContractPNL:
         self._trade_pnl = SortedDict()
         self._net_pnl = SortedDict()
         # Store trades that are not offset so when new trades come in we can offset against these to calc pnl
-        self.open_qtys: NDArray[np.float64] = np.empty(0, dtype=float)
+        self.open_qtys: NDArray[np.int_] = np.empty(0, dtype=int)
         self.open_prices: NDArray[np.float64] = np.empty(0, dtype=float)
         self.first_trade_timestamp: np.datetime64 | None = None
         self.final_pnl = np.nan
@@ -133,12 +133,12 @@ class ContractPNL:
             open_qtys, open_prices, realized_chg = calculate_trade_pnl(
                 self.open_qtys,
                 self.open_prices,
-                np.array([trade.qty for trade in t_trades], dtype=float),
+                np.array([trade.qty for trade in t_trades], dtype=int),
                 np.array([trade.price for trade in t_trades], dtype=float),
                 self.contract.multiplier,
             )
 
-            open_qty = float(np.sum(open_qtys))
+            open_qty = int(np.sum(open_qtys))
             if open_qty == 0:
                 weighted_avg_price = 0.0
             else:

@@ -18,7 +18,7 @@ def _net_trade(stack: deque[Trade], trade: Trade) -> RoundTripTrade | None:
         return None
 
     entry = stack[0]
-    qty = float(min(abs(entry.qty), abs(trade.qty)) * np.sign(entry.qty))
+    qty = int(min(abs(entry.qty), abs(trade.qty)) * np.sign(entry.qty))
     entry_fraction = abs(qty / entry.qty)
     exit_fraction = abs(qty / trade.qty)
     pnl = float(
@@ -62,7 +62,7 @@ def roundtrip_trades(trades: list[Trade]) -> list[RoundTripTrade]:
     >>> order = SimpleNamespace(reason_code='DUMMY')
     >>> trades = [Trade(contract, order, np.datetime64('2022-11-05 08:00') + np.timedelta64(i, 'm'), qty, prices[i]) for i, qty in enumerate(qtys)]
     >>> [(rt.qty, rt.entry_price, rt.exit_price, rt.net_pnl) for rt in roundtrip_trades(trades)]
-    [(50.0, 9, 10, 50.0), (50.0, 9, 11, 100.0), (20.0, 8, 11, 60.0), (-10.0, 11, 12, -10.0), (-40.0, 11, nan, 0.0)]
+    [(50, 9, 10, 50.0), (50, 9, 11, 100.0), (20, 8, 11, 60.0), (-10, 11, 12, -10.0), (-40, 11, nan, 0.0)]
     """
     reconciled: list[RoundTripTrade] = []
     stacks: dict[str, deque[Trade]] = defaultdict(deque)

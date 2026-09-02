@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 
 from gambit import _io
-from gambit.account import Account, roundtrip_trades
+from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.strategy import Strategy
@@ -46,41 +46,14 @@ def test_trade_representation_omits_whitespace_for_absent_optional_fields() -> N
     )
 
 
-def test_roundtrip_reconciliation_preserves_fractional_quantities() -> None:
-    contract = Contract.create("FRACTIONAL", ContractGroup.get("fractional"))
+@pytest.mark.parametrize("quantity", [0.5, -1.5, True])
+def test_trade_rejects_non_whole_quantities(quantity) -> None:
+    contract = Contract.create("WHOLE-UNITS", ContractGroup.get("whole-units"))
     timestamp = np.datetime64("2026-01-02")
-    entry = MarketOrder(contract=contract, timestamp=timestamp, qty=1.5)
-    exit_order = MarketOrder(contract=contract, timestamp=timestamp, qty=-0.5)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=quantity)
 
-    result = roundtrip_trades(
-        [
-            Trade(contract, entry, timestamp, 1.5, 100.0),
-            Trade(contract, exit_order, timestamp, -0.5, 110.0),
-        ]
-    )
-
-    assert [trade.qty for trade in result] == [0.5, 1.0]
-    assert result[0].net_pnl == 5.0
-
-
-def test_account_pnl_preserves_fractional_executions() -> None:
-    contract = Contract.create("FRACTIONAL-PNL", ContractGroup.get("fractional-pnl"))
-    timestamps = np.array(["2026-01-02", "2026-01-03"], dtype="datetime64[D]")
-    account = Account([contract.contract_group], timestamps, _price, SimpleNamespace())
-    entry = MarketOrder(contract=contract, timestamp=timestamps[0], qty=1.5)
-    partial_exit = MarketOrder(contract=contract, timestamp=timestamps[1], qty=-0.5)
-
-    account.add_trades(
-        [
-            Trade(contract, entry, timestamps[0], 1.5, 100.0),
-            Trade(contract, partial_exit, timestamps[1], -0.5, 110.0),
-        ]
-    )
-
-    contract_pnl = account.symbol_pnls[contract.symbol]
-    position, _, realized, *_ = contract_pnl.pnl(timestamps[1])
-    assert position == 1.0
-    assert realized == 5.0
+    with pytest.raises(ValueError, match="whole number"):
+        Trade(contract, order, timestamp, quantity, 100.0)
 
 
 def _price(_contract, _timestamps, _index, _context):
