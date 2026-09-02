@@ -101,6 +101,8 @@ def compute_gmean(timestamps: np.ndarray, returns: np.ndarray, periods_per_year:
     returns = returns[mask]
     assert_(bool(np.all(returns[np.isfinite(returns)] > -1)), f"found returns < -1: {returns[np.isfinite(returns) < -1]}")
     num_periods = compute_num_periods(timestamps, periods_per_year)
+    if not np.isfinite(num_periods) or num_periods <= 0:
+        return np.nan
     g_mean = ((1.0 + returns).prod()) ** (1.0 / num_periods)
     g_mean = np.power(g_mean, periods_per_year) - 1.0
     return float(g_mean)

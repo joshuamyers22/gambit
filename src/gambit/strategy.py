@@ -731,7 +731,15 @@ class Strategy:
                 "message": [decision.message for decision in self.order_decisions],
                 "proposed_qty": [decision.proposed_qty for decision in self.order_decisions],
             },
-            schema_overrides={"timestamp": pl.Datetime("ns")},
+            schema_overrides={
+                "symbol": pl.String,
+                "timestamp": pl.Datetime("ns"),
+                "status": pl.String,
+                "policy": pl.String,
+                "code": pl.String,
+                "message": pl.String,
+                "proposed_qty": pl.Float64,
+            },
         )
         risk_measures = _concat_artifact_frames(self._recorded_risk_results)
         risk_exposures = _concat_report_frames(self._recorded_risk_reports, "exposures")
@@ -1046,7 +1054,15 @@ class Strategy:
                     for order in orders
                 ],
             },
-            schema_overrides={"timestamp": pl.Datetime("ns")},
+            schema_overrides={
+                "symbol": pl.String,
+                "type": pl.String,
+                "timestamp": pl.Datetime("ns"),
+                "qty": pl.Float64,
+                "reason_code": pl.String,
+                "order_props": pl.String,
+                "contract_props": pl.String,
+            },
         )
         return df_orders
 
@@ -1096,6 +1112,8 @@ class Strategy:
             return_metrics (bool, optional): If set, we return the computed metrics as a dictionary
         """
         returns = self.df_returns(contract_group)
+        if returns.is_empty() or not bool(returns["ret"].is_not_null().any()):
+            raise ValueError("return evaluation requires at least one return observation")
         metrics = self._reporter().metrics(
             returns["timestamp"].to_numpy(),
             returns["ret"].to_numpy(),
@@ -1117,6 +1135,9 @@ class Strategy:
             returns = self.df_returns()
         else:
             returns = self.df_returns(contract_group)
+
+        if returns.is_empty() or not bool(returns["ret"].is_not_null().any()):
+            raise ValueError("return plotting requires at least one return observation")
 
         metrics = self._reporter().metrics(
             returns["timestamp"].to_numpy(),

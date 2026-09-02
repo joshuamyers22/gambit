@@ -113,6 +113,24 @@ def test_empty_account_pnl_queries_have_stable_results() -> None:
     assert aggregate["equity"].to_list() == [account.starting_equity, account.starting_equity]
 
 
+def test_empty_strategy_orders_have_stable_string_schema() -> None:
+    timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
+    strategy = Strategy(timestamps, [ContractGroup.get("empty-orders")], _price)
+
+    orders = strategy.df_orders()
+
+    assert orders.is_empty()
+    assert orders.schema == {
+        "symbol": pl.String,
+        "type": pl.String,
+        "timestamp": pl.Datetime("ns"),
+        "qty": pl.Float64,
+        "reason_code": pl.String,
+        "order_props": pl.String,
+        "contract_props": pl.String,
+    }
+
+
 def test_orders_filters_by_contract_group():
     first_group = ContractGroup.get("first")
     second_group = ContractGroup.get("second")

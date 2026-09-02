@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import polars as pl
+import pytest
 
 from gambit.pq_types import ContractGroup
 from gambit.strategy import Strategy
@@ -68,3 +69,16 @@ def test_plot_returns_returns_value_from_injected_port() -> None:
 
     assert result == "figure"
     assert reporter.display_calls == []
+
+
+def test_empty_return_series_fails_before_reporting_adapter_is_called() -> None:
+    reporter = FakeReturnReporter()
+    strategy = _strategy(reporter)
+    strategy.__dict__["df_returns"] = lambda _group=None: pl.DataFrame(
+        schema={"timestamp": pl.Datetime("ns"), "ret": pl.Float64}
+    )
+
+    with pytest.raises(ValueError, match="at least one return observation"):
+        strategy.evaluate_returns(plot=False, display_summary=False)
+
+    assert reporter.metric_calls == []

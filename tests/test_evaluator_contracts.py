@@ -1,6 +1,12 @@
 import numpy as np
 
-from gambit.evaluator import compute_gmean, compute_periods_per_year, compute_sharpe, compute_sortino
+from gambit.evaluator import (
+    compute_gmean,
+    compute_periods_per_year,
+    compute_return_metrics,
+    compute_sharpe,
+    compute_sortino,
+)
 
 
 def test_public_scalar_metrics_return_python_floats() -> None:
@@ -11,3 +17,20 @@ def test_public_scalar_metrics_return_python_floats() -> None:
     assert type(compute_gmean(timestamps, returns, 252.0)) is float
     assert type(compute_sharpe(returns, 0.001, 252.0)) is float
     assert type(compute_sortino(returns, 0.001, 252.0)) is float
+
+
+def test_geometric_mean_is_missing_when_history_spans_zero_periods() -> None:
+    timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
+
+    result = compute_gmean(timestamps, np.array([0.01]), 252.0)
+
+    assert np.isnan(result)
+
+
+def test_short_history_metrics_do_not_divide_by_zero_in_annual_bucket() -> None:
+    timestamps = np.array(["2025-12-31", "2026-01-01"], dtype="datetime64[D]")
+
+    metrics = compute_return_metrics(timestamps, np.array([0.0, 0.0]), 1_000.0).metrics()
+
+    assert metrics["gmean"] == 0.0
+    assert np.isnan(metrics["annual_returns"][1]).all()
