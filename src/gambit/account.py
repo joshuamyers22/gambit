@@ -357,7 +357,7 @@ class Account:
 
     def _add_contract(self, contract: Contract, timestamp: np.datetime64) -> None:
         if contract.symbol in self.symbol_pnls:
-            raise Exception(f"Already have contract with symbol: {contract.symbol} {contract}")
+            raise ValueError(f"account already contains contract symbol {contract.symbol}: {contract}")
         contract_pnl = ContractPNL(
             contract,
             self.timestamps,
@@ -402,7 +402,7 @@ class Account:
             return
 
         prev_idx = find_index_before(self._pnl, timestamp)
-        prev_timestamp = None if prev_idx == -1 else self.timestamps[prev_idx]
+        prev_timestamp = None if prev_idx == -1 else self._pnl.peekitem(prev_idx)[0]
 
         # Find the last timestamp per day that is between the previous index we computed and the current index,
         # so we can compute daily pnl in addition to the current index pnl

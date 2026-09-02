@@ -113,6 +113,28 @@ def test_empty_account_pnl_queries_have_stable_results() -> None:
     assert aggregate["equity"].to_list() == [account.starting_equity, account.starting_equity]
 
 
+def test_sparse_account_calculation_resumes_from_latest_ledger_timestamp() -> None:
+    timestamps = np.array(
+        [
+            "2026-01-01T09:00",
+            "2026-01-01T15:00",
+            "2026-01-02T09:00",
+            "2026-01-02T15:00",
+            "2026-01-03T09:00",
+            "2026-01-03T15:00",
+        ],
+        dtype="datetime64[m]",
+    )
+    account = Account([ContractGroup.get("sparse-ledger")], timestamps, _price, SimpleNamespace())
+    account._pnl[timestamps[3]] = 0.0
+
+    account.calc(timestamps[-1])
+
+    ledger_timestamps = list(account._pnl.keys())
+    assert timestamps[1] not in ledger_timestamps
+    assert ledger_timestamps == [timestamps[3], timestamps[4], timestamps[-1]]
+
+
 def test_empty_strategy_orders_have_stable_string_schema() -> None:
     timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
     strategy = Strategy(timestamps, [ContractGroup.get("empty-orders")], _price)
