@@ -16,7 +16,17 @@ import numpy as np
 from gambit.account import Account
 from gambit.boundaries import validate_price_value
 from gambit.execution_costs import ChargeModel, FixedPercentageSlippage, PerUnitCharge, SlippageModel
-from gambit.pq_types import Contract, ContractGroup, LimitOrder, MarketOrder, Order, TimeInForce, Trade, VWAPOrder
+from gambit.pq_types import (
+    Contract,
+    ContractGroup,
+    LimitOrder,
+    MarketOrder,
+    Order,
+    StopLimitOrder,
+    TimeInForce,
+    Trade,
+    VWAPOrder,
+)
 from gambit.pq_utils import assert_, get_child_logger
 from gambit.strategy_contracts import PriceFunctionType, StrategyContextType
 from gambit.strategy_inputs import PriceFuncArrayDict as PriceFuncArrayDict
@@ -99,10 +109,14 @@ class SimpleMarketSimulator:
         signals: dict[str, SimpleNamespace],
         strategy_context: SimpleNamespace,
     ) -> list[Trade]:
-        """TODO: code for stop orders"""
-        trades = []
+        candidate_trades: list[Trade] = []
         timestamp = _timestamp_at(timestamps, i)
         for order in orders:
+            if isinstance(order, StopLimitOrder):
+                raise ValueError(
+                    "StopLimitOrder is deprecated and cannot be executed; emit a MarketOrder or "
+                    "LimitOrder from an explicit trigger rule"
+                )
             if not isinstance(order, MarketOrder) and not isinstance(order, LimitOrder):
                 continue
             contract = order.contract
@@ -153,8 +167,27 @@ class SimpleMarketSimulator:
                 fee=fee,
                 commission=commission,
             )
-            order.fill()
-            trades.append(trade)
+            candidate_trades.append(trade)
+
+        roll_order_counts: dict[str, int] = {}
+        roll_trade_counts: dict[str, int] = {}
+        for order in orders:
+            roll_id = getattr(order.properties, "_gambit_roll_id", None)
+            if roll_id is not None:
+                roll_order_counts[roll_id] = roll_order_counts.get(roll_id, 0) + 1
+        for trade in candidate_trades:
+            roll_id = getattr(trade.order.properties, "_gambit_roll_id", None)
+            if roll_id is not None:
+                roll_trade_counts[roll_id] = roll_trade_counts.get(roll_id, 0) + 1
+
+        trades = [
+            trade
+            for trade in candidate_trades
+            if (roll_id := getattr(trade.order.properties, "_gambit_roll_id", None)) is None
+            or roll_trade_counts.get(roll_id) == roll_order_counts.get(roll_id) == 2
+        ]
+        for trade in trades:
+            trade.order.fill()
             if self.post_trade_func is not None:
                 self.post_trade_func(trade, strategy_context)
         return trades

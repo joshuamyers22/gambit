@@ -6,19 +6,21 @@ import numpy as np
 import pytest
 
 from gambit.account import Account
+from gambit.callback_contracts import validate_rule_orders
 from gambit.pq_types import (
     Contract,
     ContractGroup,
     LimitOrder,
     MarketOrder,
     OrderStatus,
+    RollOrder,
     StopLimitOrder,
     TimeInForce,
     Trade,
     VWAPOrder,
 )
 from gambit.strategy import Strategy
-from gambit.strategy_components import VWAPMarketSimulator
+from gambit.strategy_components import SimpleMarketSimulator, VWAPMarketSimulator
 
 
 def _constant_price(_contract, _timestamps, _index, _context):
@@ -161,7 +163,8 @@ def test_stop_limit_order_rejects_invalid_trigger_price(trigger_price) -> None:
 def test_stop_limit_order_allows_market_trigger_without_limit() -> None:
     contract = Contract.create("STOP-MARKET", ContractGroup.get("orders"))
 
-    order = StopLimitOrder(contract=contract, qty=-1, trigger_price=95)
+    with pytest.deprecated_call(match="not executable"):
+        order = StopLimitOrder(contract=contract, qty=-1, trigger_price=95)
 
     assert order.trigger_price == 95.0
     assert np.isnan(order.limit_price)
@@ -173,6 +176,131 @@ def test_stop_limit_order_rejects_invalid_explicit_limit(limit_price) -> None:
 
     with pytest.raises(ValueError, match="stop limit price must be a finite real number"):
         StopLimitOrder(contract=contract, qty=-1, trigger_price=95, limit_price=limit_price)
+
+
+def test_deprecated_stop_order_is_rejected_at_rule_boundary() -> None:
+    group = ContractGroup.get("deprecated-stop")
+    contract = Contract.create("DEPRECATED-STOP", group)
+    timestamp = np.datetime64("2024-01-02T09:30")
+    with pytest.deprecated_call(match="not executable"):
+        order = StopLimitOrder(contract=contract, timestamp=timestamp, qty=-1, trigger_price=95)
+
+    with pytest.raises(ValueError, match="deprecated and cannot be executed"):
+        validate_rule_orders([order], group, timestamp)
+
+
+def test_roll_order_expands_to_validated_market_legs() -> None:
+    group = ContractGroup.get("roll-expand")
+    outgoing = Contract.create("ESU6", group)
+    incoming = Contract.create("ESZ6", group)
+    timestamp = np.datetime64("2026-09-10T10:00")
+    roll = RollOrder(
+        contract=outgoing,
+        reopen_contract=incoming,
+        timestamp=timestamp,
+        close_qty=-3,
+        reopen_qty=3,
+        reason_code="quarterly-roll",
+        time_in_force=TimeInForce.FOK,
+    )
+
+    close, reopen = validate_rule_orders([roll], group, timestamp)
+
+    assert (close.contract, close.qty) == (outgoing, -3)
+    assert (reopen.contract, reopen.qty) == (incoming, 3)
+    assert close.reason_code == reopen.reason_code == "quarterly-roll"
+    assert close.time_in_force is reopen.time_in_force is TimeInForce.FOK
+    assert close.properties._gambit_roll_id == reopen.properties._gambit_roll_id
+
+
+@pytest.mark.parametrize(
+    ("reopen_symbol", "close_qty", "reopen_qty", "message"),
+    [
+        ("ROLL-SAME", -1, 1, "distinct"),
+        ("ROLL-IN", 1, 1, "opposite signs"),
+    ],
+)
+def test_roll_order_rejects_invalid_contract_or_direction(
+    reopen_symbol: str, close_qty: int, reopen_qty: int, message: str
+) -> None:
+    group = ContractGroup.get(f"roll-invalid-{message}")
+    outgoing = Contract.create("ROLL-SAME", group)
+    incoming = outgoing if reopen_symbol == "ROLL-SAME" else Contract.create(reopen_symbol, group)
+
+    with pytest.raises(ValueError, match=message):
+        RollOrder(
+            contract=outgoing,
+            reopen_contract=incoming,
+            close_qty=close_qty,
+            reopen_qty=reopen_qty,
+        )
+
+
+def test_roll_execution_is_atomic_when_one_leg_has_no_price() -> None:
+    group = ContractGroup.get("roll-atomic")
+    outgoing = Contract.create("ROLL-OUT", group)
+    incoming = Contract.create("ROLL-NO-PRICE", group)
+    timestamp = np.datetime64("2026-09-10T10:00")
+    roll = RollOrder(
+        contract=outgoing,
+        reopen_contract=incoming,
+        timestamp=timestamp,
+        close_qty=-2,
+        reopen_qty=2,
+    )
+    legs = validate_rule_orders([roll], group, timestamp)
+
+    def price(contract, _timestamps, _index, _context):
+        return np.nan if contract is incoming else 100.0
+
+    trades = SimpleMarketSimulator(price)(
+        legs,
+        0,
+        np.array([timestamp]),
+        {},
+        {},
+        SimpleNamespace(),
+    )
+
+    assert trades == []
+    assert all(order.status is OrderStatus.OPEN for order in legs)
+    assert [order.qty for order in legs] == [-2, 2]
+
+
+def test_roll_executes_and_accounts_for_both_legs() -> None:
+    group = ContractGroup.get("roll-accounting")
+    outgoing = Contract.create("ROLL-SEP", group)
+    incoming = Contract.create("ROLL-DEC", group)
+    timestamp = np.datetime64("2026-09-10T10:00")
+    roll = RollOrder(
+        contract=outgoing,
+        reopen_contract=incoming,
+        timestamp=timestamp,
+        close_qty=-2,
+        reopen_qty=3,
+    )
+    legs = validate_rule_orders([roll], group, timestamp)
+    prices = {outgoing.symbol: 101.0, incoming.symbol: 103.0}
+
+    def price(contract, _timestamps, _index, _context):
+        return prices[contract.symbol]
+
+    trades = SimpleMarketSimulator(price)(
+        legs,
+        0,
+        np.array([timestamp]),
+        {},
+        {},
+        SimpleNamespace(),
+    )
+    account = Account([group], np.array([timestamp]), price, SimpleNamespace())
+    account.add_trades(trades)
+    account.calc(timestamp)
+
+    assert [(trade.contract, trade.qty) for trade in trades] == [(outgoing, -2), (incoming, 3)]
+    assert all(order.status is OrderStatus.FILLED for order in legs)
+    assert account.symbol_pnls[outgoing.symbol].position(timestamp) == -2
+    assert account.symbol_pnls[incoming.symbol].position(timestamp) == 3
 
 
 def test_unfilled_fok_order_is_cancelled_after_fill_window() -> None:

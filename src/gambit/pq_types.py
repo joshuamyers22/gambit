@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime
 import math
 import types
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType, SimpleNamespace
@@ -526,12 +527,61 @@ class LimitOrder(Order):
 
 @dataclass(kw_only=True)
 class RollOrder(Order):
+    """Atomically request a market roll from one contract into another.
+
+    ``contract`` is the outgoing contract. Quantities are signed from the
+    account's perspective and must have opposite signs. A roll is expanded at
+    the rule boundary into two ordinary market orders so risk policy,
+    execution, accounting, and reporting evaluate both legs normally.
+    """
+
+    qty: float = field(init=False, default=math.nan)
+    reopen_contract: Contract
     close_qty: float
     reopen_qty: float
 
     def __post_init__(self) -> None:
+        if not isinstance(self.reopen_contract, Contract):
+            raise TypeError("roll reopen contract must be a Contract")
         self.close_qty = _whole_quantity(self.close_qty, field_name="roll close qty")
         self.reopen_qty = _whole_quantity(self.reopen_qty, field_name="roll reopen qty")
+        self.qty = self.close_qty
+        super().__post_init__()
+        if self.reopen_contract is self.contract:
+            raise ValueError("roll contracts must be distinct")
+        if self.reopen_contract.contract_group is not self.contract.contract_group:
+            raise ValueError("roll contracts must belong to the same contract group")
+        if self.close_qty * self.reopen_qty >= 0:
+            raise ValueError("roll close and reopen quantities must have opposite signs")
+
+    def legs(self) -> tuple[MarketOrder, MarketOrder]:
+        """Return the validated outgoing and incoming market-order legs."""
+        roll_id = f"{id(self):x}"
+        close = MarketOrder(
+            contract=self.contract,
+            timestamp=self.timestamp,
+            qty=self.close_qty,
+            reason_code=self.reason_code,
+            time_in_force=self.time_in_force,
+            properties=types.SimpleNamespace(
+                **vars(self.properties),
+                _gambit_roll_id=roll_id,
+                _gambit_roll_leg="close",
+            ),
+        )
+        reopen = MarketOrder(
+            contract=self.reopen_contract,
+            timestamp=self.timestamp,
+            qty=self.reopen_qty,
+            reason_code=self.reason_code,
+            time_in_force=self.time_in_force,
+            properties=types.SimpleNamespace(
+                **vars(self.properties),
+                _gambit_roll_id=roll_id,
+                _gambit_roll_leg="reopen",
+            ),
+        )
+        return close, reopen
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -562,6 +612,12 @@ class StopLimitOrder(Order):
         self.trigger_price = _finite_real(self.trigger_price, field_name="stop trigger price")
         if not (isinstance(self.limit_price, (float, np.floating)) and math.isnan(float(self.limit_price))):
             self.limit_price = _finite_real(self.limit_price, field_name="stop limit price")
+        warnings.warn(
+            "StopLimitOrder is deprecated and is not executable; use an explicit rule that emits "
+            "MarketOrder or LimitOrder after its trigger condition is satisfied",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)

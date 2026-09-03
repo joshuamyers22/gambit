@@ -5,6 +5,14 @@ have not yet been released are collected below.
 
 ## Unreleased
 
+### Changed
+
+- ``RollOrder`` is now a validated atomic market-roll command. It expands into
+  outgoing and incoming legs in the same contract group, and the built-in
+  simulator fills both legs or neither when price data is unavailable.
+- ``StopLimitOrder`` is deprecated and rejected at execution boundaries. Use
+  an explicit trigger rule that emits a ``MarketOrder`` or ``LimitOrder``.
+
 ## 1.1.0 - 2026-08-31
 
 ### Added

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from gambit.pq_types import ContractGroup, Order, OrderStatus, Trade
+from gambit.pq_types import ContractGroup, Order, OrderStatus, RollOrder, StopLimitOrder, Trade
 
 
 def validate_stage_values(result: object, expected_length: int, *, stage: str) -> np.ndarray:
@@ -33,10 +33,16 @@ def validate_rule_orders(
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
         raise TypeError("rule callback must return a sequence of Order objects")
 
-    orders = list(result)
-    for order in orders:
+    submitted = list(result)
+    orders: list[Order] = []
+    for order in submitted:
         if not isinstance(order, Order):
             raise TypeError(f"rule callback returned a non-Order value: {order!r}")
+        if isinstance(order, StopLimitOrder):
+            raise ValueError(
+                "StopLimitOrder is deprecated and cannot be executed; emit a MarketOrder or "
+                "LimitOrder from an explicit trigger rule"
+            )
         if order.contract.contract_group is not contract_group:
             raise ValueError(f"rule returned {order.contract.symbol} outside contract group {contract_group.name}")
         registered = contract_group.contracts.get(order.contract.symbol)
@@ -44,6 +50,13 @@ def validate_rule_orders(
             raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
         if order.timestamp != current_timestamp:
             raise ValueError("rule order timestamp does not match the current strategy timestamp")
+        if isinstance(order, RollOrder):
+            reopen_registered = contract_group.contracts.get(order.reopen_contract.symbol)
+            if reopen_registered is not order.reopen_contract:
+                raise ValueError(f"rule returned an unregistered roll contract: {order.reopen_contract.symbol}")
+            orders.extend(order.legs())
+        else:
+            orders.append(order)
     return orders
 
 
