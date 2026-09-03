@@ -54,7 +54,7 @@ def test_contract_owns_validated_component_snapshot() -> None:
     basket = Contract.create("BASKET-SNAPSHOT", components=components)
     components.append((Contract.create("BASKET-SECOND"), -1))
 
-    assert basket.components == [(first, 1.0)]
+    assert basket.components == ((first, 1.0),)
 
 
 def test_contract_rejects_invalid_component_without_registration() -> None:
@@ -109,7 +109,7 @@ def test_contract_group_rejects_distinct_contract_with_duplicate_symbol() -> Non
         group,
         None,
         1.0,
-        [],
+        (),
         SimpleNamespace(),
         InstrumentSpec(),
     )
@@ -118,6 +118,16 @@ def test_contract_group_rejects_distinct_contract_with_duplicate_symbol() -> Non
         group.add_contract(duplicate)
 
     assert group.get_contract(registered.symbol) is registered
+
+
+def test_registered_contract_identity_is_immutable() -> None:
+    contract = Contract.create("IMMUTABLE-CONTRACT")
+
+    with pytest.raises(AttributeError):
+        contract.multiplier = 2
+
+    with pytest.raises(AttributeError):
+        contract.components = ()
 
 
 @pytest.mark.parametrize(

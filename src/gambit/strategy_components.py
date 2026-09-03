@@ -43,8 +43,7 @@ class SimpleMarketSimulator:
     >>> put_symbol, call_symbol = 'SPX-P-3500-2023-01-19', 'SPX-C-4000-2023-01-19'
     >>> put_contract = Contract.create(put_symbol)
     >>> call_contract = Contract.create(call_symbol)
-    >>> basket = Contract.create('test_contract')
-    >>> basket.components = [(put_contract, -1), (call_contract, 1)]
+    >>> basket = Contract.create('test_contract', components=[(put_contract, -1), (call_contract, 1)])
     >>> timestamp = np.datetime64('2023-01-03 14:35')
     >>> price_func = PriceFuncDict({put_symbol: {timestamp: 4.8}, call_symbol: {timestamp: 3.5}})
     >>> order = MarketOrder(contract=basket, timestamp=timestamp, qty=10, reason_code='TEST')

@@ -119,14 +119,14 @@ def _format(obj: SimpleNamespace | None) -> str:
     return str(obj)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Contract:
     _instances: ClassVar[dict[str, Contract]] = {}
     symbol: str
     contract_group: ContractGroup
     expiry: np.datetime64 | None
     multiplier: float
-    components: list[tuple[Contract, float]]
+    components: tuple[tuple[Contract, float], ...]
     properties: SimpleNamespace
     instrument_spec: InstrumentSpec
 
@@ -189,12 +189,11 @@ class Contract:
             contract_group,
             expiry,
             multiplier,
-            validated_components,
+            tuple(validated_components),
             properties,
             instrument_spec,
         )
         contract_group.add_contract(contract)
-        contract.contract_group = contract_group
         Contract._instances[symbol] = contract
         return contract
 
