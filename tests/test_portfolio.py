@@ -48,7 +48,7 @@ def test_portfolio_rejects_same_strategy_under_second_name() -> None:
         portfolio.add_strategy("beta", strategy)
 
     assert portfolio.strategies == {"alpha": strategy}
-    assert strategy.name == "alpha"
+    assert strategy.name == "main"
 
 
 def test_portfolio_run_honors_selected_strategy_in_every_phase() -> None:
@@ -106,7 +106,7 @@ def test_portfolio_validates_all_stage_graphs_before_callbacks() -> None:
     assert callback_calls == 0
 
 
-def test_portfolio_uses_registry_name_when_strategy_name_changes() -> None:
+def test_portfolio_aliases_do_not_mutate_strategy_name() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
     strategy = Strategy(timestamps, [ContractGroup.get("portfolio-registry-identity")], _price)
     callback_calls = 0
@@ -124,5 +124,5 @@ def test_portfolio_uses_registry_name_when_strategy_name_changes() -> None:
 
     first_portfolio.run(["alpha"])
 
-    assert strategy.name == "beta"
+    assert strategy.name == "main"
     assert callback_calls == 1

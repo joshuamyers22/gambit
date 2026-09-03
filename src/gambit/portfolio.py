@@ -45,7 +45,6 @@ class Portfolio:
         if any(strategy is registered for registered in self.strategies.values()):
             raise ValueError("strategy instance is already registered in this portfolio")
         self.strategies[name] = strategy
-        strategy.name = name
 
     def _selected_strategies(self, strategy_names: Sequence[str] | None) -> tuple[tuple[str, Strategy], ...]:
         if strategy_names is None:

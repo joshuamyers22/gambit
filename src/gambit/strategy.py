@@ -113,7 +113,7 @@ class Strategy:
             log_orders: If set, we log trades as they are created
             return_reporter: Optional analytics/presentation adapter. The evaluator-backed default is loaded lazily.
         """
-        self.name = "main"  # Set by portfolio when running multiple strategies
+        self.name = "main"
         self.run_configuration = RunConfiguration(
             starting_equity=starting_equity,
             pnl_calc_time=pnl_calc_time,
