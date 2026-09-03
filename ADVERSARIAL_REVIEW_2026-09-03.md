@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 527 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 40% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 531 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 43% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -116,10 +116,18 @@
 - Correction implemented: zero shifts return an independent unchanged array, and recursive lookup searches only the supplied root and sorts matches before selecting the first.
 - Verification: regression tests cover zero-shift values and ownership, requested-root isolation, stable match ordering, and missing roots.
 
+### [Resolved] Array utilities failed on valid dtype and cardinality boundaries
+
+- Location: `src/gambit/pq_utils.py:33-75`, `src/gambit/pq_utils.py:181-198`
+- Evidence: the default shift fill was `NaN` for every non-boolean dtype, which cannot be stored in integer, datetime, timedelta, or string arrays. Closest-value lookup indexed a nonexistent second element for singleton inputs and failed opaquely for empty inputs.
+- Failure mode: common lagged integer/date signals and one-point reference grids raised low-level NumPy errors instead of returning defined results.
+- Correction implemented: shift fill values now follow the destination dtype, singleton closest-value queries always resolve to index zero, and empty reference arrays raise an explicit `ValueError`.
+- Verification: parameterized regressions cover integer, datetime, and string shifts plus scalar/vector singleton queries and empty references.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 527-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 531-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

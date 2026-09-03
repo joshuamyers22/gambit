@@ -25,6 +25,9 @@ have not yet been released are collected below.
   dataframes support auxiliary costs that are absent from some results.
 - Utility zero-shifts now return an unchanged copy, and recursive file lookup
   now searches the requested directory with deterministic ordering.
+- Array shifting now chooses fill values representable by integer, temporal,
+  and string dtypes; closest-value lookup handles singleton arrays and rejects
+  empty inputs explicitly.
 
 ## 1.1.0 - 2026-08-31
 

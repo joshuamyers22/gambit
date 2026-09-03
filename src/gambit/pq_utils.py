@@ -38,7 +38,9 @@ def shift_np(array: np.ndarray, n: int, fill_value: Any = None) -> np.ndarray:
         array: The numpy array to shift
         n: Number of places to shift, can be positive or negative
         fill_value: After shifting, there will be empty slots left in the array.  If set, fill these with fill_value.
-          If fill_value is set to None (default), we will fill these with False for boolean arrays, np.nan for floats
+          If fill_value is set to None (default), use the dtype's empty value:
+          False for booleans, zero for integers, NaN/NaT for numeric and temporal
+          arrays, and an empty string for string arrays.
     """
     if array is None:
         return None
@@ -48,7 +50,19 @@ def shift_np(array: np.ndarray, n: int, fill_value: Any = None) -> np.ndarray:
         return array.copy()
 
     if fill_value is None:
-        fill_value = False if array.dtype == np.dtype(bool) else np.nan
+        kind = array.dtype.kind
+        if kind == "b":
+            fill_value = False
+        elif kind in {"i", "u"}:
+            fill_value = 0
+        elif kind == "M":
+            fill_value = np.datetime64("NaT")
+        elif kind == "m":
+            fill_value = np.timedelta64("NaT")
+        elif kind in {"S", "U"}:
+            fill_value = ""
+        else:
+            fill_value = np.nan
 
     e = np.empty_like(array)
     if n >= 0:
@@ -170,6 +184,11 @@ def np_find_closest(a: np.ndarray, v: Any) -> int | np.ndarray:
     a must be sorted
     >>> assert(all(np_find_closest(np.array([3, 4, 6]), np.array([4, 2])) == np.array([1, 0])))
     """
+    if len(a) == 0:
+        raise ValueError("cannot find a closest value in an empty array")
+    if len(a) == 1:
+        result = np.zeros_like(np.asarray(v), dtype=int)
+        return int(result.item()) if result.shape == () else result
     idx_ = a.searchsorted(v)
     idx = np.clip(idx_, 1, len(a) - 1)
     left = a[idx - 1]

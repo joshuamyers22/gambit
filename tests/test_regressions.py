@@ -8,7 +8,7 @@ from gambit import _io
 from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
-from gambit.pq_utils import find_in_subdir, shift_np
+from gambit.pq_utils import find_in_subdir, np_find_closest, shift_np
 from gambit.strategy import Strategy
 from gambit.strategy_components import BracketOrderEntryRule, VWAPEntryRule
 
@@ -78,6 +78,28 @@ def test_zero_shift_returns_an_independent_unchanged_array():
 
     np.testing.assert_array_equal(shifted, original)
     assert shifted is not original
+
+
+@pytest.mark.parametrize(
+    ("original", "expected"),
+    [
+        (np.array([1, 2, 3]), np.array([0, 1, 2])),
+        (
+            np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]"),
+            np.array(["NaT", "2026-01-01"], dtype="datetime64[D]"),
+        ),
+        (np.array(["a", "b"]), np.array(["", "a"])),
+    ],
+)
+def test_shift_uses_a_representable_default_for_the_array_dtype(original, expected):
+    np.testing.assert_array_equal(shift_np(original, 1), expected)
+
+
+def test_find_closest_handles_singleton_and_rejects_empty_inputs():
+    assert np_find_closest(np.array([10.0]), 500.0) == 0
+    np.testing.assert_array_equal(np_find_closest(np.array([10.0]), np.array([-1.0, 500.0])), [0, 0])
+    with pytest.raises(ValueError, match="empty array"):
+        np_find_closest(np.array([]), 1.0)
 
 
 def test_find_in_subdir_honors_root_and_is_deterministic(tmp_path):
