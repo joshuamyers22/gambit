@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 538 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 43% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 547 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 46% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -132,10 +132,18 @@
 - Correction implemented: weekday/week coordinates are validated and positive occurrences must remain inside the requested month. The explicit `week=-1` end-of-month convention is retained and documented.
 - Verification: tests cover an existing fifth weekday, a nonexistent fifth weekday through both calendar and option APIs, invalid coordinates, and weekend month-end rollback.
 
+### [Resolved] Numerical utility boundaries returned plausible invalid results
+
+- Location: `src/gambit/pq_utils.py:198-267`, `src/gambit/pq_utils.py:499-523`
+- Evidence: a zero rounding increment returned `NaN` with only a runtime warning; zero and oversized rolling windows produced empty arrays with nonsensical shapes; empty, duplicate, or descending bucket boundaries were accepted or failed incidentally; a singleton frequency series reached `argmax` on an empty array.
+- Failure mode: invalid configuration could propagate empty or `NaN` signals into research outputs, while underdetermined sampling frequency failed with an implementation-detail exception.
+- Correction implemented: these public utilities now validate window sizes, positive finite increments, strictly increasing nonempty buckets, and at least two timestamps before calculation.
+- Verification: boundary regressions cover zero, negative, non-finite, oversized, duplicate, descending, empty, and singleton inputs.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 538-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 547-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

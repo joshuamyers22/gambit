@@ -8,7 +8,16 @@ from gambit import _io
 from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
-from gambit.pq_utils import find_in_subdir, np_find_closest, shift_np
+from gambit.pq_utils import (
+    PQException,
+    find_in_subdir,
+    infer_frequency,
+    np_bucket,
+    np_find_closest,
+    np_rolling_window,
+    shift_np,
+)
+from gambit.pq_utils import np_round as pq_np_round
 from gambit.strategy import Strategy
 from gambit.strategy_components import BracketOrderEntryRule, VWAPEntryRule
 
@@ -100,6 +109,33 @@ def test_find_closest_handles_singleton_and_rejects_empty_inputs():
     np.testing.assert_array_equal(np_find_closest(np.array([10.0]), np.array([-1.0, 500.0])), [0, 0])
     with pytest.raises(ValueError, match="empty array"):
         np_find_closest(np.array([]), 1.0)
+
+
+@pytest.mark.parametrize("window", [0, -1, 4])
+def test_rolling_window_rejects_out_of_range_sizes(window: int):
+    with pytest.raises(ValueError, match="between 1 and 3"):
+        np_rolling_window(np.array([1, 2, 3]), window)
+
+
+def test_round_rejects_invalid_increments_instead_of_returning_nan():
+    for increment in (0.0, -0.25, np.nan, np.inf):
+        with pytest.raises(ValueError, match="finite and positive"):
+            pq_np_round(np.array([1.0]), increment)
+
+
+@pytest.mark.parametrize("buckets", [[], [4, 2, 8], [2, 2, 4]])
+def test_bucket_rejects_empty_or_non_increasing_boundaries(buckets):
+    with pytest.raises(ValueError, match="buckets"):
+        np_bucket(np.array([1, 2, 3]), buckets)
+
+
+@pytest.mark.parametrize(
+    "timestamps",
+    [np.array([], dtype="datetime64[D]"), np.array(["2026-01-01"], dtype="datetime64[D]")],
+)
+def test_frequency_inference_requires_an_observable_interval(timestamps):
+    with pytest.raises(PQException, match="fewer than two timestamps"):
+        infer_frequency(timestamps)
 
 
 def test_find_in_subdir_honors_root_and_is_deterministic(tmp_path):

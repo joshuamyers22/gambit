@@ -204,6 +204,12 @@ def np_rolling_window(a: np.ndarray, window: int) -> np.ndarray:
     >>> print(np.std(np_rolling_window(np.array([1, 2, 3, 4]), 2), 1))
     [0.5 0.5 0.5]
     """
+    if a.ndim == 0:
+        raise ValueError("rolling-window input must have at least one dimension")
+    if isinstance(window, bool) or not isinstance(window, (int, np.integer)):
+        raise TypeError("rolling-window size must be an integer")
+    if window < 1 or window > a.shape[-1]:
+        raise ValueError(f"rolling-window size must be between 1 and {a.shape[-1]}: {window}")
     shape = a.shape[:-1] + (a.shape[-1] - window + 1, window)
     strides = a.strides + (a.strides[-1],)
     return np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
@@ -220,6 +226,8 @@ def np_round(a: np.ndarray, clip: float):
     15.75
     """
 
+    if not np.isfinite(clip) or clip <= 0:
+        raise ValueError(f"rounding increment must be finite and positive: {clip}")
     return np.round(np.array(a, dtype=float) / clip) * clip
 
 
@@ -245,6 +253,10 @@ def np_bucket(a: np.ndarray, buckets: list[Any], default_value=0, side="mid") ->
     >>> assert np.allclose(np_bucket(a, buckets), np.array([4,  4, 12,  4,  8, 12,  4]))
     """
     assert_(side in ["mid", "left", "right"], f"unknown side: {side}")
+    if not buckets:
+        raise ValueError("buckets must not be empty")
+    if any(left >= right for left, right in zip(buckets, buckets[1:])):
+        raise ValueError("buckets must be strictly increasing")
     if side == "mid":
         b = [0.5 * (buckets[i + 1] + buckets[i]) for i in range(len(buckets) - 1)]
         conditions = [(a < e) for e in b]
@@ -509,8 +521,8 @@ def infer_frequency(timestamps: np.ndarray) -> float:
     >>> timestamps = np.array(['2015-01-01', '2015-03-01', '2015-05-01', '2015-07-01', '2015-09-01'], dtype='M8[D]')
     >>> assert math.isclose(infer_frequency(timestamps), 60)
     """
-    assert_(monotonically_increasing(timestamps))
-    assert_(len(timestamps) > 0, "cannot infer frequency from empty timestamps array")
+    assert_(len(timestamps) >= 2, "cannot infer frequency from fewer than two timestamps")
+    assert_(monotonically_increasing(timestamps), "timestamps must be strictly increasing")
     threshold = 0.75
     periods: tuple[TimeUnit, ...] = ("D", "M", "m", "s")
     for period in periods:

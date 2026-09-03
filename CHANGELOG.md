@@ -30,6 +30,8 @@ have not yet been released are collected below.
   empty inputs explicitly.
 - Weekly option expiry construction now rejects nonexistent fifth weekdays
   instead of silently drifting into the following contract month.
+- Rolling windows, rounding increments, bucket boundaries, and frequency
+  inference now reject invalid or underdetermined inputs explicitly.
 
 ## 1.1.0 - 2026-08-31
 
