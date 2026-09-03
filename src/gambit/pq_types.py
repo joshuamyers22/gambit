@@ -14,7 +14,7 @@ from typing import Any, ClassVar, cast
 import numpy as np
 
 from gambit.instruments import InstrumentSpec
-from gambit.pq_utils import assert_, get_child_logger
+from gambit.pq_utils import get_child_logger
 
 _logger = get_child_logger(__name__)
 
@@ -138,18 +138,48 @@ class Contract:
             properties: Any data you want to store with this contract.
                 For example, you may want to store option strike.  Default None
         """
-        assert_(isinstance(symbol, str) and len(symbol) > 0)
+        if not isinstance(symbol, str) or not symbol:
+            raise ValueError("contract symbol must be a non-empty string")
         if contract_group is None:
             contract_group = DEFAULT_CG
-        assert_(symbol not in Contract._instances, f"Contract with symbol: {symbol} already exists")
-        assert_(multiplier > 0)
+        if not isinstance(contract_group, ContractGroup):
+            raise TypeError("contract_group must be a ContractGroup")
+        if symbol in Contract._instances:
+            raise ValueError(f"Contract with symbol: {symbol} already exists")
+        multiplier = _finite_real(multiplier, field_name="contract multiplier")
+        if multiplier <= 0:
+            raise ValueError("contract multiplier must be positive")
+        if expiry is not None:
+            if not isinstance(expiry, np.datetime64):
+                raise TypeError("contract expiry must be a numpy datetime64 value or None")
+            if np.isnat(expiry):
+                raise ValueError("contract expiry cannot be NaT")
         if components is None:
             components = []
+        validated_components: list[tuple[Contract, float]] = []
+        for component in components:
+            if not isinstance(component, tuple) or len(component) != 2:
+                raise TypeError("contract components must be (Contract, ratio) tuples")
+            component_contract, ratio = component
+            if not isinstance(component_contract, Contract):
+                raise TypeError("contract component instruments must be Contract objects")
+            ratio = _finite_real(ratio, field_name="contract component ratio")
+            if math.isclose(ratio, 0.0):
+                raise ValueError("contract component ratios must be nonzero")
+            validated_components.append((component_contract, ratio))
         if properties is None:
             properties = types.SimpleNamespace()
         if instrument_spec is None:
             instrument_spec = InstrumentSpec()
-        contract = Contract(symbol, contract_group, expiry, multiplier, components, properties, instrument_spec)
+        contract = Contract(
+            symbol,
+            contract_group,
+            expiry,
+            multiplier,
+            validated_components,
+            properties,
+            instrument_spec,
+        )
         contract_group.add_contract(contract)
         contract.contract_group = contract_group
         Contract._instances[symbol] = contract

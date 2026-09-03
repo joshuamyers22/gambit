@@ -35,6 +35,35 @@ def test_contract_retains_validated_instrument_metadata() -> None:
     assert contract.multiplier == 50
 
 
+@pytest.mark.parametrize("multiplier", [0, -1, np.inf, True])
+def test_contract_rejects_invalid_multiplier_without_registration(multiplier) -> None:
+    symbol = f"INVALID-MULTIPLIER-{multiplier}"
+
+    with pytest.raises(ValueError, match="contract multiplier"):
+        Contract.create(symbol, multiplier=multiplier)
+
+    assert Contract.get(symbol) is None
+
+
+def test_contract_owns_validated_component_snapshot() -> None:
+    first = Contract.create("BASKET-FIRST")
+    components = [(first, 1)]
+
+    basket = Contract.create("BASKET-SNAPSHOT", components=components)
+    components.append((Contract.create("BASKET-SECOND"), -1))
+
+    assert basket.components == [(first, 1.0)]
+
+
+def test_contract_rejects_invalid_component_without_registration() -> None:
+    component = Contract.create("INVALID-BASKET-COMPONENT")
+
+    with pytest.raises(ValueError, match="component ratios must be nonzero"):
+        Contract.create("INVALID-BASKET", components=[(component, 0)])
+
+    assert Contract.get("INVALID-BASKET") is None
+
+
 def test_duplicate_metadata_requires_a_canonical_symbol() -> None:
     with pytest.raises(ValueError, match="duplicate_of"):
         InstrumentSpec(tradability=Tradability.DUPLICATE)
