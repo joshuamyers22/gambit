@@ -12,6 +12,10 @@ have not yet been released are collected below.
   simulator fills both legs or neither when price data is unavailable.
 - ``StopLimitOrder`` is deprecated and rejected at execution boundaries. Use
   an explicit trigger rule that emits a ``MarketOrder`` or ``LimitOrder``.
+- Futures and E-mini option symbols now use deterministic year decoding:
+  one-digit years denote 2020–2029 standard symbols, while historical years
+  use an explicit two-digit suffix (for example, ``ESZ6`` is December 2026 and
+  ``ESZ16`` is December 2016).
 
 ## 1.1.0 - 2026-08-31
 

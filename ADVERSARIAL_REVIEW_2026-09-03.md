@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 506 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 77% total; important weak areas include `optimize.py` 36%, `markets.py` 0%, `holiday_calendars.py` 21%, `pq_utils.py` 38% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 521 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72% and `holiday_calendars.py` from 21% to 50%; important weak areas still include `optimize.py` 36% and `pq_utils.py` 38% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -84,10 +84,18 @@
 - Correction: identify supported versus compatibility-only modules, deprecate unused surfaces, and enforce module-specific floors for supported policy rather than chasing uniform aggregate coverage.
 - Acceptance: CI fails when supported optimizer/calendar/market contracts lose coverage; compatibility-only modules have explicit ownership/deprecation status.
 
+### [Resolved] One-digit contract years silently selected the wrong decade
+
+- Location: `src/gambit/markets.py`
+- Evidence: the previous pivot decoded `ESZ6` as December 2016 after 2024, and a typo in previous-symbol rollover produced `ESZ-1` instead of December 2019.
+- Failure mode: expiry, roll selection, and post-expiry P&L could use a contract ten years away while returning plausible timestamps.
+- Correction implemented: deterministic repository nomenclature maps one-digit years to standard 2020–2029 symbols and requires two-digit years for other decades. Thus `ESZ6` is 2026 and historical `ESZ16` is 2016. Futures navigation parses the full symbol and emits a two-digit year when crossing outside the current supported decade. E-mini option decoding follows the same exact policy and rejects malformed shapes.
+- Verification: 14 focused tests cover current/historical expiry, decade-boundary navigation, option decoding, and malformed symbols.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 506-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 521-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

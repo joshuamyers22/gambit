@@ -13,6 +13,7 @@ from gambit.pq_utils import assert_
 
 FUTURE_CODES_INT = {"F": 1, "G": 2, "H": 3, "J": 4, "K": 5, "M": 6, "N": 7, "Q": 8, "U": 9, "V": 10, "X": 11, "Z": 12}
 FUTURES_CODES_INVERTED: dict[int, str] = {v: k for k, v in FUTURE_CODES_INT.items()}
+CURRENT_SYMBOL_DECADE = 2020
 
 FUTURE_CODES_STR = {
     "F": "jan",
@@ -75,6 +76,30 @@ def get_future_code(month: int) -> str:
     return FUTURES_CODES_INVERTED[month]
 
 
+def _decode_contract_year(year_code: str) -> int:
+    """Decode the repository's deterministic one/two-digit year policy."""
+    if not year_code.isdigit() or len(year_code) not in {1, 2}:
+        raise ValueError(f"contract year must contain one or two digits: {year_code!r}")
+    if len(year_code) == 1:
+        return CURRENT_SYMBOL_DECADE + int(year_code)
+    return 2000 + int(year_code)
+
+
+def _format_contract_year(year: int) -> str:
+    if not 2000 <= year <= 2099:
+        raise ValueError(f"contract year is outside the supported 2000-2099 range: {year}")
+    if CURRENT_SYMBOL_DECADE <= year < CURRENT_SYMBOL_DECADE + 10:
+        return str(year % 10)
+    return f"{year % 100:02d}"
+
+
+def _parse_future_symbol(symbol: str) -> tuple[str, int]:
+    match = re.fullmatch(r"ES([FGHJKMNQUVXZ])(\d{1,2})", symbol)
+    if match is None:
+        raise ValueError(f"invalid E-mini future symbol: {symbol!r}")
+    return match.group(1), _decode_contract_year(match.group(2))
+
+
 class EminiFuture:
     calendar = Calendar("NYSE")
 
@@ -101,49 +126,37 @@ class EminiFuture:
         else:
             month_str = "H"
             year += 1
-        base = 2010 if year < 2020 else 2020
-        fut_symbol = "ES" + month_str + str(year - base)
-        return fut_symbol
+        return "ES" + month_str + _format_contract_year(year)
 
     @staticmethod
     def get_previous_symbol(curr_future_symbol: str) -> str:
         """
         >>> assert(EminiFuture.get_previous_symbol('ESH9') == 'ESZ8')
         """
-        month = curr_future_symbol[2]
-        year = int(curr_future_symbol[3])
+        month, year = _parse_future_symbol(curr_future_symbol)
         prev_month = {"H": "Z", "M": "H", "U": "M", "Z": "U"}[month]
         prev_year = year if prev_month != "Z" else year - 1
-        if prev_year == -1:
-            prev_year == 9
-        return f"ES{prev_month}{prev_year}"
+        return f"ES{prev_month}{_format_contract_year(prev_year)}"
 
     @staticmethod
     def get_next_symbol(curr_future_symbol: str) -> str:
         """
         >>> assert(EminiFuture.get_next_symbol('ESZ8') == 'ESH9')
         """
-        month = curr_future_symbol[2]
-        year = int(curr_future_symbol[3])
+        month, year = _parse_future_symbol(curr_future_symbol)
         next_month = {"Z": "H", "H": "M", "M": "U", "U": "Z"}[month]
         next_year = year if next_month != "H" else year + 1
-        if next_year == 10:
-            next_year = 0
-        return f"ES{next_month}{next_year}"
+        return f"ES{next_month}{_format_contract_year(next_year)}"
 
     @staticmethod
     def get_expiry(fut_symbol: str) -> np.datetime64:
         """
-        >>> assert(EminiFuture.get_expiry('ESH8') == np.datetime64('2018-03-16T08:30'))
+        >>> assert(EminiFuture.get_expiry('ESH18') == np.datetime64('2018-03-16T08:30'))
+        >>> assert(EminiFuture.get_expiry('ESZ6') == np.datetime64('2026-12-18T08:30'))
         """
-        month_str = fut_symbol[-2:-1]
-        year_str = fut_symbol[-1:]
-
+        month_str, year = _parse_future_symbol(fut_symbol)
         month = future_code_to_month_number(month_str)
         assert_(isinstance(month, int))
-        year = int(year_str)
-        year_base = 2020 if year < 5 else 2010
-        year = year_base + int(year_str)
         expiry_date: datetime.date = EminiFuture.calendar.third_friday_of_month(month, year).astype(datetime.date)
         return np.datetime64(expiry_date) + np.timedelta64(8 * 60 + 30, "m")
 
@@ -154,36 +167,28 @@ class EminiOption:
     @staticmethod
     def decode_symbol(name: str) -> tuple[weekday, int, int, int]:
         """
-        >>> EminiOption.decode_symbol('E1AF8')
+        >>> EminiOption.decode_symbol('E1AF18')
         (MO, 2018, 1, 1)
         """
-        if re.match("EW[1-4].[0-9]", name):  # Friday
-            year = int("201" + name[-1:])
-            if year in [2010, 2011]:
-                year += 10
-            week = int(name[2:3])
-            month = future_code_to_month_number(name[3:4])
+        if match := re.fullmatch(r"EW([1-4])([FGHJKMNQUVXZ])(\d{1,2})", name):  # Friday
+            week = int(match.group(1))
+            month = future_code_to_month_number(match.group(2))
+            year = _decode_contract_year(match.group(3))
             return rd.FR, year, month, week
-        if re.match("E[1-5]A.[0-9]", name):  # Monday
-            year = int("201" + name[-1:])
-            if year in [2010, 2011]:
-                year += 10
-            week = int(name[1:2])
-            month = future_code_to_month_number(name[3:4])
+        if match := re.fullmatch(r"E([1-5])A([FGHJKMNQUVXZ])(\d{1,2})", name):  # Monday
+            week = int(match.group(1))
+            month = future_code_to_month_number(match.group(2))
+            year = _decode_contract_year(match.group(3))
             return rd.MO, year, month, week
-        if re.match("E[1-5]C.[0-9]", name):  # Wednesday
-            year = int("201" + name[-1:])
-            if year in [2010, 2011]:
-                year += 10
-            week = int(name[1:2])
-            month = future_code_to_month_number(name[3:4])
+        if match := re.fullmatch(r"E([1-5])C([FGHJKMNQUVXZ])(\d{1,2})", name):  # Wednesday
+            week = int(match.group(1))
+            month = future_code_to_month_number(match.group(2))
+            year = _decode_contract_year(match.group(3))
             return rd.WE, year, month, week
-        if re.match("EW[A-Z][0-9]", name):  # End of month
-            year = int("201" + name[-1:])
-            if year in [2010, 2011]:
-                year += 10
+        if match := re.fullmatch(r"EW([FGHJKMNQUVXZ])(\d{1,2})", name):  # End of month
             week = -1
-            month = future_code_to_month_number(name[2:3])
+            month = future_code_to_month_number(match.group(1))
+            year = _decode_contract_year(match.group(2))
             return rd.WE, year, month, week
         else:
             raise Exception(f"could not decode: {name}")
@@ -191,9 +196,9 @@ class EminiOption:
     @staticmethod
     def get_expiry(symbol: str) -> np.datetime64:
         """
-        >>> EminiOption.get_expiry('EW2Z5')
+        >>> EminiOption.get_expiry('EW2Z15')
         numpy.datetime64('2015-12-11T15:00')
-        >>> EminiOption.get_expiry('E3AF7')
+        >>> EminiOption.get_expiry('E3AF17')
         numpy.datetime64('2017-01-17T15:00')
         >>> EminiOption.get_expiry('EWF0')
         numpy.datetime64('2020-01-31T15:00')
