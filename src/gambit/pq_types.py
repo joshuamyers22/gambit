@@ -34,7 +34,8 @@ def _python_datetime(value: np.datetime64) -> datetime.datetime:
 class ContractGroup:
     """A way to group contracts for figuring out which indicators, rules and signals to apply to a contract and for PNL reporting"""
 
-    _instances: ClassVar[dict[str, ContractGroup]] = {}
+    __registry: ClassVar[dict[str, ContractGroup]] = {}
+    _instances: ClassVar[Mapping[str, ContractGroup]] = MappingProxyType(__registry)
     def __init__(self, name: str) -> None:
         if not isinstance(name, str) or not name:
             raise ValueError("contract group name must be a non-empty string")
@@ -59,11 +60,11 @@ class ContractGroup:
         """
         if not isinstance(name, str) or not name:
             raise ValueError("contract group name must be a non-empty string")
-        if name not in ContractGroup._instances:
+        if name not in ContractGroup.__registry:
             cg = ContractGroup(name)
-            ContractGroup._instances[name] = cg
+            ContractGroup.__registry[name] = cg
             return cg
-        return ContractGroup._instances[name]
+        return ContractGroup.__registry[name]
 
     @staticmethod
     def get_default() -> ContractGroup:
@@ -71,7 +72,7 @@ class ContractGroup:
 
     @staticmethod
     def exists(name: str) -> bool:
-        return name in ContractGroup._instances
+        return name in ContractGroup.__registry
 
     def add_contract(self, contract: Contract) -> None:
         if not isinstance(contract, Contract):
@@ -100,10 +101,11 @@ class ContractGroup:
         its identity, clear every registered group, and register it as the sole
         fresh group.
         """
-        for contract_group in ContractGroup._instances.values():
+        for contract_group in ContractGroup.__registry.values():
             contract_group.clear()
         DEFAULT_CG.clear()
-        ContractGroup._instances = {DEFAULT_CG.name: DEFAULT_CG}
+        ContractGroup.__registry.clear()
+        ContractGroup.__registry[DEFAULT_CG.name] = DEFAULT_CG
 
     def clear(self) -> None:
         """Remove all contracts"""
@@ -126,7 +128,8 @@ def _format(obj: SimpleNamespace | None) -> str:
 
 @dataclass(frozen=True)
 class Contract:
-    _instances: ClassVar[dict[str, Contract]] = {}
+    __registry: ClassVar[dict[str, Contract]] = {}
+    _instances: ClassVar[Mapping[str, Contract]] = MappingProxyType(__registry)
     symbol: str
     contract_group: ContractGroup
     expiry: np.datetime64 | None
@@ -168,7 +171,7 @@ class Contract:
             contract_group = DEFAULT_CG
         if not isinstance(contract_group, ContractGroup):
             raise TypeError("contract_group must be a ContractGroup")
-        if symbol in Contract._instances:
+        if symbol in Contract.__registry:
             raise ValueError(f"Contract with symbol: {symbol} already exists")
         multiplier = _finite_real(multiplier, field_name="contract multiplier")
         if multiplier <= 0:
@@ -199,7 +202,7 @@ class Contract:
             instrument_spec,
         )
         contract_group.add_contract(contract)
-        Contract._instances[symbol] = contract
+        Contract.__registry[symbol] = contract
         return contract
 
     def is_basket(self) -> bool:
@@ -207,14 +210,14 @@ class Contract:
 
     @staticmethod
     def exists(name) -> bool:
-        return name in Contract._instances
+        return name in Contract.__registry
 
     @staticmethod
     def get(name) -> Contract | None:
         """
         Returns an existing contrat or none if it does not exist
         """
-        return Contract._instances.get(name)
+        return Contract.__registry.get(name)
 
     @staticmethod
     def get_or_create(
@@ -226,7 +229,7 @@ class Contract:
         properties: SimpleNamespace | None = None,
         instrument_spec: InstrumentSpec | None = None,
     ) -> Contract:
-        existing = Contract._instances.get(symbol)
+        existing = Contract.__registry.get(symbol)
         if existing is not None:
             conflicts: list[str] = []
             if contract_group is not None:
@@ -286,7 +289,7 @@ class Contract:
         """
         for contract_group in ContractGroup._instances.values():
             contract_group.clear()
-        Contract._instances = {}
+        Contract.__registry.clear()
 
     def __repr__(self) -> str:
         expiry = self.expiry.astype("datetime64[us]").astype(datetime.datetime) if self.expiry is not None else None

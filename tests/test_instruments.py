@@ -95,6 +95,32 @@ def test_contract_group_identity_and_membership_are_read_only() -> None:
     assert group.get_contracts() == [contract]
 
 
+def test_global_contract_registries_are_read_only_views() -> None:
+    group = ContractGroup.get("REGISTRY-VIEW")
+    contract = Contract.create("REGISTRY-VIEW-CONTRACT", group)
+
+    with pytest.raises(TypeError):
+        ContractGroup._instances["INJECTED"] = group
+
+    with pytest.raises(TypeError):
+        Contract._instances["INJECTED"] = contract
+
+    assert not ContractGroup.exists("INJECTED")
+    assert not Contract.exists("INJECTED")
+
+
+def test_registry_views_remain_current_after_cache_clear() -> None:
+    contract_view = Contract._instances
+    group_view = ContractGroup._instances
+    Contract.create("CLEARED-CONTRACT")
+
+    Contract.clear_cache()
+    ContractGroup.clear_cache()
+
+    assert contract_view == {}
+    assert group_view == {"DEFAULT": ContractGroup.get_default()}
+
+
 def test_contract_group_rejects_contract_owned_by_another_group() -> None:
     owner = ContractGroup.get("OWNER")
     other = ContractGroup.get("OTHER")
