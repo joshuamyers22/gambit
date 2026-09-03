@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -72,6 +74,50 @@ def test_contract_group_rejects_invalid_names_without_registration(name) -> None
         ContractGroup.get(name)
 
     assert ContractGroup._instances == before
+
+
+def test_contract_group_constructor_rejects_invalid_name() -> None:
+    with pytest.raises(ValueError, match="group name"):
+        ContractGroup("")
+
+
+def test_contract_group_rejects_contract_owned_by_another_group() -> None:
+    owner = ContractGroup.get("OWNER")
+    other = ContractGroup.get("OTHER")
+    contract = Contract.create("OWNED", owner)
+
+    with pytest.raises(ValueError, match="belongs to group OWNER"):
+        other.add_contract(contract)
+
+    assert other.get_contract("OWNED") is None
+
+
+def test_contract_group_rejects_non_contract_member() -> None:
+    group = ContractGroup.get("STRICT-MEMBERS")
+
+    with pytest.raises(TypeError, match="Contract objects"):
+        group.add_contract(object())
+
+    assert group.get_contracts() == []
+
+
+def test_contract_group_rejects_distinct_contract_with_duplicate_symbol() -> None:
+    group = ContractGroup.get("GROUP-DUPLICATE")
+    registered = Contract.create("GROUP-DUPLICATE-SYMBOL", group)
+    duplicate = Contract(
+        registered.symbol,
+        group,
+        None,
+        1.0,
+        [],
+        SimpleNamespace(),
+        InstrumentSpec(),
+    )
+
+    with pytest.raises(ValueError, match="different contract"):
+        group.add_contract(duplicate)
+
+    assert group.get_contract(registered.symbol) is registered
 
 
 @pytest.mark.parametrize(

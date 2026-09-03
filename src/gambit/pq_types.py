@@ -33,6 +33,8 @@ class ContractGroup:
     contracts: dict[str, Contract]
 
     def __init__(self, name: str) -> None:
+        if not isinstance(name, str) or not name:
+            raise ValueError("contract group name must be a non-empty string")
         self.name = name
         self.contracts = {}
 
@@ -59,9 +61,17 @@ class ContractGroup:
     def exists(name: str) -> bool:
         return name in ContractGroup._instances
 
-    def add_contract(self, contract):
-        if contract.symbol not in self.contracts:
-            self.contracts[contract.symbol] = contract
+    def add_contract(self, contract: Contract) -> None:
+        if not isinstance(contract, Contract):
+            raise TypeError("contract group members must be Contract objects")
+        if contract.contract_group is not self:
+            raise ValueError(
+                f"contract {contract.symbol} belongs to group {contract.contract_group.name}, not {self.name}"
+            )
+        existing = self.contracts.get(contract.symbol)
+        if existing is not None and existing is not contract:
+            raise ValueError(f"contract group already contains a different contract with symbol: {contract.symbol}")
+        self.contracts[contract.symbol] = contract
 
     def get_contract(self, symbol: str) -> Contract | None:
         return self.contracts.get(symbol)
