@@ -325,6 +325,38 @@ def test_optimizer_cost_order_names_match_sort_direction():
     assert [item.cost for item in optimizer.experiment_list("highest_cost")] == [4.0, 1.0, -2.0]
 
 
+def test_single_process_optimizer_does_not_skip_generator_suggestions():
+    def suggestions():
+        for value in range(5):
+            yield {"x": value}
+
+    optimizer = Optimizer("complete", suggestions(), _square_cost, max_processes=1)
+
+    optimizer.run()
+
+    assert [experiment.suggestion["x"] for experiment in optimizer.experiments] == list(range(5))
+
+
+def test_single_process_optimizer_returns_each_result_to_adaptive_generator():
+    received = []
+
+    def suggestions():
+        for value in range(3):
+            feedback = yield {"x": value}
+            received.append(feedback)
+
+    optimizer = Optimizer("adaptive", suggestions(), _square_cost, max_processes=1)
+
+    optimizer.run()
+
+    assert [experiment.suggestion["x"] for experiment in optimizer.experiments] == [0, 1, 2]
+    assert received == [
+        (0.0, {"value": 0.0}),
+        (1.0, {"value": 1.0}),
+        (4.0, {"value": 2.0}),
+    ]
+
+
 def test_optimizer_empty_results_and_auxiliary_columns_are_deterministic():
     optimizer = Optimizer("empty", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
 

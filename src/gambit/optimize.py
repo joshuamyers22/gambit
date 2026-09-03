@@ -115,15 +115,20 @@ class Optimizer:
         self.experiments: list[Experiment] = []
 
     def _run_single_process(self) -> None:
+        suggestions = iter(self.generator)
+        send_feedback = getattr(suggestions, "send", None)
         try:
-            for suggestion in self.generator:
+            suggestion = next(suggestions)
+            while True:
                 if suggestion is None:
+                    suggestion = next(suggestions)
                     continue
                 cost, other_costs = self.cost_func(suggestion)
-                send_feedback = getattr(self.generator, "send", None)
-                if send_feedback is not None:
-                    send_feedback((cost, other_costs))
                 self.experiments.append(Experiment(suggestion, cost, other_costs))
+                if send_feedback is not None:
+                    suggestion = send_feedback((cost, other_costs))
+                else:
+                    suggestion = next(suggestions)
         except StopIteration:
             # Exhausted generator
             return

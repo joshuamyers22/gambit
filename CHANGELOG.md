@@ -17,6 +17,11 @@ have not yet been released are collected below.
   use an explicit two-digit suffix (for example, ``ESZ6`` is December 2026 and
   ``ESZ16`` is December 2016).
 
+### Fixed
+
+- Single-process optimization now evaluates every yielded suggestion and
+  returns each result to adaptive generators without skipping the next value.
+
 ## 1.1.0 - 2026-08-31
 
 ### Added
