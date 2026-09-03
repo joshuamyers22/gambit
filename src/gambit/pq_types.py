@@ -32,7 +32,7 @@ class ContractGroup:
     name: str
     contracts: dict[str, Contract]
 
-    def __init__(self, name) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
         self.contracts = {}
 
@@ -43,6 +43,8 @@ class ContractGroup:
          Args:
             name: Name of the group
         """
+        if not isinstance(name, str) or not name:
+            raise ValueError("contract group name must be a non-empty string")
         if name not in ContractGroup._instances:
             cg = ContractGroup(name)
             ContractGroup._instances[name] = cg
@@ -169,8 +171,12 @@ class Contract:
             validated_components.append((component_contract, ratio))
         if properties is None:
             properties = types.SimpleNamespace()
+        elif not isinstance(properties, SimpleNamespace):
+            raise TypeError("contract properties must be a SimpleNamespace or None")
         if instrument_spec is None:
             instrument_spec = InstrumentSpec()
+        elif not isinstance(instrument_spec, InstrumentSpec):
+            raise TypeError("instrument_spec must be an InstrumentSpec or None")
         contract = Contract(
             symbol,
             contract_group,

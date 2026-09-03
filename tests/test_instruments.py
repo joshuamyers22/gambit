@@ -64,6 +64,32 @@ def test_contract_rejects_invalid_component_without_registration() -> None:
     assert Contract.get("INVALID-BASKET") is None
 
 
+@pytest.mark.parametrize("name", ["", None, 1])
+def test_contract_group_rejects_invalid_names_without_registration(name) -> None:
+    before = dict(ContractGroup._instances)
+
+    with pytest.raises(ValueError, match="group name"):
+        ContractGroup.get(name)
+
+    assert ContractGroup._instances == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("properties", {}, "properties"),
+        ("instrument_spec", object(), "instrument_spec"),
+    ],
+)
+def test_contract_rejects_invalid_metadata_without_registration(field, value, message) -> None:
+    symbol = f"INVALID-{field.upper()}"
+
+    with pytest.raises(TypeError, match=message):
+        Contract.create(symbol, **{field: value})
+
+    assert Contract.get(symbol) is None
+
+
 def test_duplicate_metadata_requires_a_canonical_symbol() -> None:
     with pytest.raises(ValueError, match="duplicate_of"):
         InstrumentSpec(tradability=Tradability.DUPLICATE)
