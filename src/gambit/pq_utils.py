@@ -44,6 +44,8 @@ def shift_np(array: np.ndarray, n: int, fill_value: Any = None) -> np.ndarray:
         return None
     if len(array) == 0:
         return array
+    if n == 0:
+        return array.copy()
 
     if fill_value is None:
         fill_value = False if array.dtype == np.dtype(bool) else np.nan
@@ -814,8 +816,8 @@ def find_in_subdir(dir: str, filename: str) -> str:
     """
     Find relative path of a file in a subdirectory
     """
-    curr_dir = pathlib.Path(".")
-    matches = list(curr_dir.glob(f"**/{filename}"))
+    search_root = pathlib.Path(dir)
+    matches = sorted(search_root.glob(f"**/{filename}"))
     if len(matches) == 0:
         return ""
     return str(matches[0])

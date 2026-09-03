@@ -23,6 +23,8 @@ have not yet been released are collected below.
   returns each result to adaptive generators without skipping the next value.
 - Optimizer configuration now rejects a zero pending-task limit, and experiment
   dataframes support auxiliary costs that are absent from some results.
+- Utility zero-shifts now return an unchanged copy, and recursive file lookup
+  now searches the requested directory with deterministic ordering.
 
 ## 1.1.0 - 2026-08-31
 

@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 525 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, and `optimize.py` from 36% to 44%; important weak areas still include `pq_utils.py` 38% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 527 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 40% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -108,10 +108,18 @@
 - Correction implemented: explicit zero and negative task bounds fail validation; missing auxiliary metrics are represented by `NaN` in the stable union of columns.
 - Verification: regression tests cover the rejected zero boundary and sparse auxiliary-cost dataframe output.
 
+### [Resolved] Utility edge cases ignored explicit caller intent
+
+- Location: `src/gambit/pq_utils.py:33-60`, `src/gambit/pq_utils.py:815-823`
+- Evidence: a zero shift assigned an empty slice into the full output and raised a broadcast error. Recursive lookup accepted a directory argument but always searched the process working directory; multiple matches also depended on filesystem traversal order.
+- Failure mode: a no-op transformation crashed, while data-loading examples could select a same-named file outside the requested data root or select different files across filesystems.
+- Correction implemented: zero shifts return an independent unchanged array, and recursive lookup searches only the supplied root and sorts matches before selecting the first.
+- Verification: regression tests cover zero-shift values and ownership, requested-root isolation, stable match ordering, and missing roots.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 525-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 527-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

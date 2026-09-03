@@ -8,6 +8,7 @@ from gambit import _io
 from gambit.account import Account
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
+from gambit.pq_utils import find_in_subdir, shift_np
 from gambit.strategy import Strategy
 from gambit.strategy_components import BracketOrderEntryRule, VWAPEntryRule
 
@@ -68,6 +69,28 @@ def _square_cost(suggestion):
 
 def _failing_cost(suggestion):
     raise ValueError(f"invalid value {suggestion['x']}")
+
+
+def test_zero_shift_returns_an_independent_unchanged_array():
+    original = np.array([1.0, 2.0, 3.0])
+
+    shifted = shift_np(original, 0)
+
+    np.testing.assert_array_equal(shifted, original)
+    assert shifted is not original
+
+
+def test_find_in_subdir_honors_root_and_is_deterministic(tmp_path):
+    requested_root = tmp_path / "requested"
+    first = requested_root / "a" / "prices.csv"
+    second = requested_root / "b" / "prices.csv"
+    first.parent.mkdir(parents=True)
+    second.parent.mkdir(parents=True)
+    first.touch()
+    second.touch()
+
+    assert find_in_subdir(str(requested_root), "prices.csv") == str(first)
+    assert find_in_subdir(str(tmp_path / "absent"), "prices.csv") == ""
 
 
 def test_account_indexes_each_trade_under_its_own_contract():
