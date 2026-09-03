@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 547 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 46% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 548 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 46% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -140,10 +140,18 @@
 - Correction implemented: these public utilities now validate window sizes, positive finite increments, strictly increasing nonempty buckets, and at least two timestamps before calculation.
 - Verification: boundary regressions cover zero, negative, non-finite, oversized, duplicate, descending, empty, and singleton inputs.
 
+### [Resolved] Optimizer plots crashed or omitted conditional metrics
+
+- Location: `src/gambit/optimize.py:223-425`
+- Evidence: 2D plotting checked only whether the unfiltered experiment list was empty, then indexed the first valid result even when every result was non-finite. Plot limits could similarly empty a 3D dataset before reductions. The 2D `all` view read auxiliary keys only from the first experiment.
+- Failure mode: completed optimization runs could fail during reporting, or silently omit metrics emitted only by later/conditional evaluations.
+- Correction implemented: plotting exits cleanly when validation or limits remove every result, and the 2D all-metrics view uses the stable union of auxiliary keys with `NaN` for missing observations.
+- Verification: regression coverage exercises all-invalid 2D data, fully filtered 3D data, and sparse auxiliary metrics whose keys first appear in different experiments.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 547-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 548-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

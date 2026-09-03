@@ -274,6 +274,9 @@ class Optimizer:
                 for experiment in experiments
                 if experiment.suggestion[y] >= ylim[0] and experiment.suggestion[y] <= ylim[1]
             ]
+        if not experiments:
+            _logger.warning("No experiments remain after applying plot limits")
+            return go.Figure()
 
         xvalues = np.array([experiment.suggestion[x] for experiment in experiments])
         yvalues = np.array([experiment.suggestion[y] for experiment in experiments])
@@ -385,6 +388,9 @@ class Optimizer:
 
         # Get rid of nans
         experiments = [experiment for experiment in self.experiments if experiment.valid()]
+        if not experiments:
+            _logger.warning("No valid experiments found")
+            return
 
         xvalues = [experiment.suggestion[x] for experiment in experiments]
         yvalues = []
@@ -392,9 +398,8 @@ class Optimizer:
         go, make_subplots = _plotting_modules()
         if y == "all":
             yvalues.append(("cost", np.array([experiment.cost for experiment in experiments])))
-            other_cost_keys = experiments[0].other_costs.keys()
-            for key in other_cost_keys:
-                yvalues.append((key, np.array([experiment.other_costs[key] for experiment in experiments])))
+            for key in flatten_keys(experiments):
+                yvalues.append((key, np.array([experiment.other_costs.get(key, np.nan) for experiment in experiments])))
         elif y == "cost":
             yvalues.append(("cost", np.array([experiment.cost for experiment in experiments])))
         else:

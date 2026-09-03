@@ -468,6 +468,23 @@ def test_optimizer_dataframe_supports_sparse_auxiliary_costs():
     assert np.isnan(result["zeta"].to_list()[1])
 
 
+def test_optimizer_plots_handle_invalid_filtered_and_sparse_results():
+    invalid = Optimizer("invalid", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
+    invalid.experiments = [Experiment({"x": np.nan, "y": 1.0}, 1.0, {})]
+    assert invalid.plot_2d("x", show=False) is None
+
+    sparse = Optimizer("sparse", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
+    sparse.experiments = [
+        Experiment({"x": 1.0, "y": 1.0}, 1.0, {"alpha": 2.0}),
+        Experiment({"x": 2.0, "y": 2.0}, 2.0, {"beta": 3.0}),
+    ]
+    figure = sparse.plot_2d("x", show=False)
+    assert [trace.name for trace in figure.data] == ["cost", "alpha", "beta"]
+
+    filtered = sparse.plot_3d("x", "y", xlim=(10.0, 20.0), show=False)
+    assert len(filtered.data) == 0
+
+
 def test_optimizer_runs_with_spawn_and_bounded_pending_work():
     suggestions = ({"x": value} for value in range(4))
     optimizer = Optimizer(

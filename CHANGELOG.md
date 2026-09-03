@@ -32,6 +32,8 @@ have not yet been released are collected below.
   instead of silently drifting into the following contract month.
 - Rolling windows, rounding increments, bucket boundaries, and frequency
   inference now reject invalid or underdetermined inputs explicitly.
+- Optimizer plots now handle all-invalid or fully filtered experiment sets and
+  preserve sparse auxiliary metrics across every experiment.
 
 ## 1.1.0 - 2026-08-31
 
