@@ -5,6 +5,7 @@ import datetime
 import numpy as np
 import pytest
 
+from gambit.holiday_calendars import get_date_from_weekday
 from gambit.markets import EminiFuture, EminiOption
 
 
@@ -39,3 +40,22 @@ def test_option_year_policy_distinguishes_historical_and_current_decades() -> No
 def test_option_symbol_requires_supported_exact_shape(symbol: str) -> None:
     with pytest.raises(Exception, match="could not decode"):
         EminiOption.decode_symbol(symbol)
+
+
+def test_weekday_occurrence_cannot_drift_into_another_month() -> None:
+    assert get_date_from_weekday(0, 2021, 3, 5) == np.datetime64("2021-03-29")
+    with pytest.raises(ValueError, match="does not occur 5 times"):
+        get_date_from_weekday(0, 2021, 2, 5)
+    with pytest.raises(ValueError, match="does not occur 5 times"):
+        EminiOption.get_expiry("E5AG21")
+
+
+@pytest.mark.parametrize(("weekday", "week"), [(-1, 1), (7, 1), (0, 0), (0, 6), (0, -2)])
+def test_weekday_occurrence_rejects_invalid_coordinates(weekday: int, week: int) -> None:
+    with pytest.raises(ValueError):
+        get_date_from_weekday(weekday, 2026, 1, week)
+
+
+def test_end_of_month_option_keeps_explicit_calendar_month_semantics() -> None:
+    assert get_date_from_weekday(2, 2021, 2, -1) == np.datetime64("2021-02-28")
+    assert EminiOption.get_expiry("EWG21") == np.datetime64("2021-02-26T15:00")

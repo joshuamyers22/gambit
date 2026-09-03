@@ -28,6 +28,8 @@ have not yet been released are collected below.
 - Array shifting now chooses fill values representable by integer, temporal,
   and string dtypes; closest-value lookup handles singleton arrays and rejects
   empty inputs explicitly.
+- Weekly option expiry construction now rejects nonexistent fifth weekdays
+  instead of silently drifting into the following contract month.
 
 ## 1.1.0 - 2026-08-31
 

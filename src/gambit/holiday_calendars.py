@@ -282,15 +282,22 @@ class Calendar:
 
 def get_date_from_weekday(weekday: int, year: int, month: int, week: int) -> np.datetime64:
     """
-    Return the date that falls on a given weekday (Monday = 0) on a week, year and month
+    Return the requested weekday occurrence (Monday = 0) within a month.
+    ``week=-1`` is reserved for the final calendar day of the month.
     >>> str(get_date_from_weekday(1, 2019, 10, 4))
     '2019-10-22'
     """
+    if weekday not in range(7):
+        raise ValueError(f"weekday must be between 0 and 6: {weekday}")
+    if week not in {-1, 1, 2, 3, 4, 5}:
+        raise ValueError(f"week must be -1 or between 1 and 5: {week}")
     if week == -1:  # Last day of month
         _, last_day = cal.monthrange(year, month)
         return np.datetime64(datetime.datetime(year, month, last_day)).astype("M8[D]")
     first_day_of_month = datetime.datetime(year, month, 1)
     date = first_day_of_month + rd.relativedelta(weeks=week - 1, weekday=weekday)
+    if date.month != month:
+        raise ValueError(f"weekday {weekday} does not occur 5 times in {year:04d}-{month:02d}")
     return np.datetime64(date).astype("M8[D]")
 
 

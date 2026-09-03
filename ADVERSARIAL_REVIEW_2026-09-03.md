@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 531 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 43% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 538 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 44%, and `pq_utils.py` from 38% to 43% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -124,10 +124,18 @@
 - Correction implemented: shift fill values now follow the destination dtype, singleton closest-value queries always resolve to index zero, and empty reference arrays raise an explicit `ValueError`.
 - Verification: parameterized regressions cover integer, datetime, and string shifts plus scalar/vector singleton queries and empty references.
 
+### [Resolved] Weekly option expiry could cross into the next contract month
+
+- Location: `src/gambit/holiday_calendars.py:283-294`, `src/gambit/markets.py:196-220`
+- Evidence: requesting a fifth weekday in a month containing only four used `relativedelta` to return the first matching weekday of the next month. Invalid weekday and week coordinates were also accepted until a lower-level operation happened to fail.
+- Failure mode: a syntactically valid weekly option such as `E5AG21` was assigned a March 2021 expiry even though its symbol names February, contaminating contract selection and expiration P&L with plausible dates.
+- Correction implemented: weekday/week coordinates are validated and positive occurrences must remain inside the requested month. The explicit `week=-1` end-of-month convention is retained and documented.
+- Verification: tests cover an existing fifth weekday, a nonexistent fifth weekday through both calendar and option APIs, invalid coordinates, and weekend month-end rollback.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 531-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 538-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
