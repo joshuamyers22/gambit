@@ -21,6 +21,8 @@ have not yet been released are collected below.
 
 - Single-process optimization now evaluates every yielded suggestion and
   returns each result to adaptive generators without skipping the next value.
+- Optimizer configuration now rejects a zero pending-task limit, and experiment
+  dataframes support auxiliary costs that are absent from some results.
 
 ## 1.1.0 - 2026-08-31
 

@@ -109,9 +109,9 @@ class Optimizer:
             raise ValueError(f"unsupported multiprocessing start method: {process_start_method}")
         self.process_start_method = process_start_method
         worker_count = max_processes or (os.cpu_count() or 1)
-        self.max_pending_tasks = max_pending_tasks or worker_count * 2
-        if self.max_pending_tasks < 1:
+        if max_pending_tasks is not None and max_pending_tasks < 1:
             raise ValueError("max_pending_tasks must be positive")
+        self.max_pending_tasks = max_pending_tasks if max_pending_tasks is not None else worker_count * 2
         self.experiments: list[Experiment] = []
 
     def _run_single_process(self) -> None:
@@ -212,7 +212,7 @@ class Optimizer:
         # pc_keys = list(self.experiments[0].other_costs.keys())
         sugg_keys = list(self.experiments[0].suggestion.keys())
         records = [
-            [exp.suggestion[k] for k in sugg_keys] + [exp.cost] + [exp.other_costs[k] for k in pc_keys]
+            [exp.suggestion[k] for k in sugg_keys] + [exp.cost] + [exp.other_costs.get(k, np.nan) for k in pc_keys]
             for exp in self.experiments
             if exp.valid()
         ]

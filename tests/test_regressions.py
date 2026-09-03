@@ -366,6 +366,27 @@ def test_optimizer_empty_results_and_auxiliary_columns_are_deterministic():
     ) == ["alpha", "zeta"]
 
 
+def test_optimizer_rejects_zero_pending_task_limit():
+    with pytest.raises(ValueError, match="max_pending_tasks must be positive"):
+        Optimizer("invalid", iter(()), lambda _suggestion: (0.0, {}), max_pending_tasks=0)
+
+
+def test_optimizer_dataframe_supports_sparse_auxiliary_costs():
+    optimizer = Optimizer("sparse", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
+    optimizer.experiments = [
+        Experiment({"x": 1}, 1.0, {"zeta": 2.0}),
+        Experiment({"x": 2}, 2.0, {"alpha": 3.0}),
+    ]
+
+    result = optimizer.df_experiments()
+
+    assert result.columns == ["x", "cost", "alpha", "zeta"]
+    assert result["alpha"].to_list()[1] == 3.0
+    assert result["zeta"].to_list()[0] == 2.0
+    assert np.isnan(result["alpha"].to_list()[0])
+    assert np.isnan(result["zeta"].to_list()[1])
+
+
 def test_optimizer_runs_with_spawn_and_bounded_pending_work():
     suggestions = ({"x": value} for value in range(4))
     optimizer = Optimizer(

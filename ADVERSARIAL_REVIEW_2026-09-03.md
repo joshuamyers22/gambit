@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 523 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, and `optimize.py` from 36% to 40%; important weak areas still include `pq_utils.py` 38% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 525 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 78% total; `markets.py` improved from 0% to 72%, `holiday_calendars.py` from 21% to 50%, and `optimize.py` from 36% to 44%; important weak areas still include `pq_utils.py` 38% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -100,10 +100,18 @@
 - Correction implemented: the single-process driver now advances explicitly, records the completed experiment before feedback, and uses the value returned by `send()` as the next suggestion.
 - Verification: regression tests require all values from both ordinary and feedback-consuming generators to execute in sequence and require every adaptive result to be received.
 
+### [Resolved] Optimizer boundary and reporting inputs failed inconsistently
+
+- Location: `src/gambit/optimize.py:111-114`, `src/gambit/optimize.py:208-219`
+- Evidence: `max_pending_tasks=0` was replaced by the default because configuration used truthiness before validating positivity. Separately, dataframe construction discovered the union of auxiliary-cost keys but directly indexed every result by every key.
+- Failure mode: an explicitly invalid concurrency bound silently changed behavior, while conditional auxiliary metrics raised `KeyError` during otherwise valid result reporting.
+- Correction implemented: explicit zero and negative task bounds fail validation; missing auxiliary metrics are represented by `NaN` in the stable union of columns.
+- Verification: regression tests cover the rejected zero boundary and sparse auxiliary-cost dataframe output.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 523-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 525-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
