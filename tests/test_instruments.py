@@ -136,6 +136,31 @@ def test_contract_rejects_invalid_metadata_without_registration(field, value, me
     assert Contract.get(symbol) is None
 
 
+def test_get_or_create_returns_existing_contract_without_constraints() -> None:
+    group = ContractGroup.get("GET-EXISTING")
+    existing = Contract.create("GET-EXISTING-SYMBOL", group, multiplier=50)
+
+    assert Contract.get_or_create(existing.symbol) is existing
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("contract_group", ContractGroup.get("CONFLICTING-GROUP")),
+        ("expiry", np.datetime64("2030-01-01")),
+        ("multiplier", 2),
+        ("instrument_spec", InstrumentSpec(asset_class=AssetClass.FUTURE)),
+    ],
+)
+def test_get_or_create_rejects_conflicting_identity(field, value) -> None:
+    existing = Contract.create("CONFLICTING-IDENTITY")
+
+    with pytest.raises(ValueError, match=field):
+        Contract.get_or_create(existing.symbol, **{field: value})
+
+    assert Contract.get(existing.symbol) is existing
+
+
 def test_duplicate_metadata_requires_a_canonical_symbol() -> None:
     with pytest.raises(ValueError, match="duplicate_of"):
         InstrumentSpec(tradability=Tradability.DUPLICATE)

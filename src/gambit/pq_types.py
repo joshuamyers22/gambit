@@ -19,6 +19,13 @@ from gambit.pq_utils import get_child_logger
 _logger = get_child_logger(__name__)
 
 
+class _Unset:
+    pass
+
+
+_UNSET = _Unset()
+
+
 def _python_datetime(value: np.datetime64) -> datetime.datetime:
     """Convert a NumPy timestamp for human-readable representations."""
     return cast(datetime.datetime, value.astype("datetime64[us]").astype(datetime.datetime))
@@ -168,17 +175,7 @@ class Contract:
                 raise ValueError("contract expiry cannot be NaT")
         if components is None:
             components = []
-        validated_components: list[tuple[Contract, float]] = []
-        for component in components:
-            if not isinstance(component, tuple) or len(component) != 2:
-                raise TypeError("contract components must be (Contract, ratio) tuples")
-            component_contract, ratio = component
-            if not isinstance(component_contract, Contract):
-                raise TypeError("contract component instruments must be Contract objects")
-            ratio = _finite_real(ratio, field_name="contract component ratio")
-            if math.isclose(ratio, 0.0):
-                raise ValueError("contract component ratios must be nonzero")
-            validated_components.append((component_contract, ratio))
+        validated_components = _validated_contract_components(components)
         if properties is None:
             properties = types.SimpleNamespace()
         elif not isinstance(properties, SimpleNamespace):
@@ -220,14 +217,63 @@ class Contract:
         symbol: str,
         contract_group: ContractGroup | None = None,
         expiry: np.datetime64 | None = None,
-        multiplier: float = 1.0,
+        multiplier: float | _Unset = _UNSET,
         components: list[tuple[Contract, float]] | None = None,
         properties: SimpleNamespace | None = None,
         instrument_spec: InstrumentSpec | None = None,
     ) -> Contract:
-        if symbol in Contract._instances:
-            return Contract._instances[symbol]
-        return Contract.create(symbol, contract_group, expiry, multiplier, components, properties, instrument_spec)
+        existing = Contract._instances.get(symbol)
+        if existing is not None:
+            conflicts: list[str] = []
+            if contract_group is not None:
+                if not isinstance(contract_group, ContractGroup):
+                    raise TypeError("contract_group must be a ContractGroup")
+                if existing.contract_group is not contract_group:
+                    conflicts.append("contract_group")
+            if expiry is not None:
+                if not isinstance(expiry, np.datetime64):
+                    raise TypeError("contract expiry must be a numpy datetime64 value or None")
+                if np.isnat(expiry):
+                    raise ValueError("contract expiry cannot be NaT")
+                if existing.expiry != expiry:
+                    conflicts.append("expiry")
+            if not isinstance(multiplier, _Unset):
+                requested_multiplier = _finite_real(multiplier, field_name="contract multiplier")
+                if existing.multiplier != requested_multiplier:
+                    conflicts.append("multiplier")
+            if components is not None:
+                requested_components = _validated_contract_components(components)
+                components_match = len(existing.components) == len(requested_components) and all(
+                    actual_contract is requested_contract and actual_ratio == requested_ratio
+                    for (actual_contract, actual_ratio), (requested_contract, requested_ratio) in zip(
+                        existing.components, requested_components, strict=True
+                    )
+                )
+                if not components_match:
+                    conflicts.append("components")
+            if properties is not None:
+                if not isinstance(properties, SimpleNamespace):
+                    raise TypeError("contract properties must be a SimpleNamespace or None")
+                if existing.properties != properties:
+                    conflicts.append("properties")
+            if instrument_spec is not None:
+                if not isinstance(instrument_spec, InstrumentSpec):
+                    raise TypeError("instrument_spec must be an InstrumentSpec or None")
+                if existing.instrument_spec != instrument_spec:
+                    conflicts.append("instrument_spec")
+            if conflicts:
+                raise ValueError(f"existing contract {symbol} conflicts with requested {', '.join(conflicts)}")
+            return existing
+        create_multiplier = 1.0 if isinstance(multiplier, _Unset) else multiplier
+        return Contract.create(
+            symbol,
+            contract_group,
+            expiry,
+            create_multiplier,
+            components,
+            properties,
+            instrument_spec,
+        )
 
     @staticmethod
     def clear_cache() -> None:
@@ -355,6 +401,21 @@ def _finite_real(value: float, *, field_name: str) -> float:
     ):
         raise ValueError(f"{field_name} must be a finite real number")
     return float(value)
+
+
+def _validated_contract_components(components: list[tuple[Contract, float]]) -> list[tuple[Contract, float]]:
+    validated: list[tuple[Contract, float]] = []
+    for component in components:
+        if not isinstance(component, tuple) or len(component) != 2:
+            raise TypeError("contract components must be (Contract, ratio) tuples")
+        component_contract, ratio = component
+        if not isinstance(component_contract, Contract):
+            raise TypeError("contract component instruments must be Contract objects")
+        ratio = _finite_real(ratio, field_name="contract component ratio")
+        if math.isclose(ratio, 0.0):
+            raise ValueError("contract component ratios must be nonzero")
+        validated.append((component_contract, ratio))
+    return validated
 
 
 @dataclass(kw_only=True)
