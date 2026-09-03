@@ -47,7 +47,7 @@ class Portfolio:
         self.strategies[name] = strategy
         strategy.name = name
 
-    def _selected_strategies(self, strategy_names: Sequence[str] | None) -> tuple[Strategy, ...]:
+    def _selected_strategies(self, strategy_names: Sequence[str] | None) -> tuple[tuple[str, Strategy], ...]:
         if strategy_names is None:
             strategy_names = tuple(self.strategies)
         if isinstance(strategy_names, (str, bytes)) or not isinstance(strategy_names, Sequence):
@@ -59,7 +59,7 @@ class Portfolio:
         unknown = [name for name in strategy_names if name not in self.strategies]
         if unknown:
             raise ValueError(f"unknown portfolio strategies: {', '.join(unknown)}")
-        return tuple(self.strategies[name] for name in dict.fromkeys(strategy_names))
+        return tuple((name, self.strategies[name]) for name in dict.fromkeys(strategy_names))
 
     def run_indicators(self, strategy_names: Sequence[str] | None = None) -> None:
         """Compute indicators for the strategies specified
@@ -67,8 +67,8 @@ class Portfolio:
         Args:
             strategy_names: By default this is set to None and we use all strategies.
         """
-        for strategy in self._selected_strategies(strategy_names):
-            _logger.info(f"running strategy indicators: {strategy.name}")
+        for name, strategy in self._selected_strategies(strategy_names):
+            _logger.info(f"running strategy indicators: {name}")
             strategy.run_indicators()
 
     def run_signals(self, strategy_names: Sequence[str] | None = None) -> None:
@@ -77,8 +77,8 @@ class Portfolio:
         Args:
             strategy_names: By default this is set to None and we use all strategies.
         """
-        for strategy in self._selected_strategies(strategy_names):
-            _logger.info(f"running signals: {strategy.name}")
+        for name, strategy in self._selected_strategies(strategy_names):
+            _logger.info(f"running signals: {name}")
             strategy.run_signals()
 
     def _generate_order_iterations(
@@ -134,7 +134,8 @@ class Portfolio:
         """Run rules for the strategies specified.  Must be called after run_indicators and run_signals.
         See run function for argument descriptions
         """
-        strategies = self._selected_strategies(strategy_names)
+        selected_strategies = self._selected_strategies(strategy_names)
+        strategies = tuple(strategy for _name, strategy in selected_strategies)
         start_date, end_date = validate_date_range(start_date, end_date, owner="portfolio rule execution")
         for strategy in strategies:
             strategy.validate_stage_graph()
@@ -170,10 +171,10 @@ class Portfolio:
               so you can set this so they are all ready by this date.  Default None
             end_date: Don't run rules after this date.  Default None
         """
-        strategies = self._selected_strategies(strategy_names)
-        for strategy in strategies:
+        selected_strategies = self._selected_strategies(strategy_names)
+        for _name, strategy in selected_strategies:
             strategy.validate_stage_graph()
-        selected_names = tuple(strategy.name for strategy in strategies)
+        selected_names = tuple(name for name, _strategy in selected_strategies)
         self.run_indicators(selected_names)
         self.run_signals(selected_names)
         self.run_rules(selected_names, start_date, end_date)
@@ -186,12 +187,12 @@ class Portfolio:
             sampling_frequency: Date frequency for rows.  Default 'D' for daily so we will have one row per day
             strategy_names: By default this is set to None and we use all strategies.
         """
-        strategies = self._selected_strategies(strategy_names)
+        selected_strategies = self._selected_strategies(strategy_names)
         equity_list = []
-        selected_names = [strategy.name for strategy in strategies]
-        for strategy in strategies:
+        selected_names = [name for name, _strategy in selected_strategies]
+        for name, strategy in selected_strategies:
             equity = strategy.df_returns(sampling_frequency=sampling_frequency)[["timestamp", "equity"]]
-            equity = equity.rename({"equity": strategy.name})
+            equity = equity.rename({"equity": name})
             equity_list.append(equity)
         df = reduce(lambda left, right: left.join(right, on="timestamp", how="full", coalesce=True), equity_list)
         return df.with_columns(pl.sum_horizontal(selected_names).alias("equity")).with_columns(

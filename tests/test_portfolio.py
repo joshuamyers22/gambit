@@ -104,3 +104,25 @@ def test_portfolio_validates_all_stage_graphs_before_callbacks() -> None:
         portfolio.run(["alpha"])
 
     assert callback_calls == 0
+
+
+def test_portfolio_uses_registry_name_when_strategy_name_changes() -> None:
+    timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
+    strategy = Strategy(timestamps, [ContractGroup.get("portfolio-registry-identity")], _price)
+    callback_calls = 0
+
+    def indicator(*_args):
+        nonlocal callback_calls
+        callback_calls += 1
+        return np.array([1.0])
+
+    strategy.add_indicator("value", indicator)
+    first_portfolio = Portfolio()
+    second_portfolio = Portfolio()
+    first_portfolio.add_strategy("alpha", strategy)
+    second_portfolio.add_strategy("beta", strategy)
+
+    first_portfolio.run(["alpha"])
+
+    assert strategy.name == "beta"
+    assert callback_calls == 1
