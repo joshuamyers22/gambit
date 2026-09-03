@@ -6,7 +6,17 @@ import numpy as np
 import pytest
 
 from gambit.account import Account
-from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, TimeInForce, Trade, VWAPOrder
+from gambit.pq_types import (
+    Contract,
+    ContractGroup,
+    LimitOrder,
+    MarketOrder,
+    OrderStatus,
+    StopLimitOrder,
+    TimeInForce,
+    Trade,
+    VWAPOrder,
+)
 from gambit.strategy import Strategy
 from gambit.strategy_components import VWAPMarketSimulator
 
@@ -130,6 +140,39 @@ def test_order_rejects_fill_after_terminal_state() -> None:
 
     assert order.qty == 0
     assert order.status is OrderStatus.FILLED
+
+
+@pytest.mark.parametrize("limit_price", [np.nan, np.inf, -np.inf, True, "100"])
+def test_limit_order_rejects_invalid_limit_price(limit_price) -> None:
+    contract = Contract.create("INVALID-LIMIT-PRICE", ContractGroup.get("orders"))
+
+    with pytest.raises(ValueError, match="limit price must be a finite real number"):
+        LimitOrder(contract=contract, qty=1, limit_price=limit_price)
+
+
+@pytest.mark.parametrize("trigger_price", [np.nan, np.inf, -np.inf, True, "100"])
+def test_stop_limit_order_rejects_invalid_trigger_price(trigger_price) -> None:
+    contract = Contract.create("INVALID-TRIGGER-PRICE", ContractGroup.get("orders"))
+
+    with pytest.raises(ValueError, match="stop trigger price must be a finite real number"):
+        StopLimitOrder(contract=contract, qty=1, trigger_price=trigger_price)
+
+
+def test_stop_limit_order_allows_market_trigger_without_limit() -> None:
+    contract = Contract.create("STOP-MARKET", ContractGroup.get("orders"))
+
+    order = StopLimitOrder(contract=contract, qty=-1, trigger_price=95)
+
+    assert order.trigger_price == 95.0
+    assert np.isnan(order.limit_price)
+
+
+@pytest.mark.parametrize("limit_price", [np.inf, -np.inf, True, "90"])
+def test_stop_limit_order_rejects_invalid_explicit_limit(limit_price) -> None:
+    contract = Contract.create("INVALID-STOP-LIMIT", ContractGroup.get("orders"))
+
+    with pytest.raises(ValueError, match="stop limit price must be a finite real number"):
+        StopLimitOrder(contract=contract, qty=-1, trigger_price=95, limit_price=limit_price)
 
 
 def test_unfilled_fok_order_is_cancelled_after_fill_window() -> None:

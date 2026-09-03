@@ -513,6 +513,7 @@ class LimitOrder(Order):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        self.limit_price = _finite_real(self.limit_price, field_name="limit price")
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
@@ -558,6 +559,9 @@ class StopLimitOrder(Order):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        self.trigger_price = _finite_real(self.trigger_price, field_name="stop trigger price")
+        if not (isinstance(self.limit_price, (float, np.floating)) and math.isnan(float(self.limit_price))):
+            self.limit_price = _finite_real(self.limit_price, field_name="stop limit price")
 
     def __repr__(self) -> str:
         timestamp = _python_datetime(self.timestamp)
