@@ -12,6 +12,7 @@ from gambit.pq_types import (
     ContractGroup,
     LimitOrder,
     MarketOrder,
+    Order,
     OrderStatus,
     RollOrder,
     StopLimitOrder,
@@ -187,6 +188,21 @@ def test_deprecated_stop_order_is_rejected_at_rule_boundary() -> None:
 
     with pytest.raises(ValueError, match="deprecated and cannot be executed"):
         validate_rule_orders([order], group, timestamp)
+
+
+def test_every_order_type_has_an_explicit_execution_policy() -> None:
+    """New public order types must not inherit the old silent-ignore behavior."""
+    policies = {
+        MarketOrder: "built-in market simulator",
+        LimitOrder: "built-in market simulator",
+        VWAPOrder: "VWAP market simulator",
+        RollOrder: "expanded into linked market legs",
+        StopLimitOrder: "deprecated and rejected",
+    }
+
+    assert set(Order.__subclasses__()) == set(policies), (
+        "Every direct Order subclass must be added to the execution-policy contract"
+    )
 
 
 def test_roll_order_expands_to_validated_market_legs() -> None:

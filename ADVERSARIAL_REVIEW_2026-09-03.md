@@ -29,7 +29,7 @@
 | Coverage | same command | Pass, uneven | 77% total; important weak areas include `optimize.py` 36%, `markets.py` 0%, `holiday_calendars.py` 21%, `pq_utils.py` 38% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
-| Dependency audit | `pip-audit --strict` attempts | Blocked | an ignored legacy `src/gambit.egg-info` advertises obsolete `gambit==1.0.2`, causing an unauditable-package failure |
+| Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
 
 ## Architecture map
 
@@ -68,13 +68,13 @@
 - Correction made locally: regenerated `uv.lock`, added a local `make lock` prerequisite, and added a dedicated CI lock job; `uv lock --check` now passes.
 - Acceptance: CI runs `uv lock --check` before any command capable of updating the environment, and the corrected lock is committed with `pyproject.toml` changes.
 
-### [Medium] Dependency audit is not reproducible from the working tree
+### [Resolved] Dependency audit was not reproducible from the working tree
 
 - Location: ignored local `src/gambit.egg-info`; `Makefile`; CI workflow
 - Evidence: `pip-audit --strict` fails because Python discovers obsolete `gambit==1.0.2` metadata alongside `gambit-markets==1.1.0`. The standard `make check` contains no dependency-audit target.
 - Failure mode: developers cannot distinguish a vulnerable dependency result from contaminated local metadata, and the primary gate provides no current vulnerability evidence.
-- Correction: ensure clean/build commands remove obsolete package metadata safely, audit an exported locked dependency set in an isolated environment, and include that command in CI.
-- Acceptance: the audit runs from a clean checkout and a previously built working tree with identical results; obsolete distribution names are absent.
+- Correction implemented: `make audit` exports the exact hashed runtime set from `uv.lock` and audits it without inspecting or installing the contaminated environment. A dedicated CI job runs the same pinned audit tool and command.
+- Verification: the command succeeds from the existing built working tree with no known vulnerabilities.
 
 ### [Medium] Passing aggregate coverage masks unverified legacy policy
 
@@ -86,9 +86,7 @@
 
 ## Improvement order
 
-1. Make the dependency audit isolated and reproducible.
-2. Add handler coverage enforcement so future exported order types cannot be silently ignored.
-3. Classify and test or deprecate the low-coverage legacy modules.
+1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
