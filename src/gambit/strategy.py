@@ -16,7 +16,12 @@ import polars as pl
 
 from gambit.account import Account
 from gambit.backtest_result import BacktestResult, BacktestTelemetry, StageTelemetry
-from gambit.boundaries import BacktestCallbackError, validate_date_range, validate_strategy_timestamps
+from gambit.boundaries import (
+    BacktestCallbackError,
+    final_timestamp_at_or_before,
+    validate_date_range,
+    validate_strategy_timestamps,
+)
 from gambit.calculation import CalculationContext
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders, validate_stage_values
 from gambit.configuration import RunConfiguration, RunProvenance
@@ -692,15 +697,22 @@ class Strategy:
         """
         validated_rule_names = validated_stage_names(rule_names, self.rule_names, operation="rule")
         validated_groups = validated_stage_groups(contract_groups, self.contract_groups, operation="rule execution")
+        start_date, end_date = validate_date_range(start_date, end_date, owner="rule execution")
         self._generate_order_iterations(validated_rule_names, validated_groups, start_date, end_date)
 
         # Now we know which rules, contract groups need to be applied for each iteration, go through each iteration and apply them
         # in the same order they were added to the strategy
-        for i in range(len(self.orders_iter)):
+        for i, timestamp in enumerate(self.timestamps):
+            if not np.isnat(start_date) and timestamp < start_date:
+                continue
+            if not np.isnat(end_date) and timestamp > end_date:
+                break
             self._run_iteration(i)
 
         if self.run_final_calc:
-            self.account.calc(cast(np.datetime64, self.timestamps[-1]))
+            final_timestamp = final_timestamp_at_or_before(self.timestamps, end_date)
+            if final_timestamp is not None:
+                self.account.calc(final_timestamp)
 
     def _run_iteration(self, i: int) -> None:
         # first execute open orders so that positions get updated before running rules

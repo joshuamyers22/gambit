@@ -5,12 +5,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import reduce
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import polars as pl
 
-from gambit.boundaries import validate_date_range
+from gambit.boundaries import final_timestamp_at_or_before, validate_date_range
 from gambit.evaluator import compute_return_metrics, display_return_metrics, plot_return_metrics
 from gambit.pq_utils import get_child_logger
 from gambit.strategy import Strategy
@@ -152,7 +152,9 @@ class Portfolio:
 
         # Make sure we calc to the end for each strategy
         for strategy in strategies:
-            strategy.account.calc(cast(np.datetime64, strategy.timestamps[-1]))
+            final_timestamp = final_timestamp_at_or_before(strategy.timestamps, end_date)
+            if final_timestamp is not None:
+                strategy.account.calc(final_timestamp)
 
     def run(
         self,

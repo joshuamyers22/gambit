@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -27,6 +27,19 @@ def validate_date_range(
     if not np.isnat(start_timestamp) and not np.isnat(end_timestamp) and start_timestamp > end_timestamp:
         raise ValueError(f"{owner} start date cannot be after end date")
     return start_timestamp, end_timestamp
+
+
+def final_timestamp_at_or_before(
+    timestamps: np.ndarray,
+    end: np.datetime64,
+) -> np.datetime64 | None:
+    """Return the last grid timestamp inside an optional inclusive end bound."""
+    if np.isnat(end):
+        return cast(np.datetime64, timestamps[-1])
+    index = int(np.searchsorted(timestamps, end, side="right")) - 1
+    if index < 0:
+        return None
+    return cast(np.datetime64, timestamps[index])
 
 
 def validate_timestamp_grid(timestamps: np.ndarray, *, owner: str) -> None:

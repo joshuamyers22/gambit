@@ -86,6 +86,17 @@ def test_portfolio_rejects_reversed_rule_range_before_execution() -> None:
         portfolio.run_rules(["alpha"], timestamps[1], timestamps[0])
 
 
+def test_portfolio_final_valuation_honors_end_date() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    strategy = Strategy(timestamps, [ContractGroup.get("portfolio-bounded-valuation")], _price)
+    portfolio = Portfolio()
+    portfolio.add_strategy("alpha", strategy)
+
+    portfolio.run_rules(["alpha"], end_date=timestamps[0])
+
+    assert list(strategy.account._pnl) == [timestamps[0]]
+
+
 def test_portfolio_validates_all_stage_graphs_before_callbacks() -> None:
     timestamps = np.array(["2026-01-01"], dtype="datetime64[D]")
     strategy = Strategy(timestamps, [ContractGroup.get("portfolio-invalid-stage-graph")], _price)

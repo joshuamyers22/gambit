@@ -613,6 +613,23 @@ def test_queries_reject_reversed_date_range(query: str) -> None:
             strategy.run_rules(start_date=timestamps[1], end_date=timestamps[0])
 
 
+def test_strategy_rule_execution_stops_at_end_date() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    strategy = Strategy(timestamps, [ContractGroup.get("bounded-rule-execution")], _price)
+    simulator_timestamps: list[np.datetime64] = []
+
+    def simulator(_orders, index, stage_timestamps, *_args):
+        simulator_timestamps.append(stage_timestamps[index])
+        return []
+
+    strategy.add_market_sim(simulator)
+
+    strategy.run_rules(end_date=timestamps[0])
+
+    assert simulator_timestamps == [timestamps[0]]
+    assert list(strategy.account._pnl) == [timestamps[0]]
+
+
 def test_trade_rejects_contract_mismatch_at_construction() -> None:
     timestamp = np.datetime64("2026-01-01")
     first = Contract.create("TRADE-CONTRACT-FIRST")
