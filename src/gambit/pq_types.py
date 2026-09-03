@@ -8,8 +8,8 @@ import math
 import types
 from dataclasses import dataclass, field
 from enum import Enum
-from types import SimpleNamespace
-from typing import Any, ClassVar, cast
+from types import MappingProxyType, SimpleNamespace
+from typing import Any, ClassVar, Mapping, cast
 
 import numpy as np
 
@@ -31,19 +31,24 @@ def _python_datetime(value: np.datetime64) -> datetime.datetime:
     return cast(datetime.datetime, value.astype("datetime64[us]").astype(datetime.datetime))
 
 
-@dataclass
 class ContractGroup:
     """A way to group contracts for figuring out which indicators, rules and signals to apply to a contract and for PNL reporting"""
 
     _instances: ClassVar[dict[str, ContractGroup]] = {}
-    name: str
-    contracts: dict[str, Contract]
-
     def __init__(self, name: str) -> None:
         if not isinstance(name, str) or not name:
             raise ValueError("contract group name must be a non-empty string")
-        self.name = name
-        self.contracts = {}
+        self._name = name
+        self._contracts: dict[str, Contract] = {}
+        self._contracts_view = MappingProxyType(self._contracts)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def contracts(self) -> Mapping[str, Contract]:
+        return self._contracts_view
 
     @staticmethod
     def get(name: str) -> ContractGroup:
@@ -75,16 +80,16 @@ class ContractGroup:
             raise ValueError(
                 f"contract {contract.symbol} belongs to group {contract.contract_group.name}, not {self.name}"
             )
-        existing = self.contracts.get(contract.symbol)
+        existing = self._contracts.get(contract.symbol)
         if existing is not None and existing is not contract:
             raise ValueError(f"contract group already contains a different contract with symbol: {contract.symbol}")
-        self.contracts[contract.symbol] = contract
+        self._contracts[contract.symbol] = contract
 
     def get_contract(self, symbol: str) -> Contract | None:
-        return self.contracts.get(symbol)
+        return self._contracts.get(symbol)
 
     def get_contracts(self) -> list[Contract]:
-        return list(self.contracts.values())
+        return list(self._contracts.values())
 
     @staticmethod
     def clear_cache() -> None:
@@ -102,7 +107,7 @@ class ContractGroup:
 
     def clear(self) -> None:
         """Remove all contracts"""
-        self.contracts.clear()
+        self._contracts.clear()
 
     def __repr__(self) -> str:
         return self.name

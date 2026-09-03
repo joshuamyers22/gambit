@@ -81,6 +81,20 @@ def test_contract_group_constructor_rejects_invalid_name() -> None:
         ContractGroup("")
 
 
+def test_contract_group_identity_and_membership_are_read_only() -> None:
+    group = ContractGroup.get("IMMUTABLE-GROUP")
+    contract = Contract.create("IMMUTABLE-GROUP-CONTRACT", group)
+
+    with pytest.raises(AttributeError):
+        group.name = "RENAMED"
+
+    with pytest.raises(TypeError):
+        group.contracts["INJECTED"] = contract
+
+    assert group.name == "IMMUTABLE-GROUP"
+    assert group.get_contracts() == [contract]
+
+
 def test_contract_group_rejects_contract_owned_by_another_group() -> None:
     owner = ContractGroup.get("OWNER")
     other = ContractGroup.get("OTHER")
