@@ -7,6 +7,7 @@ import pytest
 
 from gambit import _io
 from gambit.account import Account
+from gambit.holiday_calendars import Calendar
 from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten_keys
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.pq_utils import (
@@ -148,6 +149,36 @@ def test_day_symbol_supports_scalars_and_arrays():
 )
 def test_infer_compression_recognizes_supported_suffixes(filename, expected):
     assert infer_compression(filename) == expected
+
+
+@pytest.mark.parametrize(
+    ("include_first", "include_last", "expected"),
+    [(False, False, 0.0), (False, True, 0.0), (True, False, 0.0), (True, True, 1.0)],
+)
+def test_trading_day_count_never_makes_an_empty_same_day_interval_negative(
+    include_first, include_last, expected
+):
+    calendar = Calendar("NYSE")
+
+    count = calendar.num_trading_days("2024-01-02", "2024-01-02", include_first, include_last)
+    days = calendar.get_trading_days("2024-01-02", "2024-01-02", include_first, include_last)
+
+    assert count == expected
+    assert isinstance(days, np.ndarray)
+    assert count == len(days)
+
+
+def test_trading_day_ranges_reject_reversed_scalar_and_vector_endpoints():
+    calendar = Calendar("NYSE")
+    starts = np.array(["2024-01-01", "2024-01-05"], dtype="datetime64[D]")
+    ends = np.array(["2024-01-02", "2024-01-04"], dtype="datetime64[D]")
+
+    with pytest.raises(ValueError, match="start date"):
+        calendar.num_trading_days("2024-01-03", "2024-01-02")
+    with pytest.raises(ValueError, match="start date"):
+        calendar.get_trading_days("2024-01-03", "2024-01-02")
+    with pytest.raises(ValueError, match="start date"):
+        calendar.num_trading_days(starts, ends)
 
 
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():

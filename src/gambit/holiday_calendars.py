@@ -15,8 +15,6 @@ import dateutil.relativedelta as rd
 import numpy as np
 import polars as pl
 
-from gambit.pq_utils import assert_
-
 DateTimeType = Union[str, np.datetime64, np.ndarray, datetime.datetime, datetime.date, pl.Series]
 
 
@@ -103,13 +101,26 @@ def _normalize(
     s = _as_np_date(start)
     e = _as_np_date(end)
 
-    assert_(s is not None and e is not None)
+    if s is None or e is None:
+        raise ValueError("start and end must be supported date values")
+
+    if np.any(s > e):
+        raise ValueError("start date must not be after end date")
 
     if not include_first and s is not None:
         s += np.timedelta64(1, "D")
 
     if include_last and e is not None:
         e += np.timedelta64(1, "D")
+
+    # Excluding both sides of a one-day interval crosses the normalized
+    # endpoints. Represent that valid empty interval as [end, end) so the
+    # count and enumeration APIs agree and never report a negative size.
+    if isinstance(s, np.ndarray) or isinstance(e, np.ndarray):
+        s, e = np.broadcast_arrays(s, e)
+        s = np.where(s > e, e, s)
+    elif s > e:
+        s = e
 
     return cast(tuple[np.datetime64, np.datetime64] | tuple[np.ndarray, np.ndarray], (s, e))
 

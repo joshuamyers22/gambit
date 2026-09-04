@@ -93,6 +93,14 @@
 - Correction implemented: focused unit regressions now cover deterministic array lookup, scalar and vector weekday symbols, and every supported compression suffix while retaining the 50% floor.
 - Verification: the exact hosted unit command and policy checker pass together; the full release and audit gates remain independently enforced.
 
+### [Resolved] Empty calendar intervals produced negative trading-day counts
+
+- Location: `src/gambit/holiday_calendars.py:91-125`
+- Evidence: excluding both endpoints of the same trading date normalized the range into reverse order, so `num_trading_days` returned `-1` while `get_trading_days` returned an empty array. User-supplied reversed ranges similarly returned a negative count from one API and an empty result from the other.
+- Failure mode: downstream window sizing and annualization could consume a negative observation horizon even though no trading dates existed.
+- Correction implemented: reversed input endpoints fail explicitly, while a valid interval made empty by endpoint exclusions is normalized to an empty half-open range.
+- Verification: all four inclusion combinations for an identical trading-day endpoint now agree between counting and enumeration; scalar and mixed-vector reversed ranges are rejected.
+
 ### [Resolved] One-digit contract years silently selected the wrong decade
 
 - Location: `src/gambit/markets.py`
@@ -339,4 +347,4 @@
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 614-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 619-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
