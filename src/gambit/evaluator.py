@@ -445,6 +445,11 @@ def handle_non_finite_returns(
     first_finite_indices = np.ravel(np.nonzero(np.isfinite(rets)))
     first_finite_index = int(first_finite_indices[0]) if len(first_finite_indices) else -1
 
+    if first_finite_index == -1:
+        if leading_non_finite_to_zeros:
+            return timestamps, np.zeros_like(rets)
+        return timestamps[:0], rets[:0]
+
     if first_finite_index > 0 and first_finite_index < len(rets):
         if leading_non_finite_to_zeros:
             rets[:first_finite_index] = np.nan_to_num(
@@ -516,6 +521,8 @@ def compute_return_metrics(
     timestamps, rets = handle_non_finite_returns(
         timestamps, rets, leading_non_finite_to_zeros, subsequent_non_finite_to_zeros
     )
+    if not len(rets):
+        raise ValueError("returns contain no finite observations")
 
     starting_metrics = {"timestamps": timestamps, "returns": rets, "starting_equity": starting_equity}
     assert_(periods_per_year >= 0, f"periods_per_year: {periods_per_year} cannot be negative")

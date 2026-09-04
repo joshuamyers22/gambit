@@ -44,6 +44,8 @@ have not yet been released are collected below.
   requested, and three-year windows are leap-day safe and cutoff-inclusive.
 - Return evaluation now annualizes regular calendar-month observations at 12
   periods per year, including correct multiples for multi-month sampling.
+- All-non-finite return histories now fail as no data unless callers explicitly
+  opt into replacing leading non-finite observations with zeros.
 
 ## 1.1.0 - 2026-08-31
 

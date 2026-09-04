@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from gambit.evaluator import (
     compute_dates_3yr,
@@ -61,6 +62,27 @@ def test_non_finite_return_normalization_uses_zero_not_float_extremes() -> None:
     np.testing.assert_array_equal(trimmed, [0.01, 0.0, 0.0])
     np.testing.assert_array_equal(zeroed_timestamps, timestamps)
     np.testing.assert_array_equal(zeroed, [0.0, 0.01, 0.0, 0.0])
+
+
+def test_all_non_finite_returns_require_explicit_zero_fill() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02"], dtype="datetime64[D]")
+    returns = np.array([np.nan, np.inf])
+
+    trimmed_timestamps, trimmed = handle_non_finite_returns(timestamps, returns.copy(), False, True)
+    np.testing.assert_array_equal(trimmed_timestamps, timestamps[:0])
+    np.testing.assert_array_equal(trimmed, returns[:0])
+    with pytest.raises(ValueError, match="no finite observations"):
+        compute_return_metrics(timestamps, returns.copy(), 1_000.0, periods_per_year=252)
+
+    metrics = compute_return_metrics(
+        timestamps,
+        returns.copy(),
+        1_000.0,
+        periods_per_year=252,
+        leading_non_finite_to_zeros=True,
+    ).metrics()
+    np.testing.assert_array_equal(metrics["returns"], [0.0, 0.0])
+    np.testing.assert_array_equal(metrics["equity"], [1_000.0, 1_000.0])
 
 
 def test_three_year_window_is_leap_day_safe_and_includes_cutoff() -> None:
