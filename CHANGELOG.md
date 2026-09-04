@@ -34,6 +34,8 @@ have not yet been released are collected below.
   inference now reject invalid or underdetermined inputs explicitly.
 - Optimizer plots now handle all-invalid or fully filtered experiment sets and
   preserve sparse auxiliary metrics across every experiment.
+- Trade-bar resampling now executes supplied custom aggregations and validates
+  time columns, custom column names, and paired series lengths.
 
 ## 1.1.0 - 2026-08-31
 

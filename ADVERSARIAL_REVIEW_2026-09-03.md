@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 548 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 46% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 550 passed; native tests executed locally |
+| Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -148,10 +148,18 @@
 - Correction implemented: plotting exits cleanly when validation or limits remove every result, and the 2D all-metrics view uses the stable union of auxiliary keys with `NaN` for missing observations.
 - Verification: regression coverage exercises all-invalid 2D data, fully filtered 3D data, and sparse auxiliary metrics whose keys first appear in different experiments.
 
+### [Resolved] Custom resampling functions silently discarded columns
+
+- Location: `src/gambit/pq_utils.py:394-462`
+- Evidence: `resample_trade_bars` accepted a mapping of custom aggregation callables, excluded those columns from standard aggregation, and never invoked the callables. Missing time/custom columns and unequal date/value arrays were left to fail inside Polars.
+- Failure mode: caller-defined signals disappeared during downsampling without an error, allowing strategies to consume incomplete frames that otherwise looked valid.
+- Correction implemented: custom callables now receive a Polars column expression and their aggregate expressions are included in output; custom VWAP can explicitly override the built-in weighted calculation. Required schema and paired lengths fail at the public boundary.
+- Verification: tests prove custom mean and VWAP override execution, reject absent time/custom columns, and reject unequal series lengths.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 548-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 550-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

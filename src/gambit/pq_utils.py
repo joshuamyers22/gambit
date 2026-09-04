@@ -392,14 +392,17 @@ def resample_vwap(df: pl.DataFrame, sampling_frequency: str) -> pl.DataFrame | N
 
 
 def resample_trade_bars(
-    df: pl.DataFrame, sampling_frequency: str | None, resample_funcs: dict[str, Callable] | None = None
+    df: pl.DataFrame,
+    sampling_frequency: str | None,
+    resample_funcs: dict[str, Callable[[pl.Expr], pl.Expr]] | None = None,
 ) -> pl.DataFrame:
     """Downsample trade bars using sampling frequency
 
     Args:
         df: Polars DataFrame with a ``timestamp`` or ``date`` column.
         sampling_frequency: Polars duration string.
-        resample_funcs: Names of custom columns handled by a caller-specific aggregation.
+        resample_funcs: Custom column aggregations. Each callable receives that
+            column's Polars expression and must return an aggregate expression.
     Returns:
         Polars DataFrame containing resampled bars.
 
@@ -421,17 +424,32 @@ def resample_trade_bars(
     if sampling_frequency is None:
         return df
 
-    time_col = "timestamp" if "timestamp" in df.columns else "date"
+    if "timestamp" in df.columns:
+        time_col = "timestamp"
+    elif "date" in df.columns:
+        time_col = "date"
+    else:
+        raise ValueError("trade bars require a 'timestamp' or 'date' column")
     every = _polars_frequency(sampling_frequency)
     expressions = []
     aggregations = {"o": "first", "h": "max", "l": "min", "c": "last", "v": "sum"}
     custom_columns = set(resample_funcs or {})
+    missing_custom_columns = custom_columns.difference(df.columns)
+    if missing_custom_columns:
+        raise ValueError(f"custom resampling columns not found: {sorted(missing_custom_columns)}")
+    if time_col in custom_columns:
+        raise ValueError(f"cannot override time-column aggregation: {time_col}")
     for column in df.columns:
         if column == time_col or column == "vwap" or column in custom_columns:
             continue
         aggregation = aggregations.get(column, "last")
         expressions.append(getattr(pl.col(column), aggregation)().alias(column))
-    if "vwap" in df.columns and "v" in df.columns:
+    for column, aggregate in (resample_funcs or {}).items():
+        expression = aggregate(pl.col(column))
+        if not isinstance(expression, pl.Expr):
+            raise TypeError(f"custom resampling function for {column!r} must return a Polars expression")
+        expressions.append(expression.alias(column))
+    if "vwap" in df.columns and "v" in df.columns and "vwap" not in custom_columns:
         expressions.append(((pl.col("vwap") * pl.col("v")).sum() / pl.col("v").sum()).alias("vwap"))
     resampled = df.sort(time_col).group_by_dynamic(time_col, every=every).agg(expressions)
     return resampled.upsample(time_column=time_col, every=every, maintain_order=True)
@@ -451,6 +469,8 @@ def resample_ts(dates: np.ndarray, values: np.ndarray, sampling_frequency: str) 
     """
     if sampling_frequency is None:
         return dates, values
+    if len(dates) != len(values):
+        raise ValueError(f"dates and values must have equal lengths: {len(dates)} != {len(values)}")
     frame = pl.DataFrame({"timestamp": dates, "value": values}).sort("timestamp")
     every = _polars_frequency(sampling_frequency)
     result = frame.group_by_dynamic("timestamp", every=every).agg(pl.col("value").last())
