@@ -489,6 +489,7 @@ class InteractivePlot:
         self.display_form_func = display_form_func
         self.selection_widgets: dict[str, Any] = {}
         self.debug = debug
+        self._initializing = False
 
     def create_pivot(self, xcol: str, ycol: str, zcol: str, dimensions: dict[str, Any]) -> None:
         """
@@ -510,13 +511,37 @@ class InteractivePlot:
         self.xcol = xcol
         self.ycol = ycol
         self.selection_widgets = self.create_selection_widgets_func(dimensions, self.labels, self.update)
-        self.update()
+        self._initializing = True
+        try:
+            prior_selections: list[tuple[str, Any]] = []
+            for name, initial_value in dimensions.items():
+                widget = self.selection_widgets[name]
+                widget.options = self.dim_filter_func(self.data, name, prior_selections)
+                if initial_value is not None:
+                    try:
+                        widget.value = initial_value
+                    except traitlets.TraitError as error:
+                        raise ValueError(f"invalid initial selection for {name!r}: {initial_value!r}") from error
+                prior_selections.append((name, widget.value))
+        finally:
+            self._initializing = False
+        self._render()
+
+    def _render(self) -> None:
+        select_conditions = [(name, widget.value) for name, widget in self.selection_widgets.items()]
+        filtered_data = self.data_filter_func(self.data, select_conditions)
+        transformed_data = self.transform_func(filtered_data)
+        lines = self.stat_func(transformed_data, self.xcol, self.ycol, self.zcol)
+        plot_widgets = self.plot_func(self.xlabel, self.ylabel, lines)
+        self.display_form_func(list(self.selection_widgets.values()) + plot_widgets, self.debug)
 
     def update(self, owner_idx: int = -1) -> None:
         """
         Redraw the form using the values of all widgets above and including the one with index owner_idx.
         If owner_idx is -1, we redraw everything.
         """
+        if self._initializing:
+            return
         select_conditions = [(name, widget.value) for name, widget in self.selection_widgets.items()]
         if owner_idx == -1:
             dim_select_conditions = []
@@ -529,16 +554,12 @@ class InteractivePlot:
             widget = self.selection_widgets[name]
             widget_options = self.dim_filter_func(self.data, name, dim_select_conditions)
             _logger.debug(f"setting values: {widget_options} on widget: {name}")
-            widget.options = self.dim_filter_func(self.data, name, dim_select_conditions)
+            widget.options = widget_options
 
         if owner_idx == -1:
             return
 
-        filtered_data = self.data_filter_func(self.data, select_conditions)
-        transformed_data = self.transform_func(filtered_data)
-        lines = self.stat_func(transformed_data, self.xcol, self.ycol, self.zcol)
-        plot_widgets = self.plot_func(self.xlabel, self.ylabel, lines)
-        self.display_form_func(list(self.selection_widgets.values()) + plot_widgets, self.debug)
+        self._render()
 
 
 # unit tests

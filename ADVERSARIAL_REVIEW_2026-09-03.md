@@ -293,6 +293,14 @@
 - Correction implemented: pre-render validation requires every summary x-value to occur in its series detail frame before any widget state is created.
 - Verification: regression supplies a two-point summary with only one corresponding detail value and requires an actionable contract error.
 
+### [Resolved] Initial interactive filter selections were ignored
+
+- Location: `src/gambit/interactive_plot.py:462-521`
+- Evidence: `create_pivot` accepted documented initial values in its `dimensions` mapping but passed only the dimension names to widget construction and called an options-only update. An explicit `{"year": 2019}` left the dropdown value as `None` and produced no intentional initial render.
+- Failure mode: dashboards opened unfiltered or blank despite explicit caller configuration, and option-change callbacks could observe partially initialized downstream widgets.
+- Correction implemented: pivot creation populates dependent options and applies requested values under an initialization guard, rejects unavailable initial values, then performs one complete render. Ordinary updates reuse the same render path and no longer call the dimension filter twice.
+- Verification: regression requires selection `2019`, a single initial render filtered to 2019, and an actionable error for an unavailable initial value.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

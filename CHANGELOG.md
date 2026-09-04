@@ -72,6 +72,8 @@ have not yet been released are collected below.
   widths, inconsistent x columns, and unusable detail frames before rendering.
 - Every plotted x-value must now have a matching detail row, preventing opaque
   hover-count indexing failures and empty click-through results.
+- Interactive pivots now apply documented initial filter selections atomically
+  and render their initial state exactly once.
 
 ## 1.1.0 - 2026-08-31
 

@@ -38,6 +38,30 @@ def test_interactive_plot_default_services_are_not_shared() -> None:
     assert first.plot_func is not second.plot_func
 
 
+def test_interactive_plot_applies_initial_selection_and_renders_once() -> None:
+    rendered = []
+    data = pl.DataFrame({"x": [1, 2], "y": [3.0, 4.0], "series": ["a", "a"], "year": [2018, 2019]})
+
+    plot = InteractivePlot(
+        data,
+        plot_func=lambda _x, _y, lines: rendered.append(lines) or [],
+        display_form_func=lambda *_args: None,
+    )
+    plot.create_pivot("x", "y", "series", {"year": 2019})
+
+    assert plot.selection_widgets["year"].value == 2019
+    assert len(rendered) == 1
+    assert rendered[0][0][2]["year"].to_list() == [2019]
+
+
+def test_interactive_plot_rejects_invalid_initial_selection() -> None:
+    data = pl.DataFrame({"x": [1], "y": [3.0], "series": ["a"], "year": [2018]})
+    plot = InteractivePlot(data, plot_func=lambda *_args: [], display_form_func=lambda *_args: None)
+
+    with pytest.raises(ValueError, match="invalid initial selection for 'year': 2099"):
+        plot.create_pivot("x", "y", "series", {"year": 2099})
+
+
 def test_line_graph_constructs_figure_widget_in_visualization_environment() -> None:
     summary = pl.DataFrame({"x": [1], "y": [2.0]})
     detail = pl.DataFrame({"x": [1], "y": [2.0]})
