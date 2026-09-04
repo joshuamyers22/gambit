@@ -4,7 +4,7 @@
 
 - Repository: `gambit`
 - Remote: `https://github.com/joshuamyers22/gambit.git`
-- Branch and commit: `main` at `cf8f59e8a3311d8902258304b230fc07bfd0a773`
+- Branch and commit: `main` (review began at `cf8f59e8a3311d8902258304b230fc07bfd0a773`; fixes continuously pushed)
 - Review date: 2026-09-03
 - Product purpose: quantitative strategy backtesting, execution simulation, accounting, risk, and persistent factor computation
 - Runtime: Python 3.10–3.12 with Cython/C++ native extensions
@@ -25,9 +25,9 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 557 passed; native tests executed locally |
-| Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
-| Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected unit-suite floors: markets 75%, calendars 50%, optimizer 55%, utilities 35% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 604 passed; native tests executed locally |
+| Coverage | same command | Pass | 82% total; `markets.py` 79%, `holiday_calendars.py` 54%, `optimize.py` 77%, `pq_utils.py` 56%, and `interactive_plot.py` 85% |
+| Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected floors: markets 75%, calendars 50%, optimizer 70%, utilities 50%, interactive reporting 80% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -77,13 +77,13 @@
 - Correction implemented: `make audit` exports the exact hashed runtime set from `uv.lock` and audits it without inspecting or installing the contaminated environment. A dedicated CI job runs the same pinned audit tool and command.
 - Verification: the command succeeds from the existing built working tree with no known vulnerabilities.
 
-### [Medium] Passing aggregate coverage masks unverified legacy policy
+### [Resolved] Passing aggregate coverage masked unverified legacy policy
 
 - Location: `src/gambit/markets.py`, `holiday_calendars.py`, `optimize.py`, `pq_utils.py`; `Makefile:9-10`
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
-- Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (55%), and numerical utility (35%) modules. The checker fails closed when coverage data or a named module is unavailable.
-- Verification: current unit-suite measurements are 79%, 54%, 60%, and 38%, respectively. The policy and its maintenance rule are documented in the testing guide.
+- Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (70%), numerical utility (50%), and interactive reporting (80%) modules. The checker fails closed when coverage data or a named module is unavailable.
+- Verification: current unit-suite measurements are 79%, 54%, 77%, 56%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
 
 ### [Resolved] One-digit contract years silently selected the wrong decade
 
@@ -319,8 +319,8 @@
 
 ## Improvement order
 
-1. Classify and test or deprecate the low-coverage legacy modules.
+1. Maintain the module floors as supported behavior expands; prioritize calendar edge cases next.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 557-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 604-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

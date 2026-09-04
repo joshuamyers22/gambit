@@ -12,8 +12,9 @@ REPOSITORY_ROOT = Path(__file__).parents[1]
 MODULE_FLOORS = {
     "src/gambit/markets.py": 75.0,
     "src/gambit/holiday_calendars.py": 50.0,
-    "src/gambit/optimize.py": 55.0,
-    "src/gambit/pq_utils.py": 35.0,
+    "src/gambit/optimize.py": 70.0,
+    "src/gambit/pq_utils.py": 50.0,
+    "src/gambit/interactive_plot.py": 80.0,
 }
 
 

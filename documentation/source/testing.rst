@@ -28,8 +28,9 @@ under ASan and UBSan. Performance testing is an opt-in, non-blocking GitHub
 Actions workflow so noisy hosted-runner timing does not block releases.
 
 The unit matrix also enforces explicit coverage floors for supported
-policy-heavy market, calendar, optimizer, and numerical utility modules. Run
-the same policy locally after a coverage-producing test command with::
+policy-heavy market (75%), calendar (50%), optimizer (70%), numerical utility
+(50%), and interactive reporting (80%) modules. Run the same policy locally
+after a coverage-producing test command with::
 
    make coverage-policy
 

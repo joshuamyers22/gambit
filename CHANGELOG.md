@@ -78,6 +78,8 @@ have not yet been released are collected below.
   value and suppress recursive partial-state renders.
 - Interactive confidence summaries now reject nonnumeric, infinite, or reversed
   bounds while retaining explicitly missing intervals.
+- Coverage policy now protects interactive reporting at 80% and raises the
+  optimizer and numerical utility floors to 70% and 50%.
 
 ## 1.1.0 - 2026-08-31
 
