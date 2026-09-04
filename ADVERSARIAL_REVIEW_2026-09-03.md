@@ -83,7 +83,15 @@
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
 - Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (70%), numerical utility (50%), and interactive reporting (80%) modules. The checker fails closed when coverage data or a named module is unavailable.
-- Verification: current unit-suite measurements are 79%, 54%, 77%, 56%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
+- Verification: current full-suite measurements are 79%, 54%, 77%, 56%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
+
+### [Resolved] Full-suite evidence concealed a unit-matrix coverage failure
+
+- Location: `.github/workflows/ci.yml:69-72`, `tests/test_regressions.py`
+- Evidence: the full local suite measured `pq_utils.py` above its 50% supported floor, while the hosted unit-only matrix measured 47.65% and failed every Python job.
+- Failure mode: a locally green release gate could be pushed into a predictably red hosted matrix because integration-only execution supplied part of the evidence used to set the utility floor.
+- Correction implemented: focused unit regressions now cover deterministic array lookup, scalar and vector weekday symbols, and every supported compression suffix while retaining the 50% floor.
+- Verification: the exact hosted unit command and policy checker pass together; the full release and audit gates remain independently enforced.
 
 ### [Resolved] One-digit contract years silently selected the wrong decade
 
@@ -331,4 +339,4 @@
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 604-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 614-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

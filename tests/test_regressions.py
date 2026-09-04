@@ -12,10 +12,14 @@ from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Tr
 from gambit.pq_utils import (
     PQException,
     bootstrap_ci,
+    day_symbol,
     find_in_subdir,
+    infer_compression,
     infer_frequency,
     np_bucket,
     np_find_closest,
+    np_indexof,
+    np_indexof_sorted,
     np_rolling_window,
     percentile_of_score,
     shift_np,
@@ -113,6 +117,37 @@ def test_find_closest_handles_singleton_and_rejects_empty_inputs():
     np.testing.assert_array_equal(np_find_closest(np.array([10.0]), np.array([-1.0, 500.0])), [0, 0])
     with pytest.raises(ValueError, match="empty array"):
         np_find_closest(np.array([]), 1.0)
+
+
+def test_numpy_index_helpers_return_first_match_or_missing_sentinel():
+    unsorted = np.array([8, 3, 8, 5])
+    sorted_values = np.array([3, 5, 8])
+
+    assert np_indexof(unsorted, 8) == 0
+    assert np_indexof(unsorted, 4) == -1
+    assert np_indexof_sorted(sorted_values, 5) == 1
+    assert np_indexof_sorted(sorted_values, 4) == -1
+    assert np_indexof_sorted(sorted_values, 9) == -1
+
+
+def test_day_symbol_supports_scalars_and_arrays():
+    assert day_symbol(3) == "Th"
+    np.testing.assert_array_equal(day_symbol(np.array([0, 4, 6, 7])), ["M", "F", "Su", ""])
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected"),
+    [
+        ("prices.gz", "gzip"),
+        ("prices.bz2", "bz2"),
+        ("prices.zip", "zip"),
+        ("prices.xz", "xz"),
+        ("prices.csv", None),
+        ("prices", None),
+    ],
+)
+def test_infer_compression_recognizes_supported_suffixes(filename, expected):
+    assert infer_compression(filename) == expected
 
 
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
