@@ -56,6 +56,8 @@ have not yet been released are collected below.
   partial files when serialization fails.
 - Interactive confidence bands now preserve the bootstrap lower and upper bound
   ordering instead of labeling them in reverse.
+- Bootstrap intervals now validate their sampling configuration, support seeded
+  generators, and use the same statistic as the interactive center estimate.
 
 ## 1.1.0 - 2026-08-31
 

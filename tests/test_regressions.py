@@ -11,6 +11,7 @@ from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError, flatten
 from gambit.pq_types import DEFAULT_CG, Contract, ContractGroup, MarketOrder, Trade
 from gambit.pq_utils import (
     PQException,
+    bootstrap_ci,
     find_in_subdir,
     infer_frequency,
     np_bucket,
@@ -126,6 +127,35 @@ def test_percentile_of_score_handles_singletons_and_ties_deterministically():
 def test_percentile_of_score_rejects_undefined_rankings(values):
     with pytest.raises(ValueError, match="percentile input"):
         percentile_of_score(values)
+
+
+def test_bootstrap_ci_can_be_reproduced_with_a_seeded_generator():
+    values = np.array([1.0, 2.0, 3.0, 8.0])
+
+    first = bootstrap_ci(values, n=100, rng=np.random.default_rng(17))
+    second = bootstrap_ci(values, n=100, rng=np.random.default_rng(17))
+
+    assert first == second
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"ci_level": 0}, "ci_level"),
+        ({"ci_level": 1}, "ci_level"),
+        ({"n": 0}, "iteration count"),
+        ({"n": True}, "iteration count"),
+    ],
+)
+def test_bootstrap_ci_rejects_invalid_configuration(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        bootstrap_ci(np.array([1.0, 2.0]), **kwargs)
+
+
+@pytest.mark.parametrize("values", [np.array([]), np.array([[1.0, 2.0]])])
+def test_bootstrap_ci_rejects_invalid_input_shape(values):
+    with pytest.raises(ValueError, match="non-empty one-dimensional"):
+        bootstrap_ci(values)
 
 
 @pytest.mark.parametrize("window", [0, -1, 4])

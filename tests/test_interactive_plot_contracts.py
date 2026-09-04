@@ -1,4 +1,6 @@
+import numpy as np
 import polars as pl
+import pytest
 
 from gambit.interactive_plot import (
     InteractivePlot,
@@ -36,10 +38,24 @@ def test_interactive_plot_default_services_are_not_shared() -> None:
 
 
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
-    monkeypatch.setattr("gambit.interactive_plot.bootstrap_ci", lambda *_args, **_kwargs: (1.0, 9.0))
-    data = pl.DataFrame({"x": [1, 1], "y": [4.0, 6.0], "series": ["a", "a"]})
+    captured = {}
 
-    _, summary, _ = MeanWithCI(ci_level=95)(data, "x", "y", "series")[0]
+    def fake_bootstrap(*_args, **kwargs):
+        captured.update(kwargs)
+        return 1.0, 9.0
+
+    monkeypatch.setattr("gambit.interactive_plot.bootstrap_ci", fake_bootstrap)
+    data = pl.DataFrame({"x": [1, 1], "y": [4.0, 6.0], "series": ["a", "a"]})
+    statistic = MeanWithCI(mean_func=np.median, ci_level=95)
+
+    _, summary, _ = statistic(data, "x", "y", "series")[0]
 
     assert summary["ci_d_95"].to_list() == [1.0]
     assert summary["ci_u_95"].to_list() == [9.0]
+    assert captured["func"] is np.median
+
+
+@pytest.mark.parametrize("ci_level", [-1, 100, True])
+def test_mean_with_ci_rejects_invalid_confidence_levels(ci_level) -> None:
+    with pytest.raises(ValueError, match="ci_level"):
+        MeanWithCI(ci_level=ci_level)

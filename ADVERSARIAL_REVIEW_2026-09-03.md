@@ -229,6 +229,14 @@
 - Correction implemented: tuple assignment now follows the bootstrap API and emits lower then upper values under the matching column names.
 - Verification: a deterministic regression injects known bounds and requires `ci_d_95=1` and `ci_u_95=9`.
 
+### [Resolved] Confidence bands ignored the configured statistic
+
+- Location: `src/gambit/interactive_plot.py:152-186`; `src/gambit/pq_utils.py:739-770`
+- Evidence: `MeanWithCI` used `mean_func` for the center but always called `bootstrap_ci` with its default arithmetic mean. Invalid confidence levels and iteration counts reached percentile indexing, and sampling exposed no local reproducibility control.
+- Failure mode: median or custom-statistic plots combined one estimator with another estimator's interval, while malformed settings failed with incidental index errors or yielded meaningless bands.
+- Correction implemented: the configured statistic is forwarded to bootstrap sampling, confidence levels and iteration counts are validated at their public boundaries, and callers may supply a seeded NumPy generator.
+- Verification: tests require estimator identity forwarding, repeatable seeded intervals, and explicit rejection of empty/multidimensional samples and invalid confidence or iteration settings.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

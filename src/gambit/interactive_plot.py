@@ -156,6 +156,8 @@ class MeanWithCI:
             ci_level: Set to 0 for no confidence intervals, or the level you want.
                 For example, set to 95 to compute a 95% confidence interval. Default 0
         """
+        if isinstance(ci_level, bool) or not isinstance(ci_level, (int, float)) or not 0 <= ci_level < 100:
+            raise ValueError("ci_level must be zero or greater than 0 and less than 100")
         self.mean_func = mean_func
         self.ci_level = ci_level
 
@@ -180,7 +182,7 @@ class MeanWithCI:
                     raise Exception(y)
                 mean = self.mean_func(y)
                 if self.ci_level:
-                    ci_down, ci_up = bootstrap_ci(y, ci_level=self.ci_level / 100)
+                    ci_down, ci_up = bootstrap_ci(y, ci_level=self.ci_level / 100, func=self.mean_func)
                     plt_data.append((x, mean, ci_down, ci_up))
                 else:
                     plt_data.append((x, mean))

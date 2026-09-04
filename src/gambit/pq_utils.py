@@ -737,7 +737,11 @@ def linear_interpolate(
 
 
 def bootstrap_ci(
-    a: np.ndarray, ci_level: float = 0.95, n: int = 1000, func: Callable[[np.ndarray], float] = np.mean
+    a: np.ndarray,
+    ci_level: float = 0.95,
+    n: int = 1000,
+    func: Callable[[np.ndarray], float] = np.mean,
+    rng: np.random.Generator | None = None,
 ) -> tuple[float, float]:
     """
     Non parametric bootstrap for confidence intervals
@@ -746,6 +750,7 @@ def bootstrap_ci(
         ci_level: The confidence interval level, e.g. 0.95 for 95%.  Default 0.95
         n: Number of boostrap iterations. Default 1000
         func: The function to use, e.g np.mean or np.median. Default np.mean
+        rng: Optional NumPy generator for reproducible sampling
 
 
     Return:
@@ -754,10 +759,20 @@ def bootstrap_ci(
     >>> x = np.random.uniform(high=10, size=100000)
     >>> assert np.allclose(bootstrap_ci(x), (4.9773159, 5.010328))
     """
+    if a.ndim != 1 or len(a) == 0:
+        raise ValueError("bootstrap input must be a non-empty one-dimensional array")
+    if isinstance(ci_level, bool) or not isinstance(ci_level, (int, float)) or not 0 < ci_level < 1:
+        raise ValueError("ci_level must be greater than 0 and less than 1")
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("bootstrap iteration count must be a positive integer")
+    if not callable(func):
+        raise TypeError("bootstrap statistic must be callable")
+
     simulations = np.full(n, np.nan)
     sample_size = len(a)
+    choice = np.random.choice if rng is None else rng.choice
     for c in range(n):
-        itersample = np.random.choice(a, size=sample_size, replace=True)
+        itersample = choice(a, size=sample_size, replace=True)
         simulations[c] = func(itersample)
     simulations.sort()
     u_pval = (1 + ci_level) / 2.0
