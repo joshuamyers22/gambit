@@ -70,6 +70,8 @@ have not yet been released are collected below.
   fail at configuration time.
 - Interactive plot line data now rejects duplicate series, malformed summary
   widths, inconsistent x columns, and unusable detail frames before rendering.
+- Every plotted x-value must now have a matching detail row, preventing opaque
+  hover-count indexing failures and empty click-through results.
 
 ## 1.1.0 - 2026-08-31
 

@@ -285,6 +285,14 @@
 - Correction implemented: all line data is validated before widget creation, series identifiers must be unique, summaries must contain exactly x/y or x/y/lower/upper, every series shares one x column, detail frames contain that column, and per-render trace mappings are reset.
 - Verification: regressions reject duplicate series, malformed widths, missing detail keys, and inconsistent x columns.
 
+### [Resolved] Missing detail rows crashed hover-count construction
+
+- Location: `src/gambit/interactive_plot.py:337-374`
+- Evidence: hover counts used `searchsorted` indices from summary x-values to index the unique detail x-values without verifying membership. A summary value beyond the detail range indexed past the counts array; an interior missing value selected another value's count.
+- Failure mode: plots either crashed with `IndexError` or displayed a plausible but incorrect observation count, and click-through detail could be empty for a visible point.
+- Correction implemented: pre-render validation requires every summary x-value to occur in its series detail frame before any widget state is created.
+- Verification: regression supplies a two-point summary with only one corresponding detail value and requires an actionable contract error.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

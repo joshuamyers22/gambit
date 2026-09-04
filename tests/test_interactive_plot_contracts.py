@@ -122,6 +122,14 @@ def test_line_graph_requires_a_shared_x_column() -> None:
         LineGraphWithDetailDisplay()("x", "y", [first, second])
 
 
+def test_line_graph_requires_detail_rows_for_every_summary_x_value() -> None:
+    summary = pl.DataFrame({"x": [1, 2], "y": [3.0, 4.0]})
+    detail = pl.DataFrame({"x": [1], "observation": [3.0]})
+
+    with pytest.raises(ValueError, match="no rows for one or more 'x' values"):
+        LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

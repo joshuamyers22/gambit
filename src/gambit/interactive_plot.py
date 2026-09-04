@@ -342,6 +342,10 @@ class LineGraphWithDetailDisplay:
                 raise ValueError("interactive plot series must share the same x column")
             if xcol not in detail_data.columns:
                 raise ValueError(f"interactive plot detail data is missing x column {xcol!r}")
+            summary_x = line_df[xcol].to_numpy()
+            detail_x = detail_data[xcol].to_numpy()
+            if np.any(~np.isin(summary_x, detail_x)):
+                raise ValueError(f"interactive plot detail data has no rows for one or more {xcol!r} values")
 
         self.detail_data.clear()
         self.zvalues.clear()
