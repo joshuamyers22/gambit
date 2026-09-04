@@ -270,7 +270,8 @@ class Calendar:
 
         Args:
             start: start datetimes(s)
-            num_days: number of trading days to add
+            num_days: integer number of trading days to add, or an integer array.
+                Floats, strings, and booleans are rejected rather than coerced.
             roll: one of 'raise', 'nat', 'forward', 'following', 'backward', 'preceding', 'modifiedfollowing', 'modifiedpreceding' or 'allow'}
                 'allow' is a special case in which case, adding 1 day to a holiday will act as if it was not a holiday, and give you the next business day'
                 The rest of the values are the same as in the numpy busday_offset function
@@ -295,6 +296,8 @@ class Calendar:
         >>> str(calendar.add_trading_days(np.datetime64('2019-02-17 15:25'), 1, roll='allow'))
         '2019-02-19T15:25'
         """
+        if np.asarray(num_days).dtype.kind not in {"i", "u"}:
+            raise TypeError("num_days must be an integer or an integer array; booleans are not allowed")
         start_date, time_delta = _normalize_datetime(start)
         if roll == "allow":
             # If today is a holiday, roll forward but subtract 1 day so

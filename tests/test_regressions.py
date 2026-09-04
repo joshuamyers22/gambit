@@ -305,6 +305,48 @@ def test_calendar_membership_rejects_numpy_non_date_arrays(values):
         Calendar("NYSE").is_trading_day(values)
 
 
+@pytest.mark.parametrize(
+    "offset",
+    [True, np.bool_(False), 1.5, 1.0, "1", np.array(1.5), np.array([1.5]), np.array([True, False]), np.nan],
+)
+def test_trading_day_offsets_reject_non_integer_counts_for_every_roll_mode(offset):
+    calendar = Calendar("NYSE")
+    for roll in (
+        "raise", "nat", "forward", "following", "backward", "preceding",
+        "modifiedfollowing", "modifiedpreceding", "allow",
+    ):
+        with pytest.raises(TypeError, match="num_days must be an integer"):
+            calendar.add_trading_days("2024-01-05", offset, roll=roll)
+
+
+@pytest.mark.parametrize("offset", [1, np.int64(1), np.array(1, dtype=np.int32)])
+def test_trading_day_offsets_accept_scalar_integer_representations(offset):
+    result = Calendar("NYSE").add_trading_days("2024-01-05T15:30", offset)
+    assert result == np.datetime64("2024-01-08T15:30")
+
+
+def test_allow_offsets_broadcast_closed_days_without_mutating_inputs():
+    calendar = Calendar("NYSE")
+    starts = np.array([["2024-01-05T15:30"], ["2024-01-06T15:30"]], dtype="M8[m]")
+    offsets = np.array([-1, 0, 1, 2], dtype=np.int16)
+    original_starts, original_offsets = starts.copy(), offsets.copy()
+    starts.setflags(write=False)
+    offsets.setflags(write=False)
+
+    result = calendar.add_trading_days(starts, offsets, roll="allow")
+
+    expected = np.array(
+        [
+            ["2024-01-04T15:30", "2024-01-05T15:30", "2024-01-08T15:30", "2024-01-09T15:30"],
+            ["2024-01-05T15:30", "2024-01-08T15:30", "2024-01-08T15:30", "2024-01-09T15:30"],
+        ],
+        dtype="M8[m]",
+    )
+    np.testing.assert_array_equal(result, expected)
+    np.testing.assert_array_equal(starts, original_starts)
+    np.testing.assert_array_equal(offsets, original_offsets)
+
+
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
     np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
     np.testing.assert_allclose(
