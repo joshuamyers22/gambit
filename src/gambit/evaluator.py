@@ -12,7 +12,7 @@ import numpy as np
 import polars as pl
 from dateutil.relativedelta import relativedelta
 
-from gambit.pq_utils import PQException, assert_, has_display, infer_frequency, monotonically_increasing
+from gambit.pq_utils import PQException, assert_, has_display, infer_frequency, monotonically_increasing, try_frequency
 
 
 def _python_datetime(value: object) -> datetime.datetime:
@@ -36,14 +36,17 @@ def compute_periods_per_year(timestamps: np.ndarray) -> float:
     """
     if not len(timestamps):
         return np.nan
+    if len(timestamps) >= 3:
+        monthly_frequency = try_frequency(timestamps, "M", 0.75)
+        if math.isfinite(monthly_frequency):
+            months_per_observation = monthly_frequency / 30.0
+            return float(12.0 / months_per_observation)
     try:
         freq = infer_frequency(timestamps)
     except PQException as ex:
         raise PQException(
             f"could not compute periods per year from unevenly spaced timestamps, you may need to set it yourself: {ex}"
         )
-    if freq == 31:
-        return 12
     return float(252.0 / freq) if freq != 0 else np.nan
 
 

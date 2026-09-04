@@ -25,7 +25,7 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 553 passed; native tests executed locally |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 554 passed; native tests executed locally |
 | Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected unit-suite floors: markets 75%, calendars 50%, optimizer 55%, utilities 35% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
@@ -173,10 +173,18 @@
 - Correction implemented: finite observations now define the leading-data boundary, all requested non-finite replacements explicitly use zero, and calendar-aware three-year subtraction includes the exact cutoff consistently.
 - Verification: regressions cover leading/subsequent positive infinity, negative infinity and `NaN`, plus a February 29 endpoint across dates, returns, and rolling drawdown windows.
 
+### [Resolved] Calendar-period returns used trading-day annualization
+
+- Location: `src/gambit/evaluator.py:23-47`; `src/gambit/pq_utils.py:499-526`
+- Evidence: frequency inference represented one calendar month as 30 fractional days, after which `compute_periods_per_year` divided the 252-trading-day constant by 30. Regular monthly observations therefore reported 8.4 periods per year; two-month observations reported 4.2.
+- Failure mode: geometric return, volatility ratios, and other annualized metrics were systematically understated or distorted for monthly and multi-month research series while remaining numerically plausible.
+- Correction implemented: histories with at least three observations are first tested for a dominant nonzero calendar-month interval and annualized as `12 / months_per_observation`; daily and intraday paths retain their existing trading-period conventions. Short ambiguous histories continue to require an explicit override when inference is unsuitable.
+- Verification: month-end regression series require exactly 12 periods per year for monthly data and 6 for two-month data.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 553-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 554-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

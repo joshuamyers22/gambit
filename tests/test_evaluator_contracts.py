@@ -23,6 +23,16 @@ def test_public_scalar_metrics_return_python_floats() -> None:
     assert type(compute_sortino(returns, 0.001, 252.0)) is float
 
 
+def test_calendar_periodic_returns_use_calendar_annualization() -> None:
+    monthly = np.array(["2025-01-31", "2025-02-28", "2025-03-31", "2025-04-30"], dtype="datetime64[D]")
+    every_two_months = np.array(
+        ["2025-01-31", "2025-03-31", "2025-05-31", "2025-07-31"], dtype="datetime64[D]"
+    )
+
+    assert compute_periods_per_year(monthly) == 12.0
+    assert compute_periods_per_year(every_two_months) == 6.0
+
+
 def test_geometric_mean_is_missing_when_history_spans_zero_periods() -> None:
     timestamps = np.array(["2026-01-02"], dtype="datetime64[D]")
 

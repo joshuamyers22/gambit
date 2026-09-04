@@ -42,6 +42,8 @@ have not yet been released are collected below.
   market, calendar, optimizer, and numerical utility policy.
 - Return evaluation now converts all non-finite values to actual zeros when
   requested, and three-year windows are leap-day safe and cutoff-inclusive.
+- Return evaluation now annualizes regular calendar-month observations at 12
+  periods per year, including correct multiples for multi-month sampling.
 
 ## 1.1.0 - 2026-08-31
 
