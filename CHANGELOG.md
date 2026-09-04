@@ -52,6 +52,8 @@ have not yet been released are collected below.
   multiple-contract notebook canonicalizes overlapping price timestamps.
 - Percentile ranking now handles singleton and tied values deterministically
   and rejects multidimensional or non-finite inputs.
+- CSV exports now use collision-resistant same-directory staging and clean up
+  partial files when serialization fails.
 
 ## 1.1.0 - 2026-08-31
 

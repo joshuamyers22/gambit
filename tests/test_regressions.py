@@ -1,3 +1,4 @@
+import pathlib
 from types import SimpleNamespace
 
 import numpy as np
@@ -17,6 +18,7 @@ from gambit.pq_utils import (
     np_rolling_window,
     percentile_of_score,
     shift_np,
+    to_csv,
 )
 from gambit.pq_utils import np_round as pq_np_round
 from gambit.strategy import Strategy
@@ -164,6 +166,32 @@ def test_find_in_subdir_honors_root_and_is_deterministic(tmp_path):
 
     assert find_in_subdir(str(requested_root), "prices.csv") == str(first)
     assert find_in_subdir(str(tmp_path / "absent"), "prices.csv") == ""
+
+
+def test_to_csv_uses_unique_atomic_staging(tmp_path):
+    target = tmp_path / "prices.csv"
+    legacy_temporary = tmp_path / "prices.csv.tmp"
+    legacy_temporary.write_text("unrelated")
+
+    to_csv(pl.DataFrame({"price": [1.5, 2.5]}), str(target))
+
+    assert target.read_text() == "price\n1.5\n2.5\n"
+    assert legacy_temporary.read_text() == "unrelated"
+    assert list(tmp_path.glob(".prices.csv.*.tmp")) == []
+
+
+def test_to_csv_cleans_up_failed_staging_file(tmp_path):
+    class FailingFrame:
+        def to_csv(self, path, **_kwargs):
+            pathlib.Path(path).write_text("partial")
+            raise RuntimeError("write failed")
+
+    target = tmp_path / "failed.csv"
+    with pytest.raises(RuntimeError, match="write failed"):
+        to_csv(FailingFrame(), str(target))
+
+    assert not target.exists()
+    assert list(tmp_path.glob(".failed.csv.*.tmp")) == []
 
 
 def test_account_indexes_each_trade_under_its_own_contract():

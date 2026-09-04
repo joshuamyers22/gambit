@@ -587,13 +587,27 @@ def to_csv(df, file_name: str, index: bool = False, compress: bool = False, *arg
     if compress:
         compression = "xz"
         suffix = ".xz"
+    target = pathlib.Path(file_name + suffix)
     if isinstance(df, pl.DataFrame):
         if compress:
             raise ValueError("Polars CSV output does not support xz compression")
-        df.write_csv(file_name + ".tmp", *args, **kwargs)
-    else:
-        df.to_csv(file_name + ".tmp", index=index, compression=compression, *args, **kwargs)
-    os.rename(file_name + ".tmp", file_name + suffix)
+
+    temporary = tempfile.NamedTemporaryFile(
+        dir=target.parent,
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+        delete=False,
+    )
+    temporary_path = pathlib.Path(temporary.name)
+    temporary.close()
+    try:
+        if isinstance(df, pl.DataFrame):
+            df.write_csv(temporary_path, *args, **kwargs)
+        else:
+            df.to_csv(temporary_path, index=index, compression=compression, *args, **kwargs)
+        os.replace(temporary_path, target)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def millis_since_epoch(dt: datetime.datetime) -> float:

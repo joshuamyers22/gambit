@@ -213,6 +213,14 @@
 - Correction implemented: ranking is explicitly one-dimensional and finite, singleton rank is zero, and ties receive their deterministic average rank using a stable sort.
 - Verification: regressions cover singleton, tied, multidimensional, `NaN`, and infinite inputs.
 
+### [Resolved] Concurrent CSV exports shared one staging filename
+
+- Location: `src/gambit/pq_utils.py:580-599`
+- Evidence: every export to a destination wrote through the literal `<destination>.tmp` path before renaming it, with no cleanup on serialization failure.
+- Failure mode: concurrent writers could replace or rename each other's partial content, a stale temporary file could be overwritten, and failed serialization left ambiguous debris beside the intended output.
+- Correction implemented: each export now uses a unique temporary file in the destination directory, atomically replaces the target only after serialization succeeds, and removes staging content on every exit path.
+- Verification: regressions preserve an unrelated legacy `.tmp` file, validate completed content, and require failed serialization to leave neither a target nor staging files.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
