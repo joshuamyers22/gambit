@@ -78,6 +78,11 @@ Calendar APIs require Polars columns to have a ``Date`` or ``Datetime`` dtype.
 Parse string columns explicitly before passing them to a calendar. NumPy date
 arrays must use a ``datetime64`` dtype; numeric columns are not epoch dates.
 
+Trading-day offsets require integer counts. If an offset exceeds the date range
+or the result cannot fit the input timestamp precision, ``add_trading_days``
+raises ``OverflowError`` instead of wrapping. A broadcast operation fails if any
+non-missing result overflows; ``roll="nat"`` still preserves missing results.
+
 Normalize timezone-aware source timestamps before converting to NumPy. Exchange
 calendars describe sessions and special closes; they do not repair incorrectly
 localized timestamps. Test daylight-saving transitions and half days.

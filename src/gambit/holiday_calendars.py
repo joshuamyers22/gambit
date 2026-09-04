@@ -17,6 +17,11 @@ import polars as pl
 
 DateTimeType = Union[str, np.datetime64, np.ndarray, datetime.datetime, datetime.date, pl.Series]
 
+_DAY_TICKS = {
+    "D": 1, "h": 24, "m": 1440, "s": 86400,
+    "ms": 86400000, "us": 86400000000, "ns": 86400000000000,
+}
+
 
 def _polars_datetimes(values: pl.Series) -> np.ndarray:
     """Require an explicit date dtype before converting a Polars column."""
@@ -77,9 +82,35 @@ def _normalize_datetime(
     else:
         dtime = np.datetime64(cast(Any, val))
 
+    unit, step = np.datetime_data(dtime.dtype)
+    if unit in _DAY_TICKS:
+        # NumPy's cast to days can wrap at the lower nanosecond boundary.
+        # Integer division also avoids overflowing the midnight subtraction.
+        ticks = np.asarray(dtime).view("i8")
+        missing = np.isnat(dtime)
+        total = ticks if step == 1 else ticks.astype(object) * step
+        days, remainder = np.divmod(total, _DAY_TICKS[unit])
+        date_values = np.asarray(np.where(missing, np.iinfo(np.int64).min, days), dtype="i8")
+        time_step = step if _DAY_TICKS[unit] % step == 0 else 1
+        time_values = np.asarray(
+            np.where(missing, np.iinfo(np.int64).min, remainder // time_step), dtype="i8"
+        )
+        return date_values.view("M8[D]")[()], time_values.view(f"m8[{time_step}{unit}]")[()]
+
     date: np.datetime64 | np.ndarray = dtime.astype("M8[D]")
     time_delta = cast(np.timedelta64 | np.ndarray, dtime - date)
     return date, time_delta
+
+
+def _business_day_ordinal(dates: np.datetime64 | np.ndarray, calendar: np.busdaycalendar) -> np.ndarray:
+    """An exact business-day index, including for dates near int64 limits."""
+    days = np.asarray(dates).view("i8").astype(object)
+    # Day zero is Thursday; count weekdays in the partial week before each date.
+    prefix = np.concatenate(([0], np.cumsum(np.roll(calendar.weekmask, -3))))
+    partial = np.asarray(prefix[np.asarray(days % 7, dtype=int)]).astype(object)
+    weekdays = (days // 7) * int(calendar.weekmask.sum()) + partial
+    holidays = np.asarray(np.searchsorted(calendar.holidays, dates)).astype(object)
+    return np.asarray(weekdays - holidays, dtype=object)
 
 
 def _normalize(
@@ -288,6 +319,9 @@ class Calendar:
         Return:
             The datetime num_days trading days after start
 
+        Raises:
+            OverflowError: the day offset or timestamp exceeds its representable range.
+
         >>> calendar = Calendar('NYSE')
         >>> str(calendar.add_trading_days(datetime.date(2015, 12, 24), 1))
         '2015-12-28'
@@ -300,12 +334,36 @@ class Calendar:
             raise TypeError("num_days must be an integer or an integer array; booleans are not allowed")
         start_date, time_delta = _normalize_datetime(start)
         if roll == "allow":
-            # If today is a holiday, roll forward but subtract 1 day so
-            num_days = np.where(self.is_trading_day(start) | (num_days < 1), num_days, num_days - 1)
+            # For positive offsets on closed days, count the rolled day as day one.
+            offsets = np.asarray(num_days)
+            adjustment = ~np.is_busday(start_date, busdaycal=self.bus_day_cal) & (offsets > 0)
+            num_days = offsets - adjustment.astype(offsets.dtype)
             roll = "forward"
+        base = np.busday_offset(start_date, 0, roll=cast(Any, roll), busdaycal=self.bus_day_cal)
         out = np.busday_offset(start_date, num_days, roll=cast(Any, roll), busdaycal=self.bus_day_cal)
-        out = out + time_delta  # for some reason += does not work correctly here.
-        return out
+        valid = ~np.isnat(base)
+        # busday_count itself can overflow; use exact integers for the inverse check.
+        displacement = (
+            _business_day_ordinal(out, self.bus_day_cal) - _business_day_ordinal(base, self.bus_day_cal)
+        )
+        roll_distance = (
+            np.asarray(base).view("i8").astype(object) - np.asarray(start_date).view("i8").astype(object)
+        )
+        # Rolling to an open day cannot cross more than all holidays plus a week.
+        if np.any(valid & (np.isnat(out) | (displacement != num_days))) or np.any(
+            ~np.isnat(start_date) & (abs(roll_distance) > 7 * (len(self.bus_day_cal.holidays) + 1)) & valid
+        ):
+            raise OverflowError("trading-day offset exceeds the representable date range")
+
+        unit, step = np.datetime_data(time_delta.dtype)
+        ticks = np.asarray(out).view("i8").astype(object) * (_DAY_TICKS[unit] // step)
+        ticks = ticks + np.asarray(time_delta).view("i8").astype(object)
+        missing = np.isnat(out) | np.isnat(time_delta)
+        limit = np.iinfo(np.int64).max
+        if np.any(~missing & ((ticks < -limit) | (ticks > limit))):
+            raise OverflowError("trading-day offset exceeds the representable timestamp range")
+        values = np.asarray(np.where(missing, np.iinfo(np.int64).min, ticks), dtype="i8")
+        return values.view(f"M8[{step}{unit}]")[()]
 
 
 def get_date_from_weekday(weekday: int, year: int, month: int, week: int) -> np.datetime64:

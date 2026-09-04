@@ -19,6 +19,8 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Trading-day offsets now reject date and timestamp overflow instead of wrapping
+  into incorrect dates, and preserve valid timestamps at the nanosecond limits.
 - Trading-day offsets now require integer counts for every roll mode, preventing
   scalar fractions from being truncated and strings or booleans from becoming offsets.
 - Calendar APIs now reject Polars columns without a Date or Datetime dtype,

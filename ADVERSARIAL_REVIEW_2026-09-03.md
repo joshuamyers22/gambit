@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 654 passed; native tests executed locally |
-| Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 96%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 680 passed; native tests executed locally |
+| Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 97%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected floors: markets 75%, calendars 50%, optimizer 70%, utilities 50%, interactive reporting 80% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
@@ -83,7 +83,7 @@
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
 - Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (70%), numerical utility (50%), and interactive reporting (80%) modules. The checker fails closed when coverage data or a named module is unavailable.
-- Verification: current full-suite measurements are 79%, 96%, 77%, 61%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
+- Verification: current full-suite measurements are 79%, 97%, 77%, 61%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
 
 ### [Resolved] Full-suite evidence concealed a unit-matrix coverage failure
 
@@ -373,10 +373,18 @@
 - Correction implemented: offset dtype validation requires integers before date normalization and roll handling, rejecting floats, strings, booleans, and non-finite scalar values consistently.
 - Verification: nine invalid scalar/array representations are rejected under every supported roll mode. Regressions retain Python and NumPy scalar integers and verify negative, zero, and positive offsets broadcast over open/closed dates without modifying read-only inputs or losing the time of day.
 
+### [Resolved] Trading-day arithmetic silently wrapped into incorrect dates
+
+- Location: `src/gambit/holiday_calendars.py`, datetime normalization and `Calendar.add_trading_days`
+- Evidence: adding one day to `2262-04-11T12:00:00.000000000` returned a timestamp in 1677; extreme integer offsets could masquerade as a one-day or zero-day shift. NumPy's day cast also misread timestamps at its lower nanosecond boundary.
+- Failure mode: scheduling overflow returned plausible but unrelated dates without an error.
+- Correction implemented: integer-based normalization preserves sub-day timestamps at the supported precision limits, exact business-day ordinals verify NumPy's offset arithmetic, and timestamp reconstruction checks integer bounds before casting. Unrepresentable results raise `OverflowError`.
+- Verification: regressions cover both overflow directions, every roll mode, daily/minute/nanosecond precision, exact valid nanosecond endpoints, large representable day counts, read-only broadcast arrays, missing and empty inputs, scaled/coarse units, and a nonstandard trading week with holidays across the Unix epoch.
+
 ## Improvement order
 
 1. Maintain the module floors as supported behavior expands; prioritize calendar edge cases next.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 654-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 680-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

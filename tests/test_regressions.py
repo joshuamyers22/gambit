@@ -347,6 +347,86 @@ def test_allow_offsets_broadcast_closed_days_without_mutating_inputs():
     np.testing.assert_array_equal(offsets, original_offsets)
 
 
+@pytest.mark.parametrize("name", ["24/7", "NYSE"])
+@pytest.mark.parametrize("offset", [np.iinfo(np.int64).min, np.iinfo(np.int64).max])
+@pytest.mark.parametrize("precision", ["D", "m", "ns"])
+def test_trading_day_offsets_reject_day_arithmetic_overflow(name, offset, precision):
+    calendar = Calendar(name)
+    start = np.datetime64("1960-01-05" if offset < 0 else "2024-01-05", precision)
+    for roll in ("raise", "nat", "forward", "following", "backward", "preceding",
+                 "modifiedfollowing", "modifiedpreceding", "allow"):
+        with pytest.raises(OverflowError, match="representable date range"):
+            calendar.add_trading_days(start, offset, roll=roll)
+
+
+@pytest.mark.parametrize(
+    ("start", "offset"),
+    [("2262-04-11T12:00:00.000000000", 1), ("1677-09-22T12:00:00.000000000", -2)],
+)
+def test_trading_day_offsets_reject_timestamp_overflow(start, offset):
+    with pytest.raises(OverflowError, match="representable timestamp range"):
+        Calendar("24/7").add_trading_days(start, offset)
+
+
+@pytest.mark.parametrize("offset", [-(1 << 60), 1 << 60])
+def test_trading_day_offsets_keep_large_representable_day_counts(offset):
+    start = np.datetime64("2024-01-05")
+    result = Calendar("24/7").add_trading_days(start, offset)
+    assert int(result.view("i8")) == int(start.view("i8")) + offset
+
+
+def test_nat_roll_keeps_closed_and_missing_dates_missing_with_extreme_offsets():
+    starts = np.array(["2024-01-06", "NaT"], dtype="M8[ns]")
+    result = Calendar("NYSE").add_trading_days(starts, np.iinfo(np.int64).max, roll="nat")
+    assert np.isnat(result).all()
+
+
+@pytest.mark.parametrize("boundary", [-np.iinfo(np.int64).max, np.iinfo(np.int64).max])
+def test_trading_day_offsets_preserve_exact_timestamp_boundaries(boundary):
+    calendar = Calendar("24/7")
+    start = np.datetime64(int(boundary), "ns")
+    inward = 1 if boundary < 0 else -1
+    assert calendar.add_trading_days(start, 0) == start
+    shifted = calendar.add_trading_days(start, inward)
+    assert shifted == start + np.timedelta64(inward, "D")
+    assert calendar.add_trading_days(shifted, -inward) == start
+    with pytest.raises(OverflowError, match="representable timestamp range"):
+        calendar.add_trading_days(start, -inward)
+
+
+def test_trading_day_offset_overflow_checks_preserve_broadcast_missing_and_empty_inputs():
+    calendar = Calendar("24/7")
+    starts = np.array([["2262-04-10T12:00:00.000000000"], ["NaT"]], dtype="M8[ns]")
+    starts.setflags(write=False)
+    expected = np.array([["2262-04-10T12:00:00.000000000", "2262-04-11T12:00:00.000000000"],
+                         ["NaT", "NaT"]], dtype="M8[ns]")
+    np.testing.assert_array_equal(calendar.add_trading_days(starts, np.array([0, 1]), roll="nat"), expected)
+    with pytest.raises(OverflowError, match="representable timestamp range"):
+        calendar.add_trading_days(starts, np.array([0, 2]), roll="nat")
+    result = calendar.add_trading_days(np.array([], dtype="M8[ns]"), 1)
+    assert result.shape == (0,)
+    assert result.dtype == np.dtype("M8[ns]")
+
+
+@pytest.mark.parametrize("precision", ["3h", "2D", "W", "M", "Y"])
+def test_trading_day_offsets_keep_coarse_and_scaled_timestamp_units(precision):
+    start = np.datetime64("2024-01-01", precision)
+    expected = start + np.timedelta64(1, "D")
+    result = Calendar("24/7").add_trading_days(start, 1)
+    assert result == expected
+    assert result.dtype == expected.dtype
+
+
+def test_trading_day_offset_validation_matches_nonstandard_calendar_across_epoch(monkeypatch):
+    rules = np.busdaycalendar(weekmask="Sun Mon Tue Wed Thu", holidays=["1969-12-25", "1970-01-01"])
+    monkeypatch.setitem(Calendar._bus_day_calendars, "offset-test", rules)
+    calendar = Calendar("offset-test")
+    starts: np.ndarray = np.arange("1969-12-20", "1970-01-10", dtype="M8[D]")[:, None]
+    offsets = np.arange(-20, 21)
+    expected = np.busday_offset(starts, offsets, roll="forward", busdaycal=rules)
+    np.testing.assert_array_equal(calendar.add_trading_days(starts, offsets, roll="forward"), expected)
+
+
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
     np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
     np.testing.assert_allclose(
