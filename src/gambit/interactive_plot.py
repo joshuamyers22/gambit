@@ -273,6 +273,15 @@ class LineConfig:
     marker_mode: str = "lines+markers"
     show_detail: bool = True
 
+    def __post_init__(self) -> None:
+        if isinstance(self.thickness, bool) or not isinstance(
+            self.thickness, (int, float, np.integer, np.floating)
+        ):
+            raise ValueError("line thickness must be a positive finite number or NaN")
+        self.thickness = float(self.thickness)
+        if not math.isnan(self.thickness) and (not math.isfinite(self.thickness) or self.thickness <= 0):
+            raise ValueError("line thickness must be a positive finite number or NaN")
+
 
 class LineGraphWithDetailDisplay:
     """
@@ -344,13 +353,16 @@ class LineGraphWithDetailDisplay:
                 hovertemplate = "N: %{customdata}"  # number of entries used to compute each x
                 hovertemplate += f" Series: {zvalue} {xaxis_title}: " + "%{x:.4g} " + f"{yaxis_title}: " + "%{y:.4g}"
 
+            line_options: dict[str, Any] = {"color": color}
+            if math.isfinite(line_config.thickness):
+                line_options["width"] = line_config.thickness
             trace = go.Scatter(
                 x=x,
                 y=y,
                 customdata=customdata,
                 mode=marker_mode,
                 name=str(zvalue),
-                line=dict(color=color),
+                line=line_options,
                 hovertemplate=hovertemplate,
             )
 

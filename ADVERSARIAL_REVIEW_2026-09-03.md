@@ -269,6 +269,14 @@
 - Correction implemented: confidence fills pass the original validated-by-Plotly color through unchanged and apply transparency at the trace level; the narrow duplicate color parser was removed.
 - Verification: figure regressions render confidence bands using hexadecimal, named, and HSL color formats and verify their fill color and opacity.
 
+### [Resolved] Interactive line thickness was silently ignored
+
+- Location: `src/gambit/interactive_plot.py:268-276`, `src/gambit/interactive_plot.py:363-376`
+- Evidence: `LineConfig` publicly exposed a `thickness` field, but trace construction passed only color to Plotly's line settings and never read the configured value.
+- Failure mode: callers received default-width plots despite explicit configuration, while invalid values remained latent until unrelated rendering behavior changed.
+- Correction implemented: finite positive thickness is forwarded as Plotly line width, the `NaN` default retains Plotly's default, and non-numeric, boolean, non-positive, or infinite widths fail immediately.
+- Verification: figure regression requires an exact 4.5 width and boundary tests reject invalid configurations.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

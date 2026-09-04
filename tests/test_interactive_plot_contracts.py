@@ -72,6 +72,22 @@ def test_confidence_band_accepts_plotly_color_syntax(color) -> None:
     assert figure.data[1].opacity == 0.3
 
 
+def test_line_config_applies_requested_thickness() -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0]})
+    detail = pl.DataFrame({"x": [1], "y": [2.0]})
+    renderer = LineGraphWithDetailDisplay(line_configs={"series": LineConfig(thickness=4.5)})
+
+    figure, _ = renderer("x", "y", [("series", summary, detail)])
+
+    assert figure.data[0].line.width == 4.5
+
+
+@pytest.mark.parametrize("thickness", [0, -1, np.inf, True, "2"])
+def test_line_config_rejects_invalid_thickness(thickness) -> None:
+    with pytest.raises(ValueError, match="line thickness"):
+        LineConfig(thickness=thickness)
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

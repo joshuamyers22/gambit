@@ -66,6 +66,8 @@ have not yet been released are collected below.
   than ten series are rendered.
 - Confidence-band fills now accept Plotly's native color formats, including
   hexadecimal, named, and HSL colors.
+- Interactive line thickness configuration is now applied and invalid widths
+  fail at configuration time.
 
 ## 1.1.0 - 2026-08-31
 
