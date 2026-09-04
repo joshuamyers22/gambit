@@ -60,6 +60,18 @@ def test_line_graph_cycles_palette_for_more_than_ten_series() -> None:
     assert figure.data[10].line.color == figure.data[0].line.color
 
 
+@pytest.mark.parametrize("color", ["#ff0000", "red", "hsl(120, 100%, 50%)"])
+def test_confidence_band_accepts_plotly_color_syntax(color) -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0], "lower": [1.0], "upper": [3.0]})
+    detail = pl.DataFrame({"x": [1], "y": [2.0]})
+    renderer = LineGraphWithDetailDisplay(line_configs={"series": LineConfig(color=color)})
+
+    figure, _ = renderer("x", "y", [("series", summary, detail)])
+
+    assert figure.data[1].fillcolor == color
+    assert figure.data[1].opacity == 0.3
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

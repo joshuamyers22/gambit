@@ -64,6 +64,8 @@ have not yet been released are collected below.
   Plotly's required `anywidget` runtime for `FigureWidget`.
 - Interactive plots now cycle the default palette deterministically when more
   than ten series are rendered.
+- Confidence-band fills now accept Plotly's native color formats, including
+  hexadecimal, named, and HSL colors.
 
 ## 1.1.0 - 2026-08-31
 

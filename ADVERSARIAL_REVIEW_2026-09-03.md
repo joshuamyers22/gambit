@@ -261,6 +261,14 @@
 - Correction implemented: default palette selection wraps by palette length, retaining deterministic input-order color assignment for arbitrary series counts.
 - Verification: an 11-series figure regression renders every trace and requires series 11 to reuse series 1's color.
 
+### [Resolved] Valid custom colors crashed confidence-band rendering
+
+- Location: `src/gambit/interactive_plot.py:278-301`, `src/gambit/interactive_plot.py:389-403`
+- Evidence: the main Plotly trace accepted native color strings, but confidence-band construction reparsed the same value as comma-separated integer RGB. Valid hex, named, HSL, and other Plotly formats raised `ValueError`.
+- Failure mode: a configured series rendered normally without intervals and then failed when uncertainty display was enabled, making presentation behavior depend on an unrelated statistical option.
+- Correction implemented: confidence fills pass the original validated-by-Plotly color through unchanged and apply transparency at the trace level; the narrow duplicate color parser was removed.
+- Verification: figure regressions render confidence bands using hexadecimal, named, and HSL color formats and verify their fill color and opacity.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

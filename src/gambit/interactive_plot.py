@@ -11,7 +11,6 @@
 # $$_ %%checkall
 from __future__ import annotations
 
-import colorsys
 import doctest
 import math
 import os
@@ -275,30 +274,6 @@ class LineConfig:
     show_detail: bool = True
 
 
-def _plotly_color_to_rgb(plotly_color: str) -> tuple[int, int, int]:
-    """
-    Convert plotly color which is a string into r, g, b values
-    >>> assert _plotly_color_to_rgb('rgb(31, 119, 180)') == (31, 119, 180)
-    """
-    plotly_color = plotly_color.replace("rgb(", "").replace(")", "")
-    s = plotly_color.split(",")
-    r, g, b = int(s[0]), int(s[1]), int(s[2])
-    return r, g, b
-
-
-def _lighten_color(r: int, g: int, b: int) -> tuple[int, int, int]:
-    """
-    Lighten color so we can show confidence intervals in a lighter shade than the line itself
-    We convert to hls and increase lightness and decrease saturation
-    >>> assert _lighten_color(31, 119, 180) == (102, 168, 214)
-    """
-    hls = colorsys.rgb_to_hls(r, g, b)
-    light_hls = (hls[0], hls[1] * 1.5, hls[2] * 0.5)
-    rgb = colorsys.hls_to_rgb(*light_hls)
-    rgb = (int(round(rgb[0])), int(round(rgb[1])), int(round(rgb[2])))
-    return rgb
-
-
 class LineGraphWithDetailDisplay:
     """
     Draws line graphs and also includes a detail pane.
@@ -387,19 +362,16 @@ class LineGraphWithDetailDisplay:
             trace_num += 1
 
             if len(line_df.columns) > 2:  # x, y, ci up and ci down
-                fill_color = _plotly_color_to_rgb(color)
-                fill_color = _lighten_color(*fill_color)
-                # we set transparency to 0.5 so we can see lines under the ci fill
-                fill_color_str = f"rgba({fill_color[0]},{fill_color[1]},{fill_color[2]},0.5)"
                 ci_down = line_df[:, 2].to_numpy()
                 ci_up = line_df[:, 3].to_numpy()
                 ci_trace = go.Scatter(
                     x=np.concatenate([x, x[::-1]]),  # x, then x reversed
                     y=np.concatenate([ci_up, ci_down[::-1]]),  # upper, then lower reversed
                     fill="toself",
-                    fillcolor=fill_color_str,
+                    fillcolor=color,
                     line=dict(color="rgba(255,255,255,0)"),
                     hoverinfo="skip",
+                    opacity=0.3,
                     showlegend=False,
                 )
 
