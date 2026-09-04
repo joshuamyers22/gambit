@@ -418,7 +418,10 @@ def test_trading_day_offsets_keep_coarse_and_scaled_timestamp_units(precision):
 
 
 def test_trading_day_offset_validation_matches_nonstandard_calendar_across_epoch(monkeypatch):
-    rules = np.busdaycalendar(weekmask="Sun Mon Tue Wed Thu", holidays=["1969-12-25", "1970-01-01"])
+    rules = np.busdaycalendar(
+        weekmask="Sun Mon Tue Wed Thu",
+        holidays=np.array(["1969-12-25", "1970-01-01"], dtype="M8[D]"),
+    )
     monkeypatch.setitem(Calendar._bus_day_calendars, "offset-test", rules)
     calendar = Calendar("offset-test")
     starts: np.ndarray = np.arange("1969-12-20", "1970-01-10", dtype="M8[D]")[:, None]
