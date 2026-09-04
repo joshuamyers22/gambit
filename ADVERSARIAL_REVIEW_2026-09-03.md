@@ -27,6 +27,7 @@
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
 | Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 551 passed; native tests executed locally |
 | Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
+| Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected unit-suite floors: markets 75%, calendars 50%, optimizer 55%, utilities 35% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
 | Dependency audit | `make audit` | Pass | exact hashed runtime set exported from `uv.lock`; no known vulnerabilities |
@@ -81,8 +82,8 @@
 - Location: `src/gambit/markets.py`, `holiday_calendars.py`, `optimize.py`, `pq_utils.py`; `Makefile:9-10`
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
-- Correction: identify supported versus compatibility-only modules, deprecate unused surfaces, and enforce module-specific floors for supported policy rather than chasing uniform aggregate coverage.
-- Acceptance: CI fails when supported optimizer/calendar/market contracts lose coverage; compatibility-only modules have explicit ownership/deprecation status.
+- Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (55%), and numerical utility (35%) modules. The checker fails closed when coverage data or a named module is unavailable.
+- Verification: current unit-suite measurements are 79%, 54%, 60%, and 38%, respectively. The policy and its maintenance rule are documented in the testing guide.
 
 ### [Resolved] One-digit contract years silently selected the wrong decade
 

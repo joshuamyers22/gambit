@@ -27,6 +27,16 @@ while native correctness runs on both Linux and macOS. Fuzz probes also run
 under ASan and UBSan. Performance testing is an opt-in, non-blocking GitHub
 Actions workflow so noisy hosted-runner timing does not block releases.
 
+The unit matrix also enforces explicit coverage floors for supported
+policy-heavy market, calendar, optimizer, and numerical utility modules. Run
+the same policy locally after a coverage-producing test command with::
+
+   make coverage-policy
+
+The floors are regression guards, not quality targets. Raise them when durable
+behavioral coverage increases; do not lower them merely to accommodate a
+regression.
+
 Documentation and notebook drift
 --------------------------------
 

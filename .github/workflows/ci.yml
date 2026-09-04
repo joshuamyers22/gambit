@@ -68,7 +68,9 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - name: Run unit suite
         run: python -m pytest -m unit --cov=gambit --cov-report=term-missing
-      - run: python -m ruff check src tests
+      - name: Enforce supported policy coverage floors
+        run: python tools/check_coverage_policy.py
+      - run: python -m ruff check src tests tools
       - run: python -m mypy
 
   integration:

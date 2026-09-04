@@ -38,6 +38,8 @@ have not yet been released are collected below.
   time columns, custom column names, and paired series lengths.
 - CI now rejects duplicate YAML mapping keys; the shadowing legacy dependency
   audit job was removed so the pinned lock-based audit actually runs.
+- Local and CI checks now enforce module-specific coverage floors for supported
+  market, calendar, optimizer, and numerical utility policy.
 
 ## 1.1.0 - 2026-08-31
 
