@@ -25,7 +25,7 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 551 passed; native tests executed locally |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 553 passed; native tests executed locally |
 | Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected unit-suite floors: markets 75%, calendars 50%, optimizer 55%, utilities 35% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
@@ -165,10 +165,18 @@
 - Correction implemented: the shadowing legacy job was removed. A repository architecture test parses every workflow with a safe loader that rejects duplicate mapping keys at any depth.
 - Verification: all workflows load without duplicate keys, and the surviving dependency-audit job uses pinned `setup-uv`, `pip-audit==2.10.1`, `uv export --frozen`, and `--no-deps`.
 
+### [Resolved] Return normalization and three-year windows corrupted edge cases
+
+- Location: `src/gambit/evaluator.py:261-288`, `src/gambit/evaluator.py:420-457`
+- Evidence: `np.nan_to_num` was called without infinity replacements even though the public contract says all non-finite returns become zero; NumPy therefore converted infinities to maximum finite floats. Three-year cutoffs used `datetime.replace(year=...)`, which raises for a February 29 endpoint whose target year is not leap, and date/return windows disagreed on cutoff inclusion.
+- Failure mode: one infinite observation could create overflowed equity and meaningless ratios, while valid leap-day histories crashed during standard reporting.
+- Correction implemented: finite observations now define the leading-data boundary, all requested non-finite replacements explicitly use zero, and calendar-aware three-year subtraction includes the exact cutoff consistently.
+- Verification: regressions cover leading/subsequent positive infinity, negative infinity and `NaN`, plus a February 29 endpoint across dates, returns, and rolling drawdown windows.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 551-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 553-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

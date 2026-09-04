@@ -10,6 +10,7 @@ from typing import Any, Callable, cast
 
 import numpy as np
 import polars as pl
+from dateutil.relativedelta import relativedelta
 
 from gambit.pq_utils import PQException, assert_, has_display, infer_frequency, monotonically_increasing
 
@@ -263,8 +264,8 @@ def compute_dates_3yr(timestamps: np.ndarray) -> np.ndarray:
     if not len(timestamps):
         return np.array([], dtype="M8[D]")
     d = _python_datetime(timestamps[-1])
-    start_3yr = np.datetime64(d.replace(year=d.year - 3))
-    return timestamps[timestamps > start_3yr]
+    start_3yr = np.datetime64(d + relativedelta(years=-3))
+    return timestamps[timestamps >= start_3yr]
 
 
 def compute_returns_3yr(timestamps: np.ndarray, returns: np.ndarray) -> np.ndarray:
@@ -282,7 +283,7 @@ def compute_rolling_dd_3yr(timestamps: np.ndarray, equity: np.ndarray) -> tuple[
     if not len(timestamps):
         return np.array([], dtype="M8[D]"), np.array([], dtype=float)
     d = _python_datetime(timestamps[-1])
-    start_3yr = np.datetime64(d.replace(year=d.year - 3))
+    start_3yr = np.datetime64(d + relativedelta(years=-3))
     equity = equity[timestamps >= start_3yr]
     timestamps = timestamps[timestamps >= start_3yr]
     return compute_rolling_dd(timestamps, equity)
@@ -438,18 +439,20 @@ def handle_non_finite_returns(
     True
     """
 
-    first_non_nan_indices = np.ravel(np.nonzero(~np.isnan(rets)))
-    first_non_nan_index = int(first_non_nan_indices[0]) if len(first_non_nan_indices) else -1
+    first_finite_indices = np.ravel(np.nonzero(np.isfinite(rets)))
+    first_finite_index = int(first_finite_indices[0]) if len(first_finite_indices) else -1
 
-    if first_non_nan_index > 0 and first_non_nan_index < len(rets):
+    if first_finite_index > 0 and first_finite_index < len(rets):
         if leading_non_finite_to_zeros:
-            rets[:first_non_nan_index] = np.nan_to_num(rets[:first_non_nan_index])
+            rets[:first_finite_index] = np.nan_to_num(
+                rets[:first_finite_index], nan=0.0, posinf=0.0, neginf=0.0
+            )
         else:
-            timestamps = timestamps[first_non_nan_index:]
-            rets = rets[first_non_nan_index:]
+            timestamps = timestamps[first_finite_index:]
+            rets = rets[first_finite_index:]
 
     if subsequent_non_finite_to_zeros:
-        rets = np.nan_to_num(rets)
+        rets = np.nan_to_num(rets, nan=0.0, posinf=0.0, neginf=0.0)
     else:
         timestamps = timestamps[np.isfinite(rets)]
         rets = rets[np.isfinite(rets)]

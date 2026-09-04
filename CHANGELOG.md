@@ -40,6 +40,8 @@ have not yet been released are collected below.
   audit job was removed so the pinned lock-based audit actually runs.
 - Local and CI checks now enforce module-specific coverage floors for supported
   market, calendar, optimizer, and numerical utility policy.
+- Return evaluation now converts all non-finite values to actual zeros when
+  requested, and three-year windows are leap-day safe and cutoff-inclusive.
 
 ## 1.1.0 - 2026-08-31
 
