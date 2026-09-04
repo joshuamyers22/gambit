@@ -277,6 +277,14 @@
 - Correction implemented: finite positive thickness is forwarded as Plotly line width, the `NaN` default retains Plotly's default, and non-numeric, boolean, non-positive, or infinite widths fail immediately.
 - Verification: figure regression requires an exact 4.5 width and boundary tests reject invalid configurations.
 
+### [Resolved] Duplicate plot series displayed the wrong detail data
+
+- Location: `src/gambit/interactive_plot.py:319-407`
+- Evidence: renderer state keyed detail frames only by series identifier, so a repeated identifier overwrote the earlier trace's detail records. Summary frames with one or three columns, inconsistent x names, or detail frames lacking x were accepted until opaque positional or callback failures.
+- Failure mode: a valid-looking chart could show records belonging to another trace when clicked; malformed custom statistic output failed after partial widget construction.
+- Correction implemented: all line data is validated before widget creation, series identifiers must be unique, summaries must contain exactly x/y or x/y/lower/upper, every series shares one x column, detail frames contain that column, and per-render trace mappings are reset.
+- Verification: regressions reject duplicate series, malformed widths, missing detail keys, and inconsistent x columns.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

@@ -88,6 +88,40 @@ def test_line_config_rejects_invalid_thickness(thickness) -> None:
         LineConfig(thickness=thickness)
 
 
+def test_line_graph_rejects_duplicate_series_before_detail_is_overwritten() -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0]})
+    first_detail = pl.DataFrame({"x": [1], "source": ["first"]})
+    second_detail = pl.DataFrame({"x": [1], "source": ["second"]})
+
+    with pytest.raises(ValueError, match="duplicate interactive plot series"):
+        LineGraphWithDetailDisplay()(
+            "x",
+            "y",
+            [("same", summary, first_detail), ("same", summary, second_detail)],
+        )
+
+
+@pytest.mark.parametrize(
+    ("summary", "detail", "message"),
+    [
+        (pl.DataFrame({"x": [1]}), pl.DataFrame({"x": [1]}), "exactly x/y"),
+        (pl.DataFrame({"x": [1], "y": [2], "extra": [3]}), pl.DataFrame({"x": [1]}), "exactly x/y"),
+        (pl.DataFrame({"x": [1], "y": [2]}), pl.DataFrame({"other": [1]}), "missing x column"),
+    ],
+)
+def test_line_graph_rejects_malformed_summary_or_detail(summary, detail, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
+
+
+def test_line_graph_requires_a_shared_x_column() -> None:
+    first = ("first", pl.DataFrame({"x": [1], "y": [2]}), pl.DataFrame({"x": [1]}))
+    second = ("second", pl.DataFrame({"other_x": [1], "y": [2]}), pl.DataFrame({"other_x": [1]}))
+
+    with pytest.raises(ValueError, match="share the same x column"):
+        LineGraphWithDetailDisplay()("x", "y", [first, second])
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

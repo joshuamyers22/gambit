@@ -68,6 +68,8 @@ have not yet been released are collected below.
   hexadecimal, named, and HSL colors.
 - Interactive line thickness configuration is now applied and invalid widths
   fail at configuration time.
+- Interactive plot line data now rejects duplicate series, malformed summary
+  widths, inconsistent x columns, and unusable detail frames before rendering.
 
 ## 1.1.0 - 2026-08-31
 

@@ -325,7 +325,26 @@ class LineGraphWithDetailDisplay:
         """
         if not len(line_data):
             return []
+        seen_series: set[Any] = set()
+        shared_xcol: str | None = None
+        for zvalue, line_df, detail_data in line_data:
+            if zvalue in seen_series:
+                raise ValueError(f"duplicate interactive plot series: {zvalue!r}")
+            seen_series.add(zvalue)
+            if not isinstance(line_df, pl.DataFrame) or not isinstance(detail_data, pl.DataFrame):
+                raise TypeError("interactive plot summary and detail data must be Polars DataFrames")
+            if len(line_df.columns) not in {2, 4}:
+                raise ValueError("interactive plot summaries must contain exactly x/y or x/y/lower/upper columns")
+            xcol = line_df.columns[0]
+            if shared_xcol is None:
+                shared_xcol = xcol
+            elif xcol != shared_xcol:
+                raise ValueError("interactive plot series must share the same x column")
+            if xcol not in detail_data.columns:
+                raise ValueError(f"interactive plot detail data is missing x column {xcol!r}")
+
         self.detail_data.clear()
+        self.zvalues.clear()
         secondary_y = any([lc.secondary_y for lc in self.line_configs.values()])
 
         fig_widget = go.FigureWidget(make_subplots(specs=[[{"secondary_y": secondary_y}]]))
