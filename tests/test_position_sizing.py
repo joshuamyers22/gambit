@@ -72,6 +72,19 @@ def test_zero_forecasts_produce_zero_exposure() -> None:
     assert result.achieved_volatility == 0.0
 
 
+def test_nonzero_forecasts_reject_zero_modeled_volatility() -> None:
+    zero_risk = CovarianceEstimate(
+        ("A", "B"),
+        np.zeros((2, 2)),
+        TIMESTAMP,
+        100,
+        252.0,
+    )
+
+    with pytest.raises(ValueError, match="zero modeled volatility"):
+        VolatilityTargetSizer(0.10).size(_forecasts(), zero_risk, TIMESTAMP, capital=1_000_000)
+
+
 def test_sizer_rejects_lookahead_invalid_forecasts_and_overlay() -> None:
     cutoff = CalculationContext(TIMESTAMP, market_data_as_of=TIMESTAMP - np.timedelta64(1, "m"))
     with pytest.raises(ValueError, match="after the calculation cutoff"):

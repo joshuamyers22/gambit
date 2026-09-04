@@ -5,7 +5,7 @@ import pytest
 from gambit.calculation import CalculationContext
 from gambit.covariance_risk import PortfolioRiskOverlayResult
 from gambit.position_sizing import VaRTargetSizer
-from gambit.var_risk import TailRiskMethod, TailRiskModel
+from gambit.var_risk import FittedTailRiskModel, TailRiskMethod, TailRiskModel
 
 TIMESTAMP = np.datetime64("2026-01-09")
 
@@ -70,3 +70,17 @@ def test_var_sizer_rejects_future_model_and_unknown_symbol() -> None:
             TIMESTAMP,
             capital=1_000_000,
         )
+
+
+def test_nonzero_forecasts_reject_zero_modeled_var() -> None:
+    zero_risk = FittedTailRiskModel(
+        ("A", "B"),
+        np.zeros((3, 2)),
+        TIMESTAMP,
+        0.80,
+        1,
+        TailRiskMethod.HISTORICAL,
+    )
+
+    with pytest.raises(ValueError, match="zero modeled value at risk"):
+        VaRTargetSizer(0.02).size(_forecasts(), zero_risk, TIMESTAMP, capital=1_000_000)

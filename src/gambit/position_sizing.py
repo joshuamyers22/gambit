@@ -96,6 +96,8 @@ class VolatilityTargetSizer:
         direction = np.asarray([float(forecast_by_symbol.get(symbol, 0.0)) for symbol in estimate.symbols])
         direction_variance = float(direction @ estimate.matrix @ direction)
         direction_volatility = math.sqrt(max(direction_variance, 0.0))
+        if np.any(direction != 0) and direction_volatility == 0:
+            raise ValueError("nonzero forecasts have zero modeled volatility and cannot be sized")
         scale = capital * self.target_volatility / direction_volatility if direction_volatility > 0 else 0.0
 
         overlay_multiplier = 1.0 if overlay is None else float(overlay.multiplier)
@@ -216,6 +218,8 @@ class VaRTargetSizer:
             }
         )
         direction_var = model.evaluate(direction).value_at_risk
+        if np.any(values != 0) and direction_var == 0:
+            raise ValueError("nonzero forecasts have zero modeled value at risk and cannot be sized")
         scale = capital * self.target_var / direction_var if direction_var > 0 else 0.0
 
         overlay_multiplier = 1.0 if overlay is None else float(overlay.multiplier)

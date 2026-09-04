@@ -80,6 +80,8 @@ have not yet been released are collected below.
   bounds while retaining explicitly missing intervals.
 - Coverage policy now protects interactive reporting at 80% and raises the
   optimizer and numerical utility floors to 70% and 50%.
+- Volatility and VaR target sizing now reject nonzero forecasts whose fitted
+  risk model reports zero risk instead of silently flattening the portfolio.
 
 ## 1.1.0 - 2026-08-31
 

@@ -317,6 +317,14 @@
 - Correction implemented: confidence columns must be numeric, infinity is rejected, every jointly finite lower bound must be at or below its upper bound, and paired missing bounds remain supported.
 - Verification: regressions reject reversed, string, and positive/negative infinite bounds while rendering an explicitly missing interval.
 
+### [Resolved] Unmeasurable forecasts were silently flattened
+
+- Location: `src/gambit/position_sizing.py:91-96`, `src/gambit/position_sizing.py:214-218`
+- Evidence: both target sizers used scale zero whenever modeled direction risk was zero. This correctly handled an all-zero forecast, but applied the same outcome to nonzero forecasts in a zero covariance/null-space direction or a tail model with no modeled loss.
+- Failure mode: a risk-model deficiency or unidentifiable direction produced the same plausible empty portfolio as an intentional no-position signal, hiding that the requested positive target could not be reached.
+- Correction implemented: all-zero forecasts retain defined zero exposure, while nonzero directions with zero modeled volatility or VaR fail explicitly as unsizeable.
+- Verification: regressions construct zero-risk covariance and tail models, require rejection for nonzero forecasts, and retain the existing zero-forecast outcome.
+
 ## Improvement order
 
 1. Maintain the module floors as supported behavior expands; prioritize calendar edge cases next.
