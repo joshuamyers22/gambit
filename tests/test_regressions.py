@@ -485,6 +485,18 @@ def test_optimizer_plots_handle_invalid_filtered_and_sparse_results():
     assert len(filtered.data) == 0
 
 
+def test_optimizer_plotting_does_not_write_debug_values_to_stdout(capsys):
+    optimizer = Optimizer("quiet", iter(()), lambda _suggestion: (0.0, {}), max_processes=1)
+    optimizer.experiments = [
+        Experiment({"x": 1.0, "y": 1.0}, -1.0, {}),
+        Experiment({"x": 2.0, "y": 2.0}, 1.0, {}),
+    ]
+
+    optimizer.plot_3d("x", "y", show=False)
+
+    assert capsys.readouterr().out == ""
+
+
 def test_optimizer_runs_with_spawn_and_bounded_pending_work():
     suggestions = ({"x": value} for value in range(4))
     optimizer = Optimizer(

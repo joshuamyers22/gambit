@@ -25,7 +25,7 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 555 passed; native tests executed locally |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 557 passed; native tests executed locally |
 | Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected unit-suite floors: markets 75%, calendars 50%, optimizer 55%, utilities 35% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
@@ -189,10 +189,18 @@
 - Correction implemented: all-invalid histories become empty when leading replacement is disabled, and the public evaluator rejects them explicitly. Callers that deliberately enable leading replacement retain timestamps and receive an all-zero series.
 - Verification: regression coverage distinguishes default rejection from explicit zero-fill and validates both returned returns and equity.
 
+### [Resolved] Missing drawdowns and plotting leaked implementation behavior
+
+- Location: `src/gambit/evaluator.py:225-250`, `src/gambit/evaluator.py:584-739`, `src/gambit/optimize.py:319-333`
+- Evidence: maximum-drawdown date used `argmax` directly, so a leading `NaN` could be selected instead of the largest finite drawdown; all-missing percentage calculation emitted a runtime warning. Return and optimizer plots also printed internal extrema/dates to stdout unconditionally.
+- Failure mode: direct reporting helpers could identify the wrong drawdown date, and library plotting polluted logs, notebooks, and machine-readable command output.
+- Correction implemented: extrema operate only on finite observations and return `NaN`/`NaT` when none exist; NumPy floating scalars are formatted consistently; debug prints were removed.
+- Verification: regressions cover partial/all-missing drawdowns and require optimizer plotting to leave stdout untouched.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 555-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 557-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

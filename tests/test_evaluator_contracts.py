@@ -4,6 +4,8 @@ import pytest
 from gambit.evaluator import (
     compute_dates_3yr,
     compute_gmean,
+    compute_maxdd_date,
+    compute_maxdd_pct,
     compute_periods_per_year,
     compute_return_metrics,
     compute_returns_3yr,
@@ -94,3 +96,13 @@ def test_three_year_window_is_leap_day_safe_and_includes_cutoff() -> None:
     np.testing.assert_array_equal(compute_returns_3yr(timestamps, returns), returns[1:])
     rolling_timestamps, _ = compute_rolling_dd_3yr(timestamps, equity)
     np.testing.assert_array_equal(rolling_timestamps, timestamps[1:])
+
+
+def test_drawdown_extrema_ignore_missing_values_and_define_all_missing_results() -> None:
+    timestamps = np.array(["2026-01-01", "2026-01-02", "2026-01-03"], dtype="datetime64[D]")
+    drawdowns = np.array([np.nan, 0.1, 0.25])
+
+    assert compute_maxdd_pct(drawdowns) == 0.25
+    assert compute_maxdd_date(timestamps, drawdowns) == timestamps[2]
+    assert np.isnan(compute_maxdd_pct(np.array([np.nan, np.nan])))
+    assert np.isnat(compute_maxdd_date(timestamps[:2], np.array([np.nan, np.nan])))

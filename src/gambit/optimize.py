@@ -324,7 +324,6 @@ class Optimizer:
 
             zero: float = np.nan
             if np.sign(min_z) != np.sign(max_z):
-                print(max_z, min_z)
                 zero = (0 - min_z) / (max_z - min_z)
                 colorscale = [(0, "rgba(237, 100, 90, 0.85)"), (zero, "white"), (1, "rgba(17, 165, 21, 0.85)")]
             elif min_z <= 0:  # both min and max are negative

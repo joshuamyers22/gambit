@@ -231,7 +231,10 @@ def compute_maxdd_pct(rolling_dd: np.ndarray) -> float:
     if not len(rolling_dd):
         return np.nan
     assert_(rolling_dd.ndim < 2)
-    return np.nanmax(rolling_dd)
+    finite_drawdowns = rolling_dd[np.isfinite(rolling_dd)]
+    if not len(finite_drawdowns):
+        return np.nan
+    return float(np.max(finite_drawdowns))
 
 
 def compute_maxdd_date(rolling_dd_dates: np.ndarray, rolling_dd: np.ndarray) -> np.datetime64:
@@ -239,7 +242,11 @@ def compute_maxdd_date(rolling_dd_dates: np.ndarray, rolling_dd: np.ndarray) -> 
     if not len(rolling_dd_dates):
         return np.datetime64("NaT", "ns")
     assert_(len(rolling_dd_dates) == len(rolling_dd))
-    return rolling_dd_dates[np.argmax(rolling_dd)]
+    finite = np.isfinite(rolling_dd)
+    if not np.any(finite):
+        return np.datetime64("NaT", "ns")
+    finite_indices = np.flatnonzero(finite)
+    return rolling_dd_dates[finite_indices[np.argmax(rolling_dd[finite])]]
 
 
 def compute_maxdd_start(rolling_dd_dates: np.ndarray, rolling_dd: np.ndarray, mdd_date: np.datetime64) -> np.datetime64:
@@ -646,7 +653,7 @@ def display_return_metrics(metrics: dict[str, Any], float_precision: int = 3, sh
     format_str = "{:." + str(float_precision) + "g}"
 
     for k, v in _metrics.items():
-        if isinstance(v, float) or isinstance(v, float):
+        if isinstance(v, (float, np.floating)):
             _metrics[k] = format_str.format(v)
 
     cols = [
@@ -705,7 +712,6 @@ def plot_return_metrics(
     equity_trc = go.Scatter(x=timestamps, y=equity, mode="lines")
     fig.add_trace(equity_trc, row=1, col=1)
 
-    print(mdd_start, mdd_date)
     fig.add_vrect(
         x0=mdd_start,
         x1=mdd_date,

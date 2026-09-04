@@ -46,6 +46,8 @@ have not yet been released are collected below.
   periods per year, including correct multiples for multi-month sampling.
 - All-non-finite return histories now fail as no data unless callers explicitly
   opt into replacing leading non-finite observations with zeros.
+- Drawdown extrema now ignore missing observations, return defined missing
+  results for all-missing arrays, and plotting no longer writes debug values.
 
 ## 1.1.0 - 2026-08-31
 
