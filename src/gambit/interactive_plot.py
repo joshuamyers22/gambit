@@ -81,10 +81,17 @@ def percentile_buckets(a: np.ndarray, n: int = 10) -> np.ndarray:
     >>> a = np.random.uniform(size=10000)
     >>> assert np.allclose(np.unique(percentile_buckets(a)), np.arange(0.05, 1, 0.1), atol=0.01)
     """
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("percentile bucket count must be a positive integer")
+    if a.ndim != 1:
+        raise ValueError("percentile bucket input must be one-dimensional")
     if not len(a):
-        return np.empty(0)
-    pctiles = np.arange(0, 100, int(round(100 / n)))
-    buckets = np.asarray(np.nanpercentile(a, pctiles))
+        return np.empty(0, dtype=float)
+    finite = np.isfinite(a)
+    if not np.any(finite):
+        return np.full(len(a), np.nan)
+    pctiles = np.linspace(0, 100, n, endpoint=False)
+    buckets = np.asarray(np.percentile(a[finite], pctiles))
     conditions: list[Any] = []
     for i, bucket in enumerate(buckets[:-1]):
         if buckets[i] == buckets[i + 1]:
@@ -93,7 +100,7 @@ def percentile_buckets(a: np.ndarray, n: int = 10) -> np.ndarray:
             conditions.append((a >= buckets[i]) & (a < buckets[i + 1]))
     conditions.append((a >= buckets[-1]))
     b = [np.mean(a[cond]) for cond in conditions]
-    ret = np.select(conditions, b)
+    ret = np.select(conditions, b, default=np.nan)
     return ret
 
 

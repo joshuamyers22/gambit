@@ -237,6 +237,14 @@
 - Correction implemented: the configured statistic is forwarded to bootstrap sampling, confidence levels and iteration counts are validated at their public boundaries, and callers may supply a seeded NumPy generator.
 - Verification: tests require estimator identity forwarding, repeatable seeded intervals, and explicit rejection of empty/multidimensional samples and invalid confidence or iteration settings.
 
+### [Resolved] Percentile bucketing converted missing values to zero
+
+- Location: `src/gambit/interactive_plot.py:84-105`
+- Evidence: observations unmatched by finite bucket conditions used `np.select`'s implicit numeric-zero default. Bucket counts of zero, negative values, booleans, or values not dividing 100 also produced division/step errors or a different number of buckets than requested.
+- Failure mode: missing plot observations appeared as real zero-valued statistics, and configuration could silently change requested quantile resolution.
+- Correction implemented: finite data defines exactly `n` evenly spaced percentile buckets, unmatched observations remain `NaN`, all-invalid inputs return all missing, and dimensions/counts are validated explicitly.
+- Verification: regressions cover mixed and wholly non-finite arrays, invalid counts, and multidimensional input.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

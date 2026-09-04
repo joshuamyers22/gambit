@@ -8,6 +8,7 @@ from gambit.interactive_plot import (
     LineGraphWithDetailDisplay,
     MeanWithCI,
     SimpleDetailTable,
+    percentile_buckets,
 )
 
 
@@ -59,3 +60,21 @@ def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None
 def test_mean_with_ci_rejects_invalid_confidence_levels(ci_level) -> None:
     with pytest.raises(ValueError, match="ci_level"):
         MeanWithCI(ci_level=ci_level)
+
+
+def test_percentile_buckets_preserve_missing_observations() -> None:
+    result = percentile_buckets(np.array([1.0, np.nan, 3.0]), n=2)
+
+    np.testing.assert_allclose(result, np.array([1.0, np.nan, 3.0]), equal_nan=True)
+    np.testing.assert_array_equal(percentile_buckets(np.array([np.nan, np.inf]), n=2), [np.nan, np.nan])
+
+
+@pytest.mark.parametrize("bucket_count", [0, -1, True])
+def test_percentile_buckets_reject_invalid_bucket_counts(bucket_count) -> None:
+    with pytest.raises(ValueError, match="bucket count"):
+        percentile_buckets(np.array([1.0]), n=bucket_count)
+
+
+def test_percentile_buckets_reject_multidimensional_input() -> None:
+    with pytest.raises(ValueError, match="one-dimensional"):
+        percentile_buckets(np.array([[1.0, 2.0]]))

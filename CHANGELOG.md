@@ -58,6 +58,8 @@ have not yet been released are collected below.
   ordering instead of labeling them in reverse.
 - Bootstrap intervals now validate their sampling configuration, support seeded
   generators, and use the same statistic as the interactive center estimate.
+- Percentile plot buckets now preserve missing observations and validate an
+  exact positive bucket count.
 
 ## 1.1.0 - 2026-08-31
 
