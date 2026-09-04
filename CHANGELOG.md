@@ -19,6 +19,8 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Trading-day counts now support zero-dimensional NumPy date arrays, including
+  missing dates, while preserving the broadcast result shape and caller inputs.
 - Single-process optimization now evaluates every yielded suggestion and
   returns each result to adaptive generators without skipping the next value.
 - Optimizer configuration now rejects a zero pending-task limit, and experiment

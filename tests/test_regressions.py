@@ -181,6 +181,44 @@ def test_trading_day_ranges_reject_reversed_scalar_and_vector_endpoints():
         calendar.num_trading_days(starts, ends)
 
 
+@pytest.mark.parametrize("array_endpoint", ["start", "end", "both"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_trading_day_counts_support_zero_dimensional_arrays(array_endpoint, missing):
+    calendar = Calendar("NYSE")
+    start = np.datetime64("NaT" if missing else "2024-01-02")
+    end = np.datetime64("2024-01-03")
+    if array_endpoint in {"start", "both"}:
+        start = np.array(start)
+    if array_endpoint in {"end", "both"}:
+        end = np.array(end)
+
+    result = calendar.num_trading_days(start, end)
+
+    assert isinstance(result, np.ndarray)
+    assert result.shape == ()
+    if missing:
+        assert np.isnan(result.item())
+    else:
+        assert result.item() == 1.0
+
+
+def test_trading_day_counts_preserve_broadcast_inputs_and_missing_dates():
+    calendar = Calendar("NYSE")
+    starts = np.array([["2024-01-02"], ["2024-01-03"], ["NaT"]], dtype="datetime64[D]")
+    ends = np.array(["2024-01-03", "2024-01-05", "NaT"], dtype="datetime64[D]")
+    original_starts, original_ends = starts.copy(), ends.copy()
+    starts.setflags(write=False)
+    ends.setflags(write=False)
+
+    excluded = calendar.num_trading_days(starts, ends, include_first=False, include_last=False)
+    included = calendar.num_trading_days(starts, ends, include_first=True, include_last=True)
+
+    np.testing.assert_array_equal(excluded, [[0, 2, np.nan], [0, 1, np.nan], [np.nan, np.nan, np.nan]])
+    np.testing.assert_array_equal(included, [[2, 4, np.nan], [1, 3, np.nan], [np.nan, np.nan, np.nan]])
+    np.testing.assert_array_equal(starts, original_starts)
+    np.testing.assert_array_equal(ends, original_ends)
+
+
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
     np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
     np.testing.assert_allclose(

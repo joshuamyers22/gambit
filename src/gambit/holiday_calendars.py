@@ -180,7 +180,12 @@ class Calendar:
         self, start: DateTimeType, end: DateTimeType, include_first: bool = False, include_last: bool = True
     ) -> float | np.ndarray:
         """
-        Count the number of trading days between two date series including those two dates
+        Count trading days using the requested endpoint inclusion flags.
+
+        Scalar inputs return a float. If either input is an array, the result
+        is an array with the broadcast shape, including zero-dimensional
+        arrays. Missing endpoints produce NaN without modifying the inputs.
+        Start dates after their corresponding end dates are rejected.
 
         Holiday definitions come from the installed calendar adapter; use short
         invariant examples rather than pinning a mutable multi-year vendor count.
@@ -204,9 +209,9 @@ class Calendar:
             dummy_date = np.datetime64("1900-01-01")
             s_array[mask] = dummy_date
             e_array[mask] = dummy_date
-            vector_count: np.ndarray = np.busday_count(
-                s_array, e_array, busdaycal=self.bus_day_cal
-            ).astype(float)
+            vector_count = np.asarray(
+                np.busday_count(s_array, e_array, busdaycal=self.bus_day_cal), dtype=float
+            )
             vector_count[mask] = np.nan
             return vector_count
         else:

@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 604 passed; native tests executed locally |
-| Coverage | same command | Pass | 82% total; `markets.py` 79%, `holiday_calendars.py` 54%, `optimize.py` 77%, `pq_utils.py` 56%, and `interactive_plot.py` 85% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 626 passed; native tests executed locally |
+| Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 85%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected floors: markets 75%, calendars 50%, optimizer 70%, utilities 50%, interactive reporting 80% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
@@ -83,7 +83,7 @@
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
 - Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (70%), numerical utility (50%), and interactive reporting (80%) modules. The checker fails closed when coverage data or a named module is unavailable.
-- Verification: current full-suite measurements are 79%, 54%, 77%, 56%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
+- Verification: current full-suite measurements are 79%, 85%, 77%, 61%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
 
 ### [Resolved] Full-suite evidence concealed a unit-matrix coverage failure
 
@@ -341,10 +341,18 @@
 - Correction implemented: all-zero forecasts retain defined zero exposure, while nonzero directions with zero modeled volatility or VaR fail explicitly as unsizeable.
 - Verification: regressions construct zero-risk covariance and tail models, require rejection for nonzero forecasts, and retain the existing zero-forecast outcome.
 
+### [Resolved] Zero-dimensional date arrays crashed trading-day counts
+
+- Location: `src/gambit/holiday_calendars.py:199-215`
+- Evidence: NumPy returns a scalar count for zero-dimensional date arrays. The missing-date mask was then assigned into that scalar, raising `TypeError` for both finite and missing endpoints.
+- Failure mode: a supported date-array representation failed depending on its dimensionality, including when a missing date should have produced NaN.
+- Correction implemented: the count is converted to a floating-point array before applying the missing-date mask, retaining the broadcast shape even when it is zero-dimensional.
+- Verification: six regressions reproduce finite and missing dates with either or both endpoints as zero-dimensional arrays. A further regression checks a two-dimensional broadcast with missing dates, empty intervals, and read-only caller arrays.
+
 ## Improvement order
 
 1. Maintain the module floors as supported behavior expands; prioritize calendar edge cases next.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 619-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 626-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
