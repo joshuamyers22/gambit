@@ -253,6 +253,14 @@
 - Correction implemented: `anywidget>=0.9.13` is included in visualization, notebooks, all, development, and documentation extras while remaining absent from the core runtime dependency set.
 - Verification: the locked development environment constructs the Plotly figure widget, and minimal-root import coverage explicitly blocks `anywidget` to preserve optional dependency isolation.
 
+### [Resolved] The eleventh interactive series crashed palette selection
+
+- Location: `src/gambit/interactive_plot.py:361`
+- Evidence: default color selection indexed a fixed ten-entry palette directly with the line number. Any plot containing eleven or more unconfigured series raised `IndexError` before rendering.
+- Failure mode: valid higher-cardinality strategy comparisons failed only at presentation time, after their statistics had already been computed.
+- Correction implemented: default palette selection wraps by palette length, retaining deterministic input-order color assignment for arbitrary series counts.
+- Verification: an 11-series figure regression renders every trace and requires series 11 to reuse series 1's color.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

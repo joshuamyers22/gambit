@@ -358,7 +358,7 @@ class LineGraphWithDetailDisplay:
             self.detail_data[zvalue] = _detail_data
             line_config = self.line_configs[zvalue] if zvalue in self.line_configs else self.default_line_config
             marker_mode = line_config.marker_mode
-            color = line_config.color if line_config.color else DEFAULT_PLOTLY_COLORS[line_num]
+            color = line_config.color if line_config.color else DEFAULT_PLOTLY_COLORS[line_num % len(DEFAULT_PLOTLY_COLORS)]
 
             hovertemplate = self.hovertemplate
             customdata = None

@@ -62,6 +62,8 @@ have not yet been released are collected below.
   exact positive bucket count.
 - Visualization, notebook, documentation, and aggregate extras now install
   Plotly's required `anywidget` runtime for `FigureWidget`.
+- Interactive plots now cycle the default palette deterministically when more
+  than ten series are rendered.
 
 ## 1.1.0 - 2026-08-31
 

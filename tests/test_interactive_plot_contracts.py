@@ -47,6 +47,19 @@ def test_line_graph_constructs_figure_widget_in_visualization_environment() -> N
     assert len(widgets) == 2
 
 
+def test_line_graph_cycles_palette_for_more_than_ten_series() -> None:
+    lines = []
+    for index in range(11):
+        summary = pl.DataFrame({"x": [1], "y": [float(index)]})
+        detail = pl.DataFrame({"x": [1], "y": [float(index)]})
+        lines.append((str(index), summary, detail))
+
+    figure, _ = LineGraphWithDetailDisplay()("x", "y", lines)
+
+    assert len(figure.data) == 11
+    assert figure.data[10].line.color == figure.data[0].line.color
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 
