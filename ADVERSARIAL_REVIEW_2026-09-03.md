@@ -25,8 +25,8 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 626 passed; native tests executed locally |
-| Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 85%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 629 passed; native tests executed locally |
+| Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 87%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected floors: markets 75%, calendars 50%, optimizer 70%, utilities 50%, interactive reporting 80% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
@@ -83,7 +83,7 @@
 - Evidence: total coverage is 77%, but entire or major policy-heavy modules remain at 0–38%. No minimum threshold is passed to pytest-cov.
 - Failure mode: changes to optimizer selection/feedback, calendars, legacy contract helpers, or shared numerical utilities can regress while the headline suite remains green.
 - Correction implemented: the full local gate and cross-platform unit CI matrix enforce explicit floors for supported market (75%), calendar (50%), optimizer (70%), numerical utility (50%), and interactive reporting (80%) modules. The checker fails closed when coverage data or a named module is unavailable.
-- Verification: current full-suite measurements are 79%, 85%, 77%, 61%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
+- Verification: current full-suite measurements are 79%, 87%, 77%, 61%, and 85%, respectively. The policy and its maintenance rule are documented in the testing guide.
 
 ### [Resolved] Full-suite evidence concealed a unit-matrix coverage failure
 
@@ -349,10 +349,18 @@
 - Correction implemented: the count is converted to a floating-point array before applying the missing-date mask, retaining the broadcast shape even when it is zero-dimensional.
 - Verification: six regressions reproduce finite and missing dates with either or both endpoints as zero-dimensional arrays. A further regression checks a two-dimensional broadcast with missing dates, empty intervals, and read-only caller arrays.
 
+### [Resolved] Calendar conversion discarded trading weekdays and rejected empty holiday lists
+
+- Location: `src/gambit/holiday_calendars.py:142-148`
+- Evidence: conversion copied holiday dates but omitted the adapter's weekmask, silently applying NumPy's Monday–Friday default. An empty holiday tuple became a float array, preventing `24/7` and `24/5` calendars from initializing.
+- Failure mode: calendars with nonstandard trading weeks reported incorrect trading dates, counts, and offsets; continuous calendars failed at construction.
+- Correction implemented: the NumPy calendar receives both the adapter's weekmask and an explicitly date-typed holiday array.
+- Verification: regressions cover the real `24/7` and `24/5` adapters, cache reuse, and a deterministic Sunday–Thursday calendar with a Monday holiday. Each case checks membership, date enumeration, counts, and offsets.
+
 ## Improvement order
 
 1. Maintain the module floors as supported behavior expands; prioritize calendar edge cases next.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 626-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 629-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

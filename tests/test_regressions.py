@@ -219,6 +219,44 @@ def test_trading_day_counts_preserve_broadcast_inputs_and_missing_dates():
     np.testing.assert_array_equal(ends, original_ends)
 
 
+@pytest.mark.parametrize(
+    ("name", "expected_dates", "next_day"),
+    [
+        ("24/7", ["2024-01-05", "2024-01-06", "2024-01-07", "2024-01-08"], "2024-01-06"),
+        ("24/5", ["2024-01-05", "2024-01-08"], "2024-01-08"),
+    ],
+)
+def test_calendar_without_holidays_uses_its_trading_week(monkeypatch, name, expected_dates, next_day):
+    monkeypatch.setattr(Calendar, "_bus_day_calendars", {})
+    calendar = Calendar(name)
+    dates: np.ndarray = np.arange("2024-01-05", "2024-01-09", dtype="datetime64[D]")
+    expected = np.array(expected_dates, dtype="datetime64[D]")
+
+    np.testing.assert_array_equal(dates[calendar.is_trading_day(dates)], expected)
+    np.testing.assert_array_equal(calendar.get_trading_days(dates[0], dates[-1], True, True), expected)
+    assert calendar.num_trading_days(dates[0], dates[-1], True, True) == len(expected)
+    assert calendar.add_trading_days(dates[0], 1) == np.datetime64(next_day)
+    assert Calendar(name).bus_day_cal is calendar.bus_day_cal
+
+
+def test_calendar_preserves_nonstandard_weekmask_and_holidays(monkeypatch):
+    import pandas_market_calendars as mcal
+
+    monkeypatch.setattr(Calendar, "_bus_day_calendars", {})
+    holiday_rules = SimpleNamespace(
+        holidays=(np.datetime64("2024-01-08"),), weekmask="Sun Mon Tue Wed Thu"
+    )
+    monkeypatch.setattr(mcal, "get_calendar", lambda _name: SimpleNamespace(holidays=lambda: holiday_rules))
+    calendar = Calendar("test-sunday-through-thursday")
+    dates: np.ndarray = np.arange("2024-01-04", "2024-01-10", dtype="datetime64[D]")
+    expected = np.array(["2024-01-04", "2024-01-07", "2024-01-09"], dtype="datetime64[D]")
+
+    np.testing.assert_array_equal(dates[calendar.is_trading_day(dates)], expected)
+    np.testing.assert_array_equal(calendar.get_trading_days(dates[0], dates[-1], True, True), expected)
+    assert calendar.num_trading_days(dates[0], dates[-1], True, True) == 3
+    assert calendar.add_trading_days(dates[0], 1) == np.datetime64("2024-01-07")
+
+
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
     np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
     np.testing.assert_allclose(

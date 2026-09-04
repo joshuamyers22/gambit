@@ -141,13 +141,16 @@ class Calendar:
                 raise ImportError("exchange calendars require 'gambit-markets[calendars]'") from exc
             cal = mcal.get_calendar(calendar_name)
             holidays = cal.holidays()
-            _holidays = np.array([hol for hol in holidays.holidays])
-            Calendar._bus_day_calendars[calendar_name] = np.busdaycalendar(holidays=_holidays)
+            _holidays = np.asarray(holidays.holidays, dtype="datetime64[D]")
+            Calendar._bus_day_calendars[calendar_name] = np.busdaycalendar(
+                weekmask=holidays.weekmask, holidays=_holidays
+            )
         self.bus_day_cal = Calendar._bus_day_calendars[calendar_name]
 
     def is_trading_day(self, dates: DateTimeType) -> bool | np.ndarray:
         """
-        Returns whether the date is not a holiday or a weekend
+        Return whether each date is a trading weekday and is not a holiday.
+        Trading weekdays come from the selected calendar and can include weekends.
 
         Args:
             dates: date times to check

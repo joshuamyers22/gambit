@@ -19,6 +19,8 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Calendar conversion now preserves the adapter's trading weekdays and accepts
+  empty holiday lists, fixing continuous calendars and nonstandard trading weeks.
 - Trading-day counts now support zero-dimensional NumPy date arrays, including
   missing dates, while preserving the broadcast result shape and caller inputs.
 - Single-process optimization now evaluates every yielded suggestion and
