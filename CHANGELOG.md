@@ -7,6 +7,9 @@ have not yet been released are collected below.
 
 ### Added
 
+- Opt-in conservative FIFO exchange-queue simulation for the native experimental
+  backtester: resting best-price limits, trade-only volume-ahead depletion,
+  explicit arrival audit, independent Python trace tests, and synthetic benchmarks.
 - Experimental native top-of-book backtest prototype with a deterministic
   long-only alternating-target strategy, shared cash, displayed-size partial
   fills, fees, latency and stale-feed checks, and exact integer accounting.

@@ -3,6 +3,8 @@
 - Status: accepted for the experimental slice; general-strategy migration deferred.
 - Date: 2026-09-04.
 - Decision authority: Josh Myers (top-of-book execution selected explicitly).
+- Extension: Josh Myers approved conservative FIFO queue-position testing on
+  2026-09-04; the opt-in contract is in `fifo_queue_execution.md`.
 - Reference: production-project-template `e132c6e`, C++ guide and ADR template.
 
 ## Context
@@ -44,9 +46,12 @@ or CMake just to copy the template. Modernization remains a separate decision.
 
 - Benefits: bounded-memory replay, isolated policy tests, no live transport in
   historical scans, and no per-event Python objects in the native engine.
-- Limits: one active market order per instrument, a fixed long-only strategy,
-  refreshed top-of-book liquidity per event, no own impact/queue model, and no
+- Limits: one active order per instrument, a fixed long-only strategy,
+  refreshed top-of-book liquidity in default market mode, no own impact, and no
   claim of compatibility with unsupported existing order or risk policies.
+- The opt-in FIFO mode shares accounting and validation but uses a separate
+  trade-plus-quote input schema. Its volume-ahead estimate is not observed venue
+  priority; do not combine its benchmark with the original market-only results.
 - Cash is checked before each candidate fill; an unaffordable candidate rejects
   the remaining order instead of resizing it to available cash.
 - The Python oracle must match complete order/fill traces and portfolio state.

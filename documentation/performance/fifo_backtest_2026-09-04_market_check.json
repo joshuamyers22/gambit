@@ -1,0 +1,66 @@
+{
+  "status": "ledger_reconciled",
+  "strategy": "long-only alternating target",
+  "execution_model": "market",
+  "configuration": {
+    "instruments": 8,
+    "cash": 10000000000000,
+    "target_lots": 1000,
+    "rebalance_events": 10000,
+    "fee_ppm": 100,
+    "latency_ns": 1000000,
+    "audit_capacity": 1000000,
+    "maximum_feed_age_ns": 1000000000
+  },
+  "ticks": 10000000,
+  "aggregate_ticks_per_second": 10,
+  "seed": 20260904,
+  "chunk_size": 65521,
+  "input_sha256": "36767eab2fd2c62ae61cd7763e601081c86a0a338ade00cc2bc3193a36ff4d2f",
+  "result_sha256": "6ce535c9c9dab4a4fad67d787e7b14f90b96b1277109ce8b0d3b72856e880f20",
+  "portfolio": {
+    "processed": 10000000,
+    "cash": 9643398154191,
+    "equity": 9994046212191,
+    "net_pnl": -5953787809,
+    "total_fees": 4171973839
+  },
+  "positions": [
+    1000,
+    1000,
+    0,
+    0,
+    1000,
+    0,
+    0,
+    0
+  ],
+  "order_count": 995,
+  "fill_count": 6881,
+  "order_status_counts": {
+    "0": 0,
+    "1": 995,
+    "2": 0,
+    "3": 0
+  },
+  "timing": {
+    "initialization_seconds": 1.6917001630645245e-05,
+    "processing_seconds": 0.021147333922272082,
+    "result_materialization_seconds": 2.3542001144960523e-05,
+    "execution_seconds": 0.021187792925047688,
+    "generation_seconds": 0.4325435770660988,
+    "wall_seconds": 0.6560610829983489
+  },
+  "environment": {
+    "platform": "macOS-15.5-arm64-arm-64bit",
+    "python": "3.10.20",
+    "numpy": "2.2.6"
+  },
+  "provenance": {
+    "native_extension_sha256": "3ce0d1803db18518ada5f4aae60d1fe893e1fdb7ff0643e970521087eeb4bb90",
+    "cpp_source_sha256": "015888396d9f0685c3fe6e0e58d805a2d5105790dd47d31dfedd76111dc2c702",
+    "benchmark_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba"
+  },
+  "peak_process_rss_bytes": 156450816,
+  "limitations": "Synthetic chunk-resident replay; excludes generation/loading, hashing and ledger verification from execution timer. Not a cold-load or full-dataset-resident benchmark. Small-corpus Python trace parity is tested separately; full-volume independent Python trace parity has not been run. One active order per instrument; no own impact, shorts, funding, rolls or external risk policies. FIFO is a conservative modeled queue, not observed venue priority; market mode has no queue position."
+}

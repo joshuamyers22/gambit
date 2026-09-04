@@ -104,7 +104,7 @@ from the chosen strategy and data. No hard real-time or live-trading claim is ma
 
 | Decision | Status / authority |
 | --- | --- |
-| Execution model | User selected top-of-book execution on 2026-09-04; no queue-position simulation |
+| Execution model | User selected top-of-book execution, then approved opt-in conservative FIFO queue-position testing on 2026-09-04; see `fifo_queue_execution.md` |
 | Representative strategy, expected order/fill frequency, active-order bounds | Required before end-to-end acceptance |
 | Fee/funding, accounting precision, and market-impact assumptions | Required before execution-policy implementation |
 | Reference hardware, complete timer boundary, repetition count, approved threshold | Proposed above; not yet accepted |
@@ -134,8 +134,12 @@ new quote supplies a refreshed liquidity budget: persistent effects of our own
 trades are not modeled. Outstanding orders remain outstanding at the end;
 terminal liquidation and exit fees are not invented.
 
-Current exclusions: limit orders, atomic rolls, shorts/leverage, funding, FX,
-queue priority, own-market impact, existing Python risk-policy callbacks, and
+The opt-in FIFO mode additionally supports same-side best-price resting limits
+and conservative volume-ahead tracking; the market mode remains the default.
+Its input, arrival, cancellation and matching contract is in `fifo_queue_execution.md`.
+
+Current exclusions: general limit-order placement, atomic rolls, shorts/leverage, funding, FX,
+actual venue queue reconstruction, own-market impact, existing Python risk-policy callbacks, and
 arbitrary user strategies. Existing Gambit order/risk APIs remain unchanged.
 These exclusions must stay visible; this prototype cannot accept an unsupported
 order type through a compatibility fallback.

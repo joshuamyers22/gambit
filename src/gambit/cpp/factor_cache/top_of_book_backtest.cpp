@@ -9,6 +9,7 @@
 #include <limits>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace py = pybind11;
@@ -22,7 +23,22 @@ struct BookEvent {
 };
 static_assert(sizeof(BookEvent) == 64, "book event layout changed");
 
-// Status: 0 open, 1 filled, 2 cancelled/replaced, 3 risk rejected.
+// Trade first, then post-trade quote. Aggressor: -1 sell, +1 buy, 0 no trade.
+struct QueueEvent {
+    BookEvent book;
+    std::int64_t trade_price, trade_size;
+    std::int32_t aggressor;
+    std::uint32_t reserved;
+};
+static_assert(sizeof(QueueEvent) == 88, "queue event layout changed");
+struct QueueAudit {
+    std::int64_t limit_price, ahead, initial_ahead;
+    std::uint64_t arrival_sequence;
+    std::int64_t arrival_time_ns;
+};
+
+// Status: 0 open, 1 filled, 2 cancelled/replaced, 3 risk rejected,
+// 4 FIFO arrival rejected (limit no longer equals same-side best).
 struct ReplayOrder {
     std::uint64_t id, sequence;
     std::int64_t timestamp_ns, quantity, remaining;
@@ -57,22 +73,27 @@ public:
     TopOfBookBacktester(std::uint32_t instruments, std::int64_t cash,
                        std::int64_t target_lots, std::uint64_t rebalance_events,
                        std::uint32_t fee_ppm, std::int64_t latency_ns,
-                       std::uint64_t audit_capacity, std::int64_t maximum_feed_age_ns)
+                       std::uint64_t audit_capacity, std::int64_t maximum_feed_age_ns,
+                       const std::string& execution_model)
         : initial_cash_(cash), cash_(cash), target_lots_(target_lots),
           interval_(rebalance_events), fee_ppm_(fee_ppm), latency_ns_(latency_ns),
-          audit_capacity_(audit_capacity), maximum_feed_age_ns_(maximum_feed_age_ns) {
+          audit_capacity_(audit_capacity), maximum_feed_age_ns_(maximum_feed_age_ns),
+          fifo_(execution_model == "fifo") {
         if (!instruments || instruments > 4096 || cash < 0 || target_lots <= 0 ||
             !rebalance_events || fee_ppm > 1000000 || latency_ns < 0 ||
-            !audit_capacity || audit_capacity > 10000000 || maximum_feed_age_ns < 0) {
+            !audit_capacity || audit_capacity > 10000000 || maximum_feed_age_ns < 0 ||
+            (execution_model != "market" && execution_model != "fifo")) {
             throw std::invalid_argument("invalid top-of-book backtest configuration");
         }
         instruments_.resize(instruments);
         for (auto& state : instruments_) state.countdown = interval_;
         orders_.reserve(static_cast<std::size_t>(audit_capacity));
         fills_.reserve(static_cast<std::size_t>(audit_capacity));
+        if (fifo_) queues_.reserve(static_cast<std::size_t>(audit_capacity));
     }
 
     std::uint64_t process_batch(py::array_t<BookEvent, py::array::c_style> events) {
+        if (fifo_) throw std::invalid_argument("FIFO execution requires process_queue_batch and trade events");
         const auto info = events.request();
         if (info.ndim != 1 || reinterpret_cast<std::uintptr_t>(info.ptr) % alignof(BookEvent)) {
             throw std::invalid_argument("book events must be one-dimensional and aligned");
@@ -86,6 +107,35 @@ public:
             for (std::uint64_t index = 0; index < count; ++index) process(input[index]);
         } catch (...) {
             // Earlier events may have been applied. Never publish them as a valid run.
+            failed_ = true;
+            throw;
+        }
+        return count;
+    }
+
+    std::uint64_t process_queue_batch(py::array_t<QueueEvent, py::array::c_style> events) {
+        if (!fifo_) throw std::invalid_argument("queue events require execution_model='fifo'");
+        const auto info = events.request();
+        if (info.ndim != 1 || reinterpret_cast<std::uintptr_t>(info.ptr) % alignof(QueueEvent)) {
+            throw std::invalid_argument("queue events must be one-dimensional and aligned");
+        }
+        auto access = acquire();
+        if (failed_) throw std::runtime_error("backtest is failed; create a new instance");
+        const auto count = static_cast<std::uint64_t>(info.size);
+        const auto* input = static_cast<const QueueEvent*>(info.ptr);
+        py::gil_scoped_release release;
+        try {
+            for (std::uint64_t index = 0; index < count; ++index) {
+                const auto& event = input[index];
+                if (event.reserved || event.trade_size < 0 ||
+                    (event.trade_size == 0 && (event.aggressor || event.trade_price)) ||
+                    (event.trade_size > 0 && (event.trade_price <= 0 ||
+                     (event.aggressor != -1 && event.aggressor != 1)))) {
+                    throw std::invalid_argument("invalid queue trade event");
+                }
+                process(event.book, &event);
+            }
+        } catch (...) {
             failed_ = true;
             throw;
         }
@@ -124,6 +174,12 @@ public:
         out["positions"] = positions;
         out["orders"] = orders;
         out["fills"] = fills;
+        if (fifo_) {
+            py::array_t<QueueAudit> queues(queues_.size());
+            if (!queues_.empty()) std::memcpy(queues.mutable_data(), queues_.data(), queues_.size() * sizeof(QueueAudit));
+            queues.attr("setflags")(false);
+            out["queues"] = queues;
+        }
         return out;
     }
 
@@ -134,7 +190,7 @@ private:
         return access;
     }
 
-    void process(const BookEvent& event) {
+    void process(const BookEvent& event, const QueueEvent* queue_event = nullptr) {
         if (event.sequence != processed_ || processed_ == std::numeric_limits<std::uint64_t>::max() ||
             event.instrument_id >= instruments_.size() || event.flags ||
             event.event_time_ns < 0 || event.receive_time_ns < event.event_time_ns ||
@@ -148,8 +204,11 @@ private:
         if (state.pending) {
             auto& order = orders_[static_cast<std::size_t>(state.pending - 1)];
             // Difference cannot overflow: both receive times are nonnegative and ordered.
-            if (event.receive_time_ns - order.timestamp_ns >= latency_ns_) {
-                fill(event, state, order);
+            if (queue_event) {
+                process_queue(*queue_event, state, order);
+            } else if (event.receive_time_ns - order.timestamp_ns >= latency_ns_) {
+                const bool buy = order.remaining > 0;
+                fill(event, state, order, buy ? event.ask_size : event.bid_size, buy ? event.ask : event.bid);
             }
         }
         if (--state.countdown == 0) {
@@ -164,6 +223,8 @@ private:
                 if (orders_.size() == audit_capacity_) throw std::runtime_error("order audit capacity exhausted");
                 const auto id = static_cast<std::uint64_t>(orders_.size()) + 1;
                 orders_.push_back({id, event.sequence, event.receive_time_ns, quantity, quantity, event.instrument_id, 0});
+                if (fifo_) queues_.push_back({quantity > 0 ? event.bid : event.ask, 0, 0,
+                                              std::numeric_limits<std::uint64_t>::max(), -1});
                 state.pending = id;
             }
         }
@@ -171,12 +232,35 @@ private:
         ++processed_;
     }
 
-    void fill(const BookEvent& event, InstrumentState& state, ReplayOrder& order) {
+    void process_queue(const QueueEvent& event, InstrumentState& state, ReplayOrder& order) {
+        auto& queue = queues_[static_cast<std::size_t>(order.id - 1)];
         const bool buy = order.remaining > 0;
-        const auto available = buy ? event.ask_size : event.bid_size;
+        if (queue.arrival_time_ns < 0) {
+            if (event.book.receive_time_ns - order.timestamp_ns < latency_ns_) return;
+            // Post-only, best-price arrivals only: no inference about hidden levels.
+            if (queue.limit_price != (buy ? event.book.bid : event.book.ask) ||
+                (buy ? queue.limit_price >= event.book.ask : queue.limit_price <= event.book.bid)) {
+                order.status = 4;
+                state.pending = 0;
+                return;
+            }
+            queue.ahead = buy ? event.book.bid_size : event.book.ask_size;
+            queue.initial_ahead = queue.ahead;
+            queue.arrival_sequence = event.book.sequence;
+            queue.arrival_time_ns = event.book.receive_time_ns;
+            return;  // Event's trade precedes this arrival, even at equal timestamps.
+        }
+        if (event.trade_price != queue.limit_price || event.aggressor != (buy ? -1 : 1)) return;
+        const auto consumed = std::min(queue.ahead, event.trade_size);
+        queue.ahead -= consumed;
+        fill(event.book, state, order, event.trade_size - consumed, queue.limit_price);
+    }
+
+    void fill(const BookEvent& event, InstrumentState& state, ReplayOrder& order,
+              std::int64_t available, std::int64_t price) {
+        const bool buy = order.remaining > 0;
         const auto quantity = std::min(buy ? order.remaining : -order.remaining, available);
         if (!quantity) return;
-        const auto price = buy ? event.ask : event.bid;
         const auto notional = checked_product(quantity, price);
         // Nonnegative fees, rounded up to the smallest configured monetary unit.
         const auto fee = (notional / 1000000) * fee_ppm_ +
@@ -205,12 +289,14 @@ private:
     std::vector<InstrumentState> instruments_;
     std::vector<ReplayOrder> orders_;
     std::vector<ReplayFill> fills_;
+    std::vector<QueueAudit> queues_;
     std::int64_t initial_cash_, cash_, target_lots_;
     std::uint64_t interval_;
     std::uint32_t fee_ppm_;
     std::int64_t latency_ns_;
     std::uint64_t audit_capacity_, processed_{0};
     std::int64_t maximum_feed_age_ns_;
+    bool fifo_;
     std::int64_t last_receive_time_{0}, total_fees_{0};
     mutable bool failed_{false};
 };
@@ -218,13 +304,16 @@ private:
 
 void init_top_of_book_backtest(py::module_& module) {
     PYBIND11_NUMPY_DTYPE(BookEvent, sequence, event_time_ns, receive_time_ns, bid, ask, bid_size, ask_size, instrument_id, flags);
+    PYBIND11_NUMPY_DTYPE(QueueEvent, book, trade_price, trade_size, aggressor, reserved);
+    PYBIND11_NUMPY_DTYPE(QueueAudit, limit_price, ahead, initial_ahead, arrival_sequence, arrival_time_ns);
     PYBIND11_NUMPY_DTYPE(ReplayOrder, id, sequence, timestamp_ns, quantity, remaining, instrument_id, status);
     PYBIND11_NUMPY_DTYPE(ReplayFill, order_id, sequence, timestamp_ns, quantity, price, fee, instrument_id, reserved);
     py::class_<TopOfBookBacktester>(module, "TopOfBookBacktester")
-        .def(py::init<std::uint32_t, std::int64_t, std::int64_t, std::uint64_t, std::uint32_t, std::int64_t, std::uint64_t, std::int64_t>(),
+        .def(py::init<std::uint32_t, std::int64_t, std::int64_t, std::uint64_t, std::uint32_t, std::int64_t, std::uint64_t, std::int64_t, const std::string&>(),
              py::arg("instruments"), py::arg("cash"), py::arg("target_lots"), py::arg("rebalance_events"),
              py::arg("fee_ppm") = 0, py::arg("latency_ns") = 0, py::arg("audit_capacity") = 100000,
-             py::arg("maximum_feed_age_ns") = 1000000000)
+             py::arg("maximum_feed_age_ns") = 1000000000, py::arg("execution_model") = "market")
         .def("process_batch", &TopOfBookBacktester::process_batch, py::arg("events").noconvert())
+        .def("process_queue_batch", &TopOfBookBacktester::process_queue_batch, py::arg("events").noconvert())
         .def("result", &TopOfBookBacktester::result);
 }

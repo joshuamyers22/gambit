@@ -43,3 +43,17 @@ def test_book_benchmark_ledger_check_rejects_corrupt_cash():
     result["cash"] += 1
     with pytest.raises(AssertionError, match="reconcile"):
         benchmark.reconcile(result, 100000)
+
+
+@pytest.mark.parametrize("interval", [16, 10000])
+def test_fifo_benchmark_is_chunk_invariant(interval):
+    if TopOfBookBacktester is None:
+        pytest.skip("native extension required")
+    benchmark = load_benchmark()
+    first = benchmark.run(100003, chunk_size=4093, execution_model="fifo", rebalance_events=interval)
+    second = benchmark.run(100003, chunk_size=8192, execution_model="fifo", rebalance_events=interval)
+    assert first["input_sha256"] == second["input_sha256"]
+    assert first["result_sha256"] == second["result_sha256"]
+    assert first["fill_count"] > 0
+    if interval == 16:
+        assert first["order_status_counts"]["2"] > 0
