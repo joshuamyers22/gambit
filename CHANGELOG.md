@@ -60,6 +60,8 @@ have not yet been released are collected below.
   generators, and use the same statistic as the interactive center estimate.
 - Percentile plot buckets now preserve missing observations and validate an
   exact positive bucket count.
+- Visualization, notebook, documentation, and aggregate extras now install
+  Plotly's required `anywidget` runtime for `FigureWidget`.
 
 ## 1.1.0 - 2026-08-31
 

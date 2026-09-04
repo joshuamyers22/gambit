@@ -245,6 +245,14 @@
 - Correction implemented: finite data defines exactly `n` evenly spaced percentile buckets, unmatched observations remain `NaN`, all-invalid inputs return all missing, and dimensions/counts are validated explicitly.
 - Verification: regressions cover mixed and wholly non-finite arrays, invalid counts, and multidimensional input.
 
+### [Resolved] Interactive plotting extra omitted a required runtime
+
+- Location: `pyproject.toml`; `src/gambit/interactive_plot.py:347`
+- Evidence: a clean development/notebook installation raised Plotly's `ImportError: Please install anywidget to use the FigureWidget class` on the first `LineGraphWithDetailDisplay` call. None of the visualization-bearing extras declared `anywidget`.
+- Failure mode: the public interactive plotting API imported successfully but could not construct any plot in the documented environment.
+- Correction implemented: `anywidget>=0.9.13` is included in visualization, notebooks, all, development, and documentation extras while remaining absent from the core runtime dependency set.
+- Verification: the locked development environment constructs the Plotly figure widget, and minimal-root import coverage explicitly blocks `anywidget` to preserve optional dependency isolation.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

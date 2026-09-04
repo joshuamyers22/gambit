@@ -13,7 +13,17 @@ from gambit.strategy_builder import StrategyBuilder
 
 
 def test_root_import_does_not_load_optional_dependencies() -> None:
-    blocked = ["h5py", "IPython", "ipywidgets", "pandas_market_calendars", "plotly", "scipy", "statsmodels", "traitlets"]
+    blocked = [
+        "anywidget",
+        "h5py",
+        "IPython",
+        "ipywidgets",
+        "pandas_market_calendars",
+        "plotly",
+        "scipy",
+        "statsmodels",
+        "traitlets",
+    ]
     script = f"""
 import builtins
 blocked = {blocked!r}

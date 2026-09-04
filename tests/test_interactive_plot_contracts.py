@@ -38,6 +38,15 @@ def test_interactive_plot_default_services_are_not_shared() -> None:
     assert first.plot_func is not second.plot_func
 
 
+def test_line_graph_constructs_figure_widget_in_visualization_environment() -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0]})
+    detail = pl.DataFrame({"x": [1], "y": [2.0]})
+
+    widgets = LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
+
+    assert len(widgets) == 2
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

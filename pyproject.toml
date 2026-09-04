@@ -36,10 +36,11 @@ dependencies = [
 calendars = ["pandas-market-calendars>=4.4"]
 persistence = ["h5py>=3.10"]
 research = ["scipy>=1.11", "statsmodels>=0.14"]
-visualization = ["ipython>=8.18", "ipywidgets>=8.1", "plotly>=5.18", "traitlets>=5.14"]
-notebooks = ["h5py>=3.10", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
-all = ["h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
+visualization = ["anywidget>=0.9.13", "ipython>=8.18", "ipywidgets>=8.1", "plotly>=5.18", "traitlets>=5.14"]
+notebooks = ["anywidget>=0.9.13", "h5py>=3.10", "ipykernel>=6.29", "ipython>=8.18", "ipywidgets>=8.1", "nbclient>=0.10", "nbconvert>=7.16", "nbformat>=5.10", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
+all = ["anywidget>=0.9.13", "h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "scipy>=1.11", "statsmodels>=0.14", "traitlets>=5.14"]
 dev = [
+  "anywidget>=0.9.13",
   "build>=1.2",
   "cibuildwheel>=4.2; python_version >= '3.11'",
   "mypy>=1.11",
@@ -60,7 +61,7 @@ dev = [
   "types-PyYAML>=6.0",
   "types-python-dateutil>=2.9",
 ]
-docs = ["h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "pydata-sphinx-theme>=0.16", "scipy>=1.11", "sphinx>=7.4", "sphinx-autodoc-typehints>=2.2", "statsmodels>=0.14", "traitlets>=5.14"]
+docs = ["anywidget>=0.9.13", "h5py>=3.10", "ipython>=8.18", "ipywidgets>=8.1", "pandas-market-calendars>=4.4", "plotly>=5.18", "pydata-sphinx-theme>=0.16", "scipy>=1.11", "sphinx>=7.4", "sphinx-autodoc-typehints>=2.2", "statsmodels>=0.14", "traitlets>=5.14"]
 
 [project.urls]
 Repository = "https://github.com/joshuamyers22/gambit"
