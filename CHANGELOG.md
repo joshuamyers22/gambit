@@ -54,6 +54,8 @@ have not yet been released are collected below.
   and rejects multidimensional or non-finite inputs.
 - CSV exports now use collision-resistant same-directory staging and clean up
   partial files when serialization fails.
+- Interactive confidence bands now preserve the bootstrap lower and upper bound
+  ordering instead of labeling them in reverse.
 
 ## 1.1.0 - 2026-08-31
 

@@ -221,6 +221,14 @@
 - Correction implemented: each export now uses a unique temporary file in the destination directory, atomically replaces the target only after serialization succeeds, and removes staging content on every exit path.
 - Verification: regressions preserve an unrelated legacy `.tmp` file, validate completed content, and require failed serialization to leave neither a target nor staging files.
 
+### [Resolved] Interactive confidence intervals were inverted
+
+- Location: `src/gambit/interactive_plot.py:182-184`
+- Evidence: `bootstrap_ci` returns `(lower, upper)`, but the plotting statistic assigned that tuple to `(ci_up, ci_down)` and then emitted the upper value in the `ci_d_*` column and the lower value in `ci_u_*`.
+- Failure mode: confidence-band consumers received a lower boundary greater than the upper boundary, producing inverted or malformed uncertainty plots while the central estimate remained plausible.
+- Correction implemented: tuple assignment now follows the bootstrap API and emits lower then upper values under the matching column names.
+- Verification: a deterministic regression injects known bounds and requires `ci_d_95=1` and `ci_u_95=9`.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

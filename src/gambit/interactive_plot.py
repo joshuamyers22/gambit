@@ -180,7 +180,7 @@ class MeanWithCI:
                     raise Exception(y)
                 mean = self.mean_func(y)
                 if self.ci_level:
-                    ci_up, ci_down = bootstrap_ci(y, ci_level=self.ci_level / 100)
+                    ci_down, ci_up = bootstrap_ci(y, ci_level=self.ci_level / 100)
                     plt_data.append((x, mean, ci_down, ci_up))
                 else:
                     plt_data.append((x, mean))
