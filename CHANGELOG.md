@@ -74,6 +74,8 @@ have not yet been released are collected below.
   hover-count indexing failures and empty click-through results.
 - Interactive pivots now apply documented initial filter selections atomically
   and render their initial state exactly once.
+- Cascading interactive filters now incorporate each newly selected upstream
+  value and suppress recursive partial-state renders.
 
 ## 1.1.0 - 2026-08-31
 

@@ -16,7 +16,7 @@ import math
 import os
 import sys
 import unittest
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -72,6 +72,15 @@ DisplayFormFuncType = Callable[[Sequence[widgets.Widget], bool], None]
 UpdateFormFuncType = Callable[[int], None]
 
 CreateSelectionWidgetsFunctype = Callable[[dict[str, str], dict[str, str], UpdateFormFuncType], dict[str, Any]]
+
+
+def _first_option_value(options: Any) -> Any:
+    if isinstance(options, Mapping):
+        return next(iter(options.values()), None)
+    first = next(iter(options), None)
+    if isinstance(first, tuple) and len(first) == 2:
+        return first[1]
+    return first
 
 
 def percentile_buckets(a: np.ndarray, n: int = 10) -> np.ndarray:
@@ -490,6 +499,7 @@ class InteractivePlot:
         self.selection_widgets: dict[str, Any] = {}
         self.debug = debug
         self._initializing = False
+        self._updating = False
 
     def create_pivot(self, xcol: str, ycol: str, zcol: str, dimensions: dict[str, Any]) -> None:
         """
@@ -522,6 +532,8 @@ class InteractivePlot:
                         widget.value = initial_value
                     except traitlets.TraitError as error:
                         raise ValueError(f"invalid initial selection for {name!r}: {initial_value!r}") from error
+                elif widget.value is None:
+                    widget.value = _first_option_value(widget.options)
                 prior_selections.append((name, widget.value))
         finally:
             self._initializing = False
@@ -540,21 +552,28 @@ class InteractivePlot:
         Redraw the form using the values of all widgets above and including the one with index owner_idx.
         If owner_idx is -1, we redraw everything.
         """
-        if self._initializing:
+        if self._initializing or self._updating:
             return
-        select_conditions = [(name, widget.value) for name, widget in self.selection_widgets.items()]
-        if owner_idx == -1:
-            dim_select_conditions = []
-        else:
-            dim_select_conditions = select_conditions[
-                : owner_idx + 1
-            ]  # for selecting lower widget options, use value of widgets above
+        self._updating = True
+        try:
+            select_conditions = [(name, widget.value) for name, widget in self.selection_widgets.items()]
+            if owner_idx == -1:
+                dim_select_conditions = []
+            else:
+                dim_select_conditions = select_conditions[
+                    : owner_idx + 1
+                ]  # for selecting lower widget options, use value of widgets above
 
-        for name in list(self.selection_widgets.keys())[owner_idx + 1 :]:
-            widget = self.selection_widgets[name]
-            widget_options = self.dim_filter_func(self.data, name, dim_select_conditions)
-            _logger.debug(f"setting values: {widget_options} on widget: {name}")
-            widget.options = widget_options
+            for name in list(self.selection_widgets.keys())[owner_idx + 1 :]:
+                widget = self.selection_widgets[name]
+                widget_options = self.dim_filter_func(self.data, name, dim_select_conditions)
+                _logger.debug(f"setting values: {widget_options} on widget: {name}")
+                widget.options = widget_options
+                if widget.value is None:
+                    widget.value = _first_option_value(widget.options)
+                dim_select_conditions.append((name, widget.value))
+        finally:
+            self._updating = False
 
         if owner_idx == -1:
             return

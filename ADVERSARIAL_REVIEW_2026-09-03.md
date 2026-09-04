@@ -301,6 +301,14 @@
 - Correction implemented: pivot creation populates dependent options and applies requested values under an initialization guard, rejects unavailable initial values, then performs one complete render. Ordinary updates reuse the same render path and no longer call the dimension filter twice.
 - Verification: regression requires selection `2019`, a single initial render filtered to 2019, and an actionable error for an unavailable initial value.
 
+### [Resolved] Cascading filter updates used partial state
+
+- Location: `src/gambit/interactive_plot.py:512-548`
+- Evidence: every downstream dimension was recalculated using only selections through the user-edited widget; newly selected values from intervening downstream widgets were never appended. Assigning new options could also synchronously trigger nested callbacks and renders.
+- Failure mode: a third dropdown could offer values invalid for the automatically selected second dropdown, while one user action emitted multiple plots from transient combinations.
+- Correction implemented: an update guard suppresses recursive callbacks, each downstream selection feeds the next dimension's option calculation, and rendering occurs once after the cascade settles.
+- Verification: a three-level year/month/day regression changes year, requires day options filtered by the newly selected month, and observes exactly one additional render.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

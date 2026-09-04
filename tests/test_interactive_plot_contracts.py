@@ -62,6 +62,39 @@ def test_interactive_plot_rejects_invalid_initial_selection() -> None:
         plot.create_pivot("x", "y", "series", {"year": 2099})
 
 
+def test_interactive_plot_updates_dependent_filters_atomically() -> None:
+    rendered = []
+    data = pl.DataFrame(
+        {
+            "x": [1, 2, 3],
+            "y": [1.0, 2.0, 3.0],
+            "series": ["a", "a", "a"],
+            "year": [2018, 2019, 2019],
+            "month": [1, 2, 3],
+            "day": [10, 20, 30],
+        }
+    )
+
+    def dependent_options(frame, dimension, selections):
+        for name, value in selections:
+            frame = frame.filter(pl.col(name) == value)
+        return sorted(frame[dimension].unique().to_list())
+
+    plot = InteractivePlot(
+        data,
+        dim_filter_func=dependent_options,
+        plot_func=lambda _x, _y, lines: rendered.append(lines) or [],
+        display_form_func=lambda *_args: None,
+    )
+    plot.create_pivot("x", "y", "series", {"year": 2018, "month": None, "day": None})
+
+    plot.selection_widgets["year"].value = 2019
+
+    assert plot.selection_widgets["month"].value == 2
+    assert tuple(plot.selection_widgets["day"].options) == (20,)
+    assert len(rendered) == 2
+
+
 def test_line_graph_constructs_figure_widget_in_visualization_environment() -> None:
     summary = pl.DataFrame({"x": [1], "y": [2.0]})
     detail = pl.DataFrame({"x": [1], "y": [2.0]})
