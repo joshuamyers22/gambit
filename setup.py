@@ -84,6 +84,7 @@ def _extensions() -> list[Extension]:
                 sources=[
                     str(CPP_DIR / "factor_cache" / "mapped_column.cpp"),
                     str(CPP_DIR / "factor_cache" / "tick_ring.cpp"),
+                    str(CPP_DIR / "factor_cache" / "top_of_book_backtest.cpp"),
                 ],
                 include_dirs=[pybind11.get_include(), np.get_include()],
                 language="c++",

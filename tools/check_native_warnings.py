@@ -18,6 +18,7 @@ CPP_ROOT = ROOT / "src" / "gambit" / "cpp"
 SOURCES = (
     CPP_ROOT / "factor_cache" / "mapped_column.cpp",
     CPP_ROOT / "factor_cache" / "tick_ring.cpp",
+    CPP_ROOT / "factor_cache" / "top_of_book_backtest.cpp",
     CPP_ROOT / "io" / "csv_reader.cpp",
     CPP_ROOT / "io" / "main.cpp",
     CPP_ROOT / "io" / "read_file.cpp",

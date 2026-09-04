@@ -25,7 +25,7 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 680 passed; native tests executed locally |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 724 passed; native tests executed locally |
 | Coverage | same command | Pass | 83% total; `markets.py` 79%, `holiday_calendars.py` 97%, `optimize.py` 77%, `pq_utils.py` 61%, and `interactive_plot.py` 85% |
 | Policy coverage | `python tools/check_coverage_policy.py` | Pass | protected floors: markets 75%, calendars 50%, optimizer 70%, utilities 50%, interactive reporting 80% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
@@ -387,4 +387,9 @@
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 680-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, factor-cache, and interactive research workflows covered by the 724-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+
+The experimental native top-of-book backtester has a separate, narrower contract
+in `documentation/architecture/native_tick_backtest.md`. Its characterization
+strategy and market-order-only model do not replace the general Strategy API or
+establish production-strategy performance.

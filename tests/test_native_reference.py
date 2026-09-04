@@ -128,6 +128,50 @@ def test_native_tick_processor_matches_multi_instrument_reference() -> None:
 
 
 @pytest.mark.native
+def test_direct_tick_batches_match_ring_and_reference_without_mutation():
+    if TickRing is None or TickFactorProcessor is None:
+        pytest.skip("native extension required")
+    records = np.zeros(101, dtype=TICK_DTYPE)
+    records["sequence"] = np.arange(101)
+    records["sequence"][::17] += 1
+    records["price"] = np.arange(101) + 10.0
+    records["quantity"] = 0.25
+    records["bid"] = records["price"] - 0.5
+    records["ask"] = records["price"] + 0.5
+    records["instrument_id"] = np.arange(101) % 8
+    original = records.copy()
+    records.setflags(write=False)
+    processor = TickFactorProcessor()
+    assert processor.process_batch(records[:0]) == 0
+    assert processor.process_batch(records[:37]) == 37
+    ring = TickRing(128)
+    assert ring.push_batch(records[37:]) == 64
+    assert ring.process_batch(processor, 128) == 64
+    expected = _tick_reference(records)
+    for key, value in processor.snapshot.items():
+        assert value == pytest.approx(expected[key], rel=1e-12, abs=1e-12)
+    np.testing.assert_array_equal(records, original)
+
+
+@pytest.mark.native
+def test_direct_tick_batches_reject_implicit_copies_and_unaligned_inputs():
+    if TickFactorProcessor is None:
+        pytest.skip("native extension required")
+    processor = TickFactorProcessor()
+    records = np.zeros(4, dtype=TICK_DTYPE)
+    with pytest.raises(TypeError):
+        processor.process_batch(records[::2])
+    with pytest.raises(TypeError):
+        processor.process_batch(np.zeros(4))
+    with pytest.raises(ValueError, match="one-dimensional"):
+        processor.process_batch(records.reshape(2, 2))
+    unaligned = np.ndarray(1, dtype=TICK_DTYPE, buffer=bytearray(65), offset=1)
+    with pytest.raises(ValueError, match="aligned"):
+        processor.process_batch(unaligned)
+    assert processor.snapshot["processed"] == 0
+
+
+@pytest.mark.native
 @pytest.mark.parametrize("factory_name", ["create", "create_chunked", "create_chunked_v3"])
 def test_native_mapped_columns_match_numpy_reference_for_random_slices(tmp_path, factory_name) -> None:
     if MappedFloat64Column is None:

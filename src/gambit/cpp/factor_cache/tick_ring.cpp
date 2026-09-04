@@ -60,6 +60,34 @@ static_assert(sizeof(TickRecord) == 64, "TickRecord must occupy one cache line")
 
 class TickFactorProcessor {
 public:
+    std::unique_lock<std::mutex> acquire_access() const {
+        std::unique_lock<std::mutex> access(access_mutex_, std::try_to_lock);
+        if (!access.owns_lock()) {
+            throw std::runtime_error("tick processor is already in use by another operation");
+        }
+        return access;
+    }
+
+    std::uint64_t process_batch(py::array_t<TickRecord, py::array::c_style> records) {
+        const auto info = records.request();
+        if (info.ndim != 1) {
+            throw std::invalid_argument("tick records must be a one-dimensional array");
+        }
+        if (reinterpret_cast<std::uintptr_t>(info.ptr) % alignof(TickRecord) != 0) {
+            throw std::invalid_argument("tick records must be aligned for native access");
+        }
+        const auto count = static_cast<std::uint64_t>(info.size);
+        const auto* input = static_cast<const TickRecord*>(info.ptr);
+        auto access = acquire_access();
+        {
+            py::gil_scoped_release release;
+            for (std::uint64_t index = 0; index < count; ++index) {
+                process(input[index]);
+            }
+        }
+        return count;
+    }
+
     void process(const TickRecord& record) {
         if (has_expected_sequence_ && record.sequence != expected_sequence_) {
             ++sequence_errors_;
@@ -83,6 +111,7 @@ public:
     }
 
     py::dict snapshot() const {
+        auto access = acquire_access();
         py::dict result;
         result["processed"] = processed_;
         result["sequence_errors"] = sequence_errors_;
@@ -97,6 +126,7 @@ public:
     }
 
 private:
+    mutable std::mutex access_mutex_;
     std::uint64_t processed_{0};
     std::uint64_t sequence_errors_{0};
     std::uint64_t expected_sequence_{0};
@@ -176,6 +206,7 @@ public:
 
     std::uint64_t process_batch(TickFactorProcessor& processor, std::uint64_t maximum) {
         reject_active_lease();
+        auto access = processor.acquire_access();
         const auto available = depth();
         const auto count = available < maximum ? available : maximum;
         {
@@ -467,6 +498,10 @@ void init_tick_ring(py::module_& module) {
     );
     py::class_<TickFactorProcessor>(module, "TickFactorProcessor")
         .def(py::init<>())
+        .def("process_batch", &TickFactorProcessor::process_batch, py::arg("records").noconvert(),
+             "Process a contiguous, aligned, one-dimensional tick array without ring transport. "
+             "The caller must not modify the array during processing. Concurrent access to "
+             "the same processor is rejected; the GIL is released during calculation.")
         .def_property_readonly("snapshot", &TickFactorProcessor::snapshot);
     py::class_<TickBatchLease>(module, "TickBatchLease")
         .def_property_readonly("values", &TickBatchLease::values)

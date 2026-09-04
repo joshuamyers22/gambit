@@ -5,6 +5,16 @@ have not yet been released are collected below.
 
 ## Unreleased
 
+### Added
+
+- Experimental native top-of-book backtest prototype with a deterministic
+  long-only alternating-target strategy, shared cash, displayed-size partial
+  fills, fees, latency and stale-feed checks, and exact integer accounting.
+  This is not a replacement for the general Strategy API; unsupported execution
+  models and order types are documented explicitly.
+- Direct contiguous-array tick-factor replay without live ring transport,
+  with strict input-layout checks and concurrent processor-access rejection.
+
 ### Changed
 
 - ``RollOrder`` is now a validated atomic market-roll command. It expands into

@@ -165,6 +165,7 @@ jobs:
           python -m pytest -vv -s
           tests/test_boundary_fuzz.py
           tests/test_native_reference.py
+          tests/test_top_of_book_backtest.py
           tests/test_native_io_hardening.py
           tests/test_factor_cache.py
           tests/test_tick_ring.py

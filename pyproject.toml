@@ -151,6 +151,7 @@ files = [
   "src/gambit/strategy_inputs.py",
   "src/gambit/strategy_contracts.py",
   "src/gambit/trade_reconciliation.py",
+  "src/gambit/tick_backtest.py",
   "src/gambit/universe.py",
   "src/gambit/var_risk.py",
   "tests/test_regressions.py",

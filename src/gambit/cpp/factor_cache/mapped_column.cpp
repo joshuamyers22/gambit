@@ -19,6 +19,7 @@
 namespace py = pybind11;
 
 void init_tick_ring(py::module_& module);
+void init_top_of_book_backtest(py::module_& module);
 
 namespace {
 
@@ -454,4 +455,5 @@ PYBIND11_MODULE(_factor_cache, module) {
         .def("slice", &MappedFloat64Column::slice, py::arg("start"), py::arg("stop"))
         .def_property_readonly("path", &MappedFloat64Column::path);
     init_tick_ring(module);
+    init_top_of_book_backtest(module);
 }

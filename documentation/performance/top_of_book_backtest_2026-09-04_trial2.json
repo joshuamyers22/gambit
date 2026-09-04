@@ -1,0 +1,59 @@
+{
+  "status": "ledger_reconciled",
+  "strategy": "long-only alternating target, market orders only",
+  "configuration": {
+    "instruments": 8,
+    "cash": 10000000000000,
+    "target_lots": 1000,
+    "rebalance_events": 10000,
+    "fee_ppm": 100,
+    "latency_ns": 1000000,
+    "audit_capacity": 1000000
+  },
+  "ticks": 946944000,
+  "aggregate_ticks_per_second": 10,
+  "seed": 20260904,
+  "chunk_size": 65536,
+  "input_sha256": "db763cf4272772fc4a5e4940708391a9d58fb5cdf7ab19825a0dca0374ac0446",
+  "result_sha256": "668f3426e34b9b49b868eadb561c9fd787509369a6e4c04d061dfe9cef8f339c",
+  "portfolio": {
+    "processed": 946944000,
+    "cash": 9249402321749,
+    "equity": 9516524432749,
+    "net_pnl": -483475567251,
+    "total_fees": 384949363813
+  },
+  "positions": [
+    1000,
+    0,
+    1000,
+    0,
+    1000,
+    1000,
+    1000,
+    1000
+  ],
+  "order_count": 94690,
+  "fill_count": 649979,
+  "order_status_counts": {
+    "0": 0,
+    "1": 94690,
+    "2": 0,
+    "3": 0
+  },
+  "timing": {
+    "initialization_seconds": 1.6125006368383765e-05,
+    "processing_seconds": 1.6904081794127706,
+    "result_materialization_seconds": 0.0029605000017909333,
+    "execution_seconds": 1.6933848044209299,
+    "generation_seconds": 40.789969535959244,
+    "wall_seconds": 61.3778188330034
+  },
+  "environment": {
+    "platform": "macOS-15.5-arm64-arm-64bit",
+    "python": "3.10.20",
+    "numpy": "2.2.6"
+  },
+  "peak_process_rss_bytes": 288178176,
+  "limitations": "Synthetic chunk-resident replay; excludes generation/loading, hashing and ledger verification from execution timer. Not a cold-load or full-dataset-resident benchmark. Small-corpus Python trace parity is tested separately; full-volume independent Python trace parity has not been run. Displayed liquidity refreshes per quote; no own impact, queue position, shorts, funding, limit orders, rolls or external risk policies."
+}
