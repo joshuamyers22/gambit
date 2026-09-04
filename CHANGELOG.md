@@ -50,6 +50,8 @@ have not yet been released are collected below.
   results for all-missing arrays, and plotting no longer writes debug values.
 - Cross-platform CI typing now tolerates current NumPy stub precision, and the
   multiple-contract notebook canonicalizes overlapping price timestamps.
+- Percentile ranking now handles singleton and tied values deterministically
+  and rejects multidimensional or non-finite inputs.
 
 ## 1.1.0 - 2026-08-31
 

@@ -205,6 +205,14 @@
 - Correction implemented: extrema operate only on finite observations and return `NaN`/`NaT` when none exist; NumPy floating scalars are formatted consistently; debug prints were removed.
 - Verification: regressions cover partial/all-missing drawdowns and require optimizer plotting to leave stdout untouched.
 
+### [Resolved] Percentile ranking was undefined at common boundaries
+
+- Location: `src/gambit/pq_utils.py:365-380`
+- Evidence: singleton arrays divided by zero, duplicate observations received different ranks based on their sort position, and multidimensional or non-finite arrays were accepted despite having no defined ordering contract.
+- Failure mode: a constant one-observation signal crashed under the repository's strict NumPy error mode, while identical scores could drive different decisions.
+- Correction implemented: ranking is explicitly one-dimensional and finite, singleton rank is zero, and ties receive their deterministic average rank using a stable sort.
+- Verification: regressions cover singleton, tied, multidimensional, `NaN`, and infinite inputs.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.

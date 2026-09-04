@@ -15,6 +15,7 @@ from gambit.pq_utils import (
     np_bucket,
     np_find_closest,
     np_rolling_window,
+    percentile_of_score,
     shift_np,
 )
 from gambit.pq_utils import np_round as pq_np_round
@@ -109,6 +110,20 @@ def test_find_closest_handles_singleton_and_rejects_empty_inputs():
     np.testing.assert_array_equal(np_find_closest(np.array([10.0]), np.array([-1.0, 500.0])), [0, 0])
     with pytest.raises(ValueError, match="empty array"):
         np_find_closest(np.array([]), 1.0)
+
+
+def test_percentile_of_score_handles_singletons_and_ties_deterministically():
+    np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
+    np.testing.assert_allclose(
+        percentile_of_score(np.array([3.0, 1.0, 2.0, 2.0])),
+        np.array([100.0, 0.0, 50.0, 50.0]),
+    )
+
+
+@pytest.mark.parametrize("values", [np.array([[1.0, 2.0]]), np.array([1.0, np.nan]), np.array([np.inf])])
+def test_percentile_of_score_rejects_undefined_rankings(values):
+    with pytest.raises(ValueError, match="percentile input"):
+        percentile_of_score(values)
 
 
 @pytest.mark.parametrize("window", [0, -1, 4])

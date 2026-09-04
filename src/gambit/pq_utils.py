@@ -363,9 +363,26 @@ def percentile_of_score(a: np.ndarray) -> np.ndarray | None:
     >>> assert(all(np.isclose(np.array([ 75.,  50.,   0.,  25., 100.]), percentiles)))
     """
     assert_(isinstance(a, np.ndarray), f"expected numpy array, got: {a}")
+    if a.ndim != 1:
+        raise ValueError("percentile input must be one-dimensional")
     if not len(a):
         return None
-    return np.argsort(np.argsort(a)) * 100.0 / (len(a) - 1)
+    if not np.all(np.isfinite(a)):
+        raise ValueError("percentile input must contain only finite values")
+    if len(a) == 1:
+        return np.zeros(1, dtype=float)
+
+    order = np.argsort(a, kind="stable")
+    sorted_values = a[order]
+    ranks: np.ndarray = np.empty(len(a), dtype=float)
+    start = 0
+    while start < len(a):
+        end = start + 1
+        while end < len(a) and sorted_values[end] == sorted_values[start]:
+            end += 1
+        ranks[order[start:end]] = (start + end - 1) / 2.0
+        start = end
+    return ranks * 100.0 / (len(a) - 1)
 
 
 def _polars_frequency(frequency: str) -> str:
