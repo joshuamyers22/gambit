@@ -74,6 +74,10 @@ not only the winner, and use stability regions rather than a single sharp optimu
 Calendar and timezone errors
 ----------------------------
 
+Calendar APIs require Polars columns to have a ``Date`` or ``Datetime`` dtype.
+Parse string columns explicitly before passing them to a calendar. NumPy date
+arrays must use a ``datetime64`` dtype; numeric columns are not epoch dates.
+
 Normalize timezone-aware source timestamps before converting to NumPy. Exchange
 calendars describe sessions and special closes; they do not repair incorrectly
 localized timestamps. Test daylight-saving transitions and half days.

@@ -257,6 +257,54 @@ def test_calendar_preserves_nonstandard_weekmask_and_holidays(monkeypatch):
     assert calendar.add_trading_days(dates[0], 1) == np.datetime64("2024-01-07")
 
 
+@pytest.mark.parametrize(
+    "values",
+    [
+        pl.Series([1, 2]),
+        pl.Series([1.0, 2.0]),
+        pl.Series([True, False]),
+        pl.Series(["2024-01-05", "2024-01-08"]),
+        pl.Series([1, 2], dtype=pl.Duration("us")),
+        pl.Series([None, None]),
+    ],
+)
+def test_calendar_rejects_polars_columns_without_a_date_dtype(values):
+    calendar = Calendar("NYSE")
+    with pytest.raises(TypeError, match="Date or Datetime"):
+        calendar.is_trading_day(values)
+    with pytest.raises(TypeError, match="Date or Datetime"):
+        calendar.num_trading_days(values, "2024-01-08")
+    with pytest.raises(TypeError, match="Date or Datetime"):
+        calendar.get_trading_days("2024-01-05", values)
+    with pytest.raises(TypeError, match="Date or Datetime"):
+        calendar.add_trading_days(values, 1)
+
+
+@pytest.mark.parametrize("dtype", [pl.Date, pl.Datetime("ms"), pl.Datetime("us"), pl.Datetime("ns")])
+def test_calendar_polars_dates_preserve_missing_values_and_offset_precision(dtype):
+    calendar = Calendar("NYSE")
+    values = pl.Series(
+        np.array(["2024-01-05T15:30:12.123456789", "2024-01-08T09:45:01.987654321", "NaT"], dtype="M8[ns]")
+    ).cast(dtype)
+    original = values.clone()
+    expected = pl.Series(
+        np.array(["2024-01-08T15:30:12.123456789", "2024-01-09T09:45:01.987654321", "NaT"], dtype="M8[ns]")
+    ).cast(dtype).to_numpy()
+
+    np.testing.assert_array_equal(calendar.is_trading_day(values), [True, True, False])
+    np.testing.assert_array_equal(calendar.num_trading_days(values, "2024-01-09"), [2.0, 1.0, np.nan])
+    shifted = calendar.add_trading_days(values, 1, roll="nat")
+    np.testing.assert_array_equal(shifted, expected)
+    assert shifted.dtype == expected.dtype
+    assert values.equals(original)
+
+
+@pytest.mark.parametrize("values", [np.array([1, 2]), np.array([True, False])])
+def test_calendar_membership_rejects_numpy_non_date_arrays(values):
+    with pytest.raises(ValueError, match="supported date"):
+        Calendar("NYSE").is_trading_day(values)
+
+
 def test_percentile_of_score_handles_singletons_and_ties_deterministically():
     np.testing.assert_array_equal(percentile_of_score(np.array([42.0])), np.array([0.0]))
     np.testing.assert_allclose(

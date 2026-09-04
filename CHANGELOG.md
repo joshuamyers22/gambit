@@ -19,6 +19,9 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Calendar APIs now reject Polars columns without a Date or Datetime dtype,
+  and trading-day membership rejects non-date NumPy arrays, preventing numeric
+  values from being silently interpreted as dates since the Unix epoch.
 - Calendar conversion now preserves the adapter's trading weekdays and accepts
   empty holiday lists, fixing continuous calendars and nonstandard trading weeks.
 - Trading-day counts now support zero-dimensional NumPy date arrays, including

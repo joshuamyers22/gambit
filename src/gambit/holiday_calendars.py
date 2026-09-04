@@ -18,6 +18,13 @@ import polars as pl
 DateTimeType = Union[str, np.datetime64, np.ndarray, datetime.datetime, datetime.date, pl.Series]
 
 
+def _polars_datetimes(values: pl.Series) -> np.ndarray:
+    """Require an explicit date dtype before converting a Polars column."""
+    if values.dtype != pl.Date and not isinstance(values.dtype, pl.Datetime):
+        raise TypeError(f"calendar series must have a Polars Date or Datetime dtype, got {values.dtype}")
+    return values.to_numpy()
+
+
 def _as_np_date(val: DateTimeType) -> np.datetime64 | np.ndarray | None:
     """
     Convert a supported scalar or array to NumPy datetime64[D] and remove time information.
@@ -38,13 +45,15 @@ def _as_np_date(val: DateTimeType) -> np.datetime64 | np.ndarray | None:
             raise Exception(f"invalid date: {val}")
         return np_date
     if isinstance(val, pl.Series):
-        return val.to_numpy().astype("M8[D]")
+        return _polars_datetimes(val).astype("M8[D]")
     if isinstance(val, np.ndarray) and np.issubdtype(val.dtype, np.datetime64):
         return val.astype("M8[D]")
     return None
 
 
-def _normalize_datetime(val: DateTimeType) -> tuple[np.datetime64, np.timedelta64]:
+def _normalize_datetime(
+    val: DateTimeType,
+) -> tuple[np.datetime64 | np.ndarray, np.timedelta64 | np.ndarray]:
     """
     Break up a datetime into numpy date and numpy timedelta.
 
@@ -60,15 +69,16 @@ def _normalize_datetime(val: DateTimeType) -> tuple[np.datetime64, np.timedelta6
     >>> assert (all(dates == np.array(['2015-01-01', '2015-02-01'], dtype='datetime64[D]'))
     ...    and all(tds == np.array([18000000000000, 21600000000000], dtype='timedelta64[ns]')))
     """
+    dtime: np.datetime64 | np.ndarray
     if isinstance(val, pl.Series):
-        dtime = val.to_numpy()
+        dtime = _polars_datetimes(val)
     elif isinstance(val, np.ndarray) and np.issubdtype(val.dtype, np.datetime64):
         dtime = val
     else:
-        dtime = np.datetime64(val)
+        dtime = np.datetime64(cast(Any, val))
 
-    date = dtime.astype("M8[D]")
-    time_delta = dtime - date
+    date: np.datetime64 | np.ndarray = dtime.astype("M8[D]")
+    time_delta = cast(np.timedelta64 | np.ndarray, dtime - date)
     return date, time_delta
 
 
@@ -169,15 +179,11 @@ class Calendar:
         >>> nyse.is_trading_day(np.arange('2017-04-01', '2017-04-09', dtype='datetime64[D]')).tolist()
         [False, False, True, True, True, True, True, False]
         """
-        if isinstance(dates, str) or isinstance(dates, datetime.date):
-            dates = np.datetime64(dates, "D")
-            if isinstance(
-                dates.astype(datetime.datetime), int
-            ):  # user can pass in a string like 20180101 which gets parsed as a date
-                raise Exception(f"invalid date: {dates}")
-        if isinstance(dates, pl.Series):
-            dates = dates.to_numpy()
-        return np.is_busday(dates.astype("M8[D]"), busdaycal=self.bus_day_cal)
+        normalized = _as_np_date(dates)
+        if normalized is None:
+            raise ValueError("dates must be supported date values")
+        result = np.is_busday(normalized, busdaycal=self.bus_day_cal)
+        return result if isinstance(result, np.ndarray) else bool(result)
 
     def num_trading_days(
         self, start: DateTimeType, end: DateTimeType, include_first: bool = False, include_last: bool = True
