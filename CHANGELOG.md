@@ -76,6 +76,8 @@ have not yet been released are collected below.
   and render their initial state exactly once.
 - Cascading interactive filters now incorporate each newly selected upstream
   value and suppress recursive partial-state renders.
+- Interactive confidence summaries now reject nonnumeric, infinite, or reversed
+  bounds while retaining explicitly missing intervals.
 
 ## 1.1.0 - 2026-08-31
 

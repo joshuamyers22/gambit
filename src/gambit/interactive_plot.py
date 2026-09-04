@@ -344,6 +344,16 @@ class LineGraphWithDetailDisplay:
                 raise TypeError("interactive plot summary and detail data must be Polars DataFrames")
             if len(line_df.columns) not in {2, 4}:
                 raise ValueError("interactive plot summaries must contain exactly x/y or x/y/lower/upper columns")
+            if len(line_df.columns) == 4:
+                lower_series, upper_series = line_df[:, 2], line_df[:, 3]
+                if not lower_series.dtype.is_numeric() or not upper_series.dtype.is_numeric():
+                    raise ValueError("interactive plot confidence bounds must be numeric")
+                lower, upper = lower_series.to_numpy(), upper_series.to_numpy()
+                if np.any(np.isinf(lower)) or np.any(np.isinf(upper)):
+                    raise ValueError("interactive plot confidence bounds must not be infinite")
+                comparable = np.isfinite(lower) & np.isfinite(upper)
+                if np.any(lower[comparable] > upper[comparable]):
+                    raise ValueError("interactive plot lower confidence bounds must not exceed upper bounds")
             xcol = line_df.columns[0]
             if shared_xcol is None:
                 shared_xcol = xcol

@@ -187,6 +187,32 @@ def test_line_graph_requires_detail_rows_for_every_summary_x_value() -> None:
         LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
 
 
+@pytest.mark.parametrize(
+    ("lower", "upper", "message"),
+    [
+        ([4.0], [3.0], "must not exceed"),
+        (["low"], ["high"], "must be numeric"),
+        ([-np.inf], [3.0], "must not be infinite"),
+        ([1.0], [np.inf], "must not be infinite"),
+    ],
+)
+def test_line_graph_rejects_invalid_confidence_bounds(lower, upper, message) -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0], "lower": lower, "upper": upper})
+    detail = pl.DataFrame({"x": [1], "y": [2.0]})
+
+    with pytest.raises(ValueError, match=message):
+        LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
+
+
+def test_line_graph_allows_missing_confidence_bounds() -> None:
+    summary = pl.DataFrame({"x": [1], "y": [2.0], "lower": [np.nan], "upper": [np.nan]})
+    detail = pl.DataFrame({"x": [1], "y": [2.0]})
+
+    figure, _ = LineGraphWithDetailDisplay()("x", "y", [("series", summary, detail)])
+
+    assert len(figure.data) == 2
+
+
 def test_mean_with_ci_keeps_lower_and_upper_bounds_in_order(monkeypatch) -> None:
     captured = {}
 

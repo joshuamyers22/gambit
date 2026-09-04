@@ -309,6 +309,14 @@
 - Correction implemented: an update guard suppresses recursive callbacks, each downstream selection feeds the next dimension's option calculation, and rendering occurs once after the cascade settles.
 - Verification: a three-level year/month/day regression changes year, requires day options filtered by the newly selected month, and observes exactly one additional render.
 
+### [Resolved] Invalid confidence bounds produced malformed polygons
+
+- Location: `src/gambit/interactive_plot.py:337-365`
+- Evidence: any four-column summary was treated positionally as x/y/lower/upper without checking bound types, infinity, or ordering. A lower value above its upper value generated a self-crossing filled polygon rather than a failure.
+- Failure mode: custom statistics could publish visually misleading uncertainty regions, including inverted or unbounded bands, while missing intervals had no explicit policy.
+- Correction implemented: confidence columns must be numeric, infinity is rejected, every jointly finite lower bound must be at or below its upper bound, and paired missing bounds remain supported.
+- Verification: regressions reject reversed, string, and positive/negative infinite bounds while rendering an explicitly missing interval.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
