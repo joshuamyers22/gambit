@@ -23,7 +23,7 @@ VERSION = 1
 COMMITTED = 1
 HEADER_BYTES = 4096
 HEADER = struct.Struct("<8sIIQQQQ")
-TICK_DTYPE: np.dtype[np.void] = np.dtype(
+TICK_DTYPE: np.dtype = np.dtype(
     [
         ("sequence", "<u8"),
         ("event_time_ns", "<i8"),

@@ -449,7 +449,7 @@ def handle_non_finite_returns(
     True
     """
 
-    first_finite_indices = np.ravel(np.nonzero(np.isfinite(rets)))
+    first_finite_indices: np.ndarray = np.ravel(np.nonzero(np.isfinite(rets)))
     first_finite_index = int(first_finite_indices[0]) if len(first_finite_indices) else -1
 
     if first_finite_index == -1:
@@ -695,7 +695,7 @@ def plot_return_metrics(
     """
     timestamps = metrics["timestamps"]
     equity = metrics["equity"]
-    ts_type: np.dtype[np.datetime64] = np.dtype("M8[m]")
+    ts_type: np.dtype = np.dtype("M8[m]")
     mdd_date, mdd_start = metrics["mdd_date"].astype(ts_type), metrics["mdd_start"].astype(ts_type)
     mdd_date_3yr, mdd_start_3yr = metrics["mdd_date_3yr"].astype(ts_type), metrics["mdd_start_3yr"].astype(ts_type)
     years = metrics["bucketed_returns"][0]

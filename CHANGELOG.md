@@ -48,6 +48,8 @@ have not yet been released are collected below.
   opt into replacing leading non-finite observations with zeros.
 - Drawdown extrema now ignore missing observations, return defined missing
   results for all-missing arrays, and plotting no longer writes debug values.
+- Cross-platform CI typing now tolerates current NumPy stub precision, and the
+  multiple-contract notebook canonicalizes overlapping price timestamps.
 
 ## 1.1.0 - 2026-08-31
 

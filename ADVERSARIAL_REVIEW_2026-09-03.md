@@ -189,6 +189,14 @@
 - Correction implemented: all-invalid histories become empty when leading replacement is disabled, and the public evaluator rejects them explicitly. Callers that deliberately enable leading replacement retain timestamps and receive an all-zero series.
 - Verification: regression coverage distinguishes default rejection from explicit zero-fill and validates both returned returns and equity.
 
+### [Resolved] Hosted CI diverged from local typing and notebook evidence
+
+- Location: `src/gambit/pq_utils.py`, `factor_cache.py`, `evaluator.py`; `examples/notebooks/multiple_contracts.ipynb`; GitHub Actions CI
+- Evidence: the hosted Python 3.11/3.12 jobs failed on newer NumPy-stub inference for scalar/array unions and structured dtypes even though the locked local mypy run passed. The notebook job failed because overlapping per-contract price windows were concatenated with duplicate timestamps, correctly rejected by the hardened `PriceFuncArrayDict` boundary.
+- Failure mode: repeated pushes had green local gates but a red hosted matrix, and the documented multiple-contract workflow was not executable from a clean checkout.
+- Correction implemented: unstable NumPy inference points now carry portable explicit annotations. The notebook stably sorts each combined contract series and retains the first observation for duplicate timestamps before constructing its immutable price function.
+- Verification: local mypy and the formerly failing notebook execute successfully; final acceptance requires the pushed GitHub matrix to pass.
+
 ### [Resolved] Missing drawdowns and plotting leaked implementation behavior
 
 - Location: `src/gambit/evaluator.py:225-250`, `src/gambit/evaluator.py:584-739`, `src/gambit/optimize.py:319-333`

@@ -349,8 +349,8 @@ def day_of_week_num(a: np.datetime64 | np.ndarray) -> int | np.ndarray:
     >>> day_of_week_num(np.datetime64('2015-01-04'))
     6
     """
-    int_date = a.astype("datetime64[D]").view("int64")
-    ret = (int_date - 4) % 7
+    int_date: Any = a.astype("datetime64[D]").view("int64")
+    ret: Any = (int_date - 4) % 7
     return int(cast(np.generic, ret).item()) if np.isscalar(ret) else ret
 
 
