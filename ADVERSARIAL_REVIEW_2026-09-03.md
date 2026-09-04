@@ -25,7 +25,7 @@
 |---|---|---|---|
 | Lint | `uv run ruff check src tests` | Pass | no findings |
 | Static typing | `uv run mypy` | Pass | 49 configured source files |
-| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 550 passed; native tests executed locally |
+| Tests | `uv run pytest --cov=gambit --cov-report=term-missing` | Pass | 551 passed; native tests executed locally |
 | Coverage | same command | Pass, uneven | 79% total; `markets.py` improved from 0% to 79%, `holiday_calendars.py` from 21% to 54%, `optimize.py` from 36% to 60%, and `pq_utils.py` from 38% to 47% |
 | Build | `uv build` | Pass | native macOS ARM64 wheel and sdist built |
 | Lock reproducibility | initial `make check` | Fail, corrected locally | `uv run` regenerated stale project metadata in `uv.lock`; updated lock now passes `uv lock --check` |
@@ -156,10 +156,18 @@
 - Correction implemented: custom callables now receive a Polars column expression and their aggregate expressions are included in output; custom VWAP can explicitly override the built-in weighted calculation. Required schema and paired lengths fail at the public boundary.
 - Verification: tests prove custom mean and VWAP override execution, reject absent time/custom columns, and reject unequal series lengths.
 
+### [Resolved] Duplicate CI job key disabled the reproducible dependency audit
+
+- Location: `.github/workflows/ci.yml`; `tests/test_architecture.py`
+- Evidence: the workflow contained two top-level jobs named `dependency-audit`. Standard YAML mapping semantics retain the later value, so GitHub Actions saw only the legacy job that installed unpinned latest tooling and audited the project declaration instead of the exact lock export.
+- Failure mode: CI appeared to contain the pinned lock-based audit while silently executing a materially different, mutable check.
+- Correction implemented: the shadowing legacy job was removed. A repository architecture test parses every workflow with a safe loader that rejects duplicate mapping keys at any depth.
+- Verification: all workflows load without duplicate keys, and the surviving dependency-audit job uses pinned `setup-uv`, `pip-audit==2.10.1`, `uv export --frozen`, and `--no-deps`.
+
 ## Improvement order
 
 1. Classify and test or deprecate the low-coverage legacy modules.
 
 ## Release boundary
 
-The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 550-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.
+The current evidence supports market, limit, VWAP, atomic market-roll, accounting, risk, and factor-cache research workflows covered by the 551-test suite. Stop-limit orders are retained only as a deprecated compatibility type and are deliberately rejected before execution.

@@ -36,6 +36,8 @@ have not yet been released are collected below.
   preserve sparse auxiliary metrics across every experiment.
 - Trade-bar resampling now executes supplied custom aggregations and validates
   time columns, custom column names, and paired series lengths.
+- CI now rejects duplicate YAML mapping keys; the shadowing legacy dependency
+  audit job was removed so the pinned lock-based audit actually runs.
 
 ## 1.1.0 - 2026-08-31
 

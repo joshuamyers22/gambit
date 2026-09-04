@@ -1,7 +1,10 @@
 import ast
 from pathlib import Path
 
+import yaml
+
 PACKAGE_ROOT = Path(__file__).parents[1] / "src" / "gambit"
+REPOSITORY_ROOT = PACKAGE_ROOT.parents[1]
 STABLE_KERNEL = {
     "boundaries",
     "calculation",
@@ -21,6 +24,32 @@ def _gambit_imports(path: Path) -> set[str]:
             if node.module == "gambit" or node.module.startswith("gambit."):
                 imports.add(node.module)
     return imports
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML loader that rejects mappings whose keys would be overwritten."""
+
+
+def _construct_unique_mapping(loader: _UniqueKeyLoader, node: yaml.MappingNode, deep: bool = False):
+    loader.flatten_mapping(node)
+    mapping = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping",
+                node.start_mark,
+                f"found duplicate key {key!r}",
+                key_node.start_mark,
+            )
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
 
 
 def test_stable_contract_kernel_does_not_depend_on_outer_package_modules() -> None:
@@ -78,3 +107,10 @@ def test_runtime_invariants_do_not_use_optimizable_asserts() -> None:
             violations[path.name] = lines
 
     assert violations == {}, f"runtime invariants must use explicit exceptions: {violations}"
+
+
+def test_github_workflows_do_not_contain_shadowed_yaml_keys() -> None:
+    workflow_root = REPOSITORY_ROOT / ".github" / "workflows"
+    for path in sorted(workflow_root.glob("*.yml")):
+        with path.open(encoding="utf-8") as workflow:
+            yaml.load(workflow, Loader=_UniqueKeyLoader)
