@@ -31,6 +31,8 @@ have not yet been released are collected below.
 - The local quality gate includes native warnings, documentation, notebook
   cleanliness, and distribution inspection; the audit covers optional runtime
   features. Native warning tooling is included in the frozen developer setup.
+- The hosted package smoke test builds with its explicitly configured Python
+  interpreter so wheel compatibility checks cannot drift to `.python-version`.
 - ``RollOrder`` is now a validated atomic market-roll command. It expands into
   outgoing and incoming legs in the same contract group, and the built-in
   simulator fills both legs or neither when price data is unavailable.

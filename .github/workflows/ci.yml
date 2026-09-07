@@ -271,7 +271,8 @@ jobs:
       - name: Build warning-free documentation
         run: python -m sphinx -W --keep-going -b html documentation/source documentation/generated
       - run: python tools/check_clean_paths.py documentation/source
-      - run: uv build
+      - name: Build with the configured CI interpreter
+        run: uv build --python python
       - run: python -m twine check dist/*
       - name: Inspect distribution contents and metadata
         run: python tools/verify_release_artifacts.py dist

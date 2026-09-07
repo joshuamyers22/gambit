@@ -43,6 +43,8 @@ def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     sanitizer_commands = "\n".join(step.get("run", "") for step in jobs["native-sanitizers"]["steps"])
     assert "uv sync --frozen" in sanitizer_commands
     assert "--no-cache" in sanitizer_commands, "sanitizers must not reuse an unsanitized extension build"
+    package_commands = "\n".join(step.get("run", "") for step in jobs["package"]["steps"])
+    assert "uv build --python python" in package_commands, "wheel ABI must match the configured package-job interpreter"
 
 
 @pytest.mark.parametrize("name", ["ci.yml", "docs.yml", "performance.yml"])

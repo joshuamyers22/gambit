@@ -286,7 +286,17 @@ Validation of the implementation:
   rebuilds, and credential restrictions. Final workflow pin/guard adjustments
   were checked again with actionlint and focused tests after the snapshot run.
 
-These changes are local working-tree changes. Hosted Linux/macOS/Python matrix
-results, sanitizer execution, repaired-wheel matrix, TestPyPI, and publisher
-environment settings must still be verified before publishing. No blanket
-production-readiness claim replaces the remaining acceptance work.
+Commit d40b957 contains the review changes. Its hosted Linux/macOS/Python
+matrix, audit, documentation, notebook, native, and sanitizer checks passed.
+Repaired-wheel matrices, TestPyPI, and publisher environment settings must
+still be verified before publishing. No blanket production-readiness claim
+replaces the remaining acceptance work.
+
+The first hosted run of commit d40b957 passed every correctness, audit,
+documentation, notebook, native, and sanitizer job. Its package job exposed an
+interpreter-selection mismatch: setup used Python 3.12, while plain `uv build`
+followed `.python-version` and produced a CPython 3.10 wheel that the 3.12 smoke
+process correctly rejected as incompatible. The follow-up explicitly passes
+the configured `python` executable to `uv build` and protects that command with
+a delivery-policy regression. This is build-orchestration correction rather
+than a package compatibility change.
