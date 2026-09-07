@@ -10,6 +10,7 @@ from coverage.exceptions import CoverageException
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 MODULE_FLOORS = {
+    "src/gambit/strategy_components.py": 75.0,
     "src/gambit/markets.py": 75.0,
     "src/gambit/holiday_calendars.py": 50.0,
     "src/gambit/optimize.py": 70.0,

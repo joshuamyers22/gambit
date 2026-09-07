@@ -2,6 +2,14 @@
 
 Status: **release candidate 1.1.0; TestPyPI validation pending**.
 
+Local hardening on 2026-09-06 corrected multiplier-aware entry sizing and
+multi-contract VWAP entry, made publication depend on complete same-commit CI,
+and moved reference CI installs to the frozen lock. The isolated local gate
+passes 816 tests, documentation, native warnings, and packaging checks; see
+`PRODUCTION_TEMPLATE_REVIEW_2026-09-06.md` for evidence and remaining work.
+The historical hosted run below predates these changes and does not establish
+hosted acceptance of the current working tree.
+
 The repository now has automated release-candidate gates for the supported
 CPython 3.10-3.12 matrix on Linux x86_64 and macOS x86_64/arm64. Each wheel is
 tested by cibuildwheel after installation. The combined artifact set is then

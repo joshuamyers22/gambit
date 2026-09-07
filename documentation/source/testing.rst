@@ -24,11 +24,12 @@ portable pass/fail thresholds.
 Continuous integration runs unit tests on every supported Python and operating
 system combination. Integration tests run on the reference Linux environment,
 while native correctness runs on both Linux and macOS. Fuzz probes also run
-under ASan and UBSan. Performance testing is an opt-in, non-blocking GitHub
-Actions workflow so noisy hosted-runner timing does not block releases.
+under ASan and UBSan. Small deterministic benchmark correctness tests run in
+the required integration job. The separate manual performance workflow remains
+non-blocking; noisy hosted-runner timing is not a release threshold.
 
-The unit matrix also enforces explicit coverage floors for supported
-policy-heavy market (75%), calendar (50%), optimizer (70%), numerical utility
+The unit matrix also enforces explicit coverage floors for supported entry and
+execution components (75%), market (75%), calendar (50%), optimizer (70%), numerical utility
 (50%), and interactive reporting (80%) modules. Run the same policy locally
 after a coverage-producing test command with::
 

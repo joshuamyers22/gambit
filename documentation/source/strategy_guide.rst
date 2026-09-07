@@ -44,10 +44,26 @@ can consume a state every bar; an entry rule usually consumes an event.
 Sizing
 ------
 
-``PercentOfEquityTradingRule`` converts an equity allocation into whole units at
-the estimated entry price. This is allocation sizing, not volatility or loss
-sizing. ``BracketOrderEntryRule`` sizes against a stop distance. Custom rules can
-use contract multipliers, volatility, portfolio exposure, and liquidity.
+``PercentOfEquityTradingRule`` converts an equity allocation into whole contracts
+using ``price * contract.multiplier``. ``BracketOrderEntryRule`` uses the
+multiplier-adjusted stop distance when a stop return is supplied, and notional
+allocation otherwise. Its optional position cap also uses contract notional.
+
+``VWAPEntryRule`` splits its budget equally across the contract group and returns
+every resulting order. With ``stop_price_ind`` it sizes against the monetary
+distance to that stop; without it, it uses notional allocation and no stop.
+Stops must be finite and strictly below the entry price for longs or above it
+for shorts. A valid stop closer than ``min_price_diff_pct`` suppresses entry.
+
+These helpers round toward zero to whole contracts. For example, 10% of 100,000
+equity at price 100 and multiplier 50 buys two contracts. Equity fractions must
+be finite and non-negative; values above one explicitly request leverage.
+Missing entry prices suppress entry, and non-positive or infinite prices are
+rejected. Use a custom rule for negative-price instruments or spread premiums.
+Zero or negative account equity produces no new entry. These budgets use the
+estimated price and exclude execution costs; they do not guarantee a loss limit
+after gaps or slippage. Custom rules can incorporate volatility, portfolio
+exposure, liquidity, and fees.
 
 Execution costs
 ---------------

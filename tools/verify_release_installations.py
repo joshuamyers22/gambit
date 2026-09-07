@@ -46,6 +46,7 @@ def verify_install(specification: str, smoke: str, label: str) -> None:
         outside_checkout = root.parent
         subprocess.run([str(python), "-m", "pip", "install", specification], cwd=outside_checkout, check=True)
         subprocess.run([str(python), "-c", f"{CORE_SMOKE}; {smoke}"], cwd=outside_checkout, check=True)
+        subprocess.run([str(python), str(Path(__file__).resolve().with_name("release_smoke.py"))], cwd=outside_checkout, check=True)
         subprocess.run([str(command), "--help"], cwd=outside_checkout, check=True, stdout=subprocess.DEVNULL)
         print(f"verified isolated {label} installation")
 

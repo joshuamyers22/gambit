@@ -41,6 +41,35 @@ from gambit.strategy_inputs import get_contract_price_from_dict as get_contract_
 _logger = get_child_logger(__name__)
 
 
+def _nonnegative_fraction(value: float, name: str) -> None:
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be finite and non-negative")
+
+
+def _entry_price(value: float, contract: Contract, timestamp: np.datetime64) -> float:
+    price = validate_price_value(value, symbol=contract.symbol, timestamp=timestamp, source="entry sizing price")
+    if not math.isnan(price) and price <= 0:
+        raise ValueError("entry sizing requires a positive price; use a custom rule for non-positive prices")
+    return price
+
+
+def _entry_quantity(equity: float, fraction: float, price_distance: float, multiplier: float) -> float:
+    """Convert a monetary budget to contracts before whole-contract rounding."""
+    _nonnegative_fraction(fraction, "equity fraction")
+    if not math.isfinite(equity):
+        raise ValueError("entry sizing equity must be finite")
+    if not math.isfinite(price_distance) or price_distance <= 0:
+        raise ValueError("entry sizing price/stop distance must be finite and positive")
+    unit_cost = price_distance * multiplier
+    budget = max(equity, 0.0) * fraction
+    if not math.isfinite(unit_cost) or unit_cost <= 0 or not math.isfinite(budget):
+        raise ValueError("entry sizing monetary amount is out of range")
+    quantity = budget / unit_cost
+    if not math.isfinite(quantity):
+        raise ValueError("entry sizing quantity is out of range")
+    return quantity
+
+
 
 
 @dataclass
@@ -215,6 +244,9 @@ class PercentOfEquityTradingRule:
     allocate_risk: bool = False
     limit_increment: float = math.nan
 
+    def __post_init__(self) -> None:
+        _nonnegative_fraction(self.equity_percent, "equity_percent")
+
     def __call__(
         self,
         contract_group: ContractGroup,
@@ -232,23 +264,21 @@ class PercentOfEquityTradingRule:
         contracts = contract_group.get_contracts()
         orders: list[Order] = []
         for contract in contracts:
-            entry_price_est = self.price_func(contract, timestamps, i, strategy_context)
+            entry_price_est = _entry_price(self.price_func(contract, timestamps, i, strategy_context), contract, timestamp)
             if math.isnan(entry_price_est):
                 return []
 
             curr_equity = account.equity(timestamp)
-            risk_amount = self.equity_percent * curr_equity
-            order_qty = risk_amount / entry_price_est
+            order_qty = _entry_quantity(curr_equity, self.equity_percent, entry_price_est, contract.multiplier)
             if self.allocate_risk:
                 order_qty /= len(contracts)  # divide up qty equally between all contracts
             if not self.long:
                 order_qty *= -1
             order_qty = math.floor(order_qty) if order_qty > 0 else math.ceil(order_qty)
             if math.isclose(order_qty, 0.0):
-                return []
+                continue
 
             if math.isfinite(self.limit_increment):
-                entry_price_est = self.price_func(contract, timestamps, i, strategy_context)
                 entry_price_est -= np.sign(order_qty) * self.limit_increment
 
                 limit_order = LimitOrder(
@@ -304,6 +334,12 @@ class VWAPEntryRule:
         min_price_diff_pct: float = 0,
         single_entry_per_day: bool = False,
     ) -> None:
+        _nonnegative_fraction(percent_of_equity, "percent_of_equity")
+        _nonnegative_fraction(min_price_diff_pct, "min_price_diff_pct")
+        if isinstance(vwap_minutes, bool) or not isinstance(vwap_minutes, (int, np.integer)) or vwap_minutes <= 0:
+            raise ValueError("vwap_minutes must be a positive integer")
+        if stop_price_ind is not None and (not isinstance(stop_price_ind, str) or not stop_price_ind):
+            raise ValueError("stop_price_ind must be a non-empty string or None")
         self.reason_code = reason_code
         self.price_func = price_func
         self.long = long
@@ -337,27 +373,28 @@ class VWAPEntryRule:
         orders: list[Order] = []
         contracts = contract_group.get_contracts()
         for contract in contracts:
-            entry_price_est = self.price_func(contract, timestamps, i, strategy_context)
+            entry_price_est = _entry_price(self.price_func(contract, timestamps, i, strategy_context), contract, timestamp)
             if math.isnan(entry_price_est):
                 return []
 
             if self.stop_price_ind:
                 _stop_price_ind = getattr(indicator_values, self.stop_price_ind)
                 stop_price = _stop_price_ind[i]
-                if self.long and (entry_price_est - stop_price) < self.min_price_diff_pct * entry_price_est:
-                    return []
-                if not self.long and (stop_price - entry_price_est) < self.min_price_diff_pct * entry_price_est:
+                distance = entry_price_est - stop_price if self.long else stop_price - entry_price_est
+                if not math.isfinite(distance) or distance <= 0:
+                    raise ValueError("VWAP stop must be finite and on the loss side of the entry price")
+                if distance < self.min_price_diff_pct * entry_price_est:
                     return []
             else:
                 stop_price = math.nan
+                distance = entry_price_est
 
             curr_equity = account.equity(timestamp)
-            risk_amount = self.percent_of_equity * curr_equity
-            order_qty = risk_amount / (entry_price_est - stop_price)
+            order_qty = _entry_quantity(curr_equity, self.percent_of_equity, distance, contract.multiplier)
             order_qty /= len(contracts)  # divide up equity percentage equally
-            order_qty = math.floor(order_qty) if order_qty > 0 else math.ceil(order_qty)
+            order_qty = math.floor(order_qty) * (1 if self.long else -1)
             if math.isclose(order_qty, 0.0):
-                return []
+                continue
             vwap_end_time = timestamp + np.timedelta64(self.vwap_minutes, "m")
             order = VWAPOrder(
                 contract=contract,
@@ -369,7 +406,7 @@ class VWAPEntryRule:
                 reason_code=self.reason_code,
             )
             orders.append(order)
-        return [order]
+        return orders
 
 
 @dataclass
@@ -612,6 +649,10 @@ class BracketOrderEntryRule:
         contract_filter: ContractFilterType | None = None,
         stop_return_func: PriceFunctionType | None = None,
     ) -> None:
+        _nonnegative_fraction(percent_of_equity, "percent_of_equity")
+        _nonnegative_fraction(max_position_size, "max_position_size")
+        if not math.isfinite(min_stop_return) or min_stop_return > 0:
+            raise ValueError("min_stop_return must be finite and non-positive")
         self.reason_code = reason_code
         self.price_func = price_func
         self.long = long
@@ -663,14 +704,16 @@ class BracketOrderEntryRule:
                 if len(trades):
                     continue
 
-            entry_price_est = self.price_func(contract, timestamps, i, strategy_context)
+            entry_price_est = _entry_price(self.price_func(contract, timestamps, i, strategy_context), contract, timestamp)
             if math.isnan(entry_price_est):
                 continue
 
             stop_price = 0.0
+            price_distance = entry_price_est
             if self.stop_return_func is not None:
                 stop_return = self.stop_return_func(contract, timestamps, i, strategy_context)
-                assert_(stop_return < 0, f"stop_return must be negative: {stop_return} {timestamp} {contract.symbol}")
+                if not math.isfinite(stop_return) or stop_return >= 0:
+                    raise ValueError(f"stop_return must be finite and negative: {stop_return} {timestamp} {contract.symbol}")
                 if stop_return > self.min_stop_return:
                     _logger.info(
                         f"entry price estimate: {entry_price_est} too close to stop price: {stop_price}"
@@ -679,17 +722,19 @@ class BracketOrderEntryRule:
                     continue
                 if not self.long:
                     stop_return = -stop_return
+                # Use the return directly to avoid cancellation when subtracting
+                # a rounded stop price (e.g. 100 * 1.1) from the entry price.
+                price_distance = abs(entry_price_est * stop_return)
                 stop_price = entry_price_est * (1 + stop_return)
                 if (self.long and entry_price_est <= stop_price) or (not self.long and entry_price_est >= stop_price):
                     _logger.info(f"entry price estimate: {entry_price_est} exceeds stop price: {stop_price}")
                     continue
 
             curr_equity = account.equity(timestamp)
-            risk_amount = self.percent_of_equity * curr_equity
-            order_qty = risk_amount / abs(entry_price_est - stop_price)
+            order_qty = _entry_quantity(curr_equity, self.percent_of_equity, price_distance, contract.multiplier)
 
             if self.max_position_size > 0:
-                max_qty = abs(self.max_position_size * curr_equity / entry_price_est)
+                max_qty = _entry_quantity(curr_equity, self.max_position_size, entry_price_est, contract.multiplier)
                 orig_qty = order_qty
                 if max_qty < abs(orig_qty):
                     order_qty = max_qty * np.sign(orig_qty)

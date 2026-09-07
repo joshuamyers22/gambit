@@ -29,15 +29,10 @@ trusted-publisher records.
 4. Run:
 
    ```bash
-   python -m pytest
-   python -m ruff check src tests
-   python -m mypy
-   python -m sphinx -W --keep-going -b html documentation/source documentation/generated
-   python -m build
-   python -m twine check dist/*
-   python tools/verify_release_artifacts.py dist
-   python tools/verify_release_installations.py dist
-   python -m pip_audit --strict .
+   make sync
+   make check
+   make audit
+   uv run --frozen --all-extras python tools/verify_release_installations.py dist
    ```
 
 5. Push the release commit and wait for every required GitHub check.
@@ -56,6 +51,15 @@ Create a signed tag named `vX.Y.Z`, then create and publish a GitHub release fro
 that exact tag. Publishing the GitHub release triggers production PyPI. The
 workflow rebuilds all artifacts from the tagged source, repairs native library
 dependencies, verifies metadata, and publishes with short-lived OIDC credentials.
+
+The release workflow calls the complete CI workflow from the same commit using
+[GitHub's local reusable-workflow reference](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows).
+Artifact verification depends on that quality result as well as the wheel/sdist
+builds. Failed tests, dependency audits, native sanitizers, notebook execution,
+or documentation checks therefore prevent both TestPyPI and PyPI publishing.
+Reference CI dependencies come from `uv.lock`; isolated build dependencies,
+native system libraries, and fresh consumer installation probes still resolve
+separately. Fully pinned native build provenance remains a follow-up.
 
 PyPI files are immutable. If a release is wrong, increment the version and
 publish a corrective release; never attempt to replace an uploaded file.

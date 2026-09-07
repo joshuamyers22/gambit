@@ -20,6 +20,17 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Equity, bracket, and VWAP entry sizing now account for contract multipliers;
+  bracket position caps use monetary notional. VWAP entry preserves all
+  contracts and uses allocation sizing when no stop is configured. Invalid
+  sizing inputs fail explicitly; non-positive equity suppresses new entries.
+- Release publication now requires the complete CI workflow for the same commit,
+  including audits, sanitizers, notebooks, and documentation. Reference CI
+  installs are frozen, benchmark correctness is required, and workflow tokens
+  default to read-only access without persisted checkout credentials.
+- The local quality gate includes native warnings, documentation, notebook
+  cleanliness, and distribution inspection; the audit covers optional runtime
+  features. Native warning tooling is included in the frozen developer setup.
 - ``RollOrder`` is now a validated atomic market-roll command. It expands into
   outgoing and incoming legs in the same contract group, and the built-in
   simulator fills both legs or neither when price data is unavailable.
