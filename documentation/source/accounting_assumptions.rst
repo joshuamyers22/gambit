@@ -92,6 +92,15 @@ partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies
 govern lifetime; a custom simulator remains responsible for actual fill logic.
 
+Roll commands are expanded into outgoing and incoming market legs in that order.
+Expansion rechecks distinct contracts in the same group and finite, nonzero,
+whole-unit quantities with opposite signs, even if the command changed after
+construction. Unequal leg sizes are valid. Only open commands can expand;
+cancelled or already-progressed commands cannot create fresh open legs. An
+invalid roll rejects the entire rule-return batch before risk decisions or
+accounting. This validation does not guarantee all-or-none execution across
+custom simulators or independent risk decisions on the expanded legs.
+
 Cancellation requests are acknowledged on the next market-simulation pass,
 including while an order is waiting out its lag. DAY orders expire when the
 heartbeat's NumPy calendar date advances past the submission date, even before

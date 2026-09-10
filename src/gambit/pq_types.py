@@ -541,26 +541,36 @@ class RollOrder(Order):
     reopen_qty: float
 
     def __post_init__(self) -> None:
-        if not isinstance(self.reopen_contract, Contract):
-            raise TypeError("roll reopen contract must be a Contract")
-        self.close_qty = _whole_quantity(self.close_qty, field_name="roll close qty")
-        self.reopen_qty = _whole_quantity(self.reopen_qty, field_name="roll reopen qty")
+        self.close_qty, self.reopen_qty = self._validated_terms()
         self.qty = self.close_qty
         super().__post_init__()
+
+    def _validated_terms(self) -> tuple[int, int]:
+        """Recheck mutable roll terms without changing the source command."""
+        if not isinstance(self.contract, Contract):
+            raise TypeError("order contract must be a Contract")
+        if not isinstance(self.reopen_contract, Contract):
+            raise TypeError("roll reopen contract must be a Contract")
+        close_qty = _whole_quantity(self.close_qty, field_name="roll close qty")
+        reopen_qty = _whole_quantity(self.reopen_qty, field_name="roll reopen qty")
         if self.reopen_contract is self.contract:
             raise ValueError("roll contracts must be distinct")
         if self.reopen_contract.contract_group is not self.contract.contract_group:
             raise ValueError("roll contracts must belong to the same contract group")
-        if self.close_qty * self.reopen_qty >= 0:
+        if (close_qty > 0) == (reopen_qty > 0):
             raise ValueError("roll close and reopen quantities must have opposite signs")
+        return close_qty, reopen_qty
 
     def legs(self) -> tuple[MarketOrder, MarketOrder]:
         """Return the validated outgoing and incoming market-order legs."""
+        close_qty, reopen_qty = self._validated_terms()
+        if self.status is not OrderStatus.OPEN:
+            raise ValueError("only an open roll command can be expanded")
         roll_id = f"{id(self):x}"
         close = MarketOrder(
             contract=self.contract,
             timestamp=self.timestamp,
-            qty=self.close_qty,
+            qty=close_qty,
             reason_code=self.reason_code,
             time_in_force=self.time_in_force,
             properties=types.SimpleNamespace(
@@ -572,7 +582,7 @@ class RollOrder(Order):
         reopen = MarketOrder(
             contract=self.reopen_contract,
             timestamp=self.timestamp,
-            qty=self.reopen_qty,
+            qty=reopen_qty,
             reason_code=self.reason_code,
             time_in_force=self.time_in_force,
             properties=types.SimpleNamespace(
