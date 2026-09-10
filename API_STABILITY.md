@@ -67,6 +67,14 @@ its own state is unresolved, not prohibited by this check.
 
 ## Callback order ownership
 
+Rule-return admission rechecks non-roll order quantities as finite, nonzero whole
+units and `LimitOrder.limit_price` as a finite real number. Booleans and numeric
+strings are invalid. An invalid order rejects its entire callback batch before
+risk decisions or execution; use valid numeric fields and rerun with a fresh
+strategy. Valid edits before submission preserve object identity and metadata,
+including finite negative/zero limit prices. This does not freeze numeric fields
+after admission or extend validation to standalone risk-policy calls.
+
 `RollOrder.legs()` revalidates contract types, distinct same-group contracts,
 and finite nonzero whole quantities with opposite signs at expansion, not only
 construction. Only an `OPEN` roll command can expand into fresh market legs.

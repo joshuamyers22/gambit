@@ -92,6 +92,14 @@ partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies
 govern lifetime; a custom simulator remains responsible for actual fill logic.
 
+Before risk evaluation, rule-return admission rechecks mutable non-roll order
+quantities as finite, nonzero whole units and limit prices as finite real numbers.
+Booleans and numeric strings are rejected; finite negative/zero limit prices are
+valid. One invalid order rejects the complete callback batch before any new risk
+decision or execution. Valid pre-submission edits preserve the original object
+and metadata. This check does not freeze type-specific terms after admission or
+change standalone risk-policy evaluation.
+
 Roll commands are expanded into outgoing and incoming market legs in that order.
 Expansion rechecks distinct contracts in the same group and finite, nonzero,
 whole-unit quantities with opposite signs, even if the command changed after
