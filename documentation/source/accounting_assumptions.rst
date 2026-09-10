@@ -100,6 +100,17 @@ that boundary. FOK orders retain the existing fill window at exactly
 ``j + trade_lag`` and are cancelled on a later heartbeat if still open; this
 engine lifetime policy does not enforce a custom simulator's all-or-none fills.
 
+Each reported fill must have a finite, nonzero whole-unit quantity with the same
+sign as its originating order. The aggregate quantity returned for that order
+by one simulator must not exceed the remaining quantity captured before the
+callback. Opposing fills cannot net against each other to evade that bound.
+These checks apply whether the callback calls ``Order.fill()``, directly assigns
+order state, or leaves fill application to the engine. Valid split fills retain
+callback order. An invalid batch is rejected before account mutation and the
+eligible orders' quantities/statuses are restored; valid fills from earlier
+simulator callbacks are not rolled back. This is a Strategy callback-boundary
+guarantee, not a new validation policy for direct ``Account.add_trades()`` calls.
+
 Earlier general-engine results with ``trade_lag > 1`` may contain premature
 next-heartbeat fills and must be rerun after the eligibility correction. This
 does not change the experimental native execution models.

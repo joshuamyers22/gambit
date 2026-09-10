@@ -50,6 +50,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Market-simulator callbacks now reject opposite-direction fills and aggregate
+  overfills against the remaining quantity captured before callback execution,
+  even when the simulator directly changes order state. Mutable fill quantities
+  are revalidated as finite, nonzero whole units before account mutation.
 - General Strategy execution now withholds orders from every market simulator
   until their configured heartbeat lag has elapsed. Cancellation and DAY expiry
   are processed while orders wait; FOK orders retain their existing eligibility
