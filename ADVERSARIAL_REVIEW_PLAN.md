@@ -121,6 +121,15 @@ an external HDF5 archive and is intentionally not invoked by CI.
   valued identity rejection and existing validation/rollback regressions. These
   are small operation-count fixtures, not a bulk synthetic dataset, wall-clock
   benchmark or evidence for the multi-year/few-seconds target.
+- Strategy roll-identity follow-up: `RollOrder.legs()` used `id(self)` in leg
+  metadata persisted to order/trade records. Otherwise identical strategies
+  could therefore differ solely by Python allocation addresses; resubmitting a
+  command also reused its pairing ID. Strategy admission now assigns stable
+  batch/command ordinals to newly expanded legs, preserving source commands.
+  Tests compare replay records and cover equal-valued rolls, repeated source
+  submissions, rejection, multiple heartbeats/groups and atomic built-in fills.
+  Standalone expansion remains process-local, and these IDs are strategy-scoped,
+  not a global order registry or a full reproducibility certificate.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

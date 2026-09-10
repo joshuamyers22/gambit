@@ -1012,6 +1012,7 @@ class Strategy:
                 contract_group,
                 self.timestamps[idx],
                 pending_orders=tuple(state.order for state in callback_states),
+                roll_id_prefix=f"strategy-roll:{len(self._orders)}",
             )
         except Exception as exc:
             for state in callback_states:
