@@ -45,6 +45,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   lag 0/1/>1, cancellation, DAY/FOK expiration, partial fills, roll legs, multiple
   instruments/simulators, and rejection of reported ineligible fills. Prior
   affected backtests must be rerun; native experimental execution is unchanged.
+- Corrected in the simulator-fill follow-up: a custom callback could bypass
+  `Order.fill` by assigning its own remainder/status, allowing overfills or
+  opposite-sign executions into accounting. Opposite-sign trade rows could
+  also net to an apparently valid fill total. Callback validation now checks
+  every fill's whole-unit quantity and direction, plus the per-order aggregate,
+  against the pre-callback remaining quantity. Regressions include buy/sell,
+  split fills, partial fills, mutation, cancellation, whole-batch rejection and
+  per-callback rollback. Direct account imports and native execution are unchanged.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

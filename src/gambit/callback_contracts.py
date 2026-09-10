@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from gambit.pq_types import ContractGroup, Order, OrderStatus, RollOrder, StopLimitOrder, Trade
+from gambit.pq_types import ContractGroup, Order, OrderStatus, RollOrder, StopLimitOrder, Trade, _whole_quantity
 
 
 def validate_stage_values(result: object, expected_length: int, *, stage: str) -> np.ndarray:
@@ -71,6 +71,7 @@ def validate_market_trades(
         raise TypeError("market simulator must return a sequence of Trade objects")
 
     trades = list(result)
+    filled_quantities: dict[int, int] = {}
     for trade in trades:
         if not isinstance(trade, Trade):
             raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
@@ -80,8 +81,18 @@ def validate_market_trades(
             raise ValueError("market simulator trade contract does not match its order")
         if trade.timestamp != current_timestamp:
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
+        # Trade fields and order state are mutable. Validate against the quantity
+        # captured before the callback, never its possibly modified remainder.
+        quantity = _whole_quantity(trade.qty, field_name="market simulator fill qty")
+        order_id = id(trade.order)
+        original_quantity, _ = original_states[order_id]
+        if (quantity > 0) != (original_quantity > 0):
+            raise ValueError("market simulator fill has the opposite sign to its originating order")
+        filled_quantities[order_id] = filled_quantities.get(order_id, 0) + quantity
+        if abs(filled_quantities[order_id]) > abs(original_quantity):
+            raise ValueError("market simulator fills exceed the originating order remaining quantity")
     for order in open_orders:
-        filled_quantity = sum(trade.qty for trade in trades if trade.order is order)
+        filled_quantity = filled_quantities.get(id(order), 0)
         original_quantity, original_status = original_states[id(order)]
         expected_remaining = original_quantity - filled_quantity
         simulator_did_not_apply_fill = order.qty == original_quantity and order.status is original_status
