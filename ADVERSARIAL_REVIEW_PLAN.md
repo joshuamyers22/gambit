@@ -67,6 +67,12 @@ an external HDF5 archive and is intentionally not invoked by CI.
   execution/submission chronology. Tests preserve prior history and valid
   historical imports with earlier off-grid order timestamps. This is input
   validation, not immutable order identity or full callback-state rollback.
+- Callback ownership follow-up: rule and simulator returns now preserve pending
+  contract/timestamp/time-in-force identity, and risk evaluation is read-only
+  for the protected identity plus quantity/status. Failed or interrupted
+  callbacks restore these fields on captured orders. Rules retain cancellation;
+  simulator fills remain validated separately. This does not freeze metadata,
+  type-specific order terms, contract internals or external callback state.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

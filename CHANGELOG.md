@@ -50,6 +50,13 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Rule, simulator and risk-policy callbacks now preserve protected order identity
+  (contract reference, submission timestamp and time-in-force). Rules retain
+  cancellation support but cannot resize or fill pending orders; risk policies
+  cannot mutate proposed/pending quantities or statuses. Failure or interruption
+  restores the protected identity and lifecycle fields without undoing earlier
+  valid simulator fills. Custom metadata and other unprotected state are outside
+  this scoped rollback guarantee.
 - Simulator-return and direct-account boundaries now revalidate mutable trade
   references and timestamps using the construction-time policy. Fills before
   their originating order, missing submission timestamps, and invalid reference

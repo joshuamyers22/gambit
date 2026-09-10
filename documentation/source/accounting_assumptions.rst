@@ -125,10 +125,24 @@ chronology contract: a trade has a real ``Contract`` and ``Order``, the contract
 matches its order, both timestamps are valid NumPy datetimes, and execution does
 not precede submission. The account still requires the execution timestamp on
 its grid, but a historical order may have an earlier off-grid submission time
-and may already be filled. These checks reject malformed mutable input; they do
-not freeze order references or timestamps. Simulator failure restores eligible
-order quantities/statuses, not arbitrary callback edits to other fields. Use a
-fresh strategy after a failed callback that mutated those fields.
+and may already be filled.
+
+Rule and market-simulator callbacks cannot change a pending order's contract
+reference, submission timestamp (including its NumPy unit), or time-in-force.
+Rules may request or apply cancellation but cannot resize or fill pending orders.
+Simulators may apply fills/cancellations consistent with their validated trade
+results; lag-ineligible orders must remain unchanged. Risk-policy evaluation is
+read-only for these fields plus quantity/status on both proposed and pending
+orders. Violations fail before publishing that callback's results.
+
+On callback failure or interruption, the protected contract reference, timestamp,
+time-in-force, quantity and status are restored to their pre-callback values.
+Previously committed simulator fills remain committed. These are scoped guards,
+not globally frozen objects or an arbitrary-Python sandbox: custom properties,
+reason codes, order-type-specific terms, shared contract internals and external
+callback state are not deep-restored. Other callback kinds and mutation outside
+these boundaries are not covered. Use a fresh strategy after a failed callback
+that changed unprotected state.
 
 Earlier general-engine results with ``trade_lag > 1`` may contain premature
 next-heartbeat fills and must be rerun after the eligibility correction. This

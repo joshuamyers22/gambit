@@ -44,6 +44,13 @@ provenance boundary. It never serializes arbitrary callback objects or claims to
 capture their dependency closure. Execution snapshots retain explicit unresolved
 scope; source inspection stays outside per-event execution.
 
+`order_callback_state` captures the small engine-owned field set exposed to
+rule, simulator and risk-policy callbacks. Orchestrators validate the captured
+identity before accepting callback results and restore those fields on failure.
+It is not a deep snapshot of arbitrary callback or contract state. Rule
+cancellation, validated simulator fills and read-only risk evaluation have
+distinct mutation contracts.
+
 Trade-history reconciliation is isolated in `trade_reconciliation`; it consumes
 trade value objects and must not depend on the mutable `Account` aggregate.
 Whole-unit FIFO dispatch belongs in `pnl_calculation`, keeping the account

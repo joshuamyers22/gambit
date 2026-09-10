@@ -65,6 +65,16 @@ result publication; this does not roll back all earlier callback/account effects
 Use a fresh strategy after a failed run. Arbitrary custom callback mutation of
 its own state is unresolved, not prohibited by this check.
 
+## Callback order ownership
+
+Rule and simulator callbacks must preserve pending orders' contract reference,
+submission timestamp (value and NumPy unit), and time-in-force. Rules may cancel
+pending orders but not resize or fill them. Risk policies must preserve the
+protected identity fields, quantities and statuses of proposed/pending orders.
+Violations now fail closed; callback failure restores these five fields.
+Custom metadata, order-type-specific terms and other external state remain
+outside this scoped rollback contract; this is not global order immutability.
+
 ## Deprecation implementation
 
 Deprecations must include all of the following:
