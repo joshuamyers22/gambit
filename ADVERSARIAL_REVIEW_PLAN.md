@@ -96,6 +96,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   orders, separate rolls, prior accepted decisions and cancellation rollback.
   The check is linear in batch plus pending size, not retained history; no global
   submission-ID or historical replay registry is introduced.
+- Order-reference admission follow-up: a DAY order changed to the string
+  `"DAY"` before rule return was accepted and remained open after midnight,
+  bypassing enum-based expiration. Constructors and rule admission now share
+  contract/timestamp/time-in-force/status type validation. Submission additionally
+  rejects NaT timestamps. Tests cover all executable order types, array-wrapped
+  timestamps, invalid enum substitutes, whole-batch rejection, pending-state
+  restoration and preservation of valid DAY/GTC lifetime behavior. Unscheduled
+  construction remains valid; this is not a global object-immutability guarantee.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

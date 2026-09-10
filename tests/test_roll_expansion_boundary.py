@@ -74,7 +74,10 @@ def test_direct_expansion_rechecks_contract_types(field):
 def test_roll_expansion_cannot_reset_lifecycle(boundary, status):
     group, timestamp, roll = setup_roll()
     roll.status = status
-    with pytest.raises(ValueError, match="only an open roll"):
+    invalid_type_at_admission = boundary == "rule" and not isinstance(status, OrderStatus)
+    exception = TypeError if invalid_type_at_admission else ValueError
+    message = "order status must be an OrderStatus" if invalid_type_at_admission else "only an open roll"
+    with pytest.raises(exception, match=message):
         expand(roll, group, timestamp, boundary)
     assert roll.status is status
 

@@ -50,6 +50,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Rule admission now rechecks mutable contract, timestamp, time-in-force and
+  status types using the constructor policy. String/integer expiry policies
+  can no longer silently bypass DAY/FOK handling; malformed fields reject the
+  batch before risk evaluation. Unscheduled construction remains supported,
+  but submission requires a valid timestamp matching the strategy heartbeat.
 - Rule-return batches now reject repeated order objects and resubmission of
   captured pending orders before risk evaluation. This prevents conflicting
   decisions on the same mutable order and duplicate history entries. Distinct
