@@ -53,6 +53,13 @@ an external HDF5 archive and is intentionally not invoked by CI.
   against the pre-callback remaining quantity. Regressions include buy/sell,
   split fills, partial fills, mutation, cancellation, whole-batch rejection and
   per-callback rollback. Direct account imports and native execution are unchanged.
+- Corrected in the trade-numerics follow-up: mutable trade price/fee/commission
+  fields could bypass constructor validation and propagate NaN or infinity into
+  accounting. Direct imports could also silently truncate mutated fractional
+  quantities. Construction, simulator-return validation and `Account.add_trades`
+  now share numeric checks. Regression tests cover whole-batch rejection,
+  preservation of prior history/valuation, and valid negative prices/rebates.
+  This does not add Strategy order-execution policy to direct account imports.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

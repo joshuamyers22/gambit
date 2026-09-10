@@ -111,6 +111,15 @@ eligible orders' quantities/statuses are restored; valid fills from earlier
 simulator callbacks are not rolled back. This is a Strategy callback-boundary
 guarantee, not a new validation policy for direct ``Account.add_trades()`` calls.
 
+Trade numeric fields remain mutable, so both the simulator-return boundary and
+``Account.add_trades()`` recheck their construction-time invariants: quantities
+are finite, nonzero whole units; price, fee and commission are finite real
+numbers, not booleans or numeric strings. Finite negative prices and negative
+charges (rebates) are permitted. A direct-import batch with invalid numbers is
+rejected before any ledger updates, preserving earlier history and valuation.
+This does not make direct account imports enforce the Strategy's execution-lag,
+remaining-order-quantity, or fill-direction policies.
+
 Earlier general-engine results with ``trade_lag > 1`` may contain premature
 next-heartbeat fills and must be rerun after the eligibility correction. This
 does not change the experimental native execution models.

@@ -6,7 +6,15 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from gambit.pq_types import ContractGroup, Order, OrderStatus, RollOrder, StopLimitOrder, Trade, _whole_quantity
+from gambit.pq_types import (
+    ContractGroup,
+    Order,
+    OrderStatus,
+    RollOrder,
+    StopLimitOrder,
+    Trade,
+    _validated_trade_numbers,
+)
 
 
 def validate_stage_values(result: object, expected_length: int, *, stage: str) -> np.ndarray:
@@ -83,7 +91,7 @@ def validate_market_trades(
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
         # Trade fields and order state are mutable. Validate against the quantity
         # captured before the callback, never its possibly modified remainder.
-        quantity = _whole_quantity(trade.qty, field_name="market simulator fill qty")
+        quantity, _, _, _ = _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
         order_id = id(trade.order)
         original_quantity, _ = original_states[order_id]
         if (quantity > 0) != (original_quantity > 0):

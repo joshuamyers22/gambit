@@ -114,7 +114,7 @@ def test_mutated_trade_quantity_is_revalidated_at_callback_boundary(quantity):
     strategy, order = setup_order()
     trade = Trade(order.contract, order, strategy.timestamps[0], 1, 100)
     trade.qty = quantity
-    with pytest.raises(ValueError, match="fill qty must be finite and nonzero, in whole"):
+    with pytest.raises(ValueError, match="trade qty must be finite and nonzero, in whole"):
         validate_market_trades([trade], [order], strategy.timestamps[0], {id(order): (2, OrderStatus.OPEN)})
     assert order.qty == 2 and order.status is OrderStatus.OPEN
 
