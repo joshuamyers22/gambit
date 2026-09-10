@@ -50,6 +50,17 @@ Whole-unit FIFO dispatch belongs in `pnl_calculation`, keeping the account
 aggregate independent of compiled-kernel details. `Trade` rejects fractional
 quantities before they can reach accounting.
 
+The general Python strategy uses `sparse_iterations` for rule scheduling and
+legacy debugging buckets. Logical length still matches the timestamp array;
+only populated indices retain lists. Rule and contract-group insertion order is
+preserved within each timestamp. Execution still visits every timestamp to
+process pending orders, including timestamps without scheduled rules.
+`Account.trades()` remains the canonical trade history; debugging buckets do
+not replace it. This removes empty per-timestamp list storage, not all linear
+memory costs: timestamps, signal copies, populated rule entries, and retained
+account histories still grow with the workload. Dense rule activity may cost
+more than dense lists because populated indices also need dictionary entries.
+
 ## Edges and composition
 
 `factor_cli`, `pq_io`, `factor_store`, `return_reporting`, `interactive_plot`,
