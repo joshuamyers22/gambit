@@ -20,6 +20,10 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Simulator fill membership and engine-applied fill totals now use batch-local
+  identity indexes instead of repeated order/trade scans. These bookkeeping
+  steps are linear in orders plus fills, preserving validation, callback order
+  and rollback behavior. This is not an end-to-end backtest performance claim.
 - General Python strategy scheduling and legacy debugging buckets now retain
   lists only for populated timestamps. Timestamp length, callback ordering, and
   canonical account history are unchanged. Internal bucket containers are now

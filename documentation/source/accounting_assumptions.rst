@@ -145,6 +145,12 @@ eligible orders' quantities/statuses are restored; valid fills from earlier
 simulator callbacks are not rolled back. This is a Strategy callback-boundary
 guarantee, not a new validation policy for direct ``Account.add_trades()`` calls.
 
+Membership checks use originating-order identity, not value equality. The
+engine indexes eligible identities and aggregates reported quantities once per
+batch, then applies any unapplied fills in eligible-order order. Returned trade
+ordering and all fill validation remain unchanged. These bookkeeping steps do
+not scan retained history; accounting and callback costs remain separate.
+
 Trade numeric fields remain mutable, so both the simulator-return boundary and
 ``Account.add_trades()`` recheck their construction-time invariants: quantities
 are finite, nonzero whole units; price, fee and commission are finite real

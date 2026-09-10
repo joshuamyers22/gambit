@@ -1081,8 +1081,13 @@ class Strategy:
                     self.timestamps[i],
                     {id(order): (qty, status) for order, qty, status in order_states},
                 )
+                reported_fills: dict[int, int] = {}
+                for trade in trades:
+                    order_id = id(trade.order)
+                    # The complete batch has already passed whole-unit checks.
+                    reported_fills[order_id] = reported_fills.get(order_id, 0) + int(trade.qty)
                 for order, original_quantity, _status in order_states:
-                    reported_fill = sum(trade.qty for trade in trades if trade.order is order)
+                    reported_fill = reported_fills.get(id(order), 0)
                     if order.qty == original_quantity and reported_fill:
                         order.fill(reported_fill)
 
