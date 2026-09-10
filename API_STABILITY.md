@@ -85,6 +85,20 @@ backup or fails when none is configured. Trigger timing and fill quantities are
 unchanged. This is not an exchange-session calendar, streaming VWAP optimization,
 or a guarantee that user-supplied indicators themselves are free of look-ahead.
 
+## Strategy roll identity
+
+Roll legs expanded through `Strategy` receive matching private
+`_gambit_roll_id` metadata derived from the number of previously recorded order
+legs/proposals and the command position in the current callback batch. Identical
+submission sequences produce identical IDs without memory addresses; separate
+rolls, including repeated submissions of one source command, get separate pairs.
+Risk-rejected orders still count toward subsequent submission positions.
+IDs are scoped to one strategy, not globally unique across accounts or runs.
+Source commands remain unchanged. Standalone `RollOrder.legs()` and rule
+validation without a strategy prefix retain their existing process-local
+identity; do not treat those IDs as stable replay identifiers. User metadata,
+callback state and timing telemetry may still differ across runs.
+
 ## Callback order ownership
 
 Rule admission rechecks a real `Contract`, a NumPy datetime scalar and actual

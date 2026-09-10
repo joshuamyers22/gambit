@@ -43,6 +43,7 @@ def validate_rule_orders(
     current_timestamp: object,
     *,
     pending_orders: Sequence[Order] = (),
+    roll_id_prefix: str | None = None,
 ) -> list[Order]:
     """Validate and normalize one rule callback result."""
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
@@ -51,7 +52,7 @@ def validate_rule_orders(
     submitted = list(result)
     seen_order_ids = {id(order) for order in pending_orders}
     orders: list[Order] = []
-    for order in submitted:
+    for submission_index, order in enumerate(submitted):
         if not isinstance(order, Order):
             raise TypeError(f"rule callback returned a non-Order value: {order!r}")
         if id(order) in seen_order_ids:
@@ -80,7 +81,13 @@ def validate_rule_orders(
             reopen_registered = contract_group.contracts.get(order.reopen_contract.symbol)
             if reopen_registered is not order.reopen_contract:
                 raise ValueError(f"rule returned an unregistered roll contract: {order.reopen_contract.symbol}")
-            orders.extend(order.legs())
+            legs = order.legs()
+            if roll_id_prefix is not None:
+                # Strategy supplies a stable batch ordinal. Assign IDs only to
+                # fresh expanded legs, never mutate the source roll command.
+                for leg in legs:
+                    leg.properties._gambit_roll_id = f"{roll_id_prefix}:{submission_index}"
+            orders.extend(legs)
         else:
             orders.append(order)
     return orders

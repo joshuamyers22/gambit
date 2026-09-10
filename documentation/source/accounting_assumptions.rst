@@ -126,6 +126,13 @@ invalid roll rejects the entire rule-return batch before risk decisions or
 accounting. This validation does not guarantee all-or-none execution across
 custom simulators or independent risk decisions on the expanded legs.
 
+Strategy assigns each expanded roll pair a stable private ID from submission
+order, not a Python address. The two legs share the ID; separate submissions get
+different IDs, including reusing the same source command in a later callback.
+These IDs are local to one strategy and depend on the complete submission
+sequence, including rejected proposals. Direct standalone leg expansion retains
+process-local IDs. Neither form is an exchange order ID or global replay key.
+
 Cancellation requests are acknowledged on the next market-simulation pass,
 including while an order is waiting out its lag. DAY orders expire when the
 heartbeat's NumPy calendar date advances past the submission date, even before

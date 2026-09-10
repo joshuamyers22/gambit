@@ -54,6 +54,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Strategy-expanded roll pairs now receive deterministic, strategy-local
+  submission IDs instead of Python memory addresses. Replays preserve roll
+  metadata, and separate submissions retain separate pairs even when reusing
+  a source roll command. Standalone leg expansion remains process-local.
 - VWAP fills forced before their requested end time at a calendar-day boundary
   now use only observations at or before execution. Future prices and volumes
   previously leaked into the fill price and P&L. Affected historical VWAP
