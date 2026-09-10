@@ -109,8 +109,8 @@ def test_portfolio_executes_sparse_buckets_in_the_same_order():
                      for name in strategy.rule_names for group in strategy.contract_groups]
 
 
-def test_pending_order_fills_on_timestamp_without_scheduled_rules():
-    lag = 1
+@pytest.mark.parametrize("lag", [1, 3])
+def test_pending_order_fills_on_timestamp_without_scheduled_rules(lag):
     strategy, _ = make_strategy(lag=lag, count=7)
     group = strategy.contract_groups[0]
     contract = Contract.create("SPARSE-PENDING", group)
