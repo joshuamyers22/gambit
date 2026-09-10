@@ -523,7 +523,9 @@ class VWAPMarketSimulator:
                 and not timestamps[i + 1].astype("M8[D]") > timestamps[i].astype("M8[D]")
             ):
                 continue
-            mask = (price_ind > 0) & (volume_ind > 0)
+            # Day-end/final-heartbeat execution can precede the requested end.
+            # Never price that fill from observations after its own timestamp.
+            mask = (price_ind > 0) & (volume_ind > 0) & (timestamps <= timestamp)
             if end_order:
                 mask &= (timestamps >= order.timestamp) & (timestamps <= timestamp)
             else:
