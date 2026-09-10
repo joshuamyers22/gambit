@@ -80,6 +80,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   Tests cover direct/rule expansion, both directions, invalid terms, valid
   unequal-sized rolls and whole-rule-batch rejection before risk/accounting.
   This does not add cross-policy/custom-simulator atomic roll execution.
+- Order-numeric admission follow-up: a rule could mutate a constructed order's
+  quantity to NaN, pass rule validation and receive acceptance from the maximum
+  quantity policy. Infinite mutated limits were also admitted. Rule returns now
+  share constructor checks for ordinary quantities and limit prices before any
+  batch member reaches risk evaluation. Tests cover market/limit/VWAP orders,
+  invalid-batch rejection, cancellation rollback and valid signed/NumPy values.
+  Standalone risk calls and post-admission type-specific term mutation are outside
+  this boundary; no bulk synthetic performance data was generated.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

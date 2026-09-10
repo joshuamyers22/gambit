@@ -50,6 +50,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Rule submission now rechecks mutable order quantities and limit prices using
+  constructor numeric validation, before risk evaluation. NaN/Inf, fractional
+  or zero quantities, booleans and numeric strings cannot bypass admission;
+  invalid batches are rejected in full. Finite negative/zero limits remain valid.
 - Roll expansion now rechecks mutable contract and quantity terms using the
   construction-time policy. Same-direction legs, identical/cross-group contracts
   and invalid quantities fail before submission. Non-open roll commands cannot

@@ -8,13 +8,16 @@ import numpy as np
 
 from gambit.pq_types import (
     ContractGroup,
+    LimitOrder,
     Order,
     OrderStatus,
     RollOrder,
     StopLimitOrder,
     Trade,
+    _finite_real,
     _validate_trade_references,
     _validated_trade_numbers,
+    _whole_quantity,
 )
 
 
@@ -52,6 +55,12 @@ def validate_rule_orders(
                 "StopLimitOrder is deprecated and cannot be executed; emit a MarketOrder or "
                 "LimitOrder from an explicit trigger rule"
             )
+        # Constructors are not a trust boundary: a rule can mutate these fields
+        # before returning. Roll quantities are checked during leg expansion.
+        if not isinstance(order, RollOrder):
+            _whole_quantity(order.qty, field_name="order qty")
+        if isinstance(order, LimitOrder):
+            _finite_real(order.limit_price, field_name="limit price")
         if order.contract.contract_group is not contract_group:
             raise ValueError(f"rule returned {order.contract.symbol} outside contract group {contract_group.name}")
         registered = contract_group.contracts.get(order.contract.symbol)
