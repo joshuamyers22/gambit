@@ -88,6 +88,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   invalid-batch rejection, cancellation rollback and valid signed/NumPy values.
   Standalone risk calls and post-admission type-specific term mutation are outside
   this boundary; no bulk synthetic performance data was generated.
+- Order-aliasing admission follow-up: returning the same two-unit order twice
+  under a three-unit position cap recorded acceptance followed by rejection;
+  rejecting the second occurrence cancelled the accepted object and duplicated
+  its history entry. Rule admission now rejects repeated object identities and
+  objects captured in the pre-callback pending set. Tests retain distinct equal
+  orders, separate rolls, prior accepted decisions and cancellation rollback.
+  The check is linear in batch plus pending size, not retained history; no global
+  submission-ID or historical replay registry is introduced.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

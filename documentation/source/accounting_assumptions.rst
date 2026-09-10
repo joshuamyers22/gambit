@@ -92,6 +92,14 @@ partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies
 govern lifetime; a custom simulator remains responsible for actual fill logic.
 
+A rule must not return the same order object twice or return an order captured
+in its initial pending-order set. Cancelling a pending order does not permit
+resubmission of that object in the same callback. Such aliases reject the whole
+batch before new risk decisions; previously committed decisions remain intact.
+Distinct objects with identical terms are legitimate independent proposals.
+This check uses object identity, not value equality or a persistent order ID;
+historical resubmission outside the captured pending set is not covered.
+
 Before risk evaluation, rule-return admission rechecks mutable non-roll order
 quantities as finite, nonzero whole units and limit prices as finite real numbers.
 Booleans and numeric strings are rejected; finite negative/zero limit prices are

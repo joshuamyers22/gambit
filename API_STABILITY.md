@@ -67,6 +67,14 @@ its own state is unresolved, not prohibited by this check.
 
 ## Callback order ownership
 
+One rule-return batch may contain each order object only once and may not return
+an order that was pending when the callback began, even after cancelling it.
+Violations reject the whole batch before risk evaluation and restore protected
+pending fields. Return a newly constructed order for a new submission; distinct
+objects with identical values are supported. Identity checking is local to the
+batch and captured pending set, not a persistent order-ID/replay registry or a
+historical resubmission guarantee. It does not scan retained order history.
+
 Rule-return admission rechecks non-roll order quantities as finite, nonzero whole
 units and `LimitOrder.limit_price` as a finite real number. Booleans and numeric
 strings are invalid. An invalid order rejects its entire callback batch before

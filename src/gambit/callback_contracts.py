@@ -40,16 +40,22 @@ def validate_rule_orders(
     result: object,
     contract_group: ContractGroup,
     current_timestamp: object,
+    *,
+    pending_orders: Sequence[Order] = (),
 ) -> list[Order]:
     """Validate and normalize one rule callback result."""
     if not isinstance(result, Sequence) or isinstance(result, (str, bytes)):
         raise TypeError("rule callback must return a sequence of Order objects")
 
     submitted = list(result)
+    seen_order_ids = {id(order) for order in pending_orders}
     orders: list[Order] = []
     for order in submitted:
         if not isinstance(order, Order):
             raise TypeError(f"rule callback returned a non-Order value: {order!r}")
+        if id(order) in seen_order_ids:
+            raise ValueError("rule returned a duplicate or already-pending order object")
+        seen_order_ids.add(id(order))
         if isinstance(order, StopLimitOrder):
             raise ValueError(
                 "StopLimitOrder is deprecated and cannot be executed; emit a MarketOrder or "
