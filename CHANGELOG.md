@@ -50,6 +50,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- General Strategy execution now withholds orders from every market simulator
+  until their configured heartbeat lag has elapsed. Cancellation and DAY expiry
+  are processed while orders wait; FOK orders retain their existing eligibility
+  window. Earlier results with lag greater than one may contain premature fills
+  and should be rerun. Native experimental execution models are unchanged.
 - Run configuration now rejects fractional/nonfinite integer settings, non-boolean
   flags, invalid equity types and duplicate YAML keys. Strategy runs capture actual
   runtime options and ordered execution-component descriptions, with unresolved

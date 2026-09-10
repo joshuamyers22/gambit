@@ -34,15 +34,17 @@ an external HDF5 archive and is intentionally not invoked by CI.
 - Replaced per-timestamp empty order/debug lists with sparse buckets. This is
   not a bounded-memory engine: signal arrays, active rule entries and account
   history remain resident. No bulk synthetic performance dataset was generated.
-- Open correctness finding: `Strategy._sim_market` does not exclude orders
-  younger than `trade_lag` from simulator input. Its early `continue` applies
+- Corrected in the execution-lag follow-up: `Strategy._sim_market` did not exclude orders
+  younger than `trade_lag` from simulator input. Its early `continue` applied
   only to the lifecycle loop, after which all open orders reach the simulator.
   With seven one-minute timestamps beginning at 09:30, a market order emitted
   at index 1 and `trade_lag=3` fills at index 2 (09:32), not index 4 (09:34),
-  using `SimpleMarketSimulator` and a constant price. This reproduces with
-  both sparse buckets and a dense-list schedule. Fix eligibility in a separate
-  correctness change, testing lag 0/1/>1, cancellation, DAY/FOK expiration,
-  partial fills, and multiple simulator callbacks before trusting delayed fills.
+  using `SimpleMarketSimulator` and a constant price. This reproduced with
+  both sparse buckets and a dense-list schedule. Every simulator now receives
+  only eligible open orders; pending orders remain queued. Regressions cover
+  lag 0/1/>1, cancellation, DAY/FOK expiration, partial fills, roll legs, multiple
+  instruments/simulators, and rejection of reported ineligible fills. Prior
+  affected backtests must be rerun; native experimental execution is unchanged.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

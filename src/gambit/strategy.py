@@ -1022,6 +1022,7 @@ class Strategy:
         """
         Go through all open orders and run market simulators to generate a list of trades and return any orders that were not filled.
         """
+        eligible_order_ids: set[int] = set()
         for order in self._current_orders:
             idx = np.searchsorted(self.timestamps, order.timestamp)
             assert_(
@@ -1029,12 +1030,7 @@ class Strategy:
                 f"{i} {idx} {len(self.timestamps)} {order.timestamp}",
             )
 
-            if (i - idx) < self.trade_lag:
-                continue
-            if (i - idx) > self.trade_lag:
-                if order.time_in_force == TimeInForce.FOK:
-                    order.cancel()
-                    continue
+            # Cancellation and DAY expiry do not wait for execution eligibility.
             if order.status == OrderStatus.CANCEL_REQUESTED:
                 order.cancel()
 
@@ -1042,12 +1038,20 @@ class Strategy:
                 if self.timestamps[i].astype("M8[D]") > order.timestamp.astype("M8[D]"):
                     order.cancel()
 
+            age = i - idx
+            if age > self.trade_lag and order.time_in_force == TimeInForce.FOK:
+                order.cancel()
+            if age >= self.trade_lag and order.is_open():
+                eligible_order_ids.add(id(order))
+
         for market_sim_function in self.market_sims:
             order_states: list[tuple[Order, float, OrderStatus]] = []
             try:
                 self._update_current_orders()
-                order_states = [(order, order.qty, order.status) for order in self._current_orders]
-                current_orders = tuple(self._current_orders)
+                # Retain waiting orders in the pending queue. Rebuild the eligible
+                # view after each simulator so completed fills cannot execute twice.
+                current_orders = tuple(order for order in self._current_orders if id(order) in eligible_order_ids)
+                order_states = [(order, order.qty, order.status) for order in current_orders]
 
                 trades = validate_market_trades(
                     market_sim_function(

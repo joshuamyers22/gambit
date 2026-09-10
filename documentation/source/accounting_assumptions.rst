@@ -77,6 +77,13 @@ another interval depending on the input grid. Same-bar execution with lag zero
 is only causally valid when the execution price was available after the decision
 or comes from a separately modeled quote.
 
+An order submitted at heartbeat index ``j`` cannot reach a market simulator
+before index ``j + trade_lag``. Orders still waiting at the end of the run are
+not force-filled. Each simulator receives only eligible, still-open orders in
+submission order; partial fills remain eligible on later heartbeats without
+restarting the lag. Callbacks still run with an empty order tuple when no orders
+are eligible. The account accepts reported fills only for the eligible tuple.
+
 Order-state assumptions
 -----------------------
 
@@ -84,6 +91,18 @@ Orders begin open. Fills reduce their remaining quantity and move them to
 partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies
 govern lifetime; a custom simulator remains responsible for actual fill logic.
+
+Cancellation requests are acknowledged on the next market-simulation pass,
+including while an order is waiting out its lag. DAY orders expire when the
+heartbeat's NumPy calendar date advances past the submission date, even before
+eligibility; this is not an exchange-session calendar. GTC orders can wait across
+that boundary. FOK orders retain the existing fill window at exactly
+``j + trade_lag`` and are cancelled on a later heartbeat if still open; this
+engine lifetime policy does not enforce a custom simulator's all-or-none fills.
+
+Earlier general-engine results with ``trade_lag > 1`` may contain premature
+next-heartbeat fills and must be rerun after the eligibility correction. This
+does not change the experimental native execution models.
 
 The result's trade rows contain executed quantities. An order object's quantity
 is mutable remaining quantity, so order output should be interpreted alongside
