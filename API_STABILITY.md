@@ -67,6 +67,14 @@ its own state is unresolved, not prohibited by this check.
 
 ## Callback order ownership
 
+`RollOrder.legs()` revalidates contract types, distinct same-group contracts,
+and finite nonzero whole quantities with opposite signs at expansion, not only
+construction. Only an `OPEN` roll command can expand into fresh market legs.
+Rules returning invalid rolls now fail before their batch reaches risk decisions
+or accounting; fix the command and rerun with a fresh strategy. Unequal-sized
+and valid pre-submission edits remain supported. This does not make roll terms
+immutable or add all-or-none execution across custom simulators/risk policies.
+
 Rule and simulator callbacks must preserve pending orders' contract reference,
 submission timestamp (value and NumPy unit), and time-in-force. Rules may cancel
 pending orders but not resize or fill them. Risk policies must preserve the

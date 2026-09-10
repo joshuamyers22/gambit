@@ -73,6 +73,13 @@ an external HDF5 archive and is intentionally not invoked by CI.
   callbacks restore these fields on captured orders. Rules retain cancellation;
   simulator fills remain validated separately. This does not freeze metadata,
   type-specific order terms, contract internals or external callback state.
+- Roll expansion follow-up: changing a valid roll's reopening quantity from
+  +2 to -2 after construction produced two sell legs (-2, -2) at the rule
+  boundary. Expansion now shares the constructor's contract/quantity validation
+  and rejects non-open commands instead of reviving them as fresh open legs.
+  Tests cover direct/rule expansion, both directions, invalid terms, valid
+  unequal-sized rolls and whole-rule-batch rejection before risk/accounting.
+  This does not add cross-policy/custom-simulator atomic roll execution.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

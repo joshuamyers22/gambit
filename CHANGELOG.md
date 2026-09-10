@@ -50,6 +50,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Roll expansion now rechecks mutable contract and quantity terms using the
+  construction-time policy. Same-direction legs, identical/cross-group contracts
+  and invalid quantities fail before submission. Non-open roll commands cannot
+  be expanded into fresh open legs. Valid unequal-sized rolls remain supported.
 - Rule, simulator and risk-policy callbacks now preserve protected order identity
   (contract reference, submission timestamp and time-in-force). Rules retain
   cancellation support but cannot resize or fill pending orders; risk policies
