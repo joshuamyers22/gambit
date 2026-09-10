@@ -19,6 +19,9 @@ modules, and undocumented attributes are internal.
 - Persisted `BacktestResult` bundles have their own integer format version.
   Unsupported versions fail closed; migration must be explicit rather than
   silently interpreting an older schema.
+  Writers now emit version 3; readers explicitly support version 2's existing
+  frame schema and legacy provenance as well. Missing historical execution
+  manifests remain absent, not reconstructed from current registrations.
 
 ## Experimental native APIs
 
@@ -28,6 +31,27 @@ in the root namespace are convenient for discovery; this does not make their
 storage layout, publication protocol, or concurrency contract stable. Production
 promotion requires the correctness, sanitizer, crash-recovery, and performance
 gates in `ADVERSARIAL_REVIEW_PLAN.md`.
+
+`gambit.tick_backtest.TopOfBookBacktester`, its market/FIFO execution models and
+book/queue record layouts are also experimental, not general Strategy backends.
+
+## Execution provenance
+
+`Strategy.capture_execution_provenance()` snapshots current runtime options,
+ordered component descriptions and the stage graph. `run()` calls it before
+execution. Registration alone does not finalize a snapshot; recapture after edits.
+Source hashes and dataclass parameters do not capture arbitrary callback state,
+closures, globals, external data or transitive dependencies. The manifest lists
+unresolved scope and must not be treated as a complete reproducibility certificate.
+Result provenance is detached from later registrations or parameter changes.
+
+Invalid option types and duplicate YAML keys now fail at the configuration
+boundary. Before-run changes to the existing runtime lag/log/final-calculation
+attributes are validated and captured. Accounting initialization cannot be
+changed in place. Detected mid-run option/provenance/registration drift prevents
+result publication; this does not roll back all earlier callback/account effects.
+Use a fresh strategy after a failed run. Arbitrary custom callback mutation of
+its own state is unresolved, not prohibited by this check.
 
 ## Deprecation implementation
 

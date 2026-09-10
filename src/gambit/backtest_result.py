@@ -16,7 +16,7 @@ import polars as pl
 from gambit.configuration import RunConfiguration, RunProvenance
 
 BUNDLE_FORMAT = "gambit.backtest-result"
-BUNDLE_VERSION = 2
+BUNDLE_VERSION = 3
 _FRAME_NAMES = (
     "trades",
     "orders",
@@ -281,7 +281,7 @@ class BacktestResult:
             manifest = json.loads((source_path / "manifest.json").read_bytes())
         except (OSError, json.JSONDecodeError) as error:
             raise BacktestBundleError(f"cannot read result manifest: {source_path}") from error
-        if manifest.get("format") != BUNDLE_FORMAT or manifest.get("version") != BUNDLE_VERSION:
+        if manifest.get("format") != BUNDLE_FORMAT or manifest.get("version") not in (2, BUNDLE_VERSION):
             raise BacktestBundleError("unsupported backtest result bundle format or version")
 
         frames: dict[str, pl.DataFrame] = {}
@@ -309,6 +309,8 @@ class BacktestResult:
                 package_version=provenance_data["package_version"],
                 git_commit=provenance_data["git_commit"],
                 captured_at=datetime.fromisoformat(provenance_data["captured_at"]),
+                execution_manifest_json=(json.dumps(provenance_data["execution_manifest"], allow_nan=False)
+                                         if "execution_manifest" in provenance_data else None),
             )
             if provenance.configuration.digest != provenance_data["configuration_digest"]:
                 raise BacktestBundleError("configuration digest mismatch")

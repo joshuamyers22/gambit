@@ -129,6 +129,7 @@ files = [
   "src/gambit/factor_store.py",
   "src/gambit/holiday_calendars.py",
   "src/gambit/execution_costs.py",
+  "src/gambit/execution_identity.py",
   "src/gambit/evaluator.py",
   "src/gambit/instruments.py",
   "src/gambit/interactive_plot.py",

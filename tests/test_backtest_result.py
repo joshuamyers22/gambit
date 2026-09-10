@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Sequence
@@ -60,6 +61,121 @@ def _strategy(*, reject: bool = False) -> Strategy:
 
         strategy.add_risk_policy(MaxOrderQuantity(0.5))
     return strategy
+
+
+def test_run_records_actual_pre_run_settings_and_policy_parameters():
+    from gambit.risk import MaxOrderQuantity
+
+    strategy = _strategy()
+    original = strategy.capture_execution_provenance()
+    strategy.trade_lag = 1
+    strategy.add_risk_policy(MaxOrderQuantity(2))
+    result = strategy.run()
+    assert result.provenance.configuration.trade_lag == 1
+    assert result.provenance.run_fingerprint != original.run_fingerprint
+    manifest = result.provenance.snapshot()["execution_manifest"]
+    policies = [component for component in manifest["components"] if component["role"] == "risk"]
+    assert policies[0]["description"]["parameters"]["maximum"] == 2
+    assert manifest["unresolved_scope"]
+    assert original.configuration.trade_lag == 0
+    manifest["components"].clear()
+    assert result.provenance.snapshot()["execution_manifest"]["components"]
+
+
+def test_execution_identity_changes_with_policy_order_and_parameters():
+    from gambit.risk import MaxOrderQuantity, MaxPositionQuantity
+
+    strategy = _strategy()
+    strategy.add_risk_policy(MaxOrderQuantity(2))
+    strategy.add_risk_policy(MaxPositionQuantity(3))
+    first = strategy.capture_execution_provenance().run_fingerprint
+    assert first == strategy.capture_execution_provenance().run_fingerprint
+    strategy.risk_policies.reverse()
+    second = strategy.capture_execution_provenance().run_fingerprint
+    assert first != second
+    strategy.risk_policies[-1] = MaxOrderQuantity(4)
+    assert second != strategy.capture_execution_provenance().run_fingerprint
+
+
+def test_invalid_runtime_settings_fail_before_any_orders():
+    strategy = _strategy()
+    strategy.trade_lag = float("nan")
+    with pytest.raises(TypeError, match="trade_lag"):
+        strategy.run()
+    assert strategy.account.trade_count == 0
+
+
+def test_strategy_passes_normalized_configuration_to_account():
+    strategy = Strategy(np.array(["2024-01-01"], dtype="datetime64[D]"), [ContractGroup.get("normalized")],
+                        lambda *args: 10.0, starting_equity=np.float32(100), pnl_calc_time=np.int64(10))
+    assert strategy.account.starting_equity == 100.0
+    assert strategy.capture_execution_provenance().configuration.digest
+
+
+def test_configuration_mutation_during_callback_cannot_publish_success():
+    strategy = _strategy()
+    original = strategy.run_signals
+
+    def mutate():
+        original()
+        strategy.trade_lag = 1
+
+    strategy.run_signals = mutate
+    with pytest.raises(RuntimeError, match="changed during the run"):
+        strategy.run()
+    assert strategy.account.trade_count == 0
+    assert not strategy._running
+
+
+def test_registration_mutation_during_callback_cannot_publish_success():
+    from gambit.risk import MaxOrderQuantity
+
+    strategy = _strategy()
+    original = strategy.run_signals
+
+    def mutate():
+        original()
+        strategy.risk_policies.append(MaxOrderQuantity(2))
+
+    strategy.run_signals = mutate
+    with pytest.raises(RuntimeError, match="registration"):
+        strategy.run()
+    assert strategy.account.trade_count == 0
+
+
+def test_accounting_configuration_drift_requires_new_strategy():
+    strategy = _strategy()
+    strategy.account.starting_equity = 5
+    with pytest.raises(ValueError, match="accounting configuration changed"):
+        strategy.run()
+
+
+def test_legacy_v2_bundle_without_execution_manifest_remains_readable(tmp_path):
+    strategy = _strategy()
+    result = strategy.run()
+    legacy_provenance = replace(result.provenance, execution_manifest_json=None)
+    path = tmp_path / "legacy"
+    result.save(path)
+    manifest_path = path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["version"] = 2
+    manifest["provenance"] = legacy_provenance.snapshot()
+    manifest_path.write_text(json.dumps(manifest))
+    restored = BacktestResult.load(path)
+    assert restored.provenance.snapshot() == legacy_provenance.snapshot()
+
+
+def test_execution_manifest_tampering_is_detected(tmp_path):
+    result = _strategy().run()
+    path = tmp_path / "tampered"
+    result.save(path)
+    manifest_path = path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    assert manifest["version"] == 3
+    manifest["provenance"]["execution_manifest"]["components"] = []
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(BacktestBundleError, match="provenance fingerprint"):
+        BacktestResult.load(path)
 
 
 def test_run_returns_detached_result_and_telemetry() -> None:

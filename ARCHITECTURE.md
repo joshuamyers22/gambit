@@ -39,6 +39,11 @@ in stateless collaborators such as `strategy_contracts` and
 receive external behavior as callables or protocols and should not add direct
 filesystem, subprocess, or UI operations.
 
+`execution_identity` describes declared component source and parameters at the
+provenance boundary. It never serializes arbitrary callback objects or claims to
+capture their dependency closure. Execution snapshots retain explicit unresolved
+scope; source inspection stays outside per-event execution.
+
 Trade-history reconciliation is isolated in `trade_reconciliation`; it consumes
 trade value objects and must not depend on the mutable `Account` aggregate.
 Whole-unit FIFO dispatch belongs in `pnl_calculation`, keeping the account

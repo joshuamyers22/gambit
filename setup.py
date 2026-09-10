@@ -104,6 +104,9 @@ def _extensions() -> list[Extension]:
     cython_pnl = cythonize(
         [pnl_extension],
         compiler_directives={"language_level": "3"},
+        # Generated NumPy declarations depend on the isolated build environment.
+        # A newer .cpp from another Python/NumPy build is not a valid cache key.
+        force=True,
     )[0]
     return [*native_extensions, cython_pnl]
 

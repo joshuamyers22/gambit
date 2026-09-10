@@ -45,6 +45,13 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Run configuration now rejects fractional/nonfinite integer settings, non-boolean
+  flags, invalid equity types and duplicate YAML keys. Strategy runs capture actual
+  runtime options and ordered execution-component descriptions, with unresolved
+  callback dependencies explicit; detected mid-run drift prevents result publication.
+  Result bundles now write format 3 and retain explicit format-2 reading support.
+- Regenerate Cython P&L code for each isolated build so cached declarations from
+  another Python/NumPy environment cannot break native compilation.
 - Trading-day offsets now reject date and timestamp overflow instead of wrapping
   into incorrect dates, and preserve valid timestamps at the nanosecond limits.
 - Trading-day offsets now require integer counts for every roll mode, preventing

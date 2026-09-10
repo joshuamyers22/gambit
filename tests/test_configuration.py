@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import numpy as np
 import polars as pl
 import pytest
 
@@ -50,3 +51,54 @@ def test_run_fingerprint_excludes_capture_time_but_includes_inputs() -> None:
     assert dict(first.input_fingerprints) == {}
     assert updated.snapshot()["configuration_digest"] == config.digest
     assert updated.snapshot()["input_fingerprints"] == {"prices": "123"}
+
+
+@pytest.mark.parametrize("field", ["trade_lag", "pnl_calc_time"])
+@pytest.mark.parametrize("value", [True, False, 0.5, 1.0, float("nan"), float("inf"), "1", None])
+def test_integer_configuration_fields_reject_wrong_types(field, value):
+    with pytest.raises(TypeError, match=field):
+        RunConfiguration(**{field: value})
+
+
+@pytest.mark.parametrize("field", ["run_final_calc", "log_orders", "log_trades"])
+@pytest.mark.parametrize("value", [0, 1, "false", "true", None, np.bool_(True)])
+def test_boolean_configuration_fields_require_actual_booleans(field, value):
+    with pytest.raises(TypeError, match=field):
+        RunConfiguration(**{field: value})
+
+
+@pytest.mark.parametrize("value", [True, "100", None, 1j])
+def test_equity_configuration_rejects_wrong_types(value):
+    with pytest.raises(TypeError, match="starting_equity"):
+        RunConfiguration(starting_equity=value)
+
+
+@pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), 10**1000])
+def test_equity_configuration_rejects_invalid_numbers(value):
+    with pytest.raises(ValueError, match="starting_equity"):
+        RunConfiguration(starting_equity=value)
+
+
+def test_configuration_normalizes_numpy_numbers_for_json():
+    configuration = RunConfiguration(starting_equity=np.float32(100), trade_lag=np.int64(1), pnl_calc_time=np.int32(2))
+    assert configuration.digest == RunConfiguration(starting_equity=100.0, trade_lag=1, pnl_calc_time=2).digest
+
+
+@pytest.mark.parametrize("text", ["trade_lag: 1\ntrade_lag: 2\n", "trade_lag: .nan\n", 'log_orders: "false"\n', "1: 2\n"])
+def test_yaml_configuration_rejects_ambiguous_or_untyped_values(tmp_path, text):
+    path = tmp_path / "invalid.yml"
+    path.write_text(text)
+    with pytest.raises((ValueError, TypeError)):
+        load_run_configuration(path)
+
+
+@pytest.mark.parametrize("layer", [[("trade_lag", 1)], {1: 2}])
+def test_configuration_layers_require_string_keyed_mappings(layer):
+    with pytest.raises(TypeError, match="mappings"):
+        RunConfiguration.from_layers(layer)
+
+
+@pytest.mark.parametrize("manifest", ['[]', '{"version":true}', '{"version":2}', '{"version":1,"value":NaN}'])
+def test_execution_manifest_rejects_invalid_format(manifest):
+    with pytest.raises(ValueError):
+        RunProvenance(RunConfiguration(), execution_manifest_json=manifest)

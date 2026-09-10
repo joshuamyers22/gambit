@@ -3,10 +3,12 @@
 # $$_ %%checkall
 from __future__ import annotations
 
+import json
 import math
 import time
 import types
 from collections import defaultdict
+from dataclasses import asdict, replace
 from pprint import pformat
 from types import SimpleNamespace
 from typing import Any, Callable, Sequence, TypeAlias, Union, cast
@@ -25,6 +27,7 @@ from gambit.boundaries import (
 from gambit.calculation import CalculationContext
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders, validate_stage_values
 from gambit.configuration import RunConfiguration, RunProvenance
+from gambit.execution_identity import describe_component
 from gambit.execution_snapshots import snapshot_order
 from gambit.market_data import MarketDataValidationReport
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
@@ -128,21 +131,24 @@ class Strategy:
             log_orders=log_orders,
         )
         self.provenance = RunProvenance(self.run_configuration)
+        self._accounting_configuration = (self.run_configuration.starting_equity, self.run_configuration.pnl_calc_time)
+        self._running = False
         validate_strategy_timestamps(timestamps)
         if strategy_context is None:
             strategy_context = types.SimpleNamespace()
         self.strategy_context = strategy_context
         self._return_reporter = return_reporter
         self.account = Account(
-            contract_groups, timestamps, price_function, strategy_context, starting_equity, pnl_calc_time
+            contract_groups, timestamps, price_function, strategy_context,
+            self.run_configuration.starting_equity, self.run_configuration.pnl_calc_time,
         )
         self.timestamps = self.account.timestamps
         self.contract_groups = self.account.contract_groups
         assert_(trade_lag >= 0, f"trade_lag cannot be negative: {trade_lag}")
-        self.trade_lag = trade_lag
-        self.run_final_calc = run_final_calc
-        self.log_trades = log_trades
-        self.log_orders = log_orders
+        self.trade_lag = self.run_configuration.trade_lag
+        self.run_final_calc = self.run_configuration.run_final_calc
+        self.log_trades = self.run_configuration.log_trades
+        self.log_orders = self.run_configuration.log_orders
         self.indicators: dict[str, IndicatorType] = {}
         self._indicator_functions: dict[tuple[str, int], IndicatorType] = {}
         self.signals: dict[str, SignalType] = {}
@@ -182,6 +188,64 @@ class Strategy:
     def record_polars_input(self, name: str, frame: pl.DataFrame) -> None:
         """Fingerprint and attach a Polars input without retaining its data."""
         self.provenance = self.provenance.with_polars_input(name, frame)
+
+    def _runtime_configuration(self) -> RunConfiguration:
+        equity, calc_time = self._accounting_configuration
+        if (self.account.starting_equity != equity or self.run_configuration.starting_equity != equity
+                or self.run_configuration.pnl_calc_time != calc_time):
+            raise ValueError("accounting configuration changed; construct a new Strategy")
+        return RunConfiguration(starting_equity=equity, pnl_calc_time=calc_time,
+                                trade_lag=self.trade_lag, run_final_calc=self.run_final_calc,
+                                log_trades=self.log_trades, log_orders=self.log_orders)
+
+    def _registration_signature(self) -> tuple:
+        """Run-local identity check; object IDs never enter persisted provenance."""
+        return (
+            tuple((key, id(value)) for key, value in self._indicator_functions.items()),
+            tuple((key, id(value)) for key, value in self._signal_functions.items()),
+            tuple((name, id(self.rules[name])) for name in self.rule_names),
+            tuple(map(id, self.market_sims)), tuple(map(id, self.risk_policies)),
+        )
+
+    def capture_execution_provenance(self) -> RunProvenance:
+        """Snapshot current settings and declared components before execution.
+
+        Custom callback state and external dependencies remain explicitly unresolved.
+        The manifest describes registration order, not a complete code/data closure.
+        """
+        if self._running:
+            raise RuntimeError("cannot recapture execution provenance during a run")
+        configuration = self._runtime_configuration()
+        components: list[dict[str, Any]] = []
+
+        def add(role: str, name: str, component: object) -> None:
+            components.append({"role": role, "name": name, **describe_component(component)})
+
+        add("price", "account", self.account._price_function)
+        for name in self.indicators:
+            for group in self.indicator_cgroups[name]:
+                add("indicator", f"{name}:{group.name}", self._indicator_functions[(name, id(group))])
+        for name in self.signals:
+            for group in self.signal_cgroups[name]:
+                add("signal", f"{name}:{group.name}", self._signal_functions[(name, id(group))])
+        for name in self.rule_names:
+            add("rule", name, self.rules[name])
+        for index, simulator in enumerate(self.market_sims):
+            add("execution", str(index), simulator)
+        for index, policy in enumerate(self.risk_policies):
+            add("risk", str(index), policy)
+        manifest = {
+            "version": 1, "components": components,
+            "stage_graph": [asdict(node) for node in self.stage_graph().nodes],
+            "contract_groups": [group.name for group in self.contract_groups],
+            "rule_configuration": describe_component({"signals": self.rule_signals, "filters": self.position_filters}),
+            "unresolved_scope": ["callback globals/closures and external state", "unregistered input data and instrument metadata",
+                                 "transitive dependencies and native build identity", "requested analytics"],
+        }
+        self.run_configuration = configuration
+        self.provenance = replace(self.provenance, configuration=configuration,
+                                  execution_manifest_json=json.dumps(manifest, sort_keys=True, allow_nan=False))
+        return self.provenance
 
     def risk_report(
         self,
@@ -388,12 +452,16 @@ class Strategy:
 
     def add_market_sim(self, market_sim_function: MarketSimulatorType) -> None:
         """Add a market simulator.  A market simulator is a function that takes orders as input and returns trades."""
+        if self._running:
+            raise RuntimeError("cannot register market simulators during a run")
         if not callable(market_sim_function):
             raise TypeError("market simulator must be callable")
         self.market_sims.append(market_sim_function)
 
     def add_risk_policy(self, risk_policy: RiskPolicy) -> None:
         """Add a pre-trade policy, evaluated in registration order."""
+        if self._running:
+            raise RuntimeError("cannot register risk policies during a run")
         policy_name = getattr(risk_policy, "name", None)
         if not isinstance(policy_name, str) or not policy_name:
             raise TypeError("risk policy must expose a non-empty string name")
@@ -769,12 +837,28 @@ class Strategy:
 
     def run(self) -> BacktestResult:
         """Execute the strategy and return an immutable result snapshot."""
+        if self._running:
+            raise RuntimeError("strategy is already running")
+        self.capture_execution_provenance()
+        self._running = True
+        try:
+            return self._run_with_captured_provenance()
+        finally:
+            self._running = False
+
+    def _run_with_captured_provenance(self) -> BacktestResult:
         stages: list[StageTelemetry] = []
+        captured_configuration = self.run_configuration
+        captured_provenance = self.provenance
+        captured_registrations = self._registration_signature()
 
         def measure(name: str, units: int, operation: Callable[[], Any]) -> None:
             elapsed_start = time.perf_counter()
             cpu_start = time.process_time()
             operation()
+            if (self._runtime_configuration() != captured_configuration or self.provenance != captured_provenance
+                    or self._registration_signature() != captured_registrations):
+                raise RuntimeError("execution configuration, registration or provenance changed during the run; result not published")
             stages.append(
                 StageTelemetry(
                     name=name,
@@ -791,7 +875,11 @@ class Strategy:
         analytics_count = len(self._risk_report_requests) + len(self._risk_result_requests)
         if analytics_count:
             measure("requested_analytics", analytics_count, self._run_requested_analytics)
-        return self._backtest_result(tuple(stages))
+        result = self._backtest_result(tuple(stages))
+        if (self._runtime_configuration() != captured_configuration or self.provenance != captured_provenance
+                or self._registration_signature() != captured_registrations):
+            raise RuntimeError("execution state changed during result construction; result not published")
+        return result
 
     def _backtest_result(self, stages: tuple[StageTelemetry, ...]) -> BacktestResult:
         accepted = sum(decision.status is DecisionStatus.ACCEPTED for decision in self.order_decisions)

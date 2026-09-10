@@ -75,6 +75,20 @@ Configuration files are optional and can be layered with explicit overrides by
 calling ``load_run_configuration``. Unknown fields and invalid values are
 rejected at load time.
 
+``Strategy.run()`` refreshes provenance from the actual runtime settings and
+records an ordered execution-component manifest. To inspect this snapshot before
+running, call ``strategy.capture_execution_provenance()`` after registration.
+The manifest includes inspectable source hashes and dataclass constructor
+parameters; opaque callback state, globals, external inputs and transitive
+dependencies remain explicitly unresolved. This is not automatic proof of full
+reproducibility. Register input identities explicitly as above.
+
+Integer settings reject fractional values, NaN, strings and booleans; boolean
+settings require actual booleans. Duplicate YAML keys are rejected. Changes to
+execution settings, provenance or component registrations detected during a run
+prevent publication of a successful result. Changing accounting initialization
+requires a new strategy instance.
+
 Typed strategy stages
 ---------------------
 
@@ -94,6 +108,8 @@ Bundles contain uncompressed Polars IPC tables and a canonical JSON manifest.
 The loader verifies each table's SHA-256 digest, row count, schema, and the run
 provenance fingerprint before returning data. Saving refuses to overwrite an
 existing bundle.
+New bundles use format version 3 for execution provenance. Version 2 bundles
+remain readable without inventing an execution manifest for historical runs.
 
 Risk and validation artifacts are opt-in. Named risk requests run after trading
 and accounting, while precomputed market-data validation reports can be recorded
