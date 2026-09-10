@@ -1011,6 +1011,7 @@ class Strategy:
                 returned_orders,
                 contract_group,
                 self.timestamps[idx],
+                pending_orders=tuple(state.order for state in callback_states),
             )
         except Exception as exc:
             for state in callback_states:

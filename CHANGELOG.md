@@ -50,6 +50,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Rule-return batches now reject repeated order objects and resubmission of
+  captured pending orders before risk evaluation. This prevents conflicting
+  decisions on the same mutable order and duplicate history entries. Distinct
+  orders with identical values remain valid, including separate roll commands.
 - Rule submission now rechecks mutable order quantities and limit prices using
   constructor numeric validation, before risk evaluation. NaN/Inf, fractional
   or zero quantities, booleans and numeric strings cannot bypass admission;
