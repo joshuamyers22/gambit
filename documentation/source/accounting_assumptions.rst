@@ -161,6 +161,17 @@ not precede submission. The account still requires the execution timestamp on
 its grid, but a historical order may have an earlier off-grid submission time
 and may already be filled.
 
+VWAP execution prices use only observations at or before the fill timestamp,
+even when the existing calendar-day boundary trigger fills before the requested
+VWAP end. The normal pricing window begins at submission and ends no later than
+the requested end or current timestamp; stop-triggered pricing uses the elapsed
+window. Prices and volumes must pass the existing positive-value filter. If no
+eligible observations remain, the current-heartbeat backup is used, or execution
+fails if no backup is configured. Early-completion quantities and stop prorating
+are unchanged. Historical results affected by future-data pricing must be rerun.
+This does not validate causality within user-supplied indicator values or provide
+an exchange-session calendar or bounded streaming VWAP computation.
+
 Rule and market-simulator callbacks cannot change a pending order's contract
 reference, submission timestamp (including its NumPy unit), or time-in-force.
 Rules may request or apply cancellation but cannot resize or fill pending orders.

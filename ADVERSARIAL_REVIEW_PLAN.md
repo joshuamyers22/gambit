@@ -104,6 +104,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   timestamps, invalid enum substitutes, whole-batch rejection, pending-state
   restoration and preservation of valid DAY/GTC lifetime behavior. Unscheduled
   construction remains valid; this is not a global object-immutability guarantee.
+- VWAP causality follow-up: at a 23:59 calendar-day boundary, an order ending at
+  00:00 used both the current price 100 and the future price 1000, filling at
+  550 before the future observation existed. The pricing mask now excludes
+  timestamps after execution, including forced early completion. Regression
+  tests vary future prices/volumes, compare full replay with its observed prefix,
+  and cover backup/error behavior, buys/sells, stop prorating and marked equity.
+  Rerun affected historical VWAP backtests. Native top-of-book execution and
+  the existing VWAP trigger/quantity/calendar policies are unchanged.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 

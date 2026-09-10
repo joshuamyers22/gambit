@@ -65,6 +65,18 @@ result publication; this does not roll back all earlier callback/account effects
 Use a fresh strategy after a failed run. Arbitrary custom callback mutation of
 its own state is unresolved, not prohibited by this check.
 
+## VWAP pricing causality
+
+`VWAPMarketSimulator` now excludes observations after the fill timestamp, including
+when its calendar-day boundary trigger executes before the requested VWAP end.
+Affected historical backtests must be rerun: the old calculation could use future
+prices/volumes and change P&L. Available observations still use the existing
+positive-price/positive-volume filter, submission-time lower bound and requested
+end-time/stop rules; an empty observed window uses the existing current-heartbeat
+backup or fails when none is configured. Trigger timing and fill quantities are
+unchanged. This is not an exchange-session calendar, streaming VWAP optimization,
+or a guarantee that user-supplied indicators themselves are free of look-ahead.
+
 ## Callback order ownership
 
 Rule admission rechecks a real `Contract`, a NumPy datetime scalar and actual
