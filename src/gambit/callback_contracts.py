@@ -97,12 +97,13 @@ def validate_market_trades(
         raise TypeError("market simulator must return a sequence of Trade objects")
 
     trades = list(result)
+    open_order_ids = {id(order) for order in open_orders}
     filled_quantities: dict[int, int] = {}
     for trade in trades:
         if not isinstance(trade, Trade):
             raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
         _validate_trade_references(trade.contract, trade.order, trade.timestamp)
-        if not any(trade.order is order for order in open_orders):
+        if id(trade.order) not in open_order_ids:
             raise ValueError("market simulator returned a trade for an order outside the open order set")
         if trade.timestamp != current_timestamp:
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")

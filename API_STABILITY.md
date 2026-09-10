@@ -37,6 +37,14 @@ book/queue record layouts are also experimental, not general Strategy backends.
 
 ## Internal scheduling and debugging storage
 
+Simulator-result order membership and engine-applied fill aggregation use
+batch-local identity indexes. Trade order, whole-unit validation, fill bounds,
+remaining quantities and scoped rollback are unchanged. The two bookkeeping
+steps take linear work in eligible orders plus returned fills and temporary
+storage proportional to the current batch, without indexing retained history.
+Accounting, callbacks and other execution stages have separate costs; this does
+not make the complete engine linear or bounded-memory.
+
 `Strategy.orders_iter` and `Strategy.trades_iter` are internal, fixed-length
 sparse sequences, not concrete lists. Indexed bucket reads and list-like bucket
 mutations remain available; reading an empty bucket does not retain storage.

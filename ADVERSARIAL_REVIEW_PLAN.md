@@ -112,6 +112,15 @@ an external HDF5 archive and is intentionally not invoked by CI.
   and cover backup/error behavior, buys/sells, stop prorating and marked equity.
   Rerun affected historical VWAP backtests. Native top-of-book execution and
   the existing VWAP trigger/quantity/calendar policies are unchanged.
+- Fill-bookkeeping scaling follow-up: simulator validation searched the open
+  order sequence for every fill, then Strategy rescanned every fill per order.
+  Batch-local identity membership and fill totals remove both quadratic scans.
+  With 64 orders and 128 split fills, deterministic test instrumentation records
+  128 open-order visits after the fix versus 4,224 before it. Tests also bound
+  trade-order reads and preserve interleaved multi-instrument accounting, equal-
+  valued identity rejection and existing validation/rollback regressions. These
+  are small operation-count fixtures, not a bulk synthetic dataset, wall-clock
+  benchmark or evidence for the multi-year/few-seconds target.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
