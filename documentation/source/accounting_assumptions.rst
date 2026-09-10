@@ -120,6 +120,16 @@ rejected before any ledger updates, preserving earlier history and valuation.
 This does not make direct account imports enforce the Strategy's execution-lag,
 remaining-order-quantity, or fill-direction policies.
 
+Both ingestion boundaries also recheck the construction-time reference and
+chronology contract: a trade has a real ``Contract`` and ``Order``, the contract
+matches its order, both timestamps are valid NumPy datetimes, and execution does
+not precede submission. The account still requires the execution timestamp on
+its grid, but a historical order may have an earlier off-grid submission time
+and may already be filled. These checks reject malformed mutable input; they do
+not freeze order references or timestamps. Simulator failure restores eligible
+order quantities/statuses, not arbitrary callback edits to other fields. Use a
+fresh strategy after a failed callback that mutated those fields.
+
 Earlier general-engine results with ``trade_lag > 1`` may contain premature
 next-heartbeat fills and must be rerun after the eligibility correction. This
 does not change the experimental native execution models.
