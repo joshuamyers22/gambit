@@ -20,6 +20,11 @@ have not yet been released are collected below.
 
 ### Changed
 
+- General Python strategy scheduling and legacy debugging buckets now retain
+  lists only for populated timestamps. Timestamp length, callback ordering, and
+  canonical account history are unchanged. Internal bucket containers are now
+  fixed-length sparse sequences rather than concrete lists; this does not bound
+  signal arrays, active rule entries, or account history memory.
 - Equity, bracket, and VWAP entry sizing now account for contract multipliers;
   bracket position caps use monetary notional. VWAP entry preserves all
   contracts and uses allocation sizing when no stop is configured. Invalid

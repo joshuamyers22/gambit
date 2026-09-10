@@ -147,6 +147,7 @@ files = [
   "src/gambit/risk_reporting.py",
   "src/gambit/return_reporting.py",
   "src/gambit/stages.py",
+  "src/gambit/sparse_iterations.py",
   "src/gambit/strategy.py",
   "src/gambit/strategy_builder.py",
   "src/gambit/strategy_components.py",

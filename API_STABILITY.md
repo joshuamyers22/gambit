@@ -35,6 +35,18 @@ gates in `ADVERSARIAL_REVIEW_PLAN.md`.
 `gambit.tick_backtest.TopOfBookBacktester`, its market/FIFO execution models and
 book/queue record layouts are also experimental, not general Strategy backends.
 
+## Internal scheduling and debugging storage
+
+`Strategy.orders_iter` and `Strategy.trades_iter` are internal, fixed-length
+sparse sequences, not concrete lists. Indexed bucket reads and list-like bucket
+mutations remain available; reading an empty bucket does not retain storage.
+The outer sequence does not support adding, removing, or replacing timestamp
+slots. Explicit outer slices materialize a list of live bucket views, so avoid
+full slices of large timelines. Use `Account.trades()` for canonical trade
+history; `trades_iter` remains a legacy debugging aid and is not populated by
+execution. This storage change does not introduce a bounded-history policy or
+skip idle timestamps in the execution loop.
+
 ## Execution provenance
 
 `Strategy.capture_execution_provenance()` snapshots current runtime options,

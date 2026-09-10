@@ -29,6 +29,21 @@ an external HDF5 archive and is intentionally not invoked by CI.
 
 ## Executive assessment
 
+### Follow-up from sparse scheduling review (2026-09-10)
+
+- Replaced per-timestamp empty order/debug lists with sparse buckets. This is
+  not a bounded-memory engine: signal arrays, active rule entries and account
+  history remain resident. No bulk synthetic performance dataset was generated.
+- Open correctness finding: `Strategy._sim_market` does not exclude orders
+  younger than `trade_lag` from simulator input. Its early `continue` applies
+  only to the lifecycle loop, after which all open orders reach the simulator.
+  With seven one-minute timestamps beginning at 09:30, a market order emitted
+  at index 1 and `trade_lag=3` fills at index 2 (09:32), not index 4 (09:34),
+  using `SimpleMarketSimulator` and a constant price. This reproduces with
+  both sparse buckets and a dense-list schedule. Fix eligibility in a separate
+  correctness change, testing lag 0/1/>1, cancellation, DAY/FOK expiration,
+  partial fills, and multiple simulator callbacks before trusting delayed fills.
+
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
 The code is compact and exposes useful primitives, but it is not ready to be trusted for financial decisions without a correctness hardening pass. The highest risks are silent data-selection and accounting errors: several public methods can return plausible but incorrect results rather than fail loudly. Packaging and test discovery are also fragile enough that regressions may escape detection. Native I/O increases the need for fuzzing and sanitizer coverage.

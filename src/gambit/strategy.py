@@ -35,6 +35,7 @@ from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
 from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 from gambit.risk_reporting import PortfolioRiskReport, StressScenario, analyze_account_risk
+from gambit.sparse_iterations import SparseIterations
 from gambit.stages import ExecutionStage, IndicatorStage, RuleStage, SignalStage, StageGraph, StageNode
 from gambit.strategy_contracts import PriceFunctionType, ReturnReporter, StrategyContextType
 from gambit.strategy_validation import validate_dependency_scopes, validated_stage_groups, validated_stage_names
@@ -177,9 +178,9 @@ class Strategy:
         self.signal_indicator_deps: dict[str, list[str]] = {}
         self.signal_deps: dict[str, list[str]] = {}
         self.signal_cgroups: dict[str, tuple[ContractGroup, ...]] = {}
-        self.trades_iter: list[list] = [
-            [] for x in range(len(timestamps))
-        ]  # For debugging, we don't really need this as a member variable
+        # Legacy debugging buckets are empty unless explicitly populated by callers.
+        # The canonical trade history remains Account.trades().
+        self.trades_iter: SparseIterations[Trade] = SparseIterations(len(timestamps))
 
     def record_input_fingerprint(self, name: str, fingerprint: str) -> None:
         """Attach an immutable input identity to this strategy's provenance."""
@@ -707,8 +708,7 @@ class Strategy:
 
         num_timestamps = len(self.timestamps)
 
-        # list of lists, i -> list of order tuple
-        orders_iter: list[list[OrderTupType]] = [[] for x in range(num_timestamps)]
+        orders_iter: SparseIterations[OrderTupType] = SparseIterations(num_timestamps)
 
         for rule_name in rule_names:
             rule_function = self.rules[rule_name]
@@ -743,9 +743,9 @@ class Strategy:
                     "rule_name": rule_name,
                 }
                 for idx in indices:
-                    orders_iter[idx].append((rule_function, cgroup, iteration_params))
+                    orders_iter.append_at(int(idx), (rule_function, cgroup, iteration_params))
 
-        self.orders_iter = orders_iter
+        self.orders_iter: Sequence[Sequence[OrderTupType]] = orders_iter
 
     def run_rules(
         self,
@@ -790,7 +790,7 @@ class Strategy:
         # run all rules and collect the orders, we don't need to run market sim after each rule
         self._sim_market(i)
 
-        rules = self.orders_iter[i]
+        rules = self.orders_iter.at(i) if isinstance(self.orders_iter, SparseIterations) else self.orders_iter[i]
 
         for j, (rule_function, contract_group, params) in enumerate(rules):
             orders = self._get_orders(i, rule_function, contract_group, params)
