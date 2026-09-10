@@ -50,6 +50,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Mutable trade quantities, prices, fees and commissions are revalidated before
+  simulator fills or direct account imports can affect accounting. Construction
+  and ingestion share the same numeric policy; finite negative prices and fee
+  rebates remain valid. Invalid direct-import batches leave existing history and
+  valuation intact rather than silently truncating quantities or propagating NaN.
 - Market-simulator callbacks now reject opposite-direction fills and aggregate
   overfills against the remaining quantity captured before callback execution,
   even when the simulator directly changes order state. Mutable fill quantities

@@ -661,6 +661,18 @@ class VWAPOrder(Order):
         )
 
 
+def _validated_trade_numbers(
+    qty: float, price: float, fee: float, commission: float,
+) -> tuple[int, float, float, float]:
+    """Share numeric invariants between construction and mutable-trade ingestion."""
+    return (
+        _whole_quantity(qty, field_name="trade qty"),
+        _finite_real(price, field_name="trade price"),
+        _finite_real(fee, field_name="trade fee"),
+        _finite_real(commission, field_name="trade commission"),
+    )
+
+
 class Trade:
     def __init__(
         self,
@@ -699,10 +711,7 @@ class Trade:
             raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
         if timestamp < order.timestamp:
             raise ValueError("trade timestamp cannot precede its originating order")
-        qty = _whole_quantity(qty, field_name="trade qty")
-        price = _finite_real(price, field_name="trade price")
-        fee = _finite_real(fee, field_name="trade fee")
-        commission = _finite_real(commission, field_name="trade commission")
+        qty, price, fee, commission = _validated_trade_numbers(qty, price, fee, commission)
 
         self.contract = contract
         self.order = order
