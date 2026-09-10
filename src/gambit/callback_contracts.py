@@ -13,6 +13,7 @@ from gambit.pq_types import (
     RollOrder,
     StopLimitOrder,
     Trade,
+    _validate_trade_references,
     _validated_trade_numbers,
 )
 
@@ -83,10 +84,9 @@ def validate_market_trades(
     for trade in trades:
         if not isinstance(trade, Trade):
             raise TypeError(f"market simulator returned a non-Trade value: {trade!r}")
+        _validate_trade_references(trade.contract, trade.order, trade.timestamp)
         if not any(trade.order is order for order in open_orders):
             raise ValueError("market simulator returned a trade for an order outside the open order set")
-        if trade.contract is not trade.order.contract:
-            raise ValueError("market simulator trade contract does not match its order")
         if trade.timestamp != current_timestamp:
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
         # Trade fields and order state are mutable. Validate against the quantity

@@ -18,7 +18,14 @@ from sortedcontainers import SortedDict
 from gambit.boundaries import timestamp_index, validate_date_range, validate_timestamp_grid
 from gambit.contract_pnl import ContractPNL, ContractPNLState, find_index_before
 from gambit.execution_snapshots import snapshot_trade
-from gambit.pq_types import Contract, ContractGroup, RoundTripTrade, Trade, _validated_trade_numbers
+from gambit.pq_types import (
+    Contract,
+    ContractGroup,
+    RoundTripTrade,
+    Trade,
+    _validate_trade_references,
+    _validated_trade_numbers,
+)
 from gambit.pq_utils import assert_
 from gambit.trade_reconciliation import df_roundtrip_trade, roundtrip_trades
 
@@ -198,6 +205,7 @@ class Account:
         for trade in trades:
             if not isinstance(trade, Trade):
                 raise TypeError(f"account trades must be Trade objects: {trade!r}")
+            _validate_trade_references(trade.contract, trade.order, trade.timestamp)
             _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
             timestamp_index(self.timestamps, trade.timestamp, owner="account")
             contract = trade.contract
@@ -207,8 +215,6 @@ class Account:
                 )
             if contract.contract_group.contracts.get(contract.symbol) is not contract:
                 raise ValueError(f"trade contract {contract.symbol} is not registered in its contract group")
-            if contract is not trade.order.contract:
-                raise ValueError("trade contract does not match its order")
 
         trades = sorted((snapshot_trade(trade) for trade in trades), key=lambda x: x.timestamp)
         # Break up trades by contract so we can add them in a batch

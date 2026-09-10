@@ -673,6 +673,24 @@ def _validated_trade_numbers(
     )
 
 
+def _validate_trade_references(contract: Contract, order: Order, timestamp: np.datetime64) -> None:
+    """Recheck mutable trade references and execution/submission chronology."""
+    if not isinstance(contract, Contract):
+        raise TypeError("trade contract must be a Contract")
+    if not isinstance(order, Order):
+        raise TypeError("trade order must be an Order")
+    if contract is not order.contract:
+        raise ValueError("trade contract must match its originating order")
+    if not isinstance(timestamp, np.datetime64):
+        raise TypeError("trade timestamp must be a numpy datetime64 value")
+    if np.isnat(timestamp):
+        raise ValueError("trade timestamp cannot be NaT")
+    if not isinstance(order.timestamp, np.datetime64) or np.isnat(order.timestamp):
+        raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
+    if timestamp < order.timestamp:
+        raise ValueError("trade timestamp cannot precede its originating order")
+
+
 class Trade:
     def __init__(
         self,
@@ -697,20 +715,7 @@ class Trade:
             properties: Any data you want to store with this contract.
                 For example, you may want to store bid / ask prices at time of trade.  Default None
         """
-        if not isinstance(contract, Contract):
-            raise TypeError("trade contract must be a Contract")
-        if not isinstance(order, Order):
-            raise TypeError("trade order must be an Order")
-        if contract is not order.contract:
-            raise ValueError("trade contract must match its originating order")
-        if not isinstance(timestamp, np.datetime64):
-            raise TypeError("trade timestamp must be a numpy datetime64 value")
-        if np.isnat(timestamp):
-            raise ValueError("trade timestamp cannot be NaT")
-        if not isinstance(order.timestamp, np.datetime64) or np.isnat(order.timestamp):
-            raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
-        if timestamp < order.timestamp:
-            raise ValueError("trade timestamp cannot precede its originating order")
+        _validate_trade_references(contract, order, timestamp)
         qty, price, fee, commission = _validated_trade_numbers(qty, price, fee, commission)
 
         self.contract = contract

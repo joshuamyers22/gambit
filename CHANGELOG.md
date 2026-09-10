@@ -50,6 +50,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Simulator-return and direct-account boundaries now revalidate mutable trade
+  references and timestamps using the construction-time policy. Fills before
+  their originating order, missing submission timestamps, and invalid reference
+  types fail before accounting changes. Valid earlier off-grid order timestamps
+  remain supported for historical account imports.
 - Mutable trade quantities, prices, fees and commissions are revalidated before
   simulator fills or direct account imports can affect accounting. Construction
   and ingestion share the same numeric policy; finite negative prices and fee

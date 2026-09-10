@@ -60,6 +60,13 @@ an external HDF5 archive and is intentionally not invoked by CI.
   now share numeric checks. Regression tests cover whole-batch rejection,
   preservation of prior history/valuation, and valid negative prices/rebates.
   This does not add Strategy order-execution policy to direct account imports.
+- Corrected in the trade-reference follow-up: mutating an originating order's
+  timestamp after trade construction could allow execution before submission
+  into accounting. Shared construction/ingestion checks now reject invalid
+  reference types, mismatched contracts, invalid timestamps and reversed
+  execution/submission chronology. Tests preserve prior history and valid
+  historical imports with earlier off-grid order timestamps. This is input
+  validation, not immutable order identity or full callback-state rollback.
 
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
