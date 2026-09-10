@@ -30,6 +30,7 @@ from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.execution_identity import describe_component
 from gambit.execution_snapshots import snapshot_order
 from gambit.market_data import MarketDataValidationReport
+from gambit.order_callback_state import OrderCallbackState
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
 from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
@@ -79,12 +80,6 @@ def _concat_report_frames(reports: dict[str, PortfolioRiskReport], field: str) -
         for name, report in reports.items()
     }
     return _concat_artifact_frames(frames)
-
-
-def _restore_order_states(states: Sequence[tuple[Order, float, OrderStatus]]) -> None:
-    for order, qty, status in states:
-        order.qty = qty
-        order.status = status
 
 
 class Strategy:
@@ -979,6 +974,7 @@ class Strategy:
     def _get_orders(
         self, idx: int, rule_function: RuleType, contract_group: ContractGroup, params: dict[str, Any]
     ) -> list[Order]:
+        callback_states: list[OrderCallbackState] = []
         try:
             indicator_values, signal_values, rule_name = (
                 params["indicator_values"],
@@ -998,24 +994,34 @@ class Strategy:
                 elif position_filter == "negative" and (curr_pos > 0 or math.isclose(curr_pos, 0)):
                     return []
 
+            callback_states = [OrderCallbackState.capture(order) for order in self._current_orders]
+            returned_orders = rule_function(
+                contract_group,
+                idx,
+                self.timestamps,
+                indicator_values,
+                signal_values,
+                self.account,
+                tuple(self._current_orders),
+                self.strategy_context,
+            )
+            for state in callback_states:
+                state.validate_unchanged(allow_cancel=True)
             orders = validate_rule_orders(
-                rule_function(
-                    contract_group,
-                    idx,
-                    self.timestamps,
-                    indicator_values,
-                    signal_values,
-                    self.account,
-                    tuple(self._current_orders),
-                    self.strategy_context,
-                ),
+                returned_orders,
                 contract_group,
                 self.timestamps[idx],
             )
         except Exception as exc:
+            for state in callback_states:
+                state.restore()
             raise BacktestCallbackError(
                 f"rule callback failed at index {idx} for contract group {contract_group.name}: {rule_function!r}"
             ) from exc
+        except BaseException:  # restore engine-owned state before propagating interruption
+            for state in callback_states:
+                state.restore()
+            raise
         return orders
 
     def _sim_market(self, i: int) -> None:
@@ -1046,22 +1052,30 @@ class Strategy:
 
         for market_sim_function in self.market_sims:
             order_states: list[tuple[Order, float, OrderStatus]] = []
+            callback_states: list[OrderCallbackState] = []
             try:
                 self._update_current_orders()
+                callback_states = [OrderCallbackState.capture(order) for order in self._current_orders]
                 # Retain waiting orders in the pending queue. Rebuild the eligible
                 # view after each simulator so completed fills cannot execute twice.
                 current_orders = tuple(order for order in self._current_orders if id(order) in eligible_order_ids)
                 order_states = [(order, order.qty, order.status) for order in current_orders]
 
+                returned_trades = market_sim_function(
+                    current_orders,
+                    i,
+                    self.timestamps,
+                    self.indicator_values,
+                    self.signal_values,
+                    self.strategy_context,
+                )
+                for state in callback_states:
+                    if id(state.order) in eligible_order_ids:
+                        state.validate_identity()
+                    else:
+                        state.validate_unchanged()
                 trades = validate_market_trades(
-                    market_sim_function(
-                        current_orders,
-                        i,
-                        self.timestamps,
-                        self.indicator_values,
-                        self.signal_values,
-                        self.strategy_context,
-                    ),
+                    returned_trades,
                     current_orders,
                     self.timestamps[i],
                     {id(order): (qty, status) for order, qty, status in order_states},
@@ -1080,12 +1094,14 @@ class Strategy:
                 if len(trades):
                     self.account.add_trades(trades)
             except Exception as exc:
-                _restore_order_states(order_states)
+                for state in callback_states:
+                    state.restore()
                 raise BacktestCallbackError(
                     f"market simulator failed at index {i}: {market_sim_function!r}"
                 ) from exc
             except BaseException:  # order state must also roll back on cancellation and interpreter exit
-                _restore_order_states(order_states)
+                for state in callback_states:
+                    state.restore()
                 raise
 
         self._update_current_orders()

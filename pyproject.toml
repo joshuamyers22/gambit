@@ -136,6 +136,7 @@ files = [
   "src/gambit/market_data.py",
   "src/gambit/markets.py",
   "src/gambit/optimize.py",
+  "src/gambit/order_callback_state.py",
   "src/gambit/pq_types.py",
   "src/gambit/portfolio.py",
   "src/gambit/pnl_calculation.py",

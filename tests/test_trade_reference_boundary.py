@@ -80,8 +80,8 @@ def test_mutated_order_timestamp_cannot_corrupt_existing_history():
 
 
 @pytest.mark.parametrize("case,message", [
-    ("future_order", "cannot precede"),
-    ("nat_order", "order timestamp must be a valid"),
+    ("future_order", "callback changed submitted order timestamp"),
+    ("nat_order", "callback changed submitted order timestamp"),
     ("datetime_trade", "timestamp must be a numpy datetime64"),
 ])
 def test_simulator_revalidates_mutated_time_fields(case, message):
@@ -99,6 +99,7 @@ def test_simulator_revalidates_mutated_time_fields(case, message):
         strategy._sim_market(0)
     assert message in str(error.value.__cause__)
     assert order.qty == 2 and order.status is OrderStatus.OPEN
+    assert order.timestamp == timestamps[0]
     assert strategy.trades() == []
 
 

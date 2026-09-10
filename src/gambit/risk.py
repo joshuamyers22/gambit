@@ -11,6 +11,7 @@ import numpy as np
 
 from gambit.account import Account
 from gambit.instruments import Tradability
+from gambit.order_callback_state import OrderCallbackState
 from gambit.pq_types import Order
 
 
@@ -169,7 +170,15 @@ class InstrumentTradabilityPolicy:
 
 def decide_order(order: Order, context: RiskContext, policies: Sequence[RiskPolicy]) -> OrderDecision:
     for policy in policies:
-        result = policy.evaluate(order, context)
+        states = [OrderCallbackState.capture(item) for item in (order, *context.open_orders)]
+        try:
+            result = policy.evaluate(order, context)
+            for state in states:
+                state.validate_unchanged()
+        except BaseException:  # policy callbacks must not leave orders mutated on failure
+            for state in states:
+                state.restore()
+            raise
         if not isinstance(result, PolicyResult):
             raise TypeError(f"risk policy {policy.name!r} must return a PolicyResult")
         if not result.accepted:
