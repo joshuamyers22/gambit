@@ -67,6 +67,15 @@ its own state is unresolved, not prohibited by this check.
 
 ## Callback order ownership
 
+Rule admission rechecks a real `Contract`, a NumPy datetime scalar and actual
+`TimeInForce`/`OrderStatus` enums using the construction-time type policy.
+Strings, integers and array-wrapped timestamps are not substitutes. A submitted
+timestamp must be non-NaT and equal the current strategy heartbeat; equivalent
+NumPy datetime units remain supported. Construction may still leave the default
+NaT for an unscheduled order. Malformed batches fail before risk evaluation;
+assign valid typed fields before returning orders. This does not add historical
+replay protection, change standalone risk calls, or freeze shared contract data.
+
 One rule-return batch may contain each order object only once and may not return
 an order that was pending when the callback began, even after cancelling it.
 Violations reject the whole batch before risk evaluation and restore protected

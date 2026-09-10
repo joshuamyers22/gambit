@@ -15,6 +15,7 @@ from gambit.pq_types import (
     StopLimitOrder,
     Trade,
     _finite_real,
+    _validate_order_references,
     _validate_trade_references,
     _validated_trade_numbers,
     _whole_quantity,
@@ -63,6 +64,7 @@ def validate_rule_orders(
             )
         # Constructors are not a trust boundary: a rule can mutate these fields
         # before returning. Roll quantities are checked during leg expansion.
+        _validate_order_references(order)
         if not isinstance(order, RollOrder):
             _whole_quantity(order.qty, field_name="order qty")
         if isinstance(order, LimitOrder):
@@ -72,7 +74,7 @@ def validate_rule_orders(
         registered = contract_group.contracts.get(order.contract.symbol)
         if registered is not order.contract:
             raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
-        if order.timestamp != current_timestamp:
+        if np.isnat(order.timestamp) or order.timestamp != current_timestamp:
             raise ValueError("rule order timestamp does not match the current strategy timestamp")
         if isinstance(order, RollOrder):
             reopen_registered = contract_group.contracts.get(order.reopen_contract.symbol)

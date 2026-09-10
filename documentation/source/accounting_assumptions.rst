@@ -92,6 +92,15 @@ partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies
 govern lifetime; a custom simulator remains responsible for actual fill logic.
 
+Rule submission rechecks the constructor types for contract, timestamp,
+time-in-force and status. Time-in-force and status must be their actual enum
+members, not strings or integers that could bypass lifetime handling. Submission
+timestamps must be NumPy datetime scalars, non-NaT and equal to the current
+heartbeat; equivalent units are allowed. An unscheduled order may still be
+constructed with the default NaT and assigned a valid timestamp before return.
+An invalid field rejects the callback batch before risk evaluation. These checks
+do not freeze contract internals or change standalone risk-policy calls.
+
 A rule must not return the same order object twice or return an order captured
 in its initial pending-order set. Cancelling a pending order does not permit
 resubmission of that object in the same callback. Such aliases reject the whole
