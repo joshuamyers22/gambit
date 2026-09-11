@@ -496,6 +496,11 @@ class VWAPMarketSimulator:
     ) -> list[Trade]:
         trades = []
         timestamp = _timestamp_at(timestamps, i)
+        # Validate the whole VWAP batch before any member can fill or cancel.
+        # Rule admission cannot cover direct calls or later term mutations.
+        for order in orders:
+            if isinstance(order, VWAPOrder):
+                order._validate_window()
         for order in orders:
             if not isinstance(order, VWAPOrder):
                 continue

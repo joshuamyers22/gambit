@@ -75,6 +75,17 @@ its own state is unresolved, not prohibited by this check.
 
 ## VWAP pricing causality
 
+Construction, rule admission and built-in VWAP execution now share execution-
+window validation: submission/end timestamps must be NumPy datetime scalars,
+non-NaT, and end must not precede submission. Rule admission rejects an invalid
+window before any new risk decisions. `VWAPMarketSimulator` checks all VWAP
+windows before pricing or filling any order in that invocation, including direct
+calls and orders changed after admission. Invalid windows can no longer trigger
+immediate backup-price fills. Fix invalid terms and rerun affected backtests.
+Zero-duration windows, equivalent NumPy timestamp units and valid end-time edits
+remain supported. This does not freeze window fields, validate the optional stop
+price, impose custom-simulator policy or expand callback rollback guarantees.
+
 `VWAPMarketSimulator` now excludes observations after the fill timestamp, including
 when its calendar-day boundary trigger executes before the requested VWAP end.
 Affected historical backtests must be rerun: the old calculation could use future

@@ -128,6 +128,18 @@ applies no fills from that invocation; existing Strategy rollback remains scoped
 to protected fields, not limit terms or arbitrary callback side effects. Custom
 simulators remain responsible for their own limit execution policy.
 
+VWAP submission and end timestamps must be non-NaT NumPy datetime scalars, with
+end at or after submission. Construction and rule admission share this check;
+one invalid window rejects the rule batch before risk decisions. The built-in
+``VWAPMarketSimulator`` also checks all VWAP windows before pricing, fills or
+cancellations in an invocation, covering direct calls and post-admission edits.
+Invalid windows are errors, not a reason to execute immediately at the backup
+price. Zero-duration windows, equivalent timestamp units and valid edits remain
+supported. The existing stop, day-end and final-heartbeat policies are unchanged.
+This is not stop-price validation, window immutability, custom-simulator policy
+or broader rollback of callback side effects. Rerun backtests affected by invalid
+mutated windows using valid terms and a fresh strategy.
+
 Roll commands are expanded into outgoing and incoming market legs in that order.
 Expansion rechecks distinct contracts in the same group and finite, nonzero,
 whole-unit quantities with opposite signs, even if the command changed after

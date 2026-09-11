@@ -14,6 +14,7 @@ from gambit.pq_types import (
     RollOrder,
     StopLimitOrder,
     Trade,
+    VWAPOrder,
     _finite_real,
     _validate_order_references,
     _validate_trade_references,
@@ -77,6 +78,8 @@ def validate_rule_orders(
             raise ValueError(f"rule returned an unregistered contract: {order.contract.symbol}")
         if np.isnat(order.timestamp) or order.timestamp != current_timestamp:
             raise ValueError("rule order timestamp does not match the current strategy timestamp")
+        if isinstance(order, VWAPOrder):
+            order._validate_window()
         if isinstance(order, RollOrder):
             reopen_registered = contract_group.contracts.get(order.reopen_contract.symbol)
             if reopen_registered is not order.reopen_contract:
