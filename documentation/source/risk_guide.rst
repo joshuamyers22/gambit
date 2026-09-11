@@ -20,6 +20,17 @@ Rejected proposals remain auditable through immutable ``OrderDecision`` records.
 A policy is part of the simulation and must use only information available at
 its decision timestamp.
 
+Use ``gambit.risk.decide_order`` for standalone pre-trade decisions. Before any
+policy runs, it checks the proposal and all still-open context quantities as
+finite, nonzero whole units, even with no policies configured. Invalid inputs
+raise ``ValueError`` rather than an accepted/rejected ``OrderDecision``; fix the
+inputs instead of treating validation failure as a limit decision. Partial fills
+and cancellation requests still count as open exposure. Filled/cancelled context
+orders may retain zero quantity. Signed and NumPy quantities and unscheduled
+proposal timestamps remain supported. Direct ``policy.evaluate`` calls do not
+run this shared preflight. It does not replace rule admission, validate every
+order field or guarantee the correctness of custom policy calculations.
+
 Hierarchical exposure limits
 ----------------------------
 

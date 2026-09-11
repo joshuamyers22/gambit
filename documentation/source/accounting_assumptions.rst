@@ -87,6 +87,15 @@ are eligible. The account accepts reported fills only for the eligible tuple.
 Order-state assumptions
 -----------------------
 
+Standalone ``decide_order`` preflights the proposed quantity and quantities of
+all context orders whose ``is_open()`` is true, before any policy evaluation or
+decision creation. The constructor whole-unit rule applies even with no policies:
+quantities must be finite, nonzero whole units. Invalid inputs raise without
+mutating orders or accounting. Partially filled and cancellation-requested orders
+remain open exposure; terminal context orders may have zero quantity. This is not
+complete rule admission or validation of type-specific terms, and direct policy
+``evaluate`` calls do not pass through this boundary.
+
 Orders begin open. Fills reduce their remaining quantity and move them to
 partially-filled or filled status. Rejections are recorded as risk decisions and
 cancel the proposed order. Fill-or-kill, day, and good-till-cancelled policies

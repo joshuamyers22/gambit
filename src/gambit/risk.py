@@ -12,7 +12,7 @@ import numpy as np
 from gambit.account import Account
 from gambit.instruments import Tradability
 from gambit.order_callback_state import OrderCallbackState
-from gambit.pq_types import Order
+from gambit.pq_types import Order, _whole_quantity
 
 
 class DecisionStatus(str, Enum):
@@ -169,6 +169,12 @@ class InstrumentTradabilityPolicy:
 
 
 def decide_order(order: Order, context: RiskContext, policies: Sequence[RiskPolicy]) -> OrderDecision:
+    # Standalone decisions need the same quantity invariants as rule admission,
+    # including when no policies run. Pending exposure must be valid as well.
+    _whole_quantity(order.qty, field_name="order qty")
+    for pending_order in context.open_orders:
+        if pending_order.is_open():
+            _whole_quantity(pending_order.qty, field_name="pending order qty")
     for policy in policies:
         states = [OrderCallbackState.capture(item) for item in (order, *context.open_orders)]
         try:
