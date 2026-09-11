@@ -269,6 +269,17 @@ view/handler lifetimes. Negative controls demonstrate live allocations remain
 counted until released. Local execution passes without production changes.
 An unsuppressed Linux LSan step is configured but not yet run; Python-object and
 dtype-descriptor allocation failure injection remain outside this evidence.
+
+HDF5 follow-up: all selected datasets now pass metadata/aggregate-budget
+preflight before any column payload is read. Reader paths and backup groups
+resolve only hard links; external/soft links, external raw storage and virtual
+datasets are rejected. Row/version values must be integer scalars; manifest
+names cannot contain path components/NUL, and variable-length fields inside
+compound dtypes are rejected. Unicode outputs count conservatively toward the
+existing byte budget. [Regression tests](tests/test_hdf5_hardening.py) reproduced
+30 failures before this change and retain legacy/versioned and backup compatibility.
+The expanded deterministic HDF5 smoke checks all rejection families per seed;
+this is still not coverage-guided HDF5 fuzzing or metadata/process containment.
 The internal API migration also removed P2.1's hard-coded native demo routines,
 replacing them with an argument-driven smoke program; the other P2.1 work remains.
 
@@ -851,6 +862,68 @@ release merely because another library offers them.
 - Next: broader malformed HDF5/IPC coverage and longer scheduled fuzz campaigns;
   then collect hosted qualification and owner review. Independent financial
   correctness and recovery drills remain separate production gates.
+
+### 2026-09-11 — GitHub push and sixth slice (HDF5 admission)
+
+- At the user's request, committed the first five slices as
+  [`ec7390b`](https://github.com/joshuamyers22/gambit/commit/ec7390bbc863f4907e2867c04ff62e448dc5c741)
+  and pushed `codex/production-readiness-hardening`. No merge or publication.
+- The pushed commit passed all local `make check` stages through documentation
+  cleanliness/notebooks. Its build dependency lookup failed under sandbox DNS;
+  the build, Twine and artifact checks subsequently passed with approved access.
+- [Hosted run 34655051297](https://github.com/joshuamyers22/gambit/actions/runs/34655051297)
+  passed both CSV/ZIP coverage-guided fuzz jobs and all 187 native ASan/UBSan
+  boundary tests. **Native sanitizer job failed** in the existing memory-stress
+  probe: LSan reported one 16-byte allocation from NumPy `default_malloc`.
+  The dedicated unsuppressed NumPy allocation leak step was consequently skipped.
+  The overall hosted run has completed with a failing conclusion.
+  This is unresolved evidence, not a confirmed false positive. No suppression
+  was added; investigate it before merge or claiming P0.3 qualification.
+- Continued locally with HDF5 admission. Thirty new cases reproduced late
+  rejection/unsafe coercion/link/storage/Unicode-budget gaps. The reader now
+  completes all-column preflight before payload reads and refuses external
+  indirection; fixed-width/legacy/backup/hard-link behavior is preserved.
+  Added 38 regression cases and expanded seeded HDF5 rejection smoke coverage.
+- Local full suite: **1,825 passed**, **86% aggregate coverage**; Ruff, mypy,
+  coverage floors, native warnings, notebook cleanliness, Sphinx, wheel/sdist,
+  Twine and artifact inspection passed. These
+  follow-up HDF5 changes are not part of the pushed `ec7390b` snapshot.
+- Next: investigate the hosted LSan report, then extend IPC/HDF5 coverage-guided
+  testing and scheduled campaigns. Archive/file metadata, process isolation and
+  security-owner approval remain open. Production promotion is blocked.
+
+### 2026-09-11 — Seventh slice (leak-probe lifetime diagnosis)
+
+- Reproduced the hosted **16-byte NumPy allocation report** in a disposable
+  x86-64 Linux container using the pushed `ec7390b` source and NumPy 2.5.2.
+  A deeper unsuppressed stack identified `numpy_array` / `read_file_impl` as the
+  allocation path. The original stress probe retained its final CSV/ZIP arrays
+  at the leak check. Running the workload in its own scope and returning before
+  checking removes that specific report; production deallocation code is unchanged.
+- Five new probe regressions verify result destruction and checker ordering,
+  required-runtime failure, and iteration validation. The ordering regression
+  was also exercised against the original probe and fails as expected. CI now
+  uses `--require-lsan` and runs the independent NumPy probe after a successful
+  build even when the preceding stress probe fails. No suppression was added.
+- Local macOS full suite: **1,831 passed**, **86% aggregate coverage**. Lock,
+  Ruff, mypy, coverage floors, native warnings and notebook cleanliness passed.
+  The x86-64 container passed **79 native I/O/lifetime tests under ASan/UBSan**;
+  two separate Clang fuzz-replay tests were deselected because that diagnostic
+  image only installed GCC. Leak detection was off for this pytest run.
+- Container limitations: Debian/GCC 12/CPython 3.12.11 differs from hosted
+  GCC 13/CPython 3.12.14; x86 emulation required the same-version Polars
+  compatibility runtime. Neither the lockfile nor the local environment was
+  changed for that diagnostic substitution. ARM Linux did not reproduce the
+  same 16-byte stack. Both architectures' stripped Python libraries produced
+  separate interpreter-retention reports; the independent unsuppressed NumPy
+  probe's allocation counters pass but its container LSan report is not clean.
+- Evidence logs retained locally in `/private/tmp/gambit-leak-evidence.jE7t12`
+  (`x86-original.log`, `x86-scoped.log`, `x86-deep.log`); synthetic test inputs only.
+  See [probe documentation](tests/NATIVE_FUZZING.md). These changes and the HDF5
+  follow-up remain uncommitted/unpushed; the recorded GitHub run is still failed.
+- Next: run the revised checks in the hosted environment and triage remaining
+  unsuppressed interpreter allocations. Do not declare all LSan checks clean or
+  close P0.3 from removal of a single report. No merge, release or promotion.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

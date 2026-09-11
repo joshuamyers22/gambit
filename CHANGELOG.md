@@ -35,6 +35,14 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Native leak-stress checks now release their final result arrays before invoking
+  LeakSanitizer and require its runtime in CI. The independent NumPy leak check
+  runs after a successful native build even if the preceding stress probe fails.
+- HDF5 readers now preflight every selected column before reading any payload,
+  count conservative Unicode expansion in the aggregate byte budget, reject
+  non-integer row/version metadata and refuse soft/external links, virtual
+  datasets and external raw-data storage. Materialize linked inputs into local
+  datasets; previously source-byte-only string budgets may need adjustment.
 - Native CSV/ZIP ``i4``, ``i8`` and integer-backed datetime parsing now accepts
   signed extrema without undefined behavior and rejects out-of-range prefixes
   with ``RuntimeError``. Validate inputs and rerun results affected by formerly

@@ -51,11 +51,12 @@ def _fuzz_zip(root: Path, rng: random.Random, count: int) -> None:
 
 
 def _fuzz_hdf5(root: Path, rng: random.Random, count: int) -> None:
-    mutations = ("format", "version", "state", "rows", "columns", "utf8", "missing", "rank")
-    for case in range(count):
+    mutations = ("format", "version", "state", "rows", "columns", "utf8", "missing", "rank",
+                 "soft_link", "external_link", "external_storage", "utf8_numeric", "row_type")
+    for case in range(max(count, len(mutations))):
         path = root / f"hdf-{case}.h5"
         np_arrays_to_hdf5({"value": np.arange(rng.randrange(1, 16), dtype=np.int64)}, str(path), "data")
-        mutation = rng.choice(mutations)
+        mutation = mutations[case % len(mutations)]  # exercise every rejection family for each seed
         with h5py.File(path, "a") as file:
             group = file["data"]
             if mutation == "format":
@@ -67,18 +68,33 @@ def _fuzz_hdf5(root: Path, rng: random.Random, count: int) -> None:
             elif mutation == "rows":
                 group.attrs["rows"] = rng.choice((-1, 0, 2**63 - 1))
             elif mutation == "columns":
-                group.attrs["columns_json"] = rng.choice(("", "null", "{}", '["value","value"]'))
+                group.attrs["columns_json"] = rng.choice(("", "null", "{}", '["value","value"]', '[[]]', '[{}]'))
             elif mutation == "utf8":
                 group.attrs["utf8_columns_json"] = '["missing"]'
             elif mutation == "missing":
                 del group["value"]
-            else:
+            elif mutation == "rank":
                 del group["value"]
                 group.create_dataset("value", data=np.ones((2, 2)))
+            elif mutation == "utf8_numeric":
+                group.attrs["utf8_columns_json"] = '["value"]'
+            elif mutation == "row_type":
+                group.attrs["rows"] = rng.choice((True, 1.5, "1"))
+            else:
+                del group["value"]
+                if mutation == "soft_link":
+                    group["value"] = h5py.SoftLink("/missing")
+                elif mutation == "external_link":
+                    group["value"] = h5py.ExternalLink(str(root / "absent.h5"), "/value")
+                else:
+                    group.create_dataset("value", shape=(int(group.attrs["rows"]),), dtype="i8",
+                                         external=[(str(root / "absent.bin"), 0, h5py.h5f.UNLIMITED)])
         try:
             hdf5_to_np_arrays(str(path), "data", max_columns=32, max_rows=1_024, max_bytes=1 << 20)
         except (KeyError, RuntimeError, TypeError, ValueError, OverflowError):
             pass
+        else:
+            raise AssertionError(f"malformed HDF5 mutation was admitted: {mutation}")
 
 
 def main() -> None:

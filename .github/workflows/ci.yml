@@ -220,6 +220,7 @@ jobs:
         with:
           version: "0.12.7"
       - name: Build native extensions with ASan and UBSan
+        id: native-build
         env:
           GAMBIT_SANITIZE: "1"
         run: |
@@ -244,6 +245,7 @@ jobs:
           tests/test_top_of_book_backtest.py
           tests/test_fifo_backtest.py
           tests/test_native_io_hardening.py
+          tests/test_native_memory_probe.py
           tests/test_factor_cache.py
           tests/test_tick_ring.py
           tests/test_public_api.py
@@ -253,8 +255,9 @@ jobs:
           LSAN_OPTIONS: suppressions=tests/lsan.supp:print_suppressions=1
           PYTHONFAULTHANDLER: "1"
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
-        run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python tests/native_memory_probe.py
+        run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python tests/native_memory_probe.py --require-lsan
       - name: Inject NumPy allocation failures with Linux leak checking
+        if: ${{ !cancelled() && steps.native-build.outcome == 'success' }}
         env:
           ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
           LSAN_OPTIONS: print_suppressions=1

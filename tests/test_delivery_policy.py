@@ -64,7 +64,11 @@ def test_numpy_allocator_probe_requires_instrumentation_and_leak_checking():
     job = workflow("ci.yml")["jobs"]["native-sanitizers"]
     step = next(step for step in job["steps"]
                 if "tests/native_numpy_allocator_probe.py" in step.get("run", ""))
-    assert "if" not in step
+    # A failure in the preceding stress probe must not hide this independent
+    # evidence; a failed build already fails the job and cannot run the probe.
+    assert step["if"] == "${{ !cancelled() && steps.native-build.outcome == 'success' }}"
+    build = next(item for item in job["steps"] if item.get("id") == "native-build")
+    assert build["env"]["GAMBIT_SANITIZE"] == "1"
     assert step.get("continue-on-error", "false") == "false"
     assert "--leak-check" in step["run"]
     assert 'LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY"' in step["run"]
@@ -72,6 +76,14 @@ def test_numpy_allocator_probe_requires_instrumentation_and_leak_checking():
     assert "detect_leaks=1" in step["env"]["ASAN_OPTIONS"]
     assert not any(option.startswith("suppressions=")
                    for option in step["env"].get("LSAN_OPTIONS", "").split(":"))
+
+
+def test_native_stress_probe_requires_a_real_leak_runtime():
+    job = workflow("ci.yml")["jobs"]["native-sanitizers"]
+    step = next(item for item in job["steps"]
+                if "python tests/native_memory_probe.py" in item.get("run", ""))
+    assert "--require-lsan" in step["run"]
+    assert "detect_leaks=1" in step["env"]["ASAN_OPTIONS"]
 
 
 @pytest.mark.parametrize("name", ["ci.yml", "docs.yml", "performance.yml"])

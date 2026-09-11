@@ -78,9 +78,29 @@ committed backup after an interrupted swap. This protects group replacement;
 it does not claim filesystem durability against storage-device failure.
 
 Before mutation, writers require one-dimensional NumPy columns with equal row
-counts and safe names. Readers validate the manifest, group state, dataset
-types, dimensions, and declared row counts before allocation. The defaults
-bound a group to 10,000 columns, 100 million rows, and 8 GiB of logical array
-data. ``max_columns``, ``max_rows``, and ``max_bytes`` can be lowered for an
-application's trust boundary. Variable-length external HDF5 datasets are
-rejected because their allocation cannot be bounded from fixed schema metadata.
+counts and safe names. Readers preflight **every** selected dataset and the
+aggregate budget before reading any column payload. Manifest row counts and
+schema versions must be integer scalars, not booleans, strings or floats.
+Column names must be simple names, and keys/column names cannot contain NUL.
+
+The defaults bound a group to 10,000 columns, 100 million rows, and 8 GiB of
+estimated returned array data. ``max_columns``, ``max_rows``, and ``max_bytes``
+can be lowered. Fixed-width bytes are returned as NumPy Unicode; the byte budget
+now conservatively charges four bytes per source byte, including UTF-8 columns.
+This can reject files admitted by the former source-byte-only estimate. Each
+selected output counts separately, even if names hard-link the same dataset.
+
+Readers resolve group paths, backup groups and columns through hard links only.
+Soft links, external links, virtual datasets and external raw-data storage are
+rejected before resolving links or reading payloads. Variable-length types,
+including those nested in compound dtypes, are rejected. UTF-8 manifest entries
+must refer to fixed-width byte datasets. Materialize formerly linked/virtual
+inputs into ordinary datasets in a trusted preparation step before loading them.
+Normal versioned and legacy files, nested hard-linked groups, same-file hard-link
+aliases and interrupted-swap backup reads remain supported.
+
+This is not a complete HDF5 sandbox: file opening and metadata parsing happen
+before these checks, filters/decompression consume additional resources, and
+temporary decoding buffers are not a process-RSS guarantee. The caller must
+trust the filesystem and writer operations, restrict filters/plugins, and use
+process-level memory/time/filesystem isolation for hostile files.

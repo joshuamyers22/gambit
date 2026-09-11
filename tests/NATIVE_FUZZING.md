@@ -78,3 +78,34 @@ LeakSanitizer run. CI adds an ASan/UBSan-built helper and an unsuppressed Linux
 Hosted execution remains pending. The existing broad interpreter suppressions
 are deliberately not applied to this new probe because they could hide a leak
 with NumPy array creation in its stack.
+
+## Lifetime-check ordering and Linux diagnosis
+
+`native_memory_probe.py` now executes its workload in a separate function that
+returns before collection/leak checking. The original probe still held its final
+CSV/ZIP arrays at the check; the new weak-reference regression fails against that
+original ordering and verifies their destruction before the checker is invoked.
+`--require-lsan` makes a missing runtime an error, and `--iterations N` permits
+smaller reproductions without changing the default stress workload.
+
+The hosted 16-byte `default_malloc` report was reproduced on x86-64 Linux with
+NumPy 2.5.2. A deeper unsuppressed stack traced it through `PyDataMem_UserNEW`,
+`PyArray_NewFromDescr` and Gambit's `numpy_array`. That specific report disappears
+when the workload returns before the check. No production deallocator change
+or additional suppression was made.
+
+The diagnostic containers used Debian/GCC 12/CPython 3.12.11, not GitHub's exact
+GCC 13/CPython 3.12.14 image. x86 emulation additionally required Polars 1.44.1's
+matching compatibility runtime, installed only in the disposable container.
+The stripped container Python library produced separate interpreter-retention
+reports that its symbols could not match to the existing suppression list.
+The independent NumPy data-allocation counters passed, but its unsuppressed
+container LSan run also reported interpreter allocations. Neither run is a
+clean hosted qualification; those residual reports still require triage.
+
+CI now attempts the independent NumPy check whenever the native build succeeds,
+even if the preceding stress probe fails, unless the run is cancelled. An earlier
+failure still fails the job. Native boundary tests also cover the probe's own
+lifetime and required-runtime behavior. Do not add a suppression merely to make
+these checks green; preserve the allocation stack and distinguish live Python
+state from resources retained after their documented lifetime.
