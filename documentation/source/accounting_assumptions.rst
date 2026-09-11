@@ -136,9 +136,20 @@ cancellations in an invocation, covering direct calls and post-admission edits.
 Invalid windows are errors, not a reason to execute immediately at the backup
 price. Zero-duration windows, equivalent timestamp units and valid edits remain
 supported. The existing stop, day-end and final-heartbeat policies are unchanged.
-This is not stop-price validation, window immutability, custom-simulator policy
-or broader rollback of callback side effects. Rerun backtests affected by invalid
+This is not window immutability, custom-simulator policy or broader rollback of
+callback side effects. Rerun backtests affected by invalid
 mutated windows using valid terms and a fresh strategy.
+
+The optional VWAP stop is a finite real number or floating NaN, which explicitly
+disables the stop. Construction, rule admission and built-in simulator preflight
+reject infinity, booleans, strings, arrays and other invalid values. Invalid rule
+batches stop before risk, and invalid execution batches stop before any member
+fills or cancels. Finite zero/negative and NumPy scalar stops remain supported;
+buy triggers at price <= stop, sell at price >= stop, with existing elapsed-window
+prorating and cancellation. Stop fields remain outside protected-field rollback.
+Use NaN instead of infinity to intentionally disable a stop and rerun affected
+backtests. This does not add stop validation to standalone risk calls or custom
+simulators, or turn the VWAP trigger into a guaranteed execution-price limit.
 
 Roll commands are expanded into outgoing and incoming market legs in that order.
 Expansion rechecks distinct contracts in the same group and finite, nonzero,

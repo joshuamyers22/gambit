@@ -149,6 +149,15 @@ an external HDF5 archive and is intentionally not invoked by CI.
   Stop-price validation and broader type-specific callback ownership remain
   outside this fix. No bulk synthetic data or performance claims were added.
 
+- VWAP-stop follow-up: an infinite stop was accepted at construction/admission,
+  then silently disabled by the simulator finite-value guard. Shared checks now
+  require a finite real value or floating NaN as the explicit no-stop sentinel.
+  Tests cover invalid types/infinities at all three boundaries, post-admission
+  risk mutation, direct batch preflight, buy/sell triggers and valid negative,
+  zero and NumPy values. Use NaN to disable stops and rerun affected backtests.
+  Prorating/cancellation and scoped callback rollback are unchanged; custom/native
+  execution policy and bulk performance datasets remain outside this change.
+
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
 The code is compact and exposes useful primitives, but it is not ready to be trusted for financial decisions without a correctness hardening pass. The highest risks are silent data-selection and accounting errors: several public methods can return plausible but incorrect results rather than fail loudly. Packaging and test discovery are also fragile enough that regressions may escape detection. Native I/O increases the need for fuzzing and sanitizer coverage.
