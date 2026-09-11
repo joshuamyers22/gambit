@@ -54,6 +54,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- The built-in simple simulator now rechecks mutable limit prices at the
+  marketability comparison, after price and slippage callbacks. NaN/Inf limits
+  can no longer silently execute as market orders; invalid values fail before
+  fills are applied. Finite negative/zero limits remain supported.
 - Strategy-expanded roll pairs now receive deterministic, strategy-local
   submission IDs instead of Python memory addresses. Replays preserve roll
   metadata, and separate submissions retain separate pairs even when reusing
