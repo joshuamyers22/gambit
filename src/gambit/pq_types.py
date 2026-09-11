@@ -660,6 +660,10 @@ class VWAPOrder(Order):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        self._validate_window()
+
+    def _validate_window(self) -> None:
+        """Recheck mutable submission/end timestamps using the constructor policy."""
         if not isinstance(self.timestamp, np.datetime64) or not isinstance(self.vwap_end_time, np.datetime64):
             raise TypeError("VWAP order timestamps must be numpy datetime64 values")
         if np.isnat(self.timestamp) or np.isnat(self.vwap_end_time):

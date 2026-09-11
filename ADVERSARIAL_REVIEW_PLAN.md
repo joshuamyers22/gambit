@@ -139,6 +139,16 @@ an external HDF5 archive and is intentionally not invoked by CI.
   or accounting changes, and valid signed/NumPy limits. This does not freeze
   type-specific terms or change custom/native simulators and missing-price policy.
 
+- VWAP-window follow-up: an end time changed to NaT passed rule admission and
+  immediately filled at the backup price, despite having no valid window.
+  Constructor, admission and built-in simulator preflight now share timestamp
+  type, non-NaT and chronology validation. Invalid rule batches stop before risk;
+  invalid execution windows stop before any batch fill/cancellation. Tests cover
+  both directions, malformed/reversed ends, direct calls, post-admission risk
+  mutation, valid edits, zero-duration windows and final-heartbeat execution.
+  Stop-price validation and broader type-specific callback ownership remain
+  outside this fix. No bulk synthetic data or performance claims were added.
+
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
 The code is compact and exposes useful primitives, but it is not ready to be trusted for financial decisions without a correctness hardening pass. The highest risks are silent data-selection and accounting errors: several public methods can return plausible but incorrect results rather than fail loudly. Packaging and test discovery are also fragile enough that regressions may escape detection. Native I/O increases the need for fuzzing and sanitizer coverage.

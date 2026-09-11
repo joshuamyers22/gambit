@@ -54,6 +54,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- VWAP execution windows are revalidated at rule admission and before built-in
+  simulation, using the constructor policy. Mutated NaT, malformed or reversed
+  end times can no longer trigger immediate backup-price fills. Invalid windows
+  reject the execution batch before fills; valid zero-duration windows remain
+  supported. Rerun backtests affected by invalid mutated window terms.
 - The built-in simple simulator now rechecks mutable limit prices at the
   marketability comparison, after price and slippage callbacks. NaN/Inf limits
   can no longer silently execute as market orders; invalid values fail before
