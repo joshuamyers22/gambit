@@ -26,6 +26,7 @@ from gambit.pq_types import (
     TimeInForce,
     Trade,
     VWAPOrder,
+    _finite_real,
 )
 from gambit.pq_utils import assert_, get_child_logger
 from gambit.strategy_contracts import PriceFunctionType, StrategyContextType
@@ -179,9 +180,10 @@ class SimpleMarketSimulator:
                 allow_missing=False,
             )
             price = round(price, self.price_rounding)
-            if isinstance(order, LimitOrder) and np.isfinite(order.limit_price):
-                is_marketable = (order.qty > 0 and price <= order.limit_price) or (
-                    order.qty < 0 and price >= order.limit_price
+            if isinstance(order, LimitOrder):
+                limit_price = _finite_real(order.limit_price, field_name="limit price")
+                is_marketable = (order.qty > 0 and price <= limit_price) or (
+                    order.qty < 0 and price >= limit_price
                 )
                 if not is_marketable:
                     continue

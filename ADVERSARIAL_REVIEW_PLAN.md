@@ -131,6 +131,14 @@ an external HDF5 archive and is intentionally not invoked by CI.
   Standalone expansion remains process-local, and these IDs are strategy-scoped,
   not a global order registry or a full reproducibility certificate.
 
+- Limit-execution follow-up: a valid buy limit of 50 changed to NaN after
+  construction filled at 100 because the simple simulator skipped comparison
+  for non-finite limits. Execution now shares constructor numeric validation
+  at the comparison, after price/slippage callbacks. Tests cover direct calls,
+  risk-policy mutation after admission, buy/sell invalid batches without fills
+  or accounting changes, and valid signed/NumPy limits. This does not freeze
+  type-specific terms or change custom/native simulators and missing-price policy.
+
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
 The code is compact and exposes useful primitives, but it is not ready to be trusted for financial decisions without a correctness hardening pass. The highest risks are silent data-selection and accounting errors: several public methods can return plausible but incorrect results rather than fail loudly. Packaging and test discovery are also fragile enough that regressions may escape detection. Native I/O increases the need for fuzzing and sanitizer coverage.

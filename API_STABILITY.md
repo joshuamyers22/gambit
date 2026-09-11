@@ -85,6 +85,18 @@ backup or fails when none is configured. Trigger timing and fill quantities are
 unchanged. This is not an exchange-session calendar, streaming VWAP optimization,
 or a guarantee that user-supplied indicators themselves are free of look-ahead.
 
+## Simple simulator limit validation
+
+`SimpleMarketSimulator` rechecks the current limit price as a finite real number
+at the marketability comparison, after price/slippage callbacks and rounding.
+NaN/Inf, booleans, strings and other invalid terms now raise instead of bypassing
+the limit comparison or depending on NumPy coercion. This applies to direct calls
+and post-admission mutations; finite negative/zero limits remain valid. Missing
+market prices still defer execution without reaching this check. Invalid limits
+abort candidate construction before the simulator applies any batch fills.
+Limit terms and arbitrary callback side effects are not rolled back, and custom
+simulators retain responsibility for their own execution policy.
+
 ## Strategy roll identity
 
 Roll legs expanded through `Strategy` receive matching private

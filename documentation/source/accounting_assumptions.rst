@@ -117,6 +117,17 @@ decision or execution. Valid pre-submission edits preserve the original object
 and metadata. This check does not freeze type-specific terms after admission or
 change standalone risk-policy evaluation.
 
+``SimpleMarketSimulator`` also validates the current limit price immediately
+before its marketability comparison, after price/slippage callbacks and rounding.
+Invalid limits raise an error instead of bypassing the comparison as market
+orders. This covers direct calls and mutations after rule admission. Buy fills
+must be at or below the finite limit; sell fills must be at or above it. Finite
+negative and zero limits remain valid. Missing market prices still defer the
+order without a marketability comparison. Failure during candidate construction
+applies no fills from that invocation; existing Strategy rollback remains scoped
+to protected fields, not limit terms or arbitrary callback side effects. Custom
+simulators remain responsible for their own limit execution policy.
+
 Roll commands are expanded into outgoing and incoming market legs in that order.
 Expansion rechecks distinct contracts in the same group and finite, nonzero,
 whole-unit quantities with opposite signs, even if the command changed after
