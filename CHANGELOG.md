@@ -54,6 +54,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- VWAP stops now require finite real values or floating NaN (explicitly no stop)
+  at construction, rule admission and built-in simulator preflight. Infinite
+  stops can no longer silently disable the trigger, and booleans/non-real values
+  fail explicitly. Use NaN to disable a stop and rerun affected backtests;
+  valid stop direction, prorating and cancellation behavior are unchanged.
 - VWAP execution windows are revalidated at rule admission and before built-in
   simulation, using the constructor policy. Mutated NaT, malformed or reversed
   end times can no longer trigger immediate backup-price fills. Invalid windows

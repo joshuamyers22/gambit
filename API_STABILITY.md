@@ -83,8 +83,8 @@ windows before pricing or filling any order in that invocation, including direct
 calls and orders changed after admission. Invalid windows can no longer trigger
 immediate backup-price fills. Fix invalid terms and rerun affected backtests.
 Zero-duration windows, equivalent NumPy timestamp units and valid end-time edits
-remain supported. This does not freeze window fields, validate the optional stop
-price, impose custom-simulator policy or expand callback rollback guarantees.
+remain supported. This does not freeze window fields, impose custom-simulator
+policy or expand callback rollback guarantees.
 
 `VWAPMarketSimulator` now excludes observations after the fill timestamp, including
 when its calendar-day boundary trigger executes before the requested VWAP end.
@@ -95,6 +95,20 @@ end-time/stop rules; an empty observed window uses the existing current-heartbea
 backup or fails when none is configured. Trigger timing and fill quantities are
 unchanged. This is not an exchange-session calendar, streaming VWAP optimization,
 or a guarantee that user-supplied indicators themselves are free of look-ahead.
+
+## VWAP stop inputs
+
+`VWAPOrder.vwap_stop` must be a finite real number or floating NaN (the explicit
+no-stop sentinel). Construction, rule admission and built-in simulator preflight
+share this policy. Positive/negative infinity no longer silently disable the
+stop; booleans, strings, arrays and other non-real values are rejected. Use NaN
+instead of infinity to intentionally disable a stop, and rerun affected backtests.
+Finite negative/zero and NumPy scalar stops remain supported. The existing buy
+`price <= stop`, sell `price >= stop`, elapsed-window prorating and cancellation
+rules are unchanged. Invalid rule batches stop before risk evaluation; invalid
+built-in execution batches stop before any fills/cancellations. Stop terms remain
+mutable and outside scoped callback rollback; this does not change standalone
+risk-policy or custom/native simulator behavior.
 
 ## Simple simulator limit validation
 

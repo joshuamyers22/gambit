@@ -80,6 +80,7 @@ def validate_rule_orders(
             raise ValueError("rule order timestamp does not match the current strategy timestamp")
         if isinstance(order, VWAPOrder):
             order._validate_window()
+            order._validate_stop()
         if isinstance(order, RollOrder):
             reopen_registered = contract_group.contracts.get(order.reopen_contract.symbol)
             if reopen_registered is not order.reopen_contract:

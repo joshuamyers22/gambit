@@ -651,7 +651,8 @@ class VWAPOrder(Order):
 
     Args:
         vwap_stop: limit price. If market price <= vwap_stop for buys or market price
-        >= vwap_stop for sells, the order is executed at that point.
+        >= vwap_stop for sells, the order is executed at that point. Must be a
+        finite real number, or NaN to disable the stop.
         vwap_end_time: We want to execute at VWAP computed from now to this time
     """
 
@@ -661,6 +662,13 @@ class VWAPOrder(Order):
     def __post_init__(self) -> None:
         super().__post_init__()
         self._validate_window()
+        self._validate_stop()
+
+    def _validate_stop(self) -> None:
+        """NaN is the explicit no-stop sentinel; other terms must be finite real numbers."""
+        if isinstance(self.vwap_stop, (float, np.floating)) and np.isnan(self.vwap_stop):
+            return
+        _finite_real(self.vwap_stop, field_name="VWAP stop")
 
     def _validate_window(self) -> None:
         """Recheck mutable submission/end timestamps using the constructor policy."""
