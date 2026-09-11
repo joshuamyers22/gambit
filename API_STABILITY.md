@@ -138,6 +138,19 @@ callback state and timing telemetry may still differ across runs.
 
 ## Callback order ownership
 
+`decide_order` validates the proposed quantity and every context order whose
+`is_open()` is true before invoking any policy, including an empty policy list.
+Quantities must be finite, nonzero whole units; fractional values, NaN/Inf,
+booleans and numeric strings raise `ValueError` instead of producing a decision.
+This preflight does not mutate orders or invoke account/policy callbacks. Filled
+or cancelled context orders may retain zero remaining quantity. Valid signed
+and NumPy quantities, unscheduled proposal timestamps, policy ordering and
+first-rejection behavior remain supported. The scan is linear in context orders;
+it does not index retained history. This is quantity validation, not full rule
+admission, terminal-order replay prevention, or validation of policy parameters
+and type-specific order terms. Direct policy `evaluate` calls bypass this
+orchestrator boundary; use `decide_order` for validated pre-trade decisions.
+
 Rule admission rechecks a real `Contract`, a NumPy datetime scalar and actual
 `TimeInForce`/`OrderStatus` enums using the construction-time type policy.
 Strings, integers and array-wrapped timestamps are not substitutes. A submitted

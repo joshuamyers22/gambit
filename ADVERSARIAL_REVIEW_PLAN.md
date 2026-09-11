@@ -158,6 +158,15 @@ an external HDF5 archive and is intentionally not invoked by CI.
   Prorating/cancellation and scoped callback rollback are unchanged; custom/native
   execution policy and bulk performance datasets remain outside this change.
 
+- Standalone risk-quantity follow-up: `decide_order` accepted a quantity changed
+  to 0.5 under `MaxOrderQuantity(10)` and NaN with no policies. The orchestrator
+  now checks proposed and still-open context quantities before any policy,
+  sharing constructor whole-unit validation. Tests cover invalid values/types,
+  unrelated pending instruments, empty policies, pending lifecycle states,
+  terminal zero remainders, unscheduled proposals and unchanged decision order.
+  Direct policy calls, broader order/reference admission and policy-parameter
+  validation are outside this boundary. No performance claim or bulk data added.
+
 pyqstrat is a quantitative-strategy backtesting library centered on a callback-driven `Strategy`, an `Account`/P&L ledger, reusable trading rules and market simulators, return evaluation, portfolio aggregation, parameter optimization, plotting, calendars, HDF5/CSV I/O, and native acceleration.
 
 The code is compact and exposes useful primitives, but it is not ready to be trusted for financial decisions without a correctness hardening pass. The highest risks are silent data-selection and accounting errors: several public methods can return plausible but incorrect results rather than fail loudly. Packaging and test discovery are also fragile enough that regressions may escape detection. Native I/O increases the need for fuzzing and sanitizer coverage.

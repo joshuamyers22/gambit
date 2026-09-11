@@ -54,6 +54,11 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Standalone ``decide_order`` now validates proposed and open pending quantities
+  before any policy runs, even when no policies are configured. Mutated fractional
+  or NaN quantities can no longer receive acceptance; invalid inputs raise using
+  the constructor whole-unit rule. Valid signed quantities, terminal context
+  orders with zero remainder and unscheduled pre-trade proposals remain supported.
 - VWAP stops now require finite real values or floating NaN (explicitly no stop)
   at construction, rule admission and built-in simulator preflight. Infinite
   stops can no longer silently disable the trigger, and booleans/non-real values
