@@ -14,6 +14,7 @@ typedef struct {
     Py_ssize_t fail_at;
     size_t attempts, allocated, freed, failures;
     int used;
+    int leak_next_free;  /* Deliberate LSan positive control, never production. */
 } Policy;
 
 static size_t live_policies = 0;
@@ -62,7 +63,8 @@ static void fault_free(void *ctx, void *pointer, size_t size) {
     if (pointer) {
         if (policy->freed >= policy->allocated) abort();
         ++policy->freed;
-        free(pointer);
+        if (policy->leak_next_free) policy->leak_next_free = 0;
+        else free(pointer);
     }
 }
 
@@ -150,6 +152,14 @@ static PyObject *stats(PyObject *self, PyObject *capsule) {
         (unsigned long long)policy->failures);
 }
 
+static PyObject *arm_leak_control(PyObject *self, PyObject *capsule) {
+    (void)self;
+    Policy *policy = get_policy(capsule);
+    if (!policy) return NULL;
+    policy->leak_next_free = 1;
+    Py_RETURN_NONE;
+}
+
 static PyObject *policy_count(PyObject *self, PyObject *unused) {
     (void)self;
     (void)unused;
@@ -166,6 +176,7 @@ static PyMethodDef methods[] = {
     {"new_policy", new_policy, METH_O, "Create a one-call failure policy."},
     {"invoke", invoke, METH_VARARGS, "Invoke and restore the prior allocator, including on error."},
     {"stats", stats, METH_O, "Return attempts, allocations, frees and injected failures."},
+    {"arm_leak_control", arm_leak_control, METH_O, "Deliberately omit one free to test LSan detection."},
     {"policy_count", policy_count, METH_NOARGS, "Count policy capsules still alive."},
     {"current_policy", current_policy, METH_NOARGS, "Return the active NumPy handler capsule."},
     {NULL, NULL, 0, NULL}

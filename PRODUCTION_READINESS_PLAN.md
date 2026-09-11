@@ -256,7 +256,8 @@ integer-backed datetime values, preserving in-range prefix/separator behavior.
 
 The third checkbox remains open: local macOS ASan/UBSan and explicit C++ allocation
 counts passed, but the installed Apple compiler lacks libFuzzer. Seed replay is
-not coverage-guided qualification. Hosted libFuzzer/Linux LeakSanitizer execution,
+not coverage-guided qualification. Both hosted CSV/ZIP libFuzzer jobs have passed;
+the revised independent Linux LeakSanitizer gate still needs hosted verification.
 HDF5/IPC coverage-guided targets, longer scheduled
 campaigns and named security review remain outstanding. See the
 [fuzz guide](tests/NATIVE_FUZZING.md) for exact scope and reproduction instructions.
@@ -267,8 +268,12 @@ checks cleanup after each of four column allocations, empty/nonempty CSV/ZIP,
 datetime parsing/conversion errors, retry success, restored handler identity and
 view/handler lifetimes. Negative controls demonstrate live allocations remain
 counted until released. Local execution passes without production changes.
-An unsuppressed Linux LSan step is configured but not yet run; Python-object and
-dtype-descriptor allocation failure injection remain outside this evidence.
+The hosted unsuppressed step exposed interpreter-startup allocations in the probe.
+A pre-interpreter launcher now excludes startup while tracking each native call;
+ARM64 Linux passes all 425 failures with zero leaks and detects a deliberate
+16-byte NumPy buffer leak in an independent mandatory control. Hosted x86-64
+verification remains pending. Python-object and dtype-descriptor allocation
+failure injection remain outside this evidence.
 
 HDF5 follow-up: all selected datasets now pass metadata/aggregate-budget
 preflight before any column payload is read. Reader paths and backup groups
@@ -924,6 +929,39 @@ release merely because another library offers them.
 - Next: run the revised checks in the hosted environment and triage remaining
   unsuppressed interpreter allocations. Do not declare all LSan checks clean or
   close P0.3 from removal of a single report. No merge, release or promotion.
+
+### 2026-09-11 — Eighth slice (pre-interpreter leak-check scope)
+
+- At the user's request, pushed the HDF5 and lifetime-probe updates as
+  [`aaf5ed0`](https://github.com/joshuamyers22/gambit/commit/aaf5ed078f2fdac2917e07927f159eae0dbea66b).
+  [Hosted run 34658154517](https://github.com/joshuamyers22/gambit/actions/runs/34658154517)
+  passed every job except native-sanitizers. Its corrected general lifetime probe
+  passed; the independent NumPy probe passed all 425 failure counters but reported
+  **1,086,365 bytes in 941 interpreter allocations**. No new production leak was
+  established by that report.
+- Reproduced the old probe's startup-allocation reports on ARM64 Linux
+  (1,092,763 bytes / 948 allocations). Python-level `__lsan_disable` occurred after
+  initialization. Added a test-only embedded launcher that scopes tracking before
+  Python starts, preserves the active venv, and requires balanced enable/disable
+  around native calls. No production code, dependency lock or suppression changed.
+- The revised Linux probe passed **425 injected failures with LSan result zero**.
+  An independent deliberate-leak control through the same native reader produced
+  exactly the expected **16-byte NumPy buffer leak**. CI now requires both results
+  and retains their logs for seven days. Missing scope/runtime, inactive tracking,
+  unrelated leaks and crashes cannot count as successful controls.
+- Added 17 regression cases for launcher admission, nesting, error propagation,
+  result validation, mandatory controls and diagnostic retention. Full macOS
+  suite: **1,848 passed**, **86% coverage**; lock, Ruff, mypy, all coverage floors,
+  native warnings and notebook cleanliness passed. The Linux evidence uses
+  Debian/GCC 12/CPython 3.12.11/NumPy 2.5.2 on ARM64, not the hosted x86-64 image.
+  Sphinx warnings-as-errors also passed. Probe/control logs are preserved at
+  `/private/tmp/gambit-lsan-scope-evidence.hVnyS3`; the disposable container was
+  removed after copying them. No application data was removed.
+- These eighth-slice changes are local/uncommitted. Next: push when requested and
+  verify the revised hosted sanitizer gate, then resume HDF5/IPC coverage-guided
+  targets and scheduled campaigns. P0.3, owner review and production promotion
+  remain open; scoped workload qualification does not establish whole-process
+  or dependency leak freedom.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

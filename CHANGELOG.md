@@ -81,6 +81,10 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Scope the dedicated NumPy leak probe before Python initialization so startup
+  allocations do not contaminate native-call evidence. A mandatory deliberate
+  NumPy buffer leak verifies detection remains active; no suppressions are added.
+
 - Native CSV staging and NumPy conversion now use automatic ownership rather
   than dtype-dependent `void*` deletion and manual array-buffer handoffs.
   `max_rows` no longer preallocates its requested capacity or parses an extra

@@ -75,9 +75,41 @@ dtype-descriptor, libzip-internal or system OOM injection. Local counts are not 
 LeakSanitizer run. CI adds an ASan/UBSan-built helper and an unsuppressed Linux
 `--leak-check` run, tracking native calls after interpreter/dependency setup.
 `--leak-check` fails when no LSan runtime is present; it never silently downgrades.
-Hosted execution remains pending. The existing broad interpreter suppressions
+The existing broad interpreter suppressions
 are deliberately not applied to this new probe because they could hide a leak
 with NumPy array creation in its stack.
+
+For actual Linux leak qualification, use a sanitized Gambit build and the
+pre-interpreter launcher (the ordinary command above remains a counter-only test):
+
+```sh
+GAMBIT_SANITIZER_RUN=1 \
+ASAN_LIBRARY="$(gcc -print-file-name=libasan.so)" \
+CXX_LIBRARY="$(g++ -print-file-name=libstdc++.so.6)" \
+python tests/run_numpy_leak_check.py --build-dir /tmp/gambit-numpy-lsan
+```
+
+The directory must not exist. This runner requires Linux, a shared CPython
+development library, and matching GCC sanitizer libraries. It compiles the
+test-only `native_lsan_python.c` launcher, which calls `__lsan_disable` **before**
+[`Py_BytesMain`](https://docs.python.org/3.12/c-api/init.html#c.Py_BytesMain)
+initializes Python. Dependency setup stays outside the tracked scope; each
+native invocation is enabled and then disabled with balanced calls. Per the
+[LSan interface](https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/lsan_interface.h),
+disable/enable scopes nest. Disabling again inside the probe would accidentally
+leave native calls untracked, so a regression protects this ordering and direct
+`--leak-check` calls without the launcher are rejected.
+
+Two subprocesses must produce the expected results: the full 425-failure workload
+must return zero leaks, and a separate deliberate-leak control must return a
+16-byte report through `fault_malloc` / the native reader's NumPy allocation path.
+The control deliberately omits one buffer free in the **test helper only** (its
+free counter records the callback, not an actual deallocation for that control).
+A crash, disabled checking, missing success marker or unrelated allocation report
+fails the runner. No suppression patterns are used. Logs are retained in the
+build directory and CI uploads them for seven days, including successful control
+evidence. A positive-control LSan error in that artifact is intentional; an error
+from the ordinary probe is not.
 
 ## Lifetime-check ordering and Linux diagnosis
 
@@ -101,7 +133,18 @@ The stripped container Python library produced separate interpreter-retention
 reports that its symbols could not match to the existing suppression list.
 The independent NumPy data-allocation counters passed, but its unsuppressed
 container LSan run also reported interpreter allocations. Neither run is a
-clean hosted qualification; those residual reports still require triage.
+clean hosted qualification at that stage.
+
+The follow-up [hosted run 34658154517](https://github.com/joshuamyers22/gambit/actions/runs/34658154517)
+passed the corrected general lifetime probe. Only the independent NumPy probe
+failed, reporting 1,086,365 bytes across 941 interpreter allocations despite its
+passing data-allocation counters. Its Python-level disable happened too late to
+exclude startup allocations. In an ARM64 Debian/GCC 12/CPython 3.12.11 container,
+the original probe reproduced startup reports (1,092,763 bytes / 948 allocations),
+while the pre-interpreter launcher passed unsuppressed with all 425 injected
+failures and caught exactly the deliberate 16-byte NumPy leak. This verifies that
+scoped Linux workload, not whole-interpreter leak freedom or hosted x86-64
+qualification. The updated hosted gate still needs to run before P0.3 can close.
 
 CI now attempts the independent NumPy check whenever the native build succeeds,
 even if the preceding stress probe fails, unless the run is cancelled. An earlier

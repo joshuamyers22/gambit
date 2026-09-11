@@ -152,23 +152,54 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--leak-check", action="store_true")
+    parser.add_argument("--positive-control", action="store_true")
     args = parser.parse_args()
+    if args.positive_control and not args.leak_check:
+        parser.error("--positive-control requires --leak-check")
     runtime = ctypes.CDLL(None)
     if args.leak_check:
         # Fail closed instead of claiming leak qualification without a runtime.
+        bootstrap = getattr(runtime, "gambit_lsan_bootstrapped", None)
+        if bootstrap is None or bootstrap() != 1:
+            parser.error("--leak-check requires tests/run_numpy_leak_check.py (pre-interpreter tracking scope)")
         enable_tracking = runtime.__lsan_enable
         disable_tracking = runtime.__lsan_disable
         leak_check = runtime.__lsan_do_recoverable_leak_check
         leak_check.restype = ctypes.c_int
-        disable_tracking()
+        # The launcher already disabled tracking before Python initialization.
+        # A second disable here would nest and leave native calls untracked.
     else:
         enable_tracking = disable_tracking = lambda: None
     build(args.build_dir.resolve())
-    exercise(args.build_dir.resolve(), enable_tracking, disable_tracking)
+    if args.positive_control:
+        exercise_leak_control(args.build_dir.resolve(), enable_tracking, disable_tracking)
+    else:
+        exercise(args.build_dir.resolve(), enable_tracking, disable_tracking)
     if args.leak_check:
         gc.collect()
-        sys.stdout.flush()
-        os._exit(1 if leak_check() else 0)
+        leaks = leak_check()
+        print(f"LeakSanitizer result={leaks}", flush=True)
+        os._exit(1 if leaks else 0)
+
+
+def exercise_leak_control(directory: Path, enable_tracking, disable_tracking) -> None:
+    """Lose a real native-reader NumPy buffer with the same tracking scope."""
+    from gambit import _io
+
+    sys.path.insert(0, str(directory))
+    probe = importlib.import_module("_gambit_numpy_allocator")
+    source = directory / "control.csv"
+    source.write_text("alpha\nbeta\n")
+    policy = probe.new_policy(-1)
+    probe.arm_leak_control(policy)
+    enable_tracking()
+    try:
+        arrays = probe.invoke(policy, _io.read_file, (str(source), [0], ["S8"], ",", 0, 0), {})
+    finally:
+        disable_tracking()
+    del arrays, policy
+    assert probe.policy_count() == 0
+    print("NumPy deliberate leak control exercised", flush=True)
 
 
 if __name__ == "__main__":
