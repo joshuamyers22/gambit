@@ -19,9 +19,9 @@ modules, and undocumented attributes are internal.
 - Persisted `BacktestResult` bundles have their own integer format version.
   Unsupported versions fail closed; migration must be explicit rather than
   silently interpreting an older schema.
-  Writers now emit version 3; readers explicitly support version 2's existing
-  frame schema and legacy provenance as well. Missing historical execution
-  manifests remain absent, not reconstructed from current registrations.
+  Writers now emit version 4; readers explicitly support versions 2 and 3 as
+  well. Missing historical execution manifests and decision snapshots remain
+  absent, not reconstructed from current registrations or terminal orders.
 
 ## Experimental native APIs
 

@@ -1,401 +1,265 @@
-//
-//  read_file.cpp
-//  py_c_test
-//
-//  Created by Sal Abbasi on 9/11/22.
-//
+// Native CSV/NumPy boundary. All owners unwind while holding the correct GIL state.
 #define PY_SSIZE_T_CLEAN
 #define NPY_NO_DEPRECATED_API 1
 #include <Python.h>
-#include <vector>
-#include <string>
-#include <memory>
-#include <iostream>
+#include <numpy/ndarrayobject.h>
+#include <cstring>
 #include <limits>
-#include <time.h>
-#include "structmember.h"
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
+#include <ctime>
 #include "csv_reader.hpp"
-#include "numpy/ndarrayobject.h"
 
-
-#include <time.h>
+#ifdef _MSC_VER
 #include <iomanip>
 #include <sstream>
-
-
-//strptime not inmplemented in windows
-#ifdef _MSC_VER
-extern "C" char* strptime(const char* s,
-                          const char* f,
-                          struct tm* tm) {
-  std::istringstream input(s);
-  input.imbue(std::locale(setlocale(LC_ALL, nullptr)));
-  input >> std::get_time(tm, f);
-  if (input.fail()) {
-    return nullptr;
-  }
-  return (char*)(s + input.tellg());
+static char* strptime(const char* value, const char* format, struct tm* result) {
+    std::istringstream input(value);
+    input >> std::get_time(result, format);
+    return input.fail() ? nullptr : const_cast<char*>(value + input.tellg());
 }
 #endif
 
+struct PythonDecref {
+    void operator()(PyObject* value) const { Py_XDECREF(value); }
+};
+using PythonOwner = std::unique_ptr<PyObject, PythonDecref>;
 
-using namespace std;
+class ReleasedGIL {
+    PyThreadState* state;
+public:
+    ReleasedGIL(): state(PyEval_SaveThread()) {}
+    ~ReleasedGIL() { PyEval_RestoreThread(state); }
+    ReleasedGIL(const ReleasedGIL&) = delete;
+    ReleasedGIL& operator=(const ReleasedGIL&) = delete;
+};
 
-static int read_list(PyObject* list, vector<int>& vec) {
-    if (list == NULL) return 0; // Empty vector
-    Py_ssize_t n = PyList_Size(list);
-    for (int i=0; i < n; i++) {
-        PyObject* item = PyList_GetItem(list, i);
-        if (!PyLong_Check(item)) {
-            PyErr_SetString(PyExc_TypeError, "list items must be integers.");
-            return 0;
-        }
-        long value = PyLong_AsLong(item);
-        if (value == -1 && PyErr_Occurred()) return 0;
-        if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max()) {
-            PyErr_SetString(PyExc_OverflowError, "column index does not fit in a C int");
-            return 0;
-        }
-        int elem = static_cast<int>(value);
-        vec.push_back(elem);
+static bool positive_limit(PyObject* value, size_t& result, const char* name) {
+    if (!value) return true;
+    if (!PyLong_Check(value) || PyBool_Check(value)) {
+        PyErr_Format(PyExc_TypeError, "%s must be a positive integer", name);
+        return false;
     }
-    return -1;
+    result = PyLong_AsSize_t(value);
+    if (PyErr_Occurred()) return false;
+    if (result == 0 || result > static_cast<size_t>(std::numeric_limits<Py_ssize_t>::max())) {
+        PyErr_Format(PyExc_ValueError, "%s must be positive and fit in Py_ssize_t", name);
+        return false;
+    }
+    return true;
 }
 
-static int read_list(PyObject* list, vector<string>& vec) {
-    if (list == NULL) return 0; // Empty vector
-    Py_ssize_t n = PyList_Size(list);
-    for (int i=0; i < n; i++) {
-        PyObject* item = PyList_GetItem(list, i);
-        if (!PyUnicode_Check(item)) {
-            PyErr_SetString(PyExc_TypeError, "list items must be strings.");
-            return 0;
-        }
-        PyObject* ascii = PyUnicode_AsASCIIString(item);
-        if (!ascii) return 0;
-        char* ret_string = PyBytes_AsString(ascii);
-        if (!ret_string) {
-            Py_DECREF(ascii);
-            return 0;
-        }
-        vec.push_back(std::string(ret_string));
-        Py_DECREF(ascii);
-    }
-    return -1;
+static PythonOwner dtype_descriptor(const std::string& dtype) {
+    PythonOwner text(PyUnicode_FromStringAndSize(dtype.data(), static_cast<Py_ssize_t>(dtype.size())));
+    if (!text) return PythonOwner();
+    PyArray_Descr* descriptor = nullptr;
+    if (!PyArray_DescrConverter(text.get(), &descriptor)) return PythonOwner();
+    return PythonOwner(reinterpret_cast<PyObject*>(descriptor));
 }
 
-static PyObject* create_np_str_array(const std::vector<std::string>& vals, size_t itemsize){
-
-    if (itemsize != 0 && vals.size() > std::numeric_limits<size_t>::max() / itemsize) {
-        PyErr_SetString(PyExc_OverflowError, "string array allocation size overflow");
-        return NULL;
+static PythonOwner numpy_array(PythonOwner descriptor, size_t rows) {
+    if (rows > static_cast<size_t>(std::numeric_limits<npy_intp>::max())) {
+        PyErr_SetString(PyExc_OverflowError, "array row count exceeds npy_intp");
+        return PythonOwner();
     }
-    size_t mem_size = vals.size() * itemsize;
-
-    void * mem = PyDataMem_NEW(mem_size);
-    if (!mem && mem_size != 0) {
-        PyErr_NoMemory();
-        return NULL;
-    }
-
-    size_t cur_index=0;
-
-    for (const auto& val : vals){
-        for(size_t i = 0; i < itemsize; i++){
-            char ch = i < val.size() ? val[i] : 0; // fill with NULL if string too short
-            reinterpret_cast<char*>(mem)[cur_index] = ch;
-            cur_index++;
-        }
-    }
-
-    npy_intp dim = static_cast<npy_intp>(vals.size());
-
-    PyObject* arr = PyArray_New(&PyArray_Type, 1, &dim, NPY_STRING, NULL, mem,
-                                static_cast<int>(itemsize), NPY_ARRAY_CARRAY | NPY_ARRAY_OWNDATA, NULL);
-    if (arr == NULL) {
-        PyDataMem_FREE(mem);
-        return NULL;
-    }
-    PyArray_ENABLEFLAGS((PyArrayObject*)arr, NPY_ARRAY_OWNDATA);
-    return arr;
+    npy_intp dimension = static_cast<npy_intp>(rows);
+    // NumPy owns its own allocation. NewFromDescr steals the descriptor on both
+    // success and failure; no PyDataMem buffer or manual OWNDATA transfer.
+    return PythonOwner(PyArray_NewFromDescr(&PyArray_Type,
+        reinterpret_cast<PyArray_Descr*>(descriptor.release()), 1, &dimension,
+        nullptr, nullptr, 0, nullptr));
 }
 
-template<typename T> PyObject* create_np_array(PyArray_Descr* descr, void* data) {
-    npy_intp dims[1];
-    auto vec = static_cast<vector<T>*>(data);
-    dims[0] = vec->size();
-    size_t mem_size = vec->size() * sizeof(T);
-    auto _data = static_cast<T*>(PyDataMem_NEW(mem_size));
-    if (!_data && mem_size != 0) {
-        delete vec;
-        PyErr_NoMemory();
-        return NULL;
-    }
-    if (mem_size != 0) {
-        ::memcpy(
-          _data,
-          vec->data(),
-          mem_size);
-    }
-    delete vec;
-
-
-    PyObject* arr = PyArray_NewFromDescr(&PyArray_Type, descr, 1, dims, NULL, _data,
-                                         NPY_ARRAY_CARRAY | NPY_ARRAY_OWNDATA , NULL);
-    if (arr == NULL) {
-        PyDataMem_FREE(_data);
-        return NULL;
-    }
-    PyArray_ENABLEFLAGS((PyArrayObject*)arr, NPY_ARRAY_OWNDATA);
-    return arr;
-}
-
-
-static PyObject* create_np_array(const std::string& dtype, void* data) {
-
-    PyObject* _dtype = Py_BuildValue("s", dtype.c_str());
-    if (!_dtype) {
-        delete_vector(dtype, data);
-        return NULL;
-    }
-    PyArray_Descr* descr = NULL;
-    if (!PyArray_DescrConverter(_dtype, &descr)) {
-        Py_DECREF(_dtype);
-        delete_vector(dtype, data);
-        return NULL;
-    }
-    Py_XDECREF(_dtype);
-
-    PyObject* arr = NULL;
-    if (dtype[0] == 'S') {
-        size_t itemsize = atoi(dtype.substr(1).c_str());
-        if (itemsize <= 0) {
-            Py_DECREF(descr);
-            delete static_cast<vector<string>*>(data);
-            PyErr_SetString(PyExc_TypeError, "item size must be a positive int");
-            return NULL;
-        }
-        auto col = static_cast<vector<string>*>(data);
-        arr = create_np_str_array(*col, itemsize);
-        delete col;
-        Py_DECREF(descr);
-    } else if (dtype.substr(0, 3) == "M8[") {
-        arr = create_np_array<int64_t>(descr, data);
-    } else if (dtype == "i1") {
-        arr = create_np_array<int8_t>(descr, data);
-    } else if (dtype == "i4") {
-        arr = create_np_array<int32_t>(descr, data);
-    } else if (dtype == "i8") {
-        arr = create_np_array<int64_t>(descr, data);
-    } else if (dtype == "f4") {
-        arr = create_np_array<float>(descr, data);
-    } else if (dtype == "f8") {
-        arr = create_np_array<double>(descr, data);
-    } else {
-        PyErr_SetString(PyExc_TypeError, "only f4, f8, i1, i4, i8, M8[*] and S[n] datatypes are supported");
-    }
-    return arr;
-}
-
-static PyObject*
-read_file(PyObject*, PyObject* args, PyObject* kwargs) {
-    char* filename = NULL;
-    PyObject* _col_indices = NULL;
-    PyObject* _dtypes = NULL;
-    char* separator = const_cast<char*>(",");
+static PyObject* read_file_impl(PyObject* args, PyObject* kwargs) {
+    const char* filename = nullptr;
+    PyObject* indices_object = nullptr;
+    PyObject* dtypes_object = nullptr;
+    const char* separator = ",";
     int skip_rows = 1;
     int max_rows = 0;
-
-    const char *kwlist[] = {
-        "filename",
-        "col_indices",
-        "dtypes",
-        "separator",
-        "skip_rows",
-        "max_rows",
-        NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args,
-                                     kwargs,
-                                     "sOO|sii",
-                                     const_cast<char**>(kwlist),
-                                     &filename,
-                                     &_col_indices,
-                                     &_dtypes,
-                                     &separator,
-                                     &skip_rows,
-                                     &max_rows)) {
-        return NULL;
+    PyObject* input_limit = nullptr;
+    PyObject* output_limit = nullptr;
+    PyObject* column_limit = nullptr;
+    const char* names[] = {"filename", "col_indices", "dtypes", "separator",
+        "skip_rows", "max_rows", "max_input_bytes", "max_output_bytes", "max_columns", nullptr};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sOO|siiOOO", const_cast<char**>(names),
+            &filename, &indices_object, &dtypes_object, &separator, &skip_rows, &max_rows,
+            &input_limit, &output_limit, &column_limit)) return nullptr;
+    if (!PyList_Check(indices_object) || !PyList_Check(dtypes_object)) {
+        PyErr_SetString(PyExc_RuntimeError, "col_indices and dtypes must be a list");
+        return nullptr;
     }
-    if (!PyList_Check(_col_indices)) {
-        PyErr_SetString(PyExc_RuntimeError, "col_indices must be a list");
-        return NULL;
-    }
-
-    if (!PyList_Check(_dtypes)) {
-        PyErr_SetString(PyExc_RuntimeError, "dtypes must be a list");
-        return NULL;
-    }
-    if (!separator || ::strlen(separator) != 1) {
+    if (::strlen(separator) != 1) {
         PyErr_SetString(PyExc_ValueError, "separator must contain exactly one byte");
-        return NULL;
+        return nullptr;
     }
-    vector<string> dtypes;
-    vector<int> col_indices;
-    if (!read_list(_col_indices, col_indices)) return NULL;
-
-    int max_col_idx = -1;
-    for (auto i: col_indices) {
-        if (i <= max_col_idx) {
-            PyErr_SetString(PyExc_RuntimeError, "col_indices must be monotonically increasing");
-            return NULL;
-        }
-        max_col_idx = i;
+    if (skip_rows < 0 || max_rows < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "skip_rows and max_rows must be >= 0");
+        return nullptr;
     }
-
-    if (!read_list(_dtypes, dtypes)) return NULL;
-    if (col_indices.empty()) {
+    CsvLimits limits;
+    if (!positive_limit(input_limit, limits.max_input_bytes, "max_input_bytes") ||
+        !positive_limit(output_limit, limits.max_output_bytes, "max_output_bytes") ||
+        !positive_limit(column_limit, limits.max_columns, "max_columns")) return nullptr;
+    const Py_ssize_t count = PyList_Size(indices_object);
+    if (count == 0) {
         PyErr_SetString(PyExc_RuntimeError, "col_indices and dtypes must not be empty");
-        return NULL;
+        return nullptr;
     }
-    if (skip_rows < 0) {
-        PyErr_SetString(PyExc_RuntimeError, "skip_rows must be >= 0");
-        return NULL;
-    }
-    if (max_rows < 0) {
-        PyErr_SetString(PyExc_RuntimeError, "max_rows must be positive (or zero to read all rows)");
-        return NULL;
-    }
-
-    if (col_indices.size() != dtypes.size()) {
+    if (count != PyList_Size(dtypes_object)) {
         PyErr_SetString(PyExc_RuntimeError, "col_indices and dtypes must be same size");
-        return NULL;
+        return nullptr;
+    }
+    if (static_cast<size_t>(count) > limits.max_columns) {
+        PyErr_SetString(PyExc_RuntimeError, "CSV column limit exceeded");
+        return nullptr;
+    }
+    std::vector<int> indices;
+    std::vector<std::string> dtypes;
+    std::vector<PythonOwner> descriptors;
+    size_t row_width = 0;
+    int previous = -1;
+    for (Py_ssize_t i = 0; i < count; ++i) {
+        PyObject* index = PyList_GetItem(indices_object, i);
+        if (!PyLong_Check(index) || PyBool_Check(index)) {
+            PyErr_SetString(PyExc_TypeError, "column indices must be integers");
+            return nullptr;
+        }
+        const long value = PyLong_AsLong(index);
+        if (PyErr_Occurred()) return nullptr;
+        if (value > std::numeric_limits<int>::max() || value < std::numeric_limits<int>::min()) {
+            PyErr_SetString(PyExc_OverflowError, "column index does not fit in a C int");
+            return nullptr;
+        }
+        if (value <= previous) {
+            PyErr_SetString(PyExc_RuntimeError, "col_indices must be monotonically increasing");
+            return nullptr;
+        }
+        indices.push_back(static_cast<int>(value));
+        previous = static_cast<int>(value);
+        PyObject* type = PyList_GetItem(dtypes_object, i);
+        if (!PyUnicode_Check(type)) {
+            PyErr_SetString(PyExc_TypeError, "dtypes must contain strings");
+            return nullptr;
+        }
+        if (PyUnicode_GetLength(type) > 64) {
+            PyErr_SetString(PyExc_TypeError, "dtype exceeds the 64-character schema limit");
+            return nullptr;
+        }
+        PythonOwner ascii(PyUnicode_AsASCIIString(type));
+        if (!ascii) return nullptr;
+        std::string dtype(PyBytes_AS_STRING(ascii.get()), static_cast<size_t>(PyBytes_GET_SIZE(ascii.get())));
+        if (dtype.find('\0') != std::string::npos) {
+            PyErr_SetString(PyExc_TypeError, "dtype cannot contain a NUL byte");
+            return nullptr;
+        }
+        const size_t width = csv_itemsize(dtype);
+        if (width > limits.max_output_bytes - row_width) {
+            PyErr_SetString(PyExc_RuntimeError, "CSV output byte limit exceeded by schema");
+            return nullptr;
+        }
+        row_width += width;
+        PythonOwner descriptor = dtype_descriptor(dtype);
+        if (!descriptor) return nullptr;
+        descriptors.push_back(std::move(descriptor));
+        dtypes.push_back(std::move(dtype));
     }
 
-    // release the gil
-    PyThreadState *_save;
-    _save = PyEval_SaveThread();
-    vector<void*> data;
+    std::vector<CsvColumn> columns;
+    {
+        ReleasedGIL released;
+        read_csv(filename, indices, dtypes, separator[0], skip_rows, max_rows, columns, limits);
+    }
+    PythonOwner arrays(PyList_New(count));
+    if (!arrays) return nullptr;
+    for (Py_ssize_t i = 0; i < count; ++i) {
+        CsvColumn& column = columns[static_cast<size_t>(i)];
+        PythonOwner array = numpy_array(std::move(descriptors[static_cast<size_t>(i)]),
+                                        column.values.size() / column.itemsize);
+        if (!array) return nullptr;
+        auto* ndarray = reinterpret_cast<PyArrayObject*>(array.get());
+        if (static_cast<size_t>(PyArray_ITEMSIZE(ndarray)) != column.itemsize ||
+            static_cast<size_t>(PyArray_NBYTES(ndarray)) != column.values.size()) {
+            PyErr_SetString(PyExc_RuntimeError, "CSV/NumPy dtype size mismatch");
+            return nullptr;
+        }
+        if (!column.values.empty()) ::memcpy(PyArray_DATA(ndarray), column.values.data(), column.values.size());
+        PyList_SET_ITEM(arrays.get(), i, array.release());  // fresh, correctly sized list
+        std::vector<unsigned char>().swap(column.values);
+    }
+    return arrays.release();
+}
+
+static PyObject* read_file(PyObject*, PyObject* args, PyObject* kwargs) {
     try {
-        read_csv(filename, col_indices, dtypes, separator[0], skip_rows, max_rows, data);
-    } catch (const std::exception& ex) {
-        PyEval_RestoreThread(_save);
-        PyErr_SetString(PyExc_RuntimeError, ex.what());
-        return NULL;
+        return read_file_impl(args, kwargs);
+    } catch (const std::bad_alloc&) {
+        return PyErr_NoMemory();
+    } catch (const std::invalid_argument& error) {
+        PyErr_SetString(PyExc_TypeError, error.what());
+    } catch (const std::exception& error) {
+        PyErr_SetString(PyExc_RuntimeError, error.what());
     } catch (...) {
-        PyEval_RestoreThread(_save);
         PyErr_SetString(PyExc_RuntimeError, "unknown native CSV reader failure");
-        return NULL;
     }
-    //reaquire the gil
-    PyEval_RestoreThread(_save);
-
-    auto arrays = PyList_New(dtypes.size());
-    if (!arrays) {
-        delete_output(dtypes, data);
-        return NULL;
-    }
-
-    int i = 0;
-    for (auto _dtype: dtypes) {
-        PyObject* arr = create_np_array(_dtype, data[i]);
-        data[i] = nullptr;
-        if (arr == NULL) {
-            delete_output(dtypes, data);
-            Py_XDECREF(arrays);
-            return NULL;
-        }
-        PyList_SetItem(arrays, i, arr);
-        i++;
-    }
-    return arrays;
+    return nullptr;
 }
 
-static time_t time_to_epoch(struct tm* value) {
-#ifdef _MSC_VER
-    return ::_mkgmtime(value);
-#else
-    return ::timegm(value);
-#endif
-}
-
-static PyObject*
-parse_datetimes(PyObject*, PyObject* args) {
-    PyObject* datetime_object = NULL;
-    if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &datetime_object)) return NULL;
-
-    if (datetime_object == NULL) return NULL;
-    auto* datetimes = reinterpret_cast<PyArrayObject*>(datetime_object);
-
-    npy_intp n = PyArray_SIZE(datetimes);
-    auto* output = new vector<int64_t>(n);
-
-    struct tm tm;
-    for (size_t i = 0; i < static_cast<size_t>(n); ++i) {
-        PyObject *item = PySequence_GetItem(reinterpret_cast<PyObject*>(datetimes), i);
-        if (!item) {
-            delete output;
-            return NULL;
-        }
-        Py_ssize_t size;
-        const char *time_str = PyUnicode_AsUTF8AndSize(item, &size);
-        if (!time_str) {
-            Py_DECREF(item);
-            delete output;
-            return NULL;
-        }
-        ::memset(&tm, 0, sizeof(tm));
-        if (::strptime(time_str, "%Y-%m-%dT%H:%M:%S", &tm) == nullptr) {
-            Py_DECREF(item);
+static PyObject* parse_datetimes_impl(PyObject* args) {
+    PyObject* input = nullptr;
+    if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &input)) return nullptr;
+    const npy_intp size = PyArray_SIZE(reinterpret_cast<PyArrayObject*>(input));
+    PythonOwner descriptor = dtype_descriptor("M8[s]");
+    if (!descriptor) return nullptr;
+    PythonOwner output = numpy_array(std::move(descriptor), static_cast<size_t>(size));
+    if (!output) return nullptr;
+    auto* values = static_cast<int64_t*>(PyArray_DATA(reinterpret_cast<PyArrayObject*>(output.get())));
+    for (npy_intp i = 0; i < size; ++i) {
+        PythonOwner item(PySequence_GetItem(input, i));
+        if (!item) return nullptr;
+        const char* text = PyUnicode_AsUTF8(item.get());
+        if (!text) return nullptr;
+        struct tm value = {};
+        if (::strptime(text, "%Y-%m-%dT%H:%M:%S", &value) == nullptr) {
             PyErr_SetString(PyExc_ValueError, "datetime must match YYYY-MM-DDTHH:MM:SS");
-            delete output;
-            return NULL;
+            return nullptr;
         }
-        ::time_t event_time = ::time_to_epoch(&tm);
-        if (event_time == static_cast<::time_t>(-1)) {
-            Py_DECREF(item);
-            delete output;
+#ifdef _MSC_VER
+        const time_t result = ::_mkgmtime(&value);
+#else
+        const time_t result = ::timegm(&value);
+#endif
+        if (result == static_cast<time_t>(-1)) {
             PyErr_SetString(PyExc_ValueError, "datetime is outside the supported UTC range");
-            return NULL;
+            return nullptr;
         }
-        Py_DECREF(item);
-        (*output)[i] = static_cast<int64_t>(event_time);
+        values[i] = static_cast<int64_t>(result);
     }
-    PyObject* arr = create_np_array("M8[s]", output);
-    return arr;
+    return output.release();
 }
 
+static PyObject* parse_datetimes(PyObject*, PyObject* args) {
+    try {
+        return parse_datetimes_impl(args);
+    } catch (const std::bad_alloc&) {
+        return PyErr_NoMemory();
+    } catch (const std::exception& error) {
+        PyErr_SetString(PyExc_RuntimeError, error.what());
+        return nullptr;
+    }
+}
 
-static PyMethodDef IOModuleMethods[] = {
-    {"read_file", (PyCFunction)(void(*)(void))read_file, METH_VARARGS | METH_KEYWORDS, "read a file"},
-    {"parse_datetimes", parse_datetimes, METH_VARARGS, "parse datetimes"},
-    {NULL, NULL, 0, NULL}
+static PyMethodDef methods[] = {
+    {"read_file", (PyCFunction)(void(*)(void))read_file, METH_VARARGS | METH_KEYWORDS,
+     "Read CSV with finite max_input_bytes, max_output_bytes, and max_columns budgets."},
+    {"parse_datetimes", parse_datetimes, METH_VARARGS, "Parse datetimes"},
+    {nullptr, nullptr, 0, nullptr}
 };
-
-
-static struct PyModuleDef io_module = {
-    PyModuleDef_HEAD_INIT,
-    "_io",
-    NULL,
-    -1,
-    IOModuleMethods,
-    NULL,
-    NULL,
-    NULL,
-    NULL
-};
-
-/* The classes below are exported */
-#ifdef __GNUC__
-#pragma GCC visibility push(default)
-#endif
-
-PyMODINIT_FUNC
-PyInit__io(void) {
+static PyModuleDef module = {PyModuleDef_HEAD_INIT, "_io", nullptr, -1, methods,
+                            nullptr, nullptr, nullptr, nullptr};
+PyMODINIT_FUNC PyInit__io(void) {
     import_array();
-    return PyModule_Create(&io_module);
+    return PyModule_Create(&module);
 }
-
-#ifdef __GNUC__
-#pragma GCC visibility pop
-#endif

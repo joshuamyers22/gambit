@@ -181,6 +181,30 @@ jobs:
       - name: Reject notebook source or metadata drift
         run: python tools/check_clean_paths.py examples/notebooks
 
+  native-fuzz:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        format: [csv, zip]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install fuzz compiler and native dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libzip-dev pkg-config
+      - name: Bounded coverage-guided campaign with ASan, UBSan and Linux leak checking
+        run: python3 tools/run_native_fuzz.py --format ${{ matrix.format }} --output-dir fuzz-output --runs 10000 --seconds 30
+      - name: Retain synthetic failure corpus and diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: native-fuzz-${{ matrix.format }}-failure
+          path: fuzz-output/
+          retention-days: 7
+
   native-sanitizers:
     needs: lock
     runs-on: ubuntu-latest
@@ -230,6 +254,17 @@ jobs:
           PYTHONFAULTHANDLER: "1"
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
         run: LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY" python tests/native_memory_probe.py
+      - name: Inject NumPy allocation failures with Linux leak checking
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          LSAN_OPTIONS: print_suppressions=1
+          GAMBIT_SANITIZER_RUN: "1"
+          PYTHONFAULTHANDLER: "1"
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: >-
+          LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY"
+          python tests/native_numpy_allocator_probe.py
+          --build-dir "$RUNNER_TEMP/gambit-numpy-allocator" --leak-check
 
   native-thread-sanitizer:
     needs: lock

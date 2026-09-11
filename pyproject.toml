@@ -110,6 +110,8 @@ files = [
   "src/gambit/__init__.py",
   "src/gambit/account.py",
   "src/gambit/backtest_result.py",
+  "src/gambit/bundle_limits.py",
+  "src/gambit/ipc_validation.py",
   "src/gambit/boundaries.py",
   "src/gambit/calculation.py",
   "src/gambit/callback_contracts.py",

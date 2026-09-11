@@ -7,10 +7,12 @@
 
 #include "csv_reader.hpp"
 #include <cmath>
+#include <cstdint>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <limits>
 #include <vector>
 #include <zip.h>
 #include <math.h>
@@ -153,38 +155,35 @@ double str_to_double(const char* str, char decimal_point, char thousands_separat
     return result;
 }
 
-int32_t str_to_int32(const char* str, char thousands_separator) {
-    // convert a string to a int
-    int result = 0;
-    int sign = *str == '-' ? static_cast<void>(str++), -1 : 1;
+template<typename T> T checked_integer(const char* str, char thousands_separator) {
+    // Accumulate magnitude unsigned: the signed minimum has no positive signed
+    // counterpart. Retain legacy separator/prefix semantics, but never overflow.
+    const bool negative = *str == '-';
+    if (negative) ++str;
+    const uint64_t maximum = static_cast<uint64_t>(std::numeric_limits<T>::max());
+    const uint64_t limit = maximum + static_cast<uint64_t>(negative);
+    uint64_t result = 0;
     while ((*str >= '0' && *str <= '9') || (*str == thousands_separator)) {
         if (*str == thousands_separator) {
             str++;
             continue;
         }
-        result *= 10;
-        result += *str - '0';
+        const uint64_t digit = static_cast<uint64_t>(*str - '0');
+        if (result > (limit - digit) / 10) error("CSV integer value out of range");
+        result = result * 10 + digit;
         str++;
     }
-    result *= sign;
-    return result;
+    if (negative && result == maximum + 1) return std::numeric_limits<T>::min();
+    const T value = static_cast<T>(result);
+    return negative ? -value : value;
+}
+
+int32_t str_to_int32(const char* str, char thousands_separator) {
+    return checked_integer<int32_t>(str, thousands_separator);
 }
 
 int64_t str_to_int64(const char* str, char thousands_separator) {
-    // convert a string to a int
-    int64_t result = 0;
-    int sign = *str == '-' ? static_cast<void>(str++), -1 : 1;
-    while ((*str >= '0' && *str <= '9') || (*str == thousands_separator)) {
-        if (*str == thousands_separator) {
-            str++;
-            continue;
-        }
-        result *= 10;
-        result += *str - '0';
-        str++;
-    }
-    result *= sign;
-    return result;
+    return checked_integer<int64_t>(str, thousands_separator);
 }
 
 int8_t str_to_int8(const char* str) {
@@ -236,89 +235,74 @@ template<> int8_t parse_string<int8_t>(const char* str) {
     return str_to_int8(str);
 }
 
-template<typename T> void add_value(const char* str, void* column) {
-    T elem = parse_string<T>(str);
-    auto vec = static_cast<vector<T>*>(column);
-    vec->push_back(elem);
-}
-
-void add_line(const vector<char*>& fields, const vector<string>& dtypes, vector<void*>& data) {
-    for (size_t i=0; i < dtypes.size(); ++i) {
-        if (dtypes[i] == "f4") {
-            add_value<float>(fields[i], data[i]);
-        } else if (dtypes[i] == "f8") {
-            add_value<double>(fields[i], data[i]);
-        } else if (dtypes[i] == "i1") {
-            add_value<int8_t>(fields[i], data[i]);
-        } else if (dtypes[i] == "i4") {
-            add_value<int32_t>(fields[i], data[i]);
-        } else if (dtypes[i] == "i8") {
-            add_value<int64_t>(fields[i], data[i]);
-        } else if (dtypes[i].substr(0, 3) == "M8[") {
-            add_value<int64_t>(fields[i], data[i]);
-        } else if (!dtypes[i].empty() && dtypes[i][0] == 'S') {
-            add_value<string>(fields[i], data[i]);
-        } else {
-            error("invalid type: " << dtypes[i] << " expected i1, i4, i8, f4, f8, M8[*] or S[n]");
+size_t csv_itemsize(const string& dtype) {
+    if (dtype == "i1") return 1;
+    if (dtype == "i4" || dtype == "f4") return 4;
+    if (dtype == "i8" || dtype == "f8" || (dtype.size() > 4 && dtype.substr(0, 3) == "M8[" && dtype.back() == ']')) return 8;
+    if (!dtype.empty() && dtype[0] == 'S') {
+        size_t width = 0;
+        for (size_t i = 1; i < dtype.size(); ++i) {
+            if (dtype[i] < '0' || dtype[i] > '9' ||
+                width > (static_cast<size_t>(std::numeric_limits<int>::max()) - (dtype[i] - '0')) / 10) {
+                throw invalid_argument("string item size must be a positive int fitting a C int");
+            }
+            width = width * 10 + (dtype[i] - '0');
         }
+        if (width == 0) throw invalid_argument("string item size must be a positive int");
+        return width;
     }
+    error("invalid type: " << dtype << " expected i1, i4, i8, f4, f8, M8[*] or S[n]");
 }
 
-template<typename T> vector<T>* create_vec(size_t max_rows) {
-    auto vec = new vector<T>();
-    vec->reserve(max_rows);
-    return vec;
+template<typename T> void store_value(const char* text, unsigned char* destination) {
+    const T value = parse_string<T>(text);
+    ::memcpy(destination, &value, sizeof(T));
 }
 
-void* create_vector(const std::string& dtype, size_t max_rows) {
-    if (dtype == "f4") {
-        return create_vec<float>(max_rows);
-    } else if (dtype == "f8") {
-        return create_vec<double>(max_rows);
-    } else if (dtype == "i1") {
-        return create_vec<int8_t>(max_rows);
-    } else if (dtype == "i4") {
-        return create_vec<int32_t>(max_rows);
-    } else if (dtype == "i8") {
-        return create_vec<int64_t>(max_rows);
-    } else if (dtype.substr(0, 3) == "M8[") {
-        return create_vec<int64_t>(max_rows);
-    } else if (!dtype.empty() && dtype[0] == 'S') {
-        return create_vec<string>(max_rows);
-    } else {
-        error("invalid type: " << dtype << " expected i1, i4, i8, f4, f8, M8[*] or S[n]");
-    }
-}
-
-void delete_vector(const std::string& dtype, void* data) {
-    if (!data) return;
-    if (dtype == "f4") {
-        delete static_cast<vector<float>*>(data);
-    } else if (dtype == "f8") {
-        delete static_cast<vector<double>*>(data);
-    } else if (dtype == "i1") {
-        delete static_cast<vector<int8_t>*>(data);
-    } else if (dtype == "i4") {
-        delete static_cast<vector<int32_t>*>(data);
-    } else if (dtype == "i8" || dtype.substr(0, 3) == "M8[") {
-        delete static_cast<vector<int64_t>*>(data);
-    } else if (!dtype.empty() && dtype[0] == 'S') {
-        delete static_cast<vector<string>*>(data);
-    }
-}
-
-void delete_output(const vector<string>& dtypes, vector<void*>& output) {
-    for (size_t i = 0; i < output.size(); ++i) {
-        delete_vector(dtypes[i], output[i]);
-        output[i] = nullptr;
+void add_line(const vector<char*>& fields, vector<CsvColumn>& data, size_t maximum) {
+    for (size_t i = 0; i < data.size(); ++i) {
+        CsvColumn& column = data[i];
+        const size_t old_size = column.values.size();
+        if (column.itemsize > maximum - old_size) error("CSV output byte limit exceeded");
+        const size_t needed = old_size + column.itemsize;
+        if (needed > column.values.capacity()) {
+            const size_t capacity = column.values.capacity();
+            const size_t grown = capacity > maximum / 2 ? maximum : capacity * 2;
+            column.values.reserve(std::max(needed, grown));
+        }
+        column.values.resize(needed);
+        unsigned char* destination = column.values.data() + old_size;
+        const string& dtype = column.dtype;
+        if (dtype[0] == 'S') {
+            ::memset(destination, 0, column.itemsize);
+            ::memcpy(destination, fields[i], std::min(column.itemsize, ::strlen(fields[i])));
+        } else if (dtype == "f4") store_value<float>(fields[i], destination);
+        else if (dtype == "f8") store_value<double>(fields[i], destination);
+        else if (dtype == "i1") store_value<int8_t>(fields[i], destination);
+        else if (dtype == "i4") store_value<int32_t>(fields[i], destination);
+        else store_value<int64_t>(fields[i], destination);
     }
 }
 
 struct Reader {
+    explicit Reader(size_t maximum): maximum(maximum), consumed(0) {}
     virtual ssize_t getline(char** line) = 0;
     virtual string filename() = 0;
-    virtual ssize_t fread(char* data, size_t length) = 0;
+    virtual ssize_t read_bytes(char* data, size_t length) = 0;
+    ssize_t fread(char* data, size_t length) {
+        const size_t remaining = maximum - consumed;
+        const size_t request = remaining < length ? remaining + 1 : length;
+        const ssize_t count = read_bytes(data, request);
+        if (count > 0) {
+            if (static_cast<size_t>(count) > remaining) error("CSV input byte limit exceeded: " << filename());
+            consumed += static_cast<size_t>(count);
+        }
+        return count;
+    }
     virtual ~Reader() {}
+private:
+    size_t maximum;
+    size_t consumed;
 };
 
 static const size_t BUF_SIZE = 64 * 1024;
@@ -384,9 +368,18 @@ ssize_t read_line(char** buf, size_t* buf_size, size_t* begin_idx, char** line, 
 }
 
 
+struct ZipArchiveCloser { void operator()(zip_t* value) const { if (value) zip_discard(value); } };
+struct ZipMemberCloser { void operator()(zip_file_t* value) const { if (value) zip_fclose(value); } };
+struct ZipError {
+    zip_error_t value;
+    explicit ZipError(int code) { zip_error_init_with_code(&value, code); }
+    ~ZipError() { zip_error_fini(&value); }
+};
+
 class ZipReader: public Reader {
 public:
-    ZipReader(const std::string& filename):
+    ZipReader(const std::string& filename, size_t maximum):
+    Reader(maximum),
     _filename(filename),
     _zip_archive(nullptr),
     _zip_file(nullptr),
@@ -397,32 +390,27 @@ public:
         auto zip_filename = filename.substr(0, i);
         auto inner_filename = filename.substr(i + 1);
         int zip_error_code = 0;
-        _zip_archive = zip_open(zip_filename.c_str(), ZIP_RDONLY, &zip_error_code);
+        _zip_archive.reset(zip_open(zip_filename.c_str(), ZIP_RDONLY, &zip_error_code));
         if (!_zip_archive) {
-            zip_error_t zip_error;
-            zip_error_init_with_code(&zip_error, zip_error_code);
-            const string message = zip_error_strerror(&zip_error);
-            zip_error_fini(&zip_error);
+            ZipError zip_error(zip_error_code);
+            const string message = zip_error_strerror(&zip_error.value);
             error("can't read: " << zip_filename << " : " << message);
         }
         zip_stat_t member_stat;
         zip_stat_init(&member_stat);
-        if (zip_stat(_zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS, &member_stat) != 0) {
-            const string message = zip_strerror(_zip_archive);
-            zip_close(_zip_archive);
-            _zip_archive = nullptr;
+        if (zip_stat(_zip_archive.get(), inner_filename.c_str(), ZIP_FL_ENC_GUESS, &member_stat) != 0) {
+            const string message = zip_strerror(_zip_archive.get());
             error("can't inspect " << inner_filename << " from " << filename << " : " << message);
         }
         if ((member_stat.valid & ZIP_STAT_SIZE) && member_stat.size > MAX_ZIP_MEMBER_SIZE) {
-            zip_close(_zip_archive);
-            _zip_archive = nullptr;
             error(inner_filename << " from " << filename << " exceeds the 1 GiB decompressed member limit");
         }
-        _zip_file = zip_fopen(_zip_archive, inner_filename.c_str(), ZIP_FL_ENC_GUESS);
+        if ((member_stat.valid & ZIP_STAT_SIZE) && member_stat.size > maximum) {
+            error(inner_filename << " exceeds the CSV input byte limit");
+        }
+        _zip_file.reset(zip_fopen(_zip_archive.get(), inner_filename.c_str(), ZIP_FL_ENC_GUESS));
         if (!_zip_file) {
-            const string message = zip_strerror(_zip_archive);
-            zip_close(_zip_archive);
-            _zip_archive = nullptr;
+            const string message = zip_strerror(_zip_archive.get());
             error("can't read " << inner_filename << " from " << filename << " : " << message);
         }
     }
@@ -433,24 +421,20 @@ public:
         return read_line(&_buf, &_buf_size, &_buf_idx, line, this);
     }
 
-    ssize_t fread(char* buf, size_t buf_size) override {
-        zip_int64_t bytes_read = zip_fread(_zip_file, buf, buf_size);
-        if (bytes_read < 0) error("error reading " << _filename << " : " << zip_file_strerror(_zip_file));
+    ssize_t read_bytes(char* buf, size_t buf_size) override {
+        zip_int64_t bytes_read = zip_fread(_zip_file.get(), buf, buf_size);
+        if (bytes_read < 0) error("error reading " << _filename << " : " << zip_file_strerror(_zip_file.get()));
         return static_cast<ssize_t>(bytes_read);
     }
 
     ~ZipReader() {
-        if (_zip_file) zip_fclose(_zip_file);
-        _zip_file = nullptr;
-        if (_zip_archive) zip_close(_zip_archive);
-        _zip_archive = nullptr;
         if (_buf) ::free(_buf);
     }
 
 private:
     string _filename;
-    zip_t* _zip_archive;
-    zip_file_t* _zip_file;
+    unique_ptr<zip_t, ZipArchiveCloser> _zip_archive;
+    unique_ptr<zip_file_t, ZipMemberCloser> _zip_file;
     char* _buf;
     size_t _buf_idx;
     size_t _buf_size;
@@ -458,7 +442,8 @@ private:
 
 class FileReader: public Reader {
 public:
-    FileReader(const std::string& filename):
+    FileReader(const std::string& filename, size_t maximum):
+        Reader(maximum),
         _filename(filename),
         _file(::fopen(filename.c_str(), "r")),
         _buf(nullptr),
@@ -476,7 +461,7 @@ public:
         return read_line(&_buf, &_buf_size, &_buf_idx, line, this);
     }
 
-    ssize_t fread(char* buf, size_t buf_size) override {
+    ssize_t read_bytes(char* buf, size_t buf_size) override {
         size_t elems_read = ::fread(buf, sizeof(char), ::floor(buf_size / sizeof(char)), _file);
         if (elems_read == 0 && ferror(_file)) error("error reading file");
         return elems_read * sizeof(char);
@@ -504,17 +489,22 @@ bool read_csv_file(Reader* reader,
                    char separator,
                    int skip_rows,
                    int max_rows,
-                   vector<void*>& output) {
+                   vector<CsvColumn>& output,
+                   const CsvLimits& limits) {
 
-    int row_num = 0;
-    int data_row_count = 0;
-    output.resize(dtypes.size());
+    size_t row_num = 0;
+    size_t data_row_count = 0;
+    size_t row_width = 0;
     for (size_t i = 0; i < dtypes.size(); ++i) {
-        output[i] = create_vector(dtypes[i], max_rows);
+        const size_t width = csv_itemsize(dtypes[i]);
+        if (width > limits.max_output_bytes - row_width) error("CSV output byte limit exceeded by schema");
+        row_width += width;
+        output.emplace_back(dtypes[i], width);
     }
 
     bool more_to_read = true;
     for (;;) {
+        if (max_rows != 0 && data_row_count >= static_cast<size_t>(max_rows)) break;
         char* line = nullptr;
         ssize_t line_size = reader->getline(&line);
         if (line_size <= 0) {
@@ -525,9 +515,7 @@ bool read_csv_file(Reader* reader,
         // cout << "row num: " << row_num << " len: " << strlen(line) << " " << line << endl;
         row_num++;
 
-        if (row_num <= skip_rows) continue;
-
-        if ((max_rows != 0) && (data_row_count >= max_rows)) break;
+        if (row_num <= static_cast<size_t>(skip_rows)) continue;
         auto fields = tokenize_line(line, separator, col_indices);
         if (!fields.size()) continue; // empty line
         if (fields.size() != dtypes.size()) {
@@ -537,31 +525,12 @@ bool read_csv_file(Reader* reader,
             error(reader->filename() << " found " << fields.size() << " " << " fields on row: " << row_num
                   << " line: " << _line << " but dtypes arg length was " << dtypes.size() << endl)
         }
-        add_line(fields, dtypes, output);
+        if (data_row_count >= limits.max_output_bytes / row_width) error("CSV output byte limit exceeded");
+        add_line(fields, output, limits.max_output_bytes);
         data_row_count++;
     }
     return more_to_read;
 }
-
-void test_csv_reader() {
-    ifstream istr("/Users/sal/tmp/test.csv", ios_base::in);
-    auto dtypes = vector<string>{
-        "M8[ms]",
-        "S10",
-        "i4",
-        "f8",
-        "i1"};
-    vector<void*> output(dtypes.size());
-    bool more_to_read = false;
-    auto vec1 = reinterpret_cast<vector<string>*>(output[0]);
-    auto vec2 = reinterpret_cast<vector<string>*>(output[1]);
-    cout << "row1: " << (*vec1)[0] << " " << (*vec2)[0] << "\n"
-         << "row2: " << (*vec1)[1] << " " << (*vec2)[1] << "\n"
-         << "more_to_read: " << more_to_read << endl;
-    istr.close();
-}
-
-
 
 bool read_csv(const std::string& filename,
               const std::vector<int>& col_indices,
@@ -569,62 +538,28 @@ bool read_csv(const std::string& filename,
               char separator,
               int skip_rows,
               int max_rows,
-              std::vector<void*>& output) {
+              std::vector<CsvColumn>& output,
+              const CsvLimits& limits) {
+    if (limits.max_input_bytes == 0 || limits.max_output_bytes == 0 || limits.max_columns == 0)
+        throw invalid_argument("CSV limits must be positive");
+    if (dtypes.empty() || dtypes.size() != col_indices.size() || dtypes.size() > limits.max_columns)
+        throw invalid_argument("CSV schema size/column limit invalid");
+    if (skip_rows < 0 || max_rows < 0) throw invalid_argument("CSV row counts must be nonnegative");
+    int previous = -1;
+    for (int index: col_indices) {
+        if (index <= previous) throw invalid_argument("CSV column indices must be monotonically increasing");
+        previous = index;
+    }
     bool more_to_read = false;
     std::size_t i = filename.find(':');
     unique_ptr<Reader> reader;
     if (i == filename.npos) {
-        reader.reset(new FileReader(filename));
+        reader.reset(new FileReader(filename, limits.max_input_bytes));
     } else {
-        reader.reset(new ZipReader(filename));
+        reader.reset(new ZipReader(filename, limits.max_input_bytes));
     }
-    try {
-        bool tmp = read_csv_file(reader.get(), col_indices, dtypes, separator, skip_rows, max_rows, output);
-        if (tmp) more_to_read = true;
-    } catch (...) {
-        delete_output(dtypes, output);
-        throw;
-    }
+    vector<CsvColumn> pending;
+    more_to_read = read_csv_file(reader.get(), col_indices, dtypes, separator, skip_rows, max_rows, pending, limits);
+    output.swap(pending);
     return more_to_read;
-}
-
-
-void test_csv_reader2() {
-    cout << "starting" << endl;
-    vector<void*> output(2);
-    bool more_to_read = read_csv("/Users/sal/tmp/test.csv",
-                                 {15, 18, 20},
-                                 {"f4", "f4", "i4"},
-                                 ',',
-                                 1,
-                                 0,
-                                 output);
-    auto vec1 = static_cast<vector<float>*>(output[0]);
-    cout << "num_cols: " << output.size() << " num rows: " << vec1->size() << " more_to_read: " << more_to_read
-         << " first entry: " << (*vec1)[0] << endl;
-}
-
-void test_csv_reader_zip() {
-    for (int j=0; j < 100000; ++j) {
-        cout << "starting" << endl;
-        vector<void*> output(2);
-        bool more_to_read = read_csv("/Users/sal/tmp/algo/20220316.zip:20220316/A/AAPL.csv",
-                                     {2, 9, 18, 27, 35, 48, 49},
-                                     {"S5", "f4", "f4", "f4", "f4", "i4", "i4"},
-                                     ',',
-                                     1,
-                                     0,
-                                     output);
-        auto vec1 = static_cast<vector<float>*>(output[1]);
-        cout << "num_cols: " << output.size() << " num rows: " << vec1->size() << " more_to_read: " << more_to_read
-        << " first entry: " << (*vec1)[0] << endl;
-        delete static_cast<vector<string>*>(output[0]);
-        for (size_t i=1; i < output.size(); ++i) {
-            if (i != 0 && i != 5) {
-                delete static_cast<vector<float>*>(output[i]);
-            }
-        }
-        delete static_cast<vector<int32_t>*>(output[5]);
-    }
-    cout << "done" << endl;
 }

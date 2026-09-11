@@ -34,7 +34,7 @@ def test_publication_requires_same_commit_quality_and_artifact_verification(publ
 
 def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     jobs = workflow("ci.yml")["jobs"]
-    for name in ("test", "integration", "native", "notebooks", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
+    for name in ("test", "integration", "native", "notebooks", "native-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
         assert "lock" in ancestors(jobs, name)
         assert "if" not in jobs[name], f"required quality job {name} must not be conditional"
         assert jobs[name].get("continue-on-error", "false") == "false"
@@ -45,6 +45,33 @@ def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     assert "--no-cache" in sanitizer_commands, "sanitizers must not reuse an unsanitized extension build"
     package_commands = "\n".join(step.get("run", "") for step in jobs["package"]["steps"])
     assert "uv build --python python" in package_commands, "wheel ABI must match the configured package-job interpreter"
+
+
+def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
+    job = workflow("ci.yml")["jobs"]["native-fuzz"]
+    assert job["strategy"]["matrix"]["format"] == ["csv", "zip"]
+    assert int(job["timeout-minutes"]) <= 10
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "tools/run_native_fuzz.py" in commands
+    assert "--runs 10000 --seconds 30" in commands
+    assert "--replay-only" not in commands
+    artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
+    assert artifact["if"] == "failure()"
+    assert artifact["with"]["retention-days"] == "7"
+
+
+def test_numpy_allocator_probe_requires_instrumentation_and_leak_checking():
+    job = workflow("ci.yml")["jobs"]["native-sanitizers"]
+    step = next(step for step in job["steps"]
+                if "tests/native_numpy_allocator_probe.py" in step.get("run", ""))
+    assert "if" not in step
+    assert step.get("continue-on-error", "false") == "false"
+    assert "--leak-check" in step["run"]
+    assert 'LD_PRELOAD="$ASAN_LIBRARY:$CXX_LIBRARY"' in step["run"]
+    assert step["env"]["GAMBIT_SANITIZER_RUN"] == "1"
+    assert "detect_leaks=1" in step["env"]["ASAN_OPTIONS"]
+    assert not any(option.startswith("suppressions=")
+                   for option in step["env"].get("LSAN_OPTIONS", "").split(":"))
 
 
 @pytest.mark.parametrize("name", ["ci.yml", "docs.yml", "performance.yml"])

@@ -52,6 +52,20 @@ def main() -> None:
         for _ in range(200):
             labels, values = tracked_call(_io.read_file, f"{archive_path}:values.csv", [0, 1], ["S16", "i8"], ",", 0, 0)
             assert labels[0] == b"value" and values[0] == 42
+            for source in (str(csv_path), f"{archive_path}:values.csv"):
+                try:
+                    tracked_call(lambda: _io.read_file(source, [0, 1], ["S16", "i8"], skip_rows=0,
+                                                       max_output_bytes=8))
+                except RuntimeError:
+                    pass
+                else:
+                    raise AssertionError("output budget failure was accepted")
+            try:
+                tracked_call(_io.read_file, f"{archive_path}:missing.csv", [0], ["i8"], ",", 0, 0)
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError("missing ZIP member was accepted")
 
         if MappedFloat64Column is not None:
             for index in range(200):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -171,7 +172,7 @@ def test_execution_manifest_tampering_is_detected(tmp_path):
     result.save(path)
     manifest_path = path / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    assert manifest["version"] == 3
+    assert manifest["version"] == 4
     manifest["provenance"]["execution_manifest"]["components"] = []
     manifest_path.write_text(json.dumps(manifest))
     with pytest.raises(BacktestBundleError, match="provenance fingerprint"):
@@ -226,6 +227,48 @@ def test_result_bundle_round_trip(tmp_path: Path) -> None:
         assert restored.frames[name].equals(frame)
     with pytest.raises(FileExistsError):
         result.save(destination)
+
+
+@pytest.mark.parametrize("reject", [False, True])
+def test_result_serializes_decision_snapshot_not_later_order_state(tmp_path, reject):
+    strategy = _strategy(reject=reject)
+    original = strategy.run()
+    order = strategy.order_decisions[0].order
+    order.contract = Contract.create("CHANGED", order.contract.contract_group)
+    order.timestamp += np.timedelta64(1, "D")
+    order.qty = 99
+    order.reason_code = "edited after decision"
+    changed = strategy._backtest_result(())
+    assert changed.decisions.equals(original.decisions)
+    assert changed.decisions["symbol"].to_list() == ["TEST"]
+    assert changed.decisions["order_status"].to_list() == ["open"]
+    assert changed.decisions["proposed_qty"].to_list() == [1.]
+    assert changed.decisions["order_type"].to_list() == ["MarketOrder"]
+    assert changed.decisions["reason_code"].to_list() == ["test"]
+    path = changed.save(tmp_path / "snapshot")
+    assert json.loads((path / "manifest.json").read_text())["version"] == 4
+    assert BacktestResult.load(path).decisions.equals(original.decisions)
+
+
+@pytest.mark.parametrize("version", [2, 3])
+def test_legacy_decision_schema_is_not_backfilled_with_invented_snapshots(tmp_path, version):
+    result = _strategy().run()
+    path = result.save(tmp_path / "legacy-decisions")
+    columns = ["symbol", "timestamp", "status", "policy", "code", "message", "proposed_qty"]
+    legacy = result.decisions.select(columns)
+    frame_path = path / "decisions.arrow"
+    legacy.write_ipc(frame_path, compression="uncompressed")
+    manifest_path = path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["version"] = version
+    metadata = manifest["frames"]["decisions"]
+    metadata["sha256"] = hashlib.sha256(frame_path.read_bytes()).hexdigest()
+    metadata["schema"] = [{"name": name, "dtype": str(dtype)} for name, dtype in legacy.schema.items()]
+    manifest_path.write_text(json.dumps(manifest))
+    restored = BacktestResult.load(path)
+    assert restored.decisions.equals(legacy)
+    # Re-saving a legacy result preserves unavailable fields as absent too.
+    assert BacktestResult.load(restored.save(tmp_path / "resaved")).decisions.equals(legacy)
 
 
 def test_result_bundle_is_byte_deterministic(tmp_path: Path) -> None:
