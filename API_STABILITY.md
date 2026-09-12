@@ -6,6 +6,11 @@ next published release. The supported root API is exactly the names listed in
 reference. Other imported names, native implementation symbols, underscored
 modules, and undocumented attributes are internal.
 
+Compatibility is not a production-readiness claim. The canonical posture of
+general, experimental, utility, and out-of-scope capabilities is defined in
+[FEATURE_STATUS.md](FEATURE_STATUS.md). The distribution remains Beta until the
+production-readiness plan's P0 gates are accepted.
+
 ## Compatibility
 
 - Patch releases may fix defects and add optional parameters, but do not remove

@@ -43,6 +43,10 @@ have not yet been released are collected below.
 
 ### Changed
 
+- The distribution maturity classifier is now Beta while production-readiness
+  gates remain open. A canonical feature-status matrix and draft project brief
+  separate release-candidate, experimental, utility, and out-of-scope behavior;
+  delivery-policy tests keep package and release claims aligned.
 - HDF5 array readers now require scalar text metadata, normalize malformed JSON
   and excessive nesting to `ValueError`, and apply a combined 1 MiB manifest
   parsing budget (`max_manifest_bytes`). Trusted larger manifests require an

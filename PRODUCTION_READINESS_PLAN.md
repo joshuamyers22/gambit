@@ -83,7 +83,7 @@ the supported hosted interpreter/platform matrix before release approval.
 
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
-| P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | Not started |
+| P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
 | P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
@@ -599,11 +599,12 @@ trade lag, pre-trade controls, and callback rollback contracts.
 - [ ] Create `PROJECT_BRIEF.md` from the Python data/quant template and have the
   owner approve users, supported workflows, non-goals, financial consequence of
   error, data classification, platform matrix, calendar/timezone/units/rounding,
-  look-ahead rules, reconciliation source, and recovery objectives.
-- [ ] Add one feature-status table shared by README, `API_STABILITY.md`, and
+  look-ahead rules, reconciliation source, and recovery objectives. (Draft
+  implemented 2026-09-12; owner approval remains open.)
+- [x] Add one feature-status table shared by README, `API_STABILITY.md`, and
   `RELEASE_READINESS.md`; keep native replay and any unvalidated option APIs
   visibly experimental.
-- [ ] Replace the current stable classifier until P0 is complete. Add a policy
+- [x] Replace the current stable classifier until P0 is complete. Add a policy
   test so metadata, README maturity, and release status cannot contradict one
   another.
 - [x] Implement P0.7 position-cap enforcement and P0.8 decision snapshots, then
@@ -1079,6 +1080,29 @@ release merely because another library offers them.
   push, release, production approval or protection change occurred this turn.
   P0.3 remains open, including the ZIP finding, hosted IPC qualification,
   HDF5/native-decoder fuzz targets, broader containment and named security review.
+
+### 2026-09-12 — Twelfth slice (truthful product scope and maturity)
+
+- Surveyed all open roadmap items and selected P0.1 as the first
+  non-cybersecurity slice because inconsistent production claims block the core
+  release boundary. No hostile-input, secret-scanning, SAST, threat-model, or
+  security-governance work is included in this slice.
+- Added a template-derived `PROJECT_BRIEF.md` covering users, supported workflow,
+  non-goals, financial failure cost, platforms, data ownership, time/units,
+  accounting, causality, recovery assumptions, invariants, owners, and open
+  decisions. It remains explicitly unapproved and cannot close P0.1 alone.
+- Added `FEATURE_STATUS.md` as the canonical posture matrix. README, API policy,
+  and release readiness now reference it; option lifecycle and native replay are
+  experimental, the factor CLI is an in-environment utility, and live trading is
+  out of scope. Corrected README's stale bundle-v3 wording to v4 writes/v2-v4 reads.
+- Replaced the premature `Production/Stable` classifier with `Beta` and added a
+  delivery-policy regression that enforces the pre-production classifier,
+  canonical links, draft approval state, and key experimental/out-of-scope rows.
+- Local evidence: **1,914 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), strict
+  Sphinx, notebook cleanliness, wheel/sdist builds, Twine, and artifact inspection
+  passed on macOS / CPython 3.10.20. Owner approval and hosted matrix evidence
+  remain open; no production promotion or package publication occurred.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

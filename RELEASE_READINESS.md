@@ -1,6 +1,13 @@
 # Release readiness
 
-Status: **release candidate 1.1.0; TestPyPI validation pending**.
+Status: **beta release candidate 1.1.0; production qualification and TestPyPI validation pending**.
+
+This status must be read with the canonical
+[feature-status matrix](FEATURE_STATUS.md) and the draft
+[project brief](PROJECT_BRIEF.md). A public API compatibility commitment does
+not promote experimental capabilities or make the distribution
+production/stable. Restoring a stable classifier requires approval of every P0
+gate in [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md).
 
 Local hardening on 2026-09-06 corrected multiplier-aware entry sizing and
 multi-contract VWAP entry, made publication depend on complete same-commit CI,
@@ -43,6 +50,6 @@ sdist installation checks. Both publishing jobs were skipped.
   dependency declarations, provenance, and attestations before creating a
   signed production tag.
 
-Option pricing and implied-volatility reference validation remains explicitly
-deferred by scope and is not part of this candidate. It must receive its own
-validation work before those capabilities are represented as production-ready.
+Option pricing, implied volatility, and expiry/settlement behavior are
+experimental and not part of the production-qualified candidate boundary. They
+must pass P1.4 before those capabilities are represented as production-ready.

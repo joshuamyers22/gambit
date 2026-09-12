@@ -1,11 +1,40 @@
 """Protect the quality gates that must precede package publication."""
 
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
 ROOT = Path(__file__).parents[1]
+
+
+def project_classifiers():
+    pyproject = (ROOT / "pyproject.toml").read_text()
+    block = re.search(r"classifiers\s*=\s*\[(.*?)\]", pyproject, re.DOTALL)
+    assert block is not None
+    return re.findall(r'"([^"]+)"', block.group(1))
+
+
+def test_preproduction_maturity_claims_share_one_canonical_status():
+    status = (ROOT / "FEATURE_STATUS.md").read_text()
+    brief = (ROOT / "PROJECT_BRIEF.md").read_text()
+    readme = (ROOT / "README.rst").read_text()
+    api_policy = (ROOT / "API_STABILITY.md").read_text()
+    release = (ROOT / "RELEASE_READINESS.md").read_text()
+
+    classifiers = project_classifiers()
+    assert "Development Status :: 4 - Beta" in classifiers
+    assert not any("Production/Stable" in item for item in classifiers)
+    assert "remains **Beta**" in status
+    assert "Status: **draft for product/repository-owner approval**" in brief
+    assert "beta release candidate" in release.lower()
+    for text in (readme, api_policy, release, brief):
+        assert "FEATURE_STATUS.md" in text
+
+    assert "Option pricing, implied volatility, expiry, and settlement | Experimental" in status
+    assert "Native factor cache, tick ring, and top-of-book/FIFO replay | Experimental" in status
+    assert "Live trading, brokerage connectivity, and production order routing | Out of scope" in status
 
 
 def workflow(name):
