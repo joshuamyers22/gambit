@@ -257,8 +257,8 @@ integer-backed datetime values, preserving in-range prefix/separator behavior.
 The third checkbox remains open: local macOS ASan/UBSan and explicit C++ allocation
 counts passed, but the installed Apple compiler lacks libFuzzer. Seed replay is
 not coverage-guided qualification. Both hosted CSV/ZIP libFuzzer jobs have passed;
-the revised independent Linux LeakSanitizer gate still needs hosted verification.
-HDF5/IPC coverage-guided targets, longer scheduled
+the revised independent Linux LeakSanitizer gate passed in PR #31.
+HDF5/IPC coverage-guided targets, execution of the locally added longer scheduled
 campaigns and named security review remain outstanding. See the
 [fuzz guide](tests/NATIVE_FUZZING.md) for exact scope and reproduction instructions.
 
@@ -272,7 +272,8 @@ The hosted unsuppressed step exposed interpreter-startup allocations in the prob
 A pre-interpreter launcher now excludes startup while tracking each native call;
 ARM64 Linux passes all 425 failures with zero leaks and detects a deliberate
 16-byte NumPy buffer leak in an independent mandatory control. Hosted x86-64
-verification remains pending. Python-object and dtype-descriptor allocation
+verification also passed in [PR #31's CI run](https://github.com/joshuamyers22/gambit/actions/runs/34659756969).
+Python-object and dtype-descriptor allocation
 failure injection remain outside this evidence.
 
 HDF5 follow-up: all selected datasets now pass metadata/aggregate-budget
@@ -962,6 +963,36 @@ release merely because another library offers them.
   targets and scheduled campaigns. P0.3, owner review and production promotion
   remain open; scoped workload qualification does not establish whole-process
   or dependency leak freedom.
+
+### 2026-09-11 — Main merge and ninth slice (extended native fuzzing)
+
+- Committed the scoped leak-check fix as `c742dd5` and, at the user's request,
+  merged [PR #31](https://github.com/joshuamyers22/gambit/pull/31) into `main` as
+  [`f795383`](https://github.com/joshuamyers22/gambit/commit/f79538388c6923eb682920fc805751d775a6122e).
+  The [CI run](https://github.com/joshuamyers22/gambit/actions/runs/34659756969)
+  and [documentation run](https://github.com/joshuamyers22/gambit/actions/runs/34659756907)
+  passed before merging, including the previously failing Linux NumPy leak probe
+  and its deliberate-leak control. No protection bypass, release or production
+  approval. Post-merge checks are separate from these pre-merge results.
+- Continued locally with a weekly/manual CSV/ZIP fuzz workflow: one million
+  executions or 600 seconds per format, fifteen-minute job limits, the existing
+  per-input/RSS limits, changing recorded seeds and seven-day synthetic evidence
+  retention. Existing per-change required fuzz jobs remain unchanged.
+- Added `run.json` provenance (source SHA when supplied, commands, format, seed,
+  limits, sanitizer settings) and retained/printed partial logs on parent timeout.
+  Three new campaign tests fail against the prior runner's missing metadata and
+  pass after the change; invalid-budget controls also pass. These mocked runner
+  checks are not themselves coverage-guided execution.
+- Full local suite: **1,857 passed**, **86% coverage**. Lock, Ruff, mypy, coverage
+  floors, native warnings, notebook cleanliness and Sphinx passed. Real CSV/ZIP
+  ASan/UBSan seed replay passed locally (Apple compiler lacks libFuzzer).
+  Wheel/sdist builds, Twine and artifact inspection passed after approved network
+  access resolved the sandbox's build-dependency DNS failure.
+- Ninth-slice changes remain local/uncommitted on `main`; the weekly workflow has
+  not been pushed or executed. Next: land and run the scheduled campaign, then
+  add coverage-guided HDF5/IPC targets. P0.3 still requires those targets, broader
+  resource containment, and named security review; passing CSV/ZIP/NumPy checks
+  does not establish whole-process/dependency leak freedom or production readiness.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

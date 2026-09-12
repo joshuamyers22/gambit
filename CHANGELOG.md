@@ -7,6 +7,10 @@ have not yet been released are collected below.
 
 ### Added
 
+- Bounded weekly/manual CSV and ZIP fuzz campaigns with changing recorded seeds,
+  compiler/run metadata and seven-day synthetic corpus/diagnostic retention.
+  Per-change CI fuzz checks remain in place.
+
 - Isolated NumPy array-data allocation-failure tests covering partial native
   results, retries, datetime conversion errors and array/allocator lifetimes;
   a dedicated unsuppressed Linux leak-check step awaits hosted qualification.

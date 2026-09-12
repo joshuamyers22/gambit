@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import os
 import shlex
 import shutil
@@ -96,10 +97,21 @@ def main() -> None:
         f"-max_total_time={args.seconds}", "-max_len=65536", "-timeout=5",
         "-rss_limit_mb=512", f"-artifact_prefix={output}/", "-print_final_stats=1",
     ])
-    with (output / "fuzz.log").open("w") as log:
-        result = subprocess.run(run_command, env=environment, stdout=log,
-                                stderr=subprocess.STDOUT, timeout=args.seconds + 15)
-    print((output / "fuzz.log").read_text())
+    (output / "run.json").write_text(json.dumps({
+        "format": args.format, "seed": args.seed, "runs": args.runs,
+        "seconds": args.seconds, "replay_only": args.replay_only,
+        "source_commit": os.environ.get("GITHUB_SHA"), "platform": sys.platform,
+        "compiler_command": command, "run_command": run_command,
+        "asan_options": environment["ASAN_OPTIONS"],
+        "ubsan_options": environment["UBSAN_OPTIONS"],
+    }, indent=2) + "\n")
+    try:
+        with (output / "fuzz.log").open("w") as log:
+            result = subprocess.run(run_command, env=environment, stdout=log,
+                                    stderr=subprocess.STDOUT, timeout=args.seconds + 15)
+    finally:
+        # A parent timeout must leave diagnostics visible as well as on disk.
+        print((output / "fuzz.log").read_text(errors="replace"))
     result.check_returncode()
     print(f"Passed {args.format} {'sanitizer seed replay (NOT coverage-guided)' if args.replay_only else 'libFuzzer campaign'}")
 
