@@ -1,4 +1,4 @@
-# Native CSV/ZIP fuzzing
+# Native CSV/ZIP and Python IPC fuzzing
 
 `tools/run_native_fuzz.py` compiles `native_csv_fuzz.cpp` and the production CSV
 reader with [LLVM libFuzzer](https://llvm.org/docs/LibFuzzer.html), ASan and UBSan.
@@ -52,16 +52,67 @@ days whether the campaign passes or fails; it does not restore arbitrary remote
 corpora, upload executables, request repository write permissions, or publish
 packages. A parent timeout preserves and prints partial diagnostics and fails
 the run. Long campaigns supplement the existing per-change CI fuzz checks; they
-do not replace required checks or qualify HDF5/IPC. Until this workflow is merged
-and executed, scheduled campaign qualification remains pending.
+do not replace required checks or qualify HDF5/IPC. The workflow was merged through
+[PR #32](https://github.com/joshuamyers22/gambit/pull/32). Its first manual
+[extended run](https://github.com/joshuamyers22/gambit/actions/runs/34662061708)
+used commit `c3c1864` and seed `302323349`: CSV passed 285,903 executions in
+601 seconds (439 MiB peak reported RSS); ZIP failed after 223,457 executions
+at 519 MiB, exceeding the 512 MiB threshold. The campaign is **not qualified**.
+The ZIP log reports out-of-memory, not a demonstrated leak or corruption;
+separate input-driven allocation, cumulative retention and sanitizer overhead
+before choosing a fix. Do not simply raise the threshold to turn this run green.
+Both artifacts are preserved locally at
+`/private/tmp/gambit-extended-fuzz-evidence.ON0HDn`; GitHub retention is seven days.
 
 On 2026-09-11 local seed replay reproduced signed overflow in `str_to_int32`;
 six Python CSV/ZIP cases also failed against the prior extension. Checked
 unsigned-magnitude parsing fixes i4/i8 and integer-backed datetime extrema and
 overflow while preserving in-range prefix semantics. The installed Apple compiler
-lacks libFuzzer. Short hosted CSV/ZIP campaigns have passed. Longer scheduled
-runs and independent review
+lacks libFuzzer. Short hosted CSV/ZIP campaigns have passed. Resolving the
+extended ZIP memory failure, further scheduled runs and independent review
 remain [P0.3](../PRODUCTION_READINESS_PLAN.md) work.
+
+## Coverage-guided Python IPC preflight
+
+`tools/run_ipc_fuzz.py` adds a separate target for Gambit's bounds-checked
+`ipc_validation` module, using [Atheris](https://github.com/google/atheris).
+The target and validator's Python functions/accessors are explicitly instrumented
+in a fresh child process after trusted imports. This is Python bytecode coverage, **not native
+Polars/Arrow decoder coverage or ASan/UBSan/LSan qualification**. Mutated IPC bytes
+never go to `pl.read_ipc`; only trusted synthetic seed frames are serialized.
+
+For a CPython 3.12 Linux x86-64 environment with frozen Gambit dependencies:
+
+```sh
+uv pip install --python .venv/bin/python --no-deps --require-hashes --only-binary :all: -r tests/requirements-ipc-fuzz.txt
+.venv/bin/python tools/run_ipc_fuzz.py --output-dir /tmp/gambit-ipc-fuzz
+```
+
+The test-only Atheris 3.1.0 wheel is pinned by version and SHA-256, separately from
+package runtime dependencies. Its available wheel determines this runner's
+qualification platform. Other environments can explicitly run
+`--replay-only` without Atheris; replay is never labeled coverage-guided. A missing
+engine is an error for a requested campaign, not a silent fallback.
+
+Nineteen generated seeds include malformed envelopes and empty/nonempty,
+multi-batch numeric, nullable, string and binary IPC using both supported Polars
+compatibility profiles. Two prefix bytes select the manifest schema and a bounded
+row count; the rest is the IPC file. Reproducers include that prefix. The target
+accepts only `BacktestBundleError` as an expected rejection; all other exceptions
+are findings, and admitted decoded cost must stay within the configured budget.
+
+Limits: 64 KiB total fuzz input, 64 rows, eight columns, sixteen record batches,
+32 KiB total IPC metadata and 256 KiB decoded-payload estimate. Default campaigns
+stop at 10,000 executions or thirty seconds, with five seconds per input, a
+512 MiB libFuzzer RSS threshold and a parent timeout thirty seconds beyond the
+campaign limit. These are diagnostic safeguards, not a filesystem sandbox or
+hard production process-memory limit. Replay only has input/parser/parent bounds.
+
+The per-change CI job keeps `run.json`, the synthetic corpus, failure inputs and
+logs for seven days. The runner fails on child errors/timeouts or missing coverage
+and completion markers, preserving partial diagnostics. No external corpus or
+customer data is uploaded. HDF5 fuzzing, native decoder instrumentation and wider
+schema profiles remain separate work; a short campaign cannot close P0.3 alone.
 
 ## NumPy allocation-failure probe
 

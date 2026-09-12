@@ -258,7 +258,7 @@ The third checkbox remains open: local macOS ASan/UBSan and explicit C++ allocat
 counts passed, but the installed Apple compiler lacks libFuzzer. Seed replay is
 not coverage-guided qualification. Both hosted CSV/ZIP libFuzzer jobs have passed;
 the revised independent Linux LeakSanitizer gate passed in PR #31.
-HDF5/IPC coverage-guided targets, execution of the locally added longer scheduled
+Native HDF5/IPC coverage-guided targets, execution of the merged longer scheduled
 campaigns and named security review remain outstanding. See the
 [fuzz guide](tests/NATIVE_FUZZING.md) for exact scope and reproduction instructions.
 
@@ -286,6 +286,15 @@ existing byte budget. [Regression tests](tests/test_hdf5_hardening.py) reproduce
 30 failures before this change and retain legacy/versioned and backup compatibility.
 The expanded deterministic HDF5 smoke checks all rejection families per seed;
 this is still not coverage-guided HDF5 fuzzing or metadata/process containment.
+
+IPC follow-up: a separate Atheris target now instruments twenty Python preflight
+functions/accessors and accepts only documented bundle rejections. It never sends
+mutated bytes to the native decoder. A bounded Linux x86-64 campaign completed
+100,000 executions with coverage growth from 167 to 207 edges and no unexpected
+exception; a hash-pinned CPython 3.12 test engine, per-change CI job, synthetic
+seeds and explicit non-fuzz replay are implemented locally. This is Python
+validator evidence, not native Arrow/HDF5 sanitizer qualification. Hosted
+execution of this new target, wider schemas and independent review remain open.
 The internal API migration also removed P2.1's hard-coded native demo routines,
 replacing them with an argument-driven smoke program; the other P2.1 work remains.
 
@@ -993,6 +1002,83 @@ release merely because another library offers them.
   add coverage-guided HDF5/IPC targets. P0.3 still requires those targets, broader
   resource containment, and named security review; passing CSV/ZIP/NumPy checks
   does not establish whole-process/dependency leak freedom or production readiness.
+
+### 2026-09-11 — Tenth slice (Python IPC coverage-guided target)
+
+- At the user's request, committed the weekly fuzzing work as `b77e1d7`, pushed
+  `production-fuzz-campaigns`, and opened [PR #32](https://github.com/joshuamyers22/gambit/pull/32)
+  for protected `main`. After the queued macOS checks completed, all required
+  checks passed and the PR merged as
+  [`c3c1864`](https://github.com/joshuamyers22/gambit/commit/c3c1864b7bc7d9d28293a213d91cf38aae0fe79f).
+  [CI](https://github.com/joshuamyers22/gambit/actions/runs/34660433682) and
+  [documentation](https://github.com/joshuamyers22/gambit/actions/runs/34660433572)
+  passed before merge; no protection bypass or package release occurred.
+- Added a bounded IPC-preflight Atheris target with nineteen generated seeds,
+  fixed manifest profiles, old/new Polars layouts, empty/multi-batch data and
+  expected-rejection handling. Native decoding of mutated inputs is prohibited.
+  The CPython 3.12 Linux x86-64 engine is version/hash-pinned separately from
+  runtime dependencies; the runtime dependency lock did not change.
+- Verified a real campaign in disposable x86-64 Linux: **100,000 executions**,
+  **167 to 207 coverage edges**, **120 MiB peak reported RSS**, no unexpected
+  exception. Instrumentation is explicitly limited to twenty validator/target
+  functions and accessors. A first import-hook experiment instrumented more of
+  Gambit than intended, so it was replaced with direct function instrumentation.
+- Diagnostic environment: Debian/CPython 3.12.11, Atheris 3.1.0, Polars 1.44.1.
+  x86 emulation required the matching Polars compatibility runtime only inside
+  the container; the project lock/local environment was unchanged. No ASan,
+  UBSan, LSan or native decoder qualification is inferred from this Python run.
+  Evidence and evolved synthetic corpus are preserved in
+  `/private/tmp/gambit-ipc-fuzz-evidence.3AD2fe/focused`; the container was removed
+  after copying them, without removing application data.
+- Added twenty tests including CI policy, admission/budget controls, unexpected
+  exception propagation, selective instrumentation, missing-engine/empty-replay
+  rejection, subprocess bounds and crash/timeout/no-coverage diagnostics.
+  Full local suite: **1,877 passed**, **86% coverage**. Lock, Ruff, mypy, coverage
+  floors, native warnings, notebook cleanliness and Sphinx passed. Wheel/sdist,
+  Twine and artifact inspection also passed with approved build network access,
+  confirming fuzz tooling remains outside release artifacts.
+- Tenth-slice changes remain local/uncommitted on `main`. Next: run the merged
+  extended CSV/ZIP workflow; then land/verify the IPC job and
+  add HDF5/native-decoder coverage-guided targets. P0.3 remains open for those
+  campaigns, broader containment and named security review.
+
+### 2026-09-11 — Eleventh slice (HDF5 manifest admission and extended fuzz evidence)
+
+- Added strict scalar text admission for HDF5 type/format/state markers and
+  versioned/legacy manifests, with UTF-8 byte-scalar compatibility. Missing
+  required attributes, malformed text/JSON and excessive nesting now fail with
+  `ValueError`; optional UTF-8 manifests retain their empty defaults.
+- Added an array-reader-only `max_manifest_bytes` option (default 1 MiB) for
+  the combined UTF-8 size of both manifests before JSON parsing or legacy
+  splitting. Both manifest lists are count-bounded before name validation.
+  This intentionally does not claim to bound h5py's prior attribute allocation,
+  native metadata loading or process RSS. Trusted larger manifests require an
+  explicit reader override; writer format/schema is unchanged.
+- Initial regressions reproduced **20 failures** against the previous reader.
+  Added **36 tests** in total, including default/exact combined-byte limits,
+  multi-byte text, nesting, missing/non-scalar attributes, fixed-byte compatibility
+  and no-parse/no-payload controls. HDF5 suite: **85 passed**. Full local suite:
+  **1,913 passed**, **86% coverage**. Lock, Ruff, mypy, coverage floors, native
+  warnings and notebook cleanliness passed. Sphinx warnings-as-errors passed;
+  the tracked documentation source is intentionally edited, so its clean-tree
+  guard awaits commit. Wheel/sdist, Twine and artifact inspection passed after
+  approved network access resolved build-dependency DNS failure.
+- Ran the merged extended CSV/ZIP workflow on `c3c1864`, seed `302323349`:
+  [run 34662061708](https://github.com/joshuamyers22/gambit/actions/runs/34662061708).
+  CSV passed **285,903 executions / 601 seconds / 439 MiB peak reported RSS**.
+  ZIP failed after **223,457 executions**, reaching **519 MiB** against its
+  **512 MiB** threshold (exit 71). This is an unresolved resource failure, not
+  proof of a leak, corruption, or a harmless sanitizer artifact.
+- Saved both campaigns' synthetic corpora, logs and metadata under
+  `/private/tmp/gambit-extended-fuzz-evidence.ON0HDn`; the ZIP artifact is
+  `oom-cb7473d757121c8a6909a48840090f8044813fea`. Hosted artifacts expire after
+  seven days. **Next priority:** reproduce the ZIP failure in equivalent Linux,
+  separate single-input allocation from cumulative retention/sanitizer overhead,
+  add a regression and verify the correction without relaxing the safety gate.
+- HDF5 and the preceding IPC changes remain local/uncommitted on `main`; no
+  push, release, production approval or protection change occurred this turn.
+  P0.3 remains open, including the ZIP finding, hosted IPC qualification,
+  HDF5/native-decoder fuzz targets, broader containment and named security review.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

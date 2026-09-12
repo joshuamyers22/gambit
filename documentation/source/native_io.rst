@@ -90,6 +90,16 @@ now conservatively charges four bytes per source byte, including UTF-8 columns.
 This can reject files admitted by the former source-byte-only estimate. Each
 selected output counts separately, even if names hard-link the same dataset.
 
+The array reader also accepts ``max_manifest_bytes`` (default 1 MiB), bounding
+the combined UTF-8 size of the column and UTF-8-column manifests before JSON
+parsing or legacy comma splitting. This is a reader admission limit, not a
+writer limit; unusually large trusted manifests require an explicit override.
+Manifests and type/format/state markers must be text scalars (UTF-8 byte scalars
+are also accepted). Missing required attributes, invalid text/JSON and excessive
+JSON nesting raise ``ValueError``. Both manifest lists are limited by
+``max_columns`` before name validation. Optional UTF-8 manifests retain their
+empty defaults.
+
 Readers resolve group paths, backup groups and columns through hard links only.
 Soft links, external links, virtual datasets and external raw-data storage are
 rejected before resolving links or reading payloads. Variable-length types,
@@ -99,8 +109,9 @@ inputs into ordinary datasets in a trusted preparation step before loading them.
 Normal versioned and legacy files, nested hard-linked groups, same-file hard-link
 aliases and interrupted-swap backup reads remain supported.
 
-This is not a complete HDF5 sandbox: file opening and metadata parsing happen
-before these checks, filters/decompression consume additional resources, and
+This is not a complete HDF5 sandbox: file opening and native metadata loading
+happen before these checks. In particular, h5py materializes attributes before
+the manifest byte limit is enforced. Filters/decompression consume additional resources, and
 temporary decoding buffers are not a process-RSS guarantee. The caller must
 trust the filesystem and writer operations, restrict filters/plugins, and use
 process-level memory/time/filesystem isolation for hostile files.

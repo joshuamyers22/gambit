@@ -7,6 +7,10 @@ have not yet been released are collected below.
 
 ### Added
 
+- Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
+  subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
+  is excluded from this target; an explicit seed-replay mode supports other hosts.
+
 - Bounded weekly/manual CSV and ZIP fuzz campaigns with changing recorded seeds,
   compiler/run metadata and seven-day synthetic corpus/diagnostic retention.
   Per-change CI fuzz checks remain in place.
@@ -39,6 +43,10 @@ have not yet been released are collected below.
 
 ### Changed
 
+- HDF5 array readers now require scalar text metadata, normalize malformed JSON
+  and excessive nesting to `ValueError`, and apply a combined 1 MiB manifest
+  parsing budget (`max_manifest_bytes`). Trusted larger manifests require an
+  explicit override; this does not bound h5py's initial attribute allocation.
 - Native leak-stress checks now release their final result arrays before invoking
   LeakSanitizer and require its runtime in CI. The independent NumPy leak check
   runs after a successful native build even if the preceding stress probe fails.

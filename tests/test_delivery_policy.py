@@ -34,7 +34,7 @@ def test_publication_requires_same_commit_quality_and_artifact_verification(publ
 
 def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     jobs = workflow("ci.yml")["jobs"]
-    for name in ("test", "integration", "native", "notebooks", "native-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
+    for name in ("test", "integration", "native", "notebooks", "native-fuzz", "ipc-preflight-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
         assert "lock" in ancestors(jobs, name)
         assert "if" not in jobs[name], f"required quality job {name} must not be conditional"
         assert jobs[name].get("continue-on-error", "false") == "false"
@@ -58,6 +58,21 @@ def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
     artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
     assert artifact["if"] == "failure()"
     assert artifact["with"]["retention-days"] == "7"
+
+
+def test_ipc_preflight_campaign_uses_pinned_engine_and_preserves_evidence():
+    job = workflow("ci.yml")["jobs"]["ipc-preflight-fuzz"]
+    assert job["timeout-minutes"] == "10"
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "--no-deps --require-hashes --only-binary :all: -r tests/requirements-ipc-fuzz.txt" in commands
+    assert "tools/run_ipc_fuzz.py --output-dir ipc-fuzz-output --runs 10000 --seconds 30" in commands
+    assert "--replay-only" not in commands
+    python = next(step for step in job["steps"] if "actions/setup-python@" in step.get("uses", ""))
+    assert python["with"]["python-version"] == "3.12"
+    artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
+    assert artifact["if"] == "always()" and artifact["with"]["retention-days"] == "7"
+    requirement = (ROOT / "tests/requirements-ipc-fuzz.txt").read_text()
+    assert "atheris==3.1.0 --hash=sha256:" in requirement
 
 
 def test_numpy_allocator_probe_requires_instrumentation_and_leak_checking():
