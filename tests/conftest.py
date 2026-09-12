@@ -14,6 +14,7 @@ INTEGRATION_MODULES = {
     "test_risk_examples.py",
     "test_stateful_reconciliation.py",
     "test_strategy_golden.py",
+    "test_walk_forward.py",
 }
 NATIVE_MODULES = {
     "test_accounting_oracle.py",

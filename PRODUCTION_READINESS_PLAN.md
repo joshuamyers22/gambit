@@ -367,7 +367,7 @@ due triggers are not calendar commitments.
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Not started |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned rolling/expanding schedule and runner implemented 2026-09-12; training-only optimizer integration, persistence/OOS equity, parity evidence, and owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
@@ -418,7 +418,7 @@ compares results with and without multiprocessing.
 Gambit gap: [Optimizer](src/gambit/optimize.py) schedules suggestions and ranks
 costs; the caller currently owns the train/test split and leakage controls.
 
-- [ ] Add a walk-forward runner with explicit fit, validation, and held-out
+- [x] Add a walk-forward runner with explicit fit, validation, and held-out
   intervals, rolling/expanding windows, warm-up policy, and refit schedule.
 - [ ] Fit transforms, forecast scalars, covariance estimates, and parameter
   selection only on permitted training data. Support a gap/purge policy when
@@ -1466,6 +1466,33 @@ release merely because another library offers them.
   same-SHA pull-request CI and documentation workflows also passed. All
   repository implementation checkboxes for P1.5 are complete; representative
   owner-data qualification and data/core-owner approval keep the item open.
+
+### 2026-09-12 — Twenty-sixth slice (owned walk-forward split boundary)
+
+- Added an experimental walk-forward schedule and sequential runner with
+  explicit warm-up, fit, validation, and held-out intervals; fixed rolling or
+  growing expanding fits; two configurable purge gaps; and non-overlapping
+  held-out refit intervals. Too-short, null, unordered, duplicate, or
+  timezone-aware timelines fail before any callback runs, and incomplete final
+  folds are not reported.
+- The runner owns its normalized input snapshot and gives the fit callback only
+  separate warm-up and fit frames. Stable SHA-256 split identities bind the
+  complete timestamp grid, schedule configuration, fold index, and interval
+  bounds. Validation and held-out metrics must be finite and are detached from
+  callback-owned mappings.
+- Acceptance coverage proves exact rolling/expanding boundaries, purge
+  exclusion, identity sensitivity, caller-input ownership, callback frame
+  separation, and that perturbing held-out targets cannot alter fitted or
+  validation values. Public documentation retains the limits around semantic
+  future-derived columns, retained callback state, and scoring-time model
+  mutation; the remaining training-only optimizer, persistence/equity, seeded
+  parity, and owner-approval work keeps P1.6 open.
+- Focused local evidence passed **179 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,011 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  matrix evidence is attached after the implementation commit is exercised.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

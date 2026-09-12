@@ -33,10 +33,10 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Explicit non-goals:** live trading, brokerage connectivity, production order
   routing, autonomous trading, a hosted service, managed market-data collection,
   and a general native replacement for the Python strategy engine.
-- **Experimental capabilities:** point-in-time market-data access, option
-  pricing/IV/expiry behavior, native factor storage and tick transport, and
-  native top-of-book/FIFO replay. Their presence in the package does not make
-  them production-qualified.
+- **Experimental capabilities:** point-in-time market-data access,
+  walk-forward experiment evaluation, option pricing/IV/expiry behavior,
+  native factor storage and tick transport, and native top-of-book/FIFO replay.
+  Their presence in the package does not make them production-qualified.
 - **Factor-cache CLI:** an in-environment maintenance utility for reconstructible
   research caches, not an independently deployed service. Independent operation
   requires a separate deployment decision and acceptance evidence.

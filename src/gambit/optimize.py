@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import concurrent.futures
+import hashlib
 import itertools
+import json
 import multiprocessing as mp
 import os
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Generator, Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from enum import Enum
+from types import MappingProxyType
 from typing import Any, Callable, TypeAlias
 
 import numpy as np
@@ -19,6 +24,256 @@ _logger = get_child_logger(__name__)
 
 Suggestion: TypeAlias = dict[str, Any]
 SuggestionSource: TypeAlias = Iterator[Suggestion] | Generator[Suggestion, tuple[float, dict[str, float]], None]
+
+
+class WalkForwardWindow(str, Enum):
+    """Training-window behavior for a walk-forward schedule."""
+
+    EXPANDING = "expanding"
+    ROLLING = "rolling"
+
+
+@dataclass(frozen=True)
+class WalkForwardConfig:
+    """Index-based walk-forward sizes; every interval is half-open."""
+
+    fit_size: int
+    validation_size: int
+    heldout_size: int
+    warmup_size: int = 0
+    purge_size: int = 0
+    refit_every: int | None = None
+    window: WalkForwardWindow = WalkForwardWindow.EXPANDING
+
+    def __post_init__(self) -> None:
+        for name in ("fit_size", "validation_size", "heldout_size"):
+            value = getattr(self, name)
+            if type(value) is not int or value <= 0:
+                raise ValueError(f"walk-forward {name} must be a positive integer")
+        for name in ("warmup_size", "purge_size"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"walk-forward {name} must be a non-negative integer")
+        if not isinstance(self.window, WalkForwardWindow):
+            raise TypeError("walk-forward window must be a WalkForwardWindow value")
+        refit_every = self.heldout_size if self.refit_every is None else self.refit_every
+        if type(refit_every) is not int or refit_every <= 0:
+            raise ValueError("walk-forward refit_every must be a positive integer")
+        if refit_every < self.heldout_size:
+            raise ValueError("walk-forward refit_every cannot create overlapping held-out intervals")
+        object.__setattr__(self, "refit_every", refit_every)
+
+
+@dataclass(frozen=True)
+class WalkForwardInterval:
+    """One positional, half-open interval in an owned chronological frame."""
+
+    start: int
+    stop: int
+
+    def __post_init__(self) -> None:
+        if type(self.start) is not int or type(self.stop) is not int:
+            raise TypeError("walk-forward interval bounds must be integers")
+        if self.start < 0 or self.stop < self.start:
+            raise ValueError("walk-forward interval bounds must satisfy 0 <= start <= stop")
+
+    @property
+    def size(self) -> int:
+        return self.stop - self.start
+
+
+@dataclass(frozen=True)
+class WalkForwardFold:
+    """Explicit warm-up, fit, validation, and held-out intervals for one refit."""
+
+    index: int
+    warmup: WalkForwardInterval
+    fit: WalkForwardInterval
+    validation: WalkForwardInterval
+    heldout: WalkForwardInterval
+    split_id: str
+
+
+class WalkForwardSchedule:
+    """Deterministic rolling or expanding folds over strict timestamps."""
+
+    def __init__(self, timestamps: np.ndarray, config: WalkForwardConfig) -> None:
+        if not isinstance(config, WalkForwardConfig):
+            raise TypeError("walk-forward config must be WalkForwardConfig")
+        values = np.asarray(timestamps)
+        if values.ndim != 1 or not np.issubdtype(values.dtype, np.datetime64):
+            raise TypeError("walk-forward timestamps must be a one-dimensional datetime64 array")
+        normalized = values.astype("datetime64[ns]", copy=True)
+        if np.isnat(normalized).any():
+            raise ValueError("walk-forward timestamps cannot contain NaT")
+        if len(normalized) > 1 and not bool(np.all(np.diff(normalized.astype(np.int64)) > 0)):
+            raise ValueError("walk-forward timestamps must be strictly increasing and unique")
+        normalized.flags.writeable = False
+        self._timestamps = normalized
+        self.config = config
+        self._folds = self._build_folds()
+
+    def _build_folds(self) -> tuple[WalkForwardFold, ...]:
+        config = self.config
+        first_heldout = (
+            config.warmup_size
+            + config.fit_size
+            + config.purge_size
+            + config.validation_size
+            + config.purge_size
+        )
+        last_heldout = len(self._timestamps) - config.heldout_size
+        if first_heldout > last_heldout:
+            raise ValueError("walk-forward data is too short for one complete fold")
+
+        schedule_identity = hashlib.sha256(self._timestamps.tobytes())
+        schedule_identity.update(
+            json.dumps(
+                {
+                    "fit_size": config.fit_size,
+                    "validation_size": config.validation_size,
+                    "heldout_size": config.heldout_size,
+                    "warmup_size": config.warmup_size,
+                    "purge_size": config.purge_size,
+                    "refit_every": config.refit_every,
+                    "window": config.window.value,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        )
+        schedule_digest = schedule_identity.hexdigest()
+        folds: list[WalkForwardFold] = []
+        refit_every = config.heldout_size if config.refit_every is None else config.refit_every
+        for index, heldout_start in enumerate(range(first_heldout, last_heldout + 1, refit_every)):
+            validation_stop = heldout_start - config.purge_size
+            validation_start = validation_stop - config.validation_size
+            fit_stop = validation_start - config.purge_size
+            if config.window is WalkForwardWindow.EXPANDING:
+                warmup_start = 0
+                fit_start = config.warmup_size
+            else:
+                fit_start = fit_stop - config.fit_size
+                warmup_start = fit_start - config.warmup_size
+            warmup_stop = fit_start
+            fold_intervals = {
+                "warmup": (warmup_start, warmup_stop),
+                "fit": (fit_start, fit_stop),
+                "validation": (validation_start, validation_stop),
+                "heldout": (heldout_start, heldout_start + config.heldout_size),
+            }
+            split_id = hashlib.sha256(
+                json.dumps(
+                    {"schedule": schedule_digest, "index": index, **fold_intervals},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+            folds.append(
+                WalkForwardFold(
+                    index=index,
+                    warmup=WalkForwardInterval(*fold_intervals["warmup"]),
+                    fit=WalkForwardInterval(*fold_intervals["fit"]),
+                    validation=WalkForwardInterval(*fold_intervals["validation"]),
+                    heldout=WalkForwardInterval(*fold_intervals["heldout"]),
+                    split_id=split_id,
+                )
+            )
+        return tuple(folds)
+
+    @property
+    def folds(self) -> tuple[WalkForwardFold, ...]:
+        return self._folds
+
+
+@dataclass(frozen=True)
+class WalkForwardFoldResult:
+    """Detached validation and held-out metrics for one completed fold."""
+
+    fold: WalkForwardFold
+    validation_metrics: Mapping[str, float]
+    heldout_metrics: Mapping[str, float]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "validation_metrics", MappingProxyType(dict(self.validation_metrics)))
+        object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
+
+
+WalkForwardFitFunction: TypeAlias = Callable[[WalkForwardFold, pl.DataFrame, pl.DataFrame], Any]
+WalkForwardScoreFunction: TypeAlias = Callable[[WalkForwardFold, Any, pl.DataFrame], Mapping[str, float]]
+
+
+class WalkForwardRunner:
+    """Run sequential fits and separate validation/held-out scoring on owned data."""
+
+    def __init__(
+        self,
+        data: pl.DataFrame,
+        *,
+        timestamp_column: str,
+        config: WalkForwardConfig,
+    ) -> None:
+        if not isinstance(data, pl.DataFrame):
+            raise TypeError("walk-forward data must be a Polars DataFrame")
+        if not isinstance(timestamp_column, str) or not timestamp_column:
+            raise ValueError("walk-forward timestamp_column must be a non-empty string")
+        if timestamp_column not in data.columns:
+            raise ValueError(f"walk-forward timestamp column is missing: {timestamp_column}")
+        dtype = data.schema[timestamp_column]
+        if dtype != pl.Date and not isinstance(dtype, pl.Datetime):
+            raise TypeError("walk-forward timestamp column must be Polars Date or Datetime")
+        if isinstance(dtype, pl.Datetime) and dtype.time_zone is not None:
+            raise ValueError("walk-forward timestamps must use a timezone-naive normalized time basis")
+        normalized = data.with_columns(pl.col(timestamp_column).cast(pl.Datetime("ns")))
+        timestamps = normalized[timestamp_column].to_numpy()
+        self.schedule = WalkForwardSchedule(timestamps, config)
+        self.timestamp_column = timestamp_column
+        self._data = normalized
+
+    def _select(self, interval: WalkForwardInterval) -> pl.DataFrame:
+        return self._data.slice(interval.start, interval.size).clone()
+
+    @staticmethod
+    def _metrics(values: Mapping[str, float], *, stage: str, fold: int) -> Mapping[str, float]:
+        if not isinstance(values, Mapping):
+            raise TypeError(f"walk-forward {stage} metrics for fold {fold} must be a mapping")
+        normalized: dict[str, float] = {}
+        for name, value in values.items():
+            if not isinstance(name, str) or not name:
+                raise ValueError(f"walk-forward {stage} metric names for fold {fold} must be non-empty strings")
+            if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
+                raise TypeError(f"walk-forward {stage} metric {name!r} for fold {fold} must be numeric")
+            number = float(value)
+            if not np.isfinite(number):
+                raise ValueError(f"walk-forward {stage} metric {name!r} for fold {fold} must be finite")
+            normalized[name] = number
+        return MappingProxyType(normalized)
+
+    def run(
+        self,
+        fit: WalkForwardFitFunction,
+        validate: WalkForwardScoreFunction,
+        evaluate_heldout: WalkForwardScoreFunction,
+    ) -> tuple[WalkForwardFoldResult, ...]:
+        """Fit and score every fold sequentially without exposing the owned full frame."""
+        for name, callback in (("fit", fit), ("validate", validate), ("evaluate_heldout", evaluate_heldout)):
+            if not callable(callback):
+                raise TypeError(f"walk-forward {name} callback must be callable")
+        results: list[WalkForwardFoldResult] = []
+        for fold in self.schedule.folds:
+            model = fit(fold, self._select(fold.warmup), self._select(fold.fit))
+            validation_metrics = self._metrics(
+                validate(fold, model, self._select(fold.validation)),
+                stage="validation",
+                fold=fold.index,
+            )
+            heldout_metrics = self._metrics(
+                evaluate_heldout(fold, model, self._select(fold.heldout)),
+                stage="held-out",
+                fold=fold.index,
+            )
+            results.append(WalkForwardFoldResult(fold, validation_metrics, heldout_metrics))
+        return tuple(results)
 
 
 def _plotting_modules():

@@ -52,6 +52,18 @@ arbitrary callbacks and retained external arrays remain outside that boundary.
 Production promotion requires representative owner-data qualification and
 data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
 
+## Experimental walk-forward APIs
+
+`WalkForwardConfig`, `WalkForwardInterval`, `WalkForwardFold`,
+`WalkForwardSchedule`, `WalkForwardRunner`, `WalkForwardFoldResult`, and
+`WalkForwardWindow` are the initial P1.6 experiment-evaluation boundary. The
+runner owns a chronological frame and exposes only each callback's permitted
+interval. It does not inspect the semantics of precomputed feature columns or
+callback closures, freeze arbitrary fitted objects against scoring-time
+mutation, persist optimizer trials, or provide a second parallel scheduler.
+These APIs remain experimental until the remaining P1.6 acceptance work and
+quant/research-owner approval are complete.
+
 ## Internal scheduling and debugging storage
 
 Simulator-result order membership and engine-applied fill aggregation use

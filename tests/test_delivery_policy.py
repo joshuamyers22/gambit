@@ -34,6 +34,7 @@ def test_preproduction_maturity_claims_share_one_canonical_status():
 
     assert "Option pricing, implied volatility, expiry, and settlement | Experimental" in status
     assert "Point-in-time market-data access and revision identity | Experimental" in status
+    assert "Walk-forward experiment evaluation | Experimental" in status
     assert "Native factor cache, tick ring, and top-of-book/FIFO replay | Experimental" in status
     assert "Live trading, brokerage connectivity, and production order routing | Out of scope" in status
 

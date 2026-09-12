@@ -91,7 +91,18 @@ from gambit.market_data import (
     ValidationSeverity,
     validate_market_data,
 )
-from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
+from gambit.optimize import (
+    Experiment,
+    Optimizer,
+    OptimizerWorkerError,
+    WalkForwardConfig,
+    WalkForwardFold,
+    WalkForwardFoldResult,
+    WalkForwardInterval,
+    WalkForwardRunner,
+    WalkForwardSchedule,
+    WalkForwardWindow,
+)
 from gambit.portfolio import Portfolio
 from gambit.position_sizing import (
     VaRTargetSizer,
@@ -357,6 +368,13 @@ __all__ = [
     "VectorSignal",
     "VolatilityTargetSizer",
     "VolatilityTargetSizingResult",
+    "WalkForwardConfig",
+    "WalkForwardFold",
+    "WalkForwardFoldResult",
+    "WalkForwardInterval",
+    "WalkForwardRunner",
+    "WalkForwardSchedule",
+    "WalkForwardWindow",
     "account_exposures",
     "analyze_account_risk",
     "assert_",
