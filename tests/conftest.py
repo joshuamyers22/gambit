@@ -4,12 +4,17 @@ from gambit.pq_types import Contract, ContractGroup
 
 INTEGRATION_MODULES = {
     "test_backtest_result.py",
+    "test_data_lifecycle.py",
+    "test_financial_acceptance.py",
     "test_hdf5_hardening.py",
     "test_moving_average_crossover.py",
     "test_optional_dependencies.py",
+    "test_point_in_time_data.py",
     "test_polars_integration.py",
     "test_risk_examples.py",
+    "test_stateful_reconciliation.py",
     "test_strategy_golden.py",
+    "test_walk_forward.py",
 }
 NATIVE_MODULES = {
     "test_accounting_oracle.py",

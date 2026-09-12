@@ -91,12 +91,34 @@ jobs:
         run: |
           uv sync --frozen --all-extras --python python
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
-      - name: Run unit suite
-        run: python -m pytest -m unit --cov=gambit --cov-report=term-missing
+      - name: Run unit and financial acceptance suites
+        run: python -m pytest -m "unit or acceptance" --cov=gambit --cov-report=term-missing
       - name: Enforce supported policy coverage floors
         run: python tools/check_coverage_policy.py
       - run: python -m ruff check src tests tools
       - run: python -m mypy
+
+  financial-mutation:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.7"
+      - name: Install frozen dependencies
+        run: |
+          uv sync --frozen --all-extras --python python
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Kill targeted financial policy mutations
+        run: make mutation-financial
 
   integration:
     needs: lock
@@ -203,6 +225,36 @@ jobs:
         with:
           name: native-fuzz-${{ matrix.format }}-failure
           path: fuzz-output/
+          retention-days: 7
+
+  ipc-preflight-fuzz:
+    needs: lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y libzip-dev
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.7"
+      - name: Install frozen project and hash-pinned Python fuzz engine
+        run: |
+          uv sync --frozen --all-extras --python python
+          uv pip install --python .venv/bin/python --no-deps --require-hashes --only-binary :all: -r tests/requirements-ipc-fuzz.txt
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+      - name: Bounded coverage-guided Python IPC preflight campaign
+        run: python tools/run_ipc_fuzz.py --output-dir ipc-fuzz-output --runs 10000 --seconds 30
+      - name: Retain synthetic IPC evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ipc-preflight-fuzz-evidence
+          path: ipc-fuzz-output/
           retention-days: 7
 
   native-sanitizers:

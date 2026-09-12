@@ -22,6 +22,7 @@ HDF5_SCHEMA_VERSION = 1
 DEFAULT_MAX_HDF5_COLUMNS = 10_000
 DEFAULT_MAX_HDF5_ROWS = 100_000_000
 DEFAULT_MAX_HDF5_BYTES = 8 * 1024**3
+DEFAULT_MAX_HDF5_MANIFEST_BYTES = 1024**2
 
 try:
     import h5py as _h5py
@@ -215,6 +216,25 @@ def _hdf5_integer_attribute(group: Any, name: str, default: int) -> int:
     return int(value)
 
 
+def _hdf5_text_attribute(
+    group: Any, name: str, default: str | None = None, *, max_bytes: int | None = None
+) -> str:
+    # h5py has already materialized the attribute here. This bounds subsequent
+    # Python manifest processing, not native HDF5 metadata allocation.
+    value = group.attrs.get(name, default)
+    if not isinstance(value, (str, bytes)):
+        raise ValueError(f"HDF5 {name} must be a text scalar")
+    if max_bytes is not None and len(value) > max_bytes:
+        raise ValueError("HDF5 manifest size exceeds byte limit")
+    try:
+        text = value.decode("utf-8") if isinstance(value, bytes) else value
+        if max_bytes is not None and len(text.encode("utf-8")) > max_bytes:
+            raise ValueError("HDF5 manifest size exceeds byte limit")
+    except UnicodeError as error:
+        raise ValueError(f"invalid HDF5 manifest text: {name}") from error
+    return text
+
+
 def hdf5_to_np_arrays(
     filename: str,
     key: str,
@@ -222,6 +242,7 @@ def hdf5_to_np_arrays(
     max_columns: int = DEFAULT_MAX_HDF5_COLUMNS,
     max_rows: int = DEFAULT_MAX_HDF5_ROWS,
     max_bytes: int = DEFAULT_MAX_HDF5_BYTES,
+    max_manifest_bytes: int = DEFAULT_MAX_HDF5_MANIFEST_BYTES,
 ) -> dict[str, np.ndarray]:
     """
     Read a list of numpy arrays previously written out by np_arrays_to_hdf5
@@ -234,6 +255,8 @@ def hdf5_to_np_arrays(
     _require_h5py()
     key = _normalize_hdf5_key(key)
     _validate_resource_limits(max_columns, max_rows, max_bytes)
+    if isinstance(max_manifest_bytes, bool) or not isinstance(max_manifest_bytes, int) or max_manifest_bytes <= 0:
+        raise ValueError("HDF5 manifest byte limit must be a positive integer")
     ret: dict[str, np.ndarray] = {}
     with h5py.File(filename, "r") as f:
         grp = _hdf5_local_object(f, key)
@@ -242,21 +265,36 @@ def hdf5_to_np_arrays(
         if grp is None:
             _logger.info(f"{key} not found in {filename}")
             return dict()
-        if not isinstance(grp, h5py.Group) or "type" not in grp.attrs or grp.attrs["type"] != "dataframe":
+        if not isinstance(grp, h5py.Group) or _hdf5_text_attribute(grp, "type") != "dataframe":
             raise ValueError(f"HDF5 group is not a dataframe: {key}")
         if "schema_version" in grp.attrs:
             version = _hdf5_integer_attribute(grp, "schema_version", 0)
-            if grp.attrs.get("format") != HDF5_FORMAT or version != HDF5_SCHEMA_VERSION:
+            if _hdf5_text_attribute(grp, "format") != HDF5_FORMAT or version != HDF5_SCHEMA_VERSION:
                 raise ValueError(f"unsupported HDF5 dataframe schema version: {version}")
-            if grp.attrs.get("state") != "committed":
+            if _hdf5_text_attribute(grp, "state") != "committed":
                 raise ValueError(f"HDF5 dataframe group is not committed: {key}")
-            columns = json.loads(grp.attrs["columns_json"])
-            utf8_cols = json.loads(grp.attrs.get("utf8_columns_json", "[]"))
+            column_text = _hdf5_text_attribute(grp, "columns_json", max_bytes=max_manifest_bytes)
+            utf8_text = _hdf5_text_attribute(
+                grp, "utf8_columns_json", "[]", max_bytes=max_manifest_bytes - len(column_text.encode("utf-8"))
+            )
+            try:
+                columns = json.loads(column_text)
+                utf8_cols = json.loads(utf8_text)
+            except (ValueError, RecursionError) as error:
+                raise ValueError("invalid HDF5 dataframe JSON manifest") from error
         else:
             if "columns" not in grp.attrs:
                 raise ValueError("legacy HDF5 dataframe is missing its column manifest")
-            columns = grp.attrs["columns"].split(",")
-            utf8_cols = grp.attrs.get("utf8_cols", "").split(",")
+            column_text = _hdf5_text_attribute(grp, "columns", max_bytes=max_manifest_bytes)
+            utf8_text = _hdf5_text_attribute(
+                grp, "utf8_cols", "", max_bytes=max_manifest_bytes - len(column_text.encode("utf-8"))
+            )
+            columns = column_text.split(",")
+            utf8_cols = utf8_text.split(",")
+        if isinstance(columns, list) and len(columns) > max_columns:
+            raise ValueError(f"HDF5 column count exceeds limit of {max_columns}")
+        if isinstance(utf8_cols, list) and len(utf8_cols) > max_columns:
+            raise ValueError(f"HDF5 UTF-8 manifest count exceeds limit of {max_columns}")
         if (
             not isinstance(columns, list)
             or not all(isinstance(column, str) and column and "/" not in column
@@ -268,8 +306,6 @@ def hdf5_to_np_arrays(
             raise ValueError("invalid HDF5 dataframe UTF-8 manifest")
         if set(utf8_cols) - set(columns) - {""}:
             raise ValueError("HDF5 UTF-8 manifest references unknown columns")
-        if len(columns) > max_columns:
-            raise ValueError(f"HDF5 column count exceeds limit of {max_columns}")
         declared_rows = _hdf5_integer_attribute(grp, "rows", 0)
         if declared_rows < 0 or declared_rows > max_rows:
             raise ValueError(f"HDF5 row count exceeds limit of {max_rows}")

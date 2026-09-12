@@ -8,6 +8,7 @@ The user guide explains the model behind the API. Begin with
    :maxdepth: 2
 
    core_concepts
+   data_lifecycle
    architecture
    accounting_assumptions
    contract_universes

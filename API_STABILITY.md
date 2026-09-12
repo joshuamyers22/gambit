@@ -6,6 +6,11 @@ next published release. The supported root API is exactly the names listed in
 reference. Other imported names, native implementation symbols, underscored
 modules, and undocumented attributes are internal.
 
+Compatibility is not a production-readiness claim. The canonical posture of
+general, experimental, utility, and out-of-scope capabilities is defined in
+[FEATURE_STATUS.md](FEATURE_STATUS.md). The distribution remains Beta until the
+production-readiness plan's P0 gates are accepted.
+
 ## Compatibility
 
 - Patch releases may fix defects and add optional parameters, but do not remove
@@ -22,6 +27,9 @@ modules, and undocumented attributes are internal.
   Writers now emit version 4; readers explicitly support versions 2 and 3 as
   well. Missing historical execution manifests and decision snapshots remain
   absent, not reconstructed from current registrations or terminal orders.
+  The [data lifecycle and recovery contract](documentation/source/data_lifecycle.rst)
+  defines schema ownership, migration, verified backup/restore, and corruption
+  handling without expanding the supported format set.
 
 ## Experimental native APIs
 
@@ -34,6 +42,29 @@ gates in `ADVERSARIAL_REVIEW_PLAN.md`.
 
 `gambit.tick_backtest.TopOfBookBacktester`, its market/FIFO execution models and
 book/queue record layouts are also experimental, not general Strategy backends.
+
+## Experimental point-in-time data APIs
+
+`PointInTimeMarketData`, `PointInTimeObservation`, `PointInTimePriceFunction`,
+and `PointInTimeIndicator` are the P1.5 causal-data interfaces. They enforce
+observation/publication cutoffs only for reads routed through those objects;
+arbitrary callbacks and retained external arrays remain outside that boundary.
+Production promotion requires representative owner-data qualification and
+data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
+
+## Experimental walk-forward APIs
+
+`WalkForwardConfig`, `WalkForwardInterval`, `WalkForwardFold`,
+`WalkForwardSchedule`, `WalkForwardRunner`, `WalkForwardFoldResult`, and
+`WalkForwardWindow` are the initial P1.6 experiment-evaluation boundary.
+`WalkForwardTrialResult` and `WalkForwardOptimizationFoldResult` expose detached
+in-memory optimization outcomes. The runner owns a chronological frame and
+exposes only each callback's permitted interval; optimized fitting additionally
+uses an exact column allowlist and the existing `Optimizer` process scheduler.
+It does not inspect the semantics of allowed precomputed columns or callback
+closures, freeze arbitrary fitted objects against mutation, or persist trials
+and models. These APIs remain experimental until the remaining P1.6 acceptance
+work and quant/research-owner approval are complete.
 
 ## Internal scheduling and debugging storage
 
@@ -64,6 +95,9 @@ Source hashes and dataclass parameters do not capture arbitrary callback state,
 closures, globals, external data or transitive dependencies. The manifest lists
 unresolved scope and must not be treated as a complete reproducibility certificate.
 Result provenance is detached from later registrations or parameter changes.
+Use [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md) to
+classify pre-correction bundles and downstream reports. Missing provenance is
+not evidence that an older result is unaffected.
 
 Invalid option types and duplicate YAML keys now fail at the configuration
 boundary. Before-run changes to the existing runtime lag/log/final-calculation

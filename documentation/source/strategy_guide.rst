@@ -116,3 +116,73 @@ Evaluation
 Inspect trades and reconciled P&L before summary ratios. Confirm order reasons,
 fill timestamps, quantities, costs, end positions, realized P&L, unrealized P&L,
 and equity. Only then evaluate Sharpe ratio, drawdown, or optimization results.
+
+Experimental walk-forward evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``WalkForwardRunner`` to give each refit an explicit warm-up, fit,
+validation, and held-out interval. This is an experimental P1.6 boundary; it
+does not make optimized research production-qualified.
+
+.. code-block:: python
+
+   config = gambit.WalkForwardConfig(
+       fit_size=252,
+       validation_size=63,
+       heldout_size=21,
+       warmup_size=20,
+       purge_size=5,
+       refit_every=21,
+       window=gambit.WalkForwardWindow.ROLLING,
+   )
+   runner = gambit.WalkForwardRunner(
+       chronological_frame,
+       timestamp_column="timestamp",
+       config=config,
+   )
+   results = runner.run(fit_model, score_validation, score_heldout)
+
+For parameter selection, ``runner.optimize`` reuses Gambit's existing
+``Optimizer`` scheduler. The required ``fit_columns`` allowlist is the exact
+schema supplied to candidate fitting and selected-parameter refitting:
+
+.. code-block:: python
+
+   optimized = runner.optimize(
+       candidate_parameters,
+       fit_candidate,
+       score_candidate_validation,
+       score_selected_heldout,
+       fit_columns=["timestamp", "return", "target"],
+       seed=42,
+       max_processes=1,
+   )
+
+``candidate_parameters(fold, seed)`` returns that fold's finite scalar
+parameter mappings. Candidate models are fitted only on the allowed warm-up and
+fit columns and ranked by finite validation cost; held-out rows are unavailable
+until the winner is selected and refitted. Ties use a canonical parameter
+identity rather than process completion order. A fold-specific seed derived
+from the base seed and split identity is supplied to every callback. Use
+module-level, pickleable callbacks and a static candidate source when selecting
+``max_processes > 1``; adaptive generators remain an existing single-process
+``Optimizer`` feature.
+
+Sizes are row counts and all intervals are half-open. Timestamps must be
+timezone-naive, non-null, strictly increasing, and unique. ``fit_model``
+receives the warm-up and fit frames separately; neither validation nor held-out
+rows are exposed to it. One purge gap separates fit from validation and another
+separates validation from held-out evaluation. Expanding windows preserve the
+initial warm-up and grow the fit interval. Rolling windows move a fixed-size
+warm-up and fit pair. ``refit_every`` cannot be shorter than the held-out size,
+so reported held-out intervals cannot overlap. An incomplete terminal fold is
+not evaluated, and data too short for one complete fold fails explicitly.
+
+The runner copies its input, produces stable split identities from the complete
+timestamp grid and schedule, and detaches finite validation and held-out metric
+mappings. ``fit_columns`` prevents undeclared columns from entering optimized
+fits, but it cannot detect whether an allowed column was itself computed using
+future information. Callback closures, external data, and arbitrary fitted-
+object mutation remain caller responsibilities. P1.6 still requires explicit
+built-in transform/scalar/covariance adapters, persisted experiment identities,
+failed trials and model/input hashes, and chronological out-of-sample equity.

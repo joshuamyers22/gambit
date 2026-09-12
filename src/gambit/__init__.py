@@ -80,8 +80,31 @@ from gambit.factor_operations import (
 )
 from gambit.holiday_calendars import Calendar, get_date_from_weekday
 from gambit.instruments import AssetClass, InstrumentSpec, Tradability
-from gambit.market_data import MarketDataValidationReport, ValidationFinding, ValidationSeverity, validate_market_data
-from gambit.optimize import Experiment, Optimizer, OptimizerWorkerError
+from gambit.market_data import (
+    MarketDataAvailabilityPolicy,
+    MarketDataValidationReport,
+    PointInTimeIndicator,
+    PointInTimeMarketData,
+    PointInTimeObservation,
+    PointInTimePriceFunction,
+    ValidationFinding,
+    ValidationSeverity,
+    validate_market_data,
+)
+from gambit.optimize import (
+    Experiment,
+    Optimizer,
+    OptimizerWorkerError,
+    WalkForwardConfig,
+    WalkForwardFold,
+    WalkForwardFoldResult,
+    WalkForwardInterval,
+    WalkForwardOptimizationFoldResult,
+    WalkForwardRunner,
+    WalkForwardSchedule,
+    WalkForwardTrialResult,
+    WalkForwardWindow,
+)
 from gambit.portfolio import Portfolio
 from gambit.position_sizing import (
     VaRTargetSizer,
@@ -251,7 +274,12 @@ __all__ = [
     "MappedFloat64Column",
     "MarketDataPattern",
     "MarketDataShock",
+    "MarketDataAvailabilityPolicy",
     "MarketDataValidationReport",
+    "PointInTimeIndicator",
+    "PointInTimeMarketData",
+    "PointInTimeObservation",
+    "PointInTimePriceFunction",
     "MarketOrder",
     "MarketSimulatorType",
     "MaxOrderQuantity",
@@ -342,6 +370,15 @@ __all__ = [
     "VectorSignal",
     "VolatilityTargetSizer",
     "VolatilityTargetSizingResult",
+    "WalkForwardConfig",
+    "WalkForwardFold",
+    "WalkForwardFoldResult",
+    "WalkForwardInterval",
+    "WalkForwardOptimizationFoldResult",
+    "WalkForwardRunner",
+    "WalkForwardSchedule",
+    "WalkForwardTrialResult",
+    "WalkForwardWindow",
     "account_exposures",
     "analyze_account_risk",
     "assert_",

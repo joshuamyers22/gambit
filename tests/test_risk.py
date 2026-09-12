@@ -28,6 +28,24 @@ def test_max_order_quantity_produces_auditable_rejection() -> None:
     assert decision.proposed_qty == 11
 
 
+@pytest.mark.parametrize("quantity", [-10, 10])
+def test_max_order_quantity_accepts_exact_boundary(quantity: int) -> None:
+    group = ContractGroup.get("order-risk-boundary")
+    contract = Contract.create("ORDER-RISK-BOUNDARY", group)
+    timestamp = np.datetime64("2024-01-02")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=quantity)
+
+    decision = decide_order(
+        order,
+        RiskContext(strategy.account, timestamp, []),
+        [MaxOrderQuantity(10)],
+    )
+
+    assert decision.status is DecisionStatus.ACCEPTED
+    assert decision.proposed_qty == quantity
+
+
 def test_position_policy_includes_pending_orders() -> None:
     group = ContractGroup.get("position-risk")
     contract = Contract.create("POSITION-RISK", group)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from typing import Any, cast
 
 import numpy as np
@@ -10,6 +11,26 @@ import numpy as np
 
 class BacktestCallbackError(RuntimeError):
     """Add stable execution context while retaining the original exception cause."""
+
+
+def checked_finite_float(value: Any, *, label: str) -> float:
+    """Return a binary64 value or fail before non-finite arithmetic is published."""
+    try:
+        result = float(value)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise OverflowError(f"{label} exceeded the finite binary64 range") from exc
+    if not math.isfinite(result):
+        raise OverflowError(f"{label} exceeded the finite binary64 range")
+    return result
+
+
+def checked_fsum(values: Iterable[float], *, label: str) -> float:
+    """Accumulate finite financial values without silently returning infinity."""
+    try:
+        result = math.fsum(values)
+    except (OverflowError, ValueError) as exc:
+        raise OverflowError(f"{label} exceeded the finite binary64 range") from exc
+    return checked_finite_float(result, label=label)
 
 
 def validate_date_range(

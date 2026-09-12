@@ -4,7 +4,124 @@ import h5py
 import numpy as np
 import pytest
 
+import gambit.pq_io as pq_io
 from gambit.pq_io import HDF5_FORMAT, HDF5_SCHEMA_VERSION, hdf5_to_np_arrays, np_arrays_to_hdf5
+
+
+@pytest.mark.parametrize("attribute", ["type", "format", "state", "columns_json", "utf8_columns_json"])
+@pytest.mark.parametrize("value", [42, np.array([b"dataframe"]), None])
+def test_manifest_attributes_require_text_scalars(tmp_path, monkeypatch, attribute, value):
+    filename = tmp_path / "attributes.h5"
+    np_arrays_to_hdf5({"value": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        del file["data"].attrs[attribute]
+        if value is not None:
+            file["data"].attrs[attribute] = value
+    if attribute == "utf8_columns_json" and value is None:
+        assert hdf5_to_np_arrays(str(filename), "data")["value"].tolist() == [0, 1]
+        return
+
+    def no_read(*args, **kwargs):
+        pytest.fail("invalid metadata must not read dataset payloads")
+
+    monkeypatch.setattr(h5py.Dataset, "__getitem__", no_read)
+    with pytest.raises(ValueError, match="HDF5"):
+        hdf5_to_np_arrays(str(filename), "data")
+
+
+@pytest.mark.parametrize("attribute", ["columns_json", "utf8_columns_json"])
+@pytest.mark.parametrize("value", ["[", "[" * 2000 + "]" * 2000, np.bytes_(b"\xff")],
+                         ids=["syntax", "nesting", "encoding"])
+def test_invalid_json_manifests_fail_with_value_error(tmp_path, attribute, value):
+    filename = tmp_path / "json.h5"
+    np_arrays_to_hdf5({"value": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        file["data"].attrs[attribute] = value
+    with pytest.raises(ValueError, match="HDF5.*manifest"):
+        hdf5_to_np_arrays(str(filename), "data")
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_manifest_budget_is_combined_utf8_bytes_before_json_parsing(tmp_path, monkeypatch, legacy):
+    filename = tmp_path / "budget.h5"
+    np_arrays_to_hdf5({"é": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        attrs = file["data"].attrs
+        if legacy:
+            del attrs["schema_version"]
+            attrs["columns"], attrs["utf8_cols"] = "é", ""
+            budget = 2
+        else:
+            attrs["columns_json"], attrs["utf8_columns_json"] = '["é"]', "[]"
+            budget = 8
+    assert hdf5_to_np_arrays(str(filename), "data", max_manifest_bytes=budget)["é"].tolist() == [0, 1]
+
+    def no_parse(*args, **kwargs):
+        pytest.fail("oversized manifests must be rejected before JSON parsing or dataset reads")
+
+    monkeypatch.setattr(pq_io.json, "loads", no_parse)
+    monkeypatch.setattr(h5py.Dataset, "__getitem__", no_parse)
+    with pytest.raises(ValueError, match="manifest.*limit"):
+        hdf5_to_np_arrays(str(filename), "data", max_manifest_bytes=budget - 1)
+
+
+@pytest.mark.parametrize("limit", [True, 0, -1, 1.5, "100"])
+def test_invalid_manifest_budget_fails_before_opening_file(tmp_path, limit):
+    with pytest.raises(ValueError, match="positive integer"):
+        hdf5_to_np_arrays(str(tmp_path / "absent.h5"), "data", max_manifest_bytes=limit)
+
+
+@pytest.mark.parametrize("attribute", ["columns", "utf8_cols"])
+def test_legacy_manifest_attributes_reject_nontext(tmp_path, attribute):
+    filename = tmp_path / "legacy-attributes.h5"
+    with h5py.File(filename, "w") as file:
+        attrs = file.create_group("data").attrs
+        attrs.update({"type": "dataframe", "columns": "value", "utf8_cols": ""})
+        attrs[attribute] = 42
+    with pytest.raises(ValueError, match="HDF5.*text scalar"):
+        hdf5_to_np_arrays(str(filename), "data")
+
+
+def test_fixed_utf8_byte_scalar_manifests_remain_supported(tmp_path):
+    filename = tmp_path / "byte-attributes.h5"
+    np_arrays_to_hdf5({"value": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        for name in ("type", "format", "state", "columns_json", "utf8_columns_json"):
+            file["data"].attrs[name] = np.bytes_(file["data"].attrs[name].encode("utf-8"))
+    assert hdf5_to_np_arrays(str(filename), "data")["value"].tolist() == [0, 1]
+
+
+@pytest.mark.parametrize("attribute,value", [("type", "dataframe"), ("format", HDF5_FORMAT), ("state", "committed")])
+def test_single_element_text_arrays_are_not_scalar_markers(tmp_path, attribute, value):
+    filename = tmp_path / "array-markers.h5"
+    np_arrays_to_hdf5({"value": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        file["data"].attrs[attribute] = np.array([value], dtype=object)
+    with pytest.raises(ValueError, match="text scalar"):
+        hdf5_to_np_arrays(str(filename), "data")
+
+
+def test_default_manifest_budget_rejects_oversized_attribute_before_parse(tmp_path, monkeypatch):
+    filename = tmp_path / "default-budget.h5"
+    np_arrays_to_hdf5({"value": np.arange(2)}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        file["data"].attrs["columns_json"] = " " * (pq_io.DEFAULT_MAX_HDF5_MANIFEST_BYTES + 1)
+
+    def no_parse(*args, **kwargs):
+        pytest.fail("oversized metadata must not reach JSON decoding")
+
+    monkeypatch.setattr(pq_io.json, "loads", no_parse)
+    with pytest.raises(ValueError, match="manifest.*limit"):
+        hdf5_to_np_arrays(str(filename), "data")
+
+
+def test_utf8_manifest_count_is_bounded(tmp_path):
+    filename = tmp_path / "utf8-count.h5"
+    np_arrays_to_hdf5({"value": np.array(["text"])}, str(filename), "data")
+    with h5py.File(filename, "a") as file:
+        file["data"].attrs["utf8_columns_json"] = '["value","value"]'
+    with pytest.raises(ValueError, match="UTF-8 manifest count"):
+        hdf5_to_np_arrays(str(filename), "data", max_columns=1)
 
 
 def test_versioned_hdf5_round_trip_has_committed_manifest(tmp_path) -> None:

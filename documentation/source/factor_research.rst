@@ -48,7 +48,8 @@ Use the CLI in preview mode first::
 Collection and eviction are dry-run by default. Apply mutations only after
 reviewing leased generations and projected reclamation. Do not place the cache
 on irreplaceable storage: it is reconstructible research state, not a source of
-record.
+record. The :doc:`data_lifecycle` contract defines rebuild, migration, corruption,
+and deletion procedures and explicitly excludes the cache from backup/RPO claims.
 
 Benchmarking
 ------------

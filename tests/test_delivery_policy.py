@@ -1,11 +1,55 @@
 """Protect the quality gates that must precede package publication."""
 
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
 ROOT = Path(__file__).parents[1]
+
+
+def project_classifiers():
+    pyproject = (ROOT / "pyproject.toml").read_text()
+    block = re.search(r"classifiers\s*=\s*\[(.*?)\]", pyproject, re.DOTALL)
+    assert block is not None
+    return re.findall(r'"([^"]+)"', block.group(1))
+
+
+def test_preproduction_maturity_claims_share_one_canonical_status():
+    status = (ROOT / "FEATURE_STATUS.md").read_text()
+    brief = (ROOT / "PROJECT_BRIEF.md").read_text()
+    readme = (ROOT / "README.rst").read_text()
+    api_policy = (ROOT / "API_STABILITY.md").read_text()
+    release = (ROOT / "RELEASE_READINESS.md").read_text()
+
+    classifiers = project_classifiers()
+    assert "Development Status :: 4 - Beta" in classifiers
+    assert not any("Production/Stable" in item for item in classifiers)
+    assert "remains **Beta**" in status
+    assert "Status: **draft for product/repository-owner approval**" in brief
+    assert "beta release candidate" in release.lower()
+    for text in (readme, api_policy, release, brief):
+        assert "FEATURE_STATUS.md" in text
+
+    assert "Option pricing, implied volatility, expiry, and settlement | Experimental" in status
+    assert "Point-in-time market-data access and revision identity | Experimental" in status
+    assert "Walk-forward experiment evaluation | Experimental" in status
+    assert "Native factor cache, tick ring, and top-of-book/FIFO replay | Experimental" in status
+    assert "Live trading, brokerage connectivity, and production order routing | Out of scope" in status
+
+
+def test_experimental_expiry_cutoff_does_not_claim_settlement_support():
+    status = (ROOT / "FEATURE_STATUS.md").read_text()
+    accounting = (ROOT / "documentation" / "source" / "accounting_assumptions.rst").read_text()
+
+    assert "Experimental; core accounting enforces a causal expiry cutoff" in status
+    assert "does not settle positions" in status
+    assert "inclusive execution and valuation cutoff" in accounting
+    assert "last account-grid mark at or before" in accounting
+    assert "do not ask the price callback for post-expiry" in accounting
+    for unsupported in ("cash or physical settlement", "exercise", "assignment", "settlement lag"):
+        assert unsupported in accounting
 
 
 def workflow(name):
@@ -34,7 +78,7 @@ def test_publication_requires_same_commit_quality_and_artifact_verification(publ
 
 def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     jobs = workflow("ci.yml")["jobs"]
-    for name in ("test", "integration", "native", "notebooks", "native-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
+    for name in ("test", "financial-mutation", "integration", "native", "notebooks", "native-fuzz", "ipc-preflight-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
         assert "lock" in ancestors(jobs, name)
         assert "if" not in jobs[name], f"required quality job {name} must not be conditional"
         assert jobs[name].get("continue-on-error", "false") == "false"
@@ -45,6 +89,20 @@ def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     assert "--no-cache" in sanitizer_commands, "sanitizers must not reuse an unsanitized extension build"
     package_commands = "\n".join(step.get("run", "") for step in jobs["package"]["steps"])
     assert "uv build --python python" in package_commands, "wheel ABI must match the configured package-job interpreter"
+
+
+def test_financial_acceptance_corpus_runs_on_supported_python_os_matrix():
+    job = workflow("ci.yml")["jobs"]["test"]
+    assert job["strategy"]["matrix"] == {
+        "os": ["ubuntu-latest", "macos-latest"],
+        "python-version": ["3.10", "3.11", "3.12"],
+    }
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert 'pytest -m "unit or acceptance"' in commands
+    mutation = workflow("ci.yml")["jobs"]["financial-mutation"]
+    assert int(mutation["timeout-minutes"]) <= 10
+    mutation_commands = "\n".join(step.get("run", "") for step in mutation["steps"])
+    assert "make mutation-financial" in mutation_commands
 
 
 def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
@@ -58,6 +116,21 @@ def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
     artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
     assert artifact["if"] == "failure()"
     assert artifact["with"]["retention-days"] == "7"
+
+
+def test_ipc_preflight_campaign_uses_pinned_engine_and_preserves_evidence():
+    job = workflow("ci.yml")["jobs"]["ipc-preflight-fuzz"]
+    assert job["timeout-minutes"] == "10"
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "--no-deps --require-hashes --only-binary :all: -r tests/requirements-ipc-fuzz.txt" in commands
+    assert "tools/run_ipc_fuzz.py --output-dir ipc-fuzz-output --runs 10000 --seconds 30" in commands
+    assert "--replay-only" not in commands
+    python = next(step for step in job["steps"] if "actions/setup-python@" in step.get("uses", ""))
+    assert python["with"]["python-version"] == "3.12"
+    artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
+    assert artifact["if"] == "always()" and artifact["with"]["retention-days"] == "7"
+    requirement = (ROOT / "tests/requirements-ipc-fuzz.txt").read_text()
+    assert "atheris==3.1.0 --hash=sha256:" in requirement
 
 
 def test_numpy_allocator_probe_requires_instrumentation_and_leak_checking():

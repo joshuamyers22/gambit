@@ -7,6 +7,43 @@ have not yet been released are collected below.
 
 ### Added
 
+- An experimental owned walk-forward runner with deterministic rolling or
+  expanding split identities, separate warm-up/fit/validation/held-out frames,
+  two purge boundaries, a non-overlapping refit schedule, detached finite
+  metrics, explicit short/ambiguous-timeline rejection, and parameter selection
+  through the existing optimizer. Optimized fits use an exact column allowlist,
+  fold-derived seeds, deterministic tie-breaking, selected-parameter refitting,
+  and isolated held-out scoring.
+- Experimental immutable point-in-time market data with separate observation,
+  availability, row-revision, and dataset-revision identity; causal scalar and
+  window reads; explicit missing/stale policies; bounded last-known-value age;
+  strategy price and indicator-stage adapters; and automatic source fingerprint
+  provenance with conflicting identity rejection.
+- A versioned, human-reviewable financial acceptance corpus with manually
+  calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
+  fills, unequal-multiplier rolls, causal VWAP, expiry cutoffs, position rejection, result
+  persistence, explicit NaN/Inf and finite-overflow boundaries, and
+  five NYSE holiday, observance, and year-transition calendar boundaries. Four
+  fixed state-machine seeds reconcile orders, partial fills, cancellations,
+  trades, two-contract FIFO ledgers, decision snapshots, group equity, and
+  telemetry across execution lags 0–2.
+- A deterministic financial mutation gate covering ten high-consequence risk
+  and P&L changes. It runs each mutant in an isolated package, rejects invalid
+  runner outcomes, and is required by the reusable CI workflow.
+- A machine-readable historical-output correction ledger and owner register
+  template covering risk admission, execution lag, sizing, VWAP causality and
+  inputs, callback/fill integrity, and numeric failures. The accompanying policy
+  defines conservative retain, rerun, and invalidate decisions.
+- A persisted-research lifecycle and recovery contract covering authority,
+  schema ownership, retention/deletion, result-bundle migration, verified
+  backup/restore, corruption and interrupted publication, and disposable factor
+  cache rebuilds. Cross-process and storage-failure acceptance exercises retain
+  the last complete artifact, reject repair-in-place, and cover injected
+  ``ENOSPC``/``EACCES`` failures.
+- Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
+  subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
+  is excluded from this target; an explicit seed-replay mode supports other hosts.
+
 - Bounded weekly/manual CSV and ZIP fuzz campaigns with changing recorded seeds,
   compiler/run metadata and seven-day synthetic corpus/diagnostic retention.
   Per-change CI fuzz checks remain in place.
@@ -29,6 +66,10 @@ have not yet been released are collected below.
 - Opt-in conservative FIFO exchange-queue simulation for the native experimental
   backtester: resting best-price limits, trade-only volume-ahead depletion,
   explicit arrival audit, independent Python trace tests, and synthetic benchmarks.
+- A candidate native-replay latency and capacity budget separates the proposed
+  five-second FIFO objective from accepted performance, records stage/resource/
+  failure boundaries, links raw characterization evidence, and enumerates the
+  owner approvals and controlled measurements required before promotion.
 - Experimental native top-of-book backtest prototype with a deterministic
   long-only alternating-target strategy, shared cash, displayed-size partial
   fills, fees, latency and stale-feed checks, and exact integer accounting.
@@ -39,6 +80,24 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Expiring contracts now reject executions after their inclusive expiry
+  timestamp and freeze P&L at the last account-grid mark at or before expiry,
+  without reading post-expiry prices. The core account still does not exercise,
+  assign, deliver, cash-settle, or liquidate the remaining position.
+- The distribution maturity classifier is now Beta while production-readiness
+  gates remain open. A canonical feature-status matrix and draft project brief
+  separate release-candidate, experimental, utility, and out-of-scope behavior;
+  delivery-policy tests keep package and release claims aligned.
+- Whole-unit order and trade quantities now fail admission when they exceed the
+  signed platform integer range required by the native FIFO kernel. Accounting
+  uses overflow-checked binary64 arithmetic for weighted prices, realized and
+  unrealized P&L, cumulative costs, contract aggregation, and equity; finite
+  inputs that would publish infinity raise ``OverflowError``, with account trade
+  batches rolled back atomically.
+- HDF5 array readers now require scalar text metadata, normalize malformed JSON
+  and excessive nesting to `ValueError`, and apply a combined 1 MiB manifest
+  parsing budget (`max_manifest_bytes`). Trusted larger manifests require an
+  explicit override; this does not bound h5py's initial attribute allocation.
 - Native leak-stress checks now release their final result arrays before invoking
   LeakSanitizer and require its runtime in CI. The independent NumPy leak check
   runs after a successful native build even if the preceding stress probe fails.

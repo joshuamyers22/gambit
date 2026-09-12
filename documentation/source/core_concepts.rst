@@ -123,5 +123,8 @@ Versions 2, 3, and 4 remain readable within this profile and the chosen limits;
 older schema columns are preserved without inventing missing values. The file
 format and writer are unchanged by these limits: saving a very large result or
 unsupported custom table does not guarantee admission by the default loader.
+See :doc:`data_lifecycle` for schema ownership, retention, verified backup and
+restore, interrupted-publication cleanup, corruption handling, and the separate
+disposable-cache policy.
 The profile follows the `Arrow columnar format and IPC metadata specifications
 <https://arrow.apache.org/docs/format/Columnar.html>`_.

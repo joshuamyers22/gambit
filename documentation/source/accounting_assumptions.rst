@@ -9,8 +9,9 @@ Units and signs
 
 Order, trade, and position quantities are signed instrument units. Positive is
 long or buy; negative is short or sell. Prices and quantities must be finite at
-execution. A contract's ``multiplier`` converts one price-unit move in one
-instrument unit into account-currency P&L.
+execution, and each order/fill quantity must fit the platform's signed integer
+range used by the native FIFO kernel. A contract's ``multiplier`` converts one
+price-unit move in one instrument unit into account-currency P&L.
 
 The core account has one account currency. It does not automatically translate
 foreign-currency fills, cash balances, or P&L. Use explicit conversion inputs
@@ -48,6 +49,16 @@ Gambit carries forward the previous unrealized P&L. It does not force the mark
 to zero and does not liquidate the position. Infinite marks and non-real values
 are errors. A closed position has zero unrealized P&L.
 
+All accepted inputs can be finite while their combination exceeds binary64—for
+example, an extreme price change times a multiplier, two extreme cumulative
+costs, aggregate contract P&L, or starting equity plus P&L. Gambit raises
+``OverflowError`` instead of publishing an infinite realized, unrealized, net
+P&L, or equity value. A trade batch that overflows contract accounting is rolled
+back using the same atomic account-ingestion boundary as other invalid batches.
+An aggregate or equity overflow remains an error on later reads; it is not cached
+as a usable account result. Callers must correct the units or input scale and
+rerun the affected backtest.
+
 Costs and cash
 --------------
 
@@ -83,6 +94,31 @@ not force-filled. Each simulator receives only eligible, still-open orders in
 submission order; partial fills remain eligible on later heartbeats without
 restarting the lag. Callbacks still run with an empty order tuple when no orders
 are eligible. The account accepts reported fills only for the eligible tuple.
+
+Expiry cutoff and unsupported settlement
+----------------------------------------
+
+``Contract.expiry`` is an inclusive execution and valuation cutoff. A trade at
+the expiry timestamp is admissible; a trade after it is rejected both when the
+trade is constructed and when a mutable trade reaches the account boundary. An
+expiring contract's terminal P&L uses the last account-grid mark at or before
+expiry. Later equity requests do not ask the price callback for post-expiry
+data. If expiry falls between heartbeats, the preceding heartbeat is the cutoff;
+Gambit does not interpolate or invent a settlement price.
+
+All timestamps are NumPy ``datetime64`` values without an attached exchange
+timezone or session calendar. The caller must normalize order, execution,
+account-grid, and expiry timestamps to one documented time basis and must supply
+any holiday or early-close adjustment. An open position remains reported after
+the cutoff: frozen P&L does not mean the position was exercised, assigned,
+delivered, cash-settled, or liquidated.
+
+The core account does not model cash or physical settlement, exercise,
+assignment, a settlement-price source, or settlement lag. Strategies requiring
+those economics must use an explicit specialized accounting layer and must not
+describe the core cutoff as option settlement. Option lifecycle behavior,
+pricing, and implied volatility remain experimental pending P1.4 numerical and
+domain-owner qualification.
 
 Order-state assumptions
 -----------------------
@@ -263,7 +299,7 @@ The core account does not invent assumptions for:
 * FX conversion or settlement timing;
 * tax lots other than FIFO;
 * exchange priority, queue position, or hidden liquidity;
-* forced liquidation, option exercise, or assignment; or
+* forced liquidation, option exercise, assignment, or expiry settlement; or
 * stale-mark haircuts and valuation reserves.
 
 Represent a relevant effect in adjusted data, explicit cash-flow/cost logic, a
