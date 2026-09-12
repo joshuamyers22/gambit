@@ -33,9 +33,10 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Explicit non-goals:** live trading, brokerage connectivity, production order
   routing, autonomous trading, a hosted service, managed market-data collection,
   and a general native replacement for the Python strategy engine.
-- **Experimental capabilities:** option pricing/IV/expiry behavior, native factor
-  storage and tick transport, and native top-of-book/FIFO replay. Their presence
-  in the package does not make them production-qualified.
+- **Experimental capabilities:** point-in-time market-data access, option
+  pricing/IV/expiry behavior, native factor storage and tick transport, and
+  native top-of-book/FIFO replay. Their presence in the package does not make
+  them production-qualified.
 - **Factor-cache CLI:** an in-environment maintenance utility for reconstructible
   research caches, not an independently deployed service. Independent operation
   requires a separate deployment decision and acceptance evidence.
@@ -78,9 +79,11 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
   [data lifecycle contract](documentation/source/data_lifecycle.rst); owner
   approval and an external storage exercise remain open in P1.1.
 - **Time:** strategy grids use non-`NaT`, strictly increasing NumPy `datetime64`
-  values. A timestamp must represent when the modeled value is available, not
-  merely its observation label. Normalize timezone-aware inputs before the
-  NumPy boundary; exchange calendars do not repair localization mistakes.
+  values. Basic array adapters require a timestamp to represent when the modeled
+  value is available, not merely its observation label. The experimental
+  point-in-time interface instead records observation and availability
+  separately. Normalize timezone-aware inputs before the NumPy boundary;
+  exchange calendars do not repair localization mistakes.
 - **Precision and units:** quantities are signed, finite, nonzero whole
   instrument units. Prices, fees, and commissions are finite real values;
   instrument multipliers convert price movement to account-currency P&L.

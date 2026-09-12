@@ -29,7 +29,7 @@ from gambit.callback_contracts import validate_market_trades, validate_rule_orde
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.execution_identity import describe_component
 from gambit.execution_snapshots import snapshot_order
-from gambit.market_data import MarketDataValidationReport
+from gambit.market_data import MarketDataValidationReport, PointInTimePriceFunction
 from gambit.order_callback_state import OrderCallbackState
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
@@ -126,7 +126,15 @@ class Strategy:
             log_trades=log_trades,
             log_orders=log_orders,
         )
-        self.provenance = RunProvenance(self.run_configuration)
+        input_fingerprints = (
+            price_function.input_fingerprints
+            if isinstance(price_function, PointInTimePriceFunction)
+            else {}
+        )
+        self.provenance = RunProvenance(
+            self.run_configuration,
+            input_fingerprints=input_fingerprints,
+        )
         self._accounting_configuration = (self.run_configuration.starting_equity, self.run_configuration.pnl_calc_time)
         self._running = False
         validate_strategy_timestamps(timestamps)

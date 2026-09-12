@@ -366,7 +366,7 @@ due triggers are not calendar commitments.
 
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
-| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Not started |
+| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | In progress; owned reads, availability/revision identity, price adapter, and provenance implemented 2026-09-12; stage adoption and owner approval pending |
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Not started |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
@@ -393,10 +393,10 @@ as-of times, but [strategy callbacks](src/gambit/stages.py) receive full arrays.
 Those checks alone cannot prevent a callback from reading future observations
 or distinguish an observation time from when a revised value became available.
 
-- [ ] Add an optional owned market-data interface with scalar/window reads
+- [x] Add an optional owned market-data interface with scalar/window reads
   constrained by the current heartbeat, publication/availability time, and
   dataset revision. Retain explicit source fingerprints in run provenance.
-- [ ] Implement fail/missing/stale policies and age-limited forward filling.
+- [x] Implement fail/missing/stale policies and age-limited forward filling.
   Future-assisted interpolation must not be used in causal execution.
 - [ ] Adapt built-in examples and stages to use the interface; document that
   arbitrary callbacks retaining external arrays are outside its enforcement.
@@ -1408,6 +1408,35 @@ release merely because another library offers them.
   Quant/accounting-owner approval is still pending, and P1.4 remains open for a
   settlement-model decision and independent option pricing/implied-volatility
   validation.
+
+### 2026-09-12 — Twenty-fourth slice (point-in-time data access)
+
+- Added an immutable, revision-aware market-data owner with causal scalar and
+  window reads. Observation time and availability time are separate, the
+  current heartbeat is an inclusive upper bound, and a later available revision
+  supersedes an earlier revision only after its release.
+- Added explicit error, warning, and skip behavior for missing and stale values,
+  plus age-limited prior-value use. Future observation requests, future-assisted
+  interpolation, timezone-aware columns without caller normalization, malformed
+  schemas, non-finite values, and duplicate availability identities are
+  rejected.
+- Added a strategy price adapter whose dataset fingerprint is automatically
+  retained in run provenance. Dataset revisions also change factor-node
+  identity, while mutation of the caller's original frame cannot alter the
+  owned snapshot. The stable market-data kernel remains free of outer-package
+  dependencies.
+- Acceptance evidence proves that future values and later dataset revisions do
+  not alter earlier reads, delayed publications remain hidden until release,
+  exact-heartbeat publication is available, and basket pricing follows the same
+  boundary. Arbitrary callbacks retaining external arrays remain explicitly
+  outside this enforcement boundary.
+- Focused local evidence passed **74 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,993 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, strict-Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. Hosted matrix evidence is
+  pending. Built-in example/stage adoption and data/core-owner approval keep
+  P1.5 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

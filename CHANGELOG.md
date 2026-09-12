@@ -7,6 +7,10 @@ have not yet been released are collected below.
 
 ### Added
 
+- Experimental immutable point-in-time market data with separate observation,
+  availability, row-revision, and dataset-revision identity; causal scalar and
+  window reads; explicit missing/stale policies; bounded last-known-value age;
+  a strategy price adapter; and automatic source fingerprint provenance.
 - A versioned, human-reviewable financial acceptance corpus with manually
   calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
   fills, unequal-multiplier rolls, causal VWAP, expiry cutoffs, position rejection, result
