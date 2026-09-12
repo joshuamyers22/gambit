@@ -54,6 +54,10 @@ have not yet been released are collected below.
 - Opt-in conservative FIFO exchange-queue simulation for the native experimental
   backtester: resting best-price limits, trade-only volume-ahead depletion,
   explicit arrival audit, independent Python trace tests, and synthetic benchmarks.
+- A candidate native-replay latency and capacity budget separates the proposed
+  five-second FIFO objective from accepted performance, records stage/resource/
+  failure boundaries, links raw characterization evidence, and enumerates the
+  owner approvals and controlled measurements required before promotion.
 - Experimental native top-of-book backtest prototype with a deterministic
   long-only alternating-target strategy, shared cash, displayed-size partial
   fills, fees, latency and stale-feed checks, and exact integer accounting.

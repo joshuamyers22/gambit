@@ -3,6 +3,8 @@
 The native prototype executes a complete **characterization strategy** with
 orders, partial fills, shared cash, fees, positions and terminal P&L. It is not
 yet a general Strategy replacement or proof of a production strategy's speed.
+The candidate [`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md) governs how this
+different execution model may—and may not—be used as acceptance evidence.
 
 ## Final implementation measurements
 

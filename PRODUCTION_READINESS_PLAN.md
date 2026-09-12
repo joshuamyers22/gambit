@@ -93,7 +93,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | P0.8 | Historical risk decisions reference mutable order identity | Capture immutable decision-time order identity and terms; use that snapshot for audit reports and persistence | Mutating, filling, cancelling, or reusing the original order cannot alter historical audit fields; persisted snapshots round-trip with explicit format compatibility | Core/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.9 | Result bundles are read and materialized before resource and shape checks can bound allocation | Add bounded manifest reads, schema validation, and per-table/aggregate resource limits before Arrow materialization | Oversized or malformed bundles fail with bounded payload work and contextual errors; v2/v3/v4 bundles within the supported flat IPC profile still load | Data/storage owner | Before supporting untrusted result bundles | Implemented locally 2026-09-11 for flat IPC; CI/security review pending |
 | P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress; repository contract, synthetic recovery, and storage-fault drills implemented 2026-09-12; owner approval and external-storage drill pending |
-| P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress |
+| P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress; candidate latency/capacity budget implemented 2026-09-12, workload and threshold approval pending |
 | P1.3 | Dependency and security automation do not fully match the current template | Change Dependabot to the `uv` ecosystem, review cadence/groups, add secret scanning and proportionate Python/C++ static analysis, and test workflow policy | Automated lock/action updates produce reviewable PRs; gitleaks and selected SAST/static-analysis jobs are required; workflow-policy tests enforce pins, permissions, timeouts, and credential handling | Build/security owner | Before ongoing production maintenance | Not started |
 | P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | Not started |
 | P2.1 | Legacy duplicate interfaces and source-only test helpers create drift and artifact noise | Remove or delegate `build.sh`/`dist.sh`, retire unused requirements files or generate them from `uv.lock`, consolidate version authority, remove hard-coded developer paths and dormant test functions from `csv_reader.cpp`, and mark historical plans as superseded | `rg` finds no machine-specific source paths; one documented dependency/version/build authority remains; clean artifact contents and `make check` pass | Core/build owner | During hardening cycle | Not started |
@@ -714,8 +714,9 @@ Exit: every P0 row is accepted with same-commit evidence and a named approver.
 
 ### Milestone 5 — Experimental native replay decision
 
-- [ ] Copy the template latency-budget structure into `LATENCY_BUDGET.md` and
-  link it from the native replay ADR and performance reports.
+- [x] Copy the template latency-budget structure into `LATENCY_BUDGET.md` and
+  link it from the native replay ADR and performance reports. (Candidate budget
+  implemented 2026-09-12; proposed thresholds remain unapproved.)
 - [ ] Approve the representative strategy, order/fill rate, real or validated
   preprocessed corpus, execution semantics, hardware, compiler, repetition
   count, memory/audit capacities, overload policy, and measurement boundary.
@@ -1351,6 +1352,31 @@ release merely because another library offers them.
   same-SHA pull-request CI and documentation workflows also passed. The external
   storage/retention exercise, elapsed RTO, and data/storage-owner approval keep
   P1.1 open.
+
+### 2026-09-12 — Twenty-second slice (native replay measurement contract)
+
+- Added the template-derived `LATENCY_BUDGET.md` for the experimental native
+  replay path. It names the candidate timer boundary, monotonic clock, proposed
+  load objective, stage allowances, causal/ordering invariants, bounded failure
+  behavior, resource assumptions, evidence identity, and rollback conditions.
+- Classified the existing measurements without inflating them into acceptance:
+  the three FIFO trials span 9.084–9.150 seconds and miss the proposed five-second
+  objective; the 1.312-second market-model result uses different semantics; and
+  factor-only parity is not order-to-P&L evidence. Three trials do not establish
+  p95, p99, or worst-case behavior.
+- Linked the candidate budget from the native replay ADR, acceptance brief, and
+  all three characterization reports. New policy tests require the template
+  sections, raw artifacts, cross-document links, zero-loss/correctness boundary,
+  explicit unapproved status, and final promote/retarget/remain-experimental
+  decision.
+- Focused local evidence passed **32 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,967 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx,
+  documentation-source, wheel/sdist, Twine, and release-artifact verification
+  gates. Hosted evidence follows. Representative strategy/data, reference host,
+  measurement boundary, capacities, repetition count, threshold, and
+  native/performance-owner approval keep P1.2 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
