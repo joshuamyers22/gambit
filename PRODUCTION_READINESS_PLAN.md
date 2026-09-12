@@ -1572,10 +1572,17 @@ release merely because another library offers them.
   execution. Walk-forward results sort those records deterministically and
   continue when other candidates produce valid validation evidence; an
   all-failed fold stops clearly before held-out evaluation.
-- Focused and full local evidence: pending. Durable experiment persistence,
-  forecast-scalar integration, hosted evidence, and quant/research-owner
-  approval keep P1.6 open. This work remains local and will not be pushed unless
-  explicitly requested.
+- Focused local evidence passed **25 walk-forward tests**. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,021 tests** at **86% aggregate
+  coverage**, all six module coverage floors including **83.93%** for the
+  optimizer, **10/10** financial mutation checks, frozen-lock, Ruff, mypy over
+  55 source files, native-warning, notebook-cleanliness, strict Sphinx,
+  wheel/sdist, Twine, and release-artifact verification gates. The isolated
+  build initially lacked sandbox DNS and passed unchanged when rerun with
+  approved network access. Durable experiment persistence, forecast-scalar
+  integration, hosted evidence, and quant/research-owner approval keep P1.6
+  open. This work remains local and will not be pushed unless explicitly
+  requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
