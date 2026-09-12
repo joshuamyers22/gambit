@@ -9,7 +9,7 @@ import itertools
 import json
 import multiprocessing as mp
 import os
-from collections.abc import Generator, Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
@@ -116,11 +116,7 @@ class WalkForwardSchedule:
     def _build_folds(self) -> tuple[WalkForwardFold, ...]:
         config = self.config
         first_heldout = (
-            config.warmup_size
-            + config.fit_size
-            + config.purge_size
-            + config.validation_size
-            + config.purge_size
+            config.warmup_size + config.fit_size + config.purge_size + config.validation_size + config.purge_size
         )
         last_heldout = len(self._timestamps) - config.heldout_size
         if first_heldout > last_heldout:
@@ -201,6 +197,134 @@ class WalkForwardFoldResult:
 
 WalkForwardFitFunction: TypeAlias = Callable[[WalkForwardFold, pl.DataFrame, pl.DataFrame], Any]
 WalkForwardScoreFunction: TypeAlias = Callable[[WalkForwardFold, Any, pl.DataFrame], Mapping[str, float]]
+WalkForwardParameterSource: TypeAlias = Callable[[WalkForwardFold, int], Iterable[dict[str, Any]]]
+WalkForwardCandidateFitFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], pl.DataFrame, pl.DataFrame, int], Any
+]
+WalkForwardCandidateValidationFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], tuple[float, Mapping[str, float]]
+]
+WalkForwardCandidateHeldoutFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], Mapping[str, float]
+]
+
+
+def _walk_forward_metrics(values: Mapping[str, float], *, stage: str, fold: int) -> Mapping[str, float]:
+    if not isinstance(values, Mapping):
+        raise TypeError(f"walk-forward {stage} metrics for fold {fold} must be a mapping")
+    normalized: dict[str, float] = {}
+    for name, value in values.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"walk-forward {stage} metric names for fold {fold} must be non-empty strings")
+        if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
+            raise TypeError(f"walk-forward {stage} metric {name!r} for fold {fold} must be numeric")
+        number = float(value)
+        if not np.isfinite(number):
+            raise ValueError(f"walk-forward {stage} metric {name!r} for fold {fold} must be finite")
+        normalized[name] = number
+    return MappingProxyType(normalized)
+
+
+def _walk_forward_parameters(values: Mapping[str, Any], *, fold: int) -> Mapping[str, Any]:
+    if not isinstance(values, Mapping):
+        raise TypeError(f"walk-forward parameters for fold {fold} must be a mapping")
+    normalized: dict[str, Any] = {}
+    for name, value in values.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"walk-forward parameter names for fold {fold} must be non-empty strings")
+        if value is None or isinstance(value, (str, bool)):
+            normalized[name] = value
+        elif isinstance(value, (int, np.integer)):
+            normalized[name] = int(value)
+        elif isinstance(value, (float, np.floating)):
+            number = float(value)
+            if not np.isfinite(number):
+                raise ValueError(f"walk-forward parameter {name!r} for fold {fold} must be finite")
+            normalized[name] = number
+        else:
+            raise TypeError(
+                f"walk-forward parameter {name!r} for fold {fold} must be a scalar string, boolean, number, or None"
+            )
+    return MappingProxyType(normalized)
+
+
+def _walk_forward_cost(value: Any, *, fold: int) -> float:
+    if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
+        raise TypeError(f"walk-forward validation cost for fold {fold} must be numeric")
+    cost = float(value)
+    if not np.isfinite(cost):
+        raise ValueError(f"walk-forward validation cost for fold {fold} must be finite")
+    return cost
+
+
+def _parameter_identity(parameters: Mapping[str, Any]) -> str:
+    return json.dumps(dict(parameters), sort_keys=True, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
+class WalkForwardTrialResult:
+    """One detached candidate result scored only on a validation interval."""
+
+    parameters: Mapping[str, Any]
+    validation_cost: float
+    validation_metrics: Mapping[str, float]
+
+    def __post_init__(self) -> None:
+        parameters = _walk_forward_parameters(self.parameters, fold=-1)
+        metrics = _walk_forward_metrics(self.validation_metrics, stage="validation", fold=-1)
+        object.__setattr__(self, "parameters", parameters)
+        object.__setattr__(self, "validation_cost", _walk_forward_cost(self.validation_cost, fold=-1))
+        object.__setattr__(self, "validation_metrics", metrics)
+
+
+@dataclass(frozen=True)
+class WalkForwardOptimizationFoldResult:
+    """Selected parameters, trials, and separated metrics for one fold."""
+
+    fold: WalkForwardFold
+    seed: int
+    selected_parameters: Mapping[str, Any]
+    validation_cost: float
+    validation_metrics: Mapping[str, float]
+    heldout_metrics: Mapping[str, float]
+    trials: tuple[WalkForwardTrialResult, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "selected_parameters", MappingProxyType(dict(self.selected_parameters)))
+        object.__setattr__(self, "validation_metrics", MappingProxyType(dict(self.validation_metrics)))
+        object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
+
+
+@dataclass(frozen=True)
+class _WalkForwardCandidateCost:
+    fold: WalkForwardFold
+    seed: int
+    warmup: pl.DataFrame
+    training: pl.DataFrame
+    validation: pl.DataFrame
+    fit: WalkForwardCandidateFitFunction
+    validate: WalkForwardCandidateValidationFunction
+
+    def __call__(self, suggestion: dict[str, Any]) -> tuple[float, dict[str, float]]:
+        parameters = _walk_forward_parameters(suggestion, fold=self.fold.index)
+        model = self.fit(
+            self.fold,
+            parameters,
+            self.warmup.clone(),
+            self.training.clone(),
+            self.seed,
+        )
+        cost, metrics = self.validate(
+            self.fold,
+            parameters,
+            model,
+            self.validation.clone(),
+            self.seed,
+        )
+        return (
+            _walk_forward_cost(cost, fold=self.fold.index),
+            dict(_walk_forward_metrics(metrics, stage="validation", fold=self.fold.index)),
+        )
 
 
 class WalkForwardRunner:
@@ -235,19 +359,27 @@ class WalkForwardRunner:
 
     @staticmethod
     def _metrics(values: Mapping[str, float], *, stage: str, fold: int) -> Mapping[str, float]:
-        if not isinstance(values, Mapping):
-            raise TypeError(f"walk-forward {stage} metrics for fold {fold} must be a mapping")
-        normalized: dict[str, float] = {}
-        for name, value in values.items():
-            if not isinstance(name, str) or not name:
-                raise ValueError(f"walk-forward {stage} metric names for fold {fold} must be non-empty strings")
-            if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
-                raise TypeError(f"walk-forward {stage} metric {name!r} for fold {fold} must be numeric")
-            number = float(value)
-            if not np.isfinite(number):
-                raise ValueError(f"walk-forward {stage} metric {name!r} for fold {fold} must be finite")
-            normalized[name] = number
-        return MappingProxyType(normalized)
+        return _walk_forward_metrics(values, stage=stage, fold=fold)
+
+    def _fit_columns(self, columns: Sequence[str]) -> tuple[str, ...]:
+        if isinstance(columns, (str, bytes)) or not isinstance(columns, Sequence):
+            raise TypeError("walk-forward fit_columns must be a sequence of column names")
+        normalized = tuple(columns)
+        if not normalized:
+            raise ValueError("walk-forward fit_columns cannot be empty")
+        if any(not isinstance(name, str) or not name for name in normalized):
+            raise ValueError("walk-forward fit_columns must contain non-empty strings")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("walk-forward fit_columns cannot contain duplicates")
+        missing = [name for name in normalized if name not in self._data.columns]
+        if missing:
+            raise ValueError(f"walk-forward fit columns are missing: {missing}")
+        return normalized
+
+    @staticmethod
+    def _fold_seed(seed: int, fold: WalkForwardFold) -> int:
+        digest = hashlib.sha256(f"{seed}:{fold.split_id}".encode()).digest()
+        return int.from_bytes(digest[:8], "big")
 
     def run(
         self,
@@ -273,6 +405,102 @@ class WalkForwardRunner:
                 fold=fold.index,
             )
             results.append(WalkForwardFoldResult(fold, validation_metrics, heldout_metrics))
+        return tuple(results)
+
+    def optimize(
+        self,
+        parameter_source: WalkForwardParameterSource,
+        fit: WalkForwardCandidateFitFunction,
+        validate: WalkForwardCandidateValidationFunction,
+        evaluate_heldout: WalkForwardCandidateHeldoutFunction,
+        *,
+        fit_columns: Sequence[str],
+        seed: int = 0,
+        max_processes: int | None = 1,
+        process_start_method: str = "spawn",
+        max_pending_tasks: int | None = None,
+    ) -> tuple[WalkForwardOptimizationFoldResult, ...]:
+        """Select on validation data, refit, then evaluate held-out rows."""
+        for name, callback in (
+            ("parameter_source", parameter_source),
+            ("fit", fit),
+            ("validate", validate),
+            ("evaluate_heldout", evaluate_heldout),
+        ):
+            if not callable(callback):
+                raise TypeError(f"walk-forward {name} callback must be callable")
+        if type(seed) is not int or seed < 0 or seed > np.iinfo(np.uint64).max:
+            raise ValueError("walk-forward seed must be an integer in the uint64 range")
+        training_columns = self._fit_columns(fit_columns)
+        results: list[WalkForwardOptimizationFoldResult] = []
+        for fold in self.schedule.folds:
+            fold_seed = self._fold_seed(seed, fold)
+            warmup = self._select(fold.warmup).select(training_columns)
+            training = self._select(fold.fit).select(training_columns)
+            validation = self._select(fold.validation)
+            candidate_cost = _WalkForwardCandidateCost(
+                fold=fold,
+                seed=fold_seed,
+                warmup=warmup,
+                training=training,
+                validation=validation,
+                fit=fit,
+                validate=validate,
+            )
+            optimizer = Optimizer(
+                f"walk-forward-{fold.split_id[:12]}",
+                iter(parameter_source(fold, fold_seed)),
+                candidate_cost,
+                max_processes=max_processes,
+                process_start_method=process_start_method,
+                max_pending_tasks=max_pending_tasks,
+            )
+            optimizer.run(raise_on_error=True)
+            if not optimizer.experiments:
+                raise ValueError(f"walk-forward parameter source produced no trials for fold {fold.index}")
+            trials = tuple(
+                sorted(
+                    (
+                        WalkForwardTrialResult(
+                            parameters=_walk_forward_parameters(experiment.suggestion, fold=fold.index),
+                            validation_cost=experiment.cost,
+                            validation_metrics=experiment.other_costs,
+                        )
+                        for experiment in optimizer.experiments
+                    ),
+                    key=lambda trial: (_parameter_identity(trial.parameters), trial.validation_cost),
+                )
+            )
+            selected = min(trials, key=lambda trial: (trial.validation_cost, _parameter_identity(trial.parameters)))
+            model = fit(
+                fold,
+                selected.parameters,
+                warmup.clone(),
+                training.clone(),
+                fold_seed,
+            )
+            heldout_metrics = self._metrics(
+                evaluate_heldout(
+                    fold,
+                    selected.parameters,
+                    model,
+                    self._select(fold.heldout),
+                    fold_seed,
+                ),
+                stage="held-out",
+                fold=fold.index,
+            )
+            results.append(
+                WalkForwardOptimizationFoldResult(
+                    fold=fold,
+                    seed=fold_seed,
+                    selected_parameters=selected.parameters,
+                    validation_cost=selected.validation_cost,
+                    validation_metrics=selected.validation_metrics,
+                    heldout_metrics=heldout_metrics,
+                    trials=trials,
+                )
+            )
         return tuple(results)
 
 

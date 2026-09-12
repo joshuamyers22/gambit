@@ -367,7 +367,7 @@ due triggers are not calendar commitments.
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned rolling/expanding schedule and runner implemented 2026-09-12; training-only optimizer integration, persistence/OOS equity, parity evidence, and owner approval pending |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, allowlisted existing-optimizer selection, and seeded process parity implemented 2026-09-12; built-in estimator adapters, persistence/OOS equity, and owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
@@ -1498,6 +1498,34 @@ release merely because another library offers them.
   [CI run 34721478366](https://github.com/joshuamyers22/gambit/actions/runs/34721478366)
   and [documentation run 34721478371](https://github.com/joshuamyers22/gambit/actions/runs/34721478371)
   also passed.
+
+### 2026-09-12 — Twenty-seventh slice (walk-forward optimizer isolation)
+
+- Added parameter selection to the owned walk-forward runner by constructing
+  one existing `Optimizer` per fold. Candidate fitting and the selected-
+  parameter refit receive only the exact declared fit-column allowlist over
+  warm-up and fit intervals; candidates are ranked on validation cost before
+  the selected model can receive held-out rows. No second process scheduler was
+  introduced.
+- Derived a reproducible uint64 seed from the caller seed and split identity for
+  every fold. Candidate parameters are detached finite scalar mappings,
+  validation costs and metrics must be finite, and equal-cost candidates use a
+  canonical parameter identity rather than nondeterministic completion order.
+  In-memory trial and selected-fold results keep validation and held-out metrics
+  visibly separate.
+- Acceptance coverage excludes a deliberately predictive undeclared column from
+  all fits, proves held-out perturbation leaves trials, selected parameters, and
+  validation metrics unchanged, and compares exact seeded results between one
+  process and the existing spawn-based process pool. Documentation retains that
+  allowed columns can still be improperly precomputed and closures can retain
+  external data; built-in estimator adapters and persisted/OOS artifacts remain
+  open under P1.6.
+- Focused local evidence passed **184 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,016 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  matrix evidence is attached after the implementation commit is exercised.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

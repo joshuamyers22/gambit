@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -10,6 +11,7 @@ from gambit.optimize import (
     WalkForwardConfig,
     WalkForwardFold,
     WalkForwardInterval,
+    WalkForwardOptimizationFoldResult,
     WalkForwardRunner,
     WalkForwardSchedule,
     WalkForwardWindow,
@@ -48,6 +50,75 @@ def _frame(size: int = 18) -> pl.DataFrame:
     )
 
 
+def _optimization_frame(size: int = 18) -> pl.DataFrame:
+    return _frame(size).with_columns((pl.col("target") * 1_000.0).alias("future_only"))
+
+
+def _optimization_parameters(
+    _fold: WalkForwardFold,
+    _seed: int,
+) -> Iterable[dict[str, Any]]:
+    return [
+        {"offset": 8.0, "label": "zeta"},
+        {"offset": 0.0, "label": "baseline"},
+        {"offset": 8.0, "label": "alpha"},
+    ]
+
+
+def _fit_optimization_candidate(
+    _fold: WalkForwardFold,
+    parameters: Mapping[str, Any],
+    warmup: pl.DataFrame,
+    training: pl.DataFrame,
+    seed: int,
+) -> tuple[float, int]:
+    assert warmup.columns == training.columns == ["timestamp", "target"]
+    prediction = float(training["target"].mean()) + float(parameters["offset"])
+    return prediction, seed
+
+
+def _validate_optimization_candidate(
+    _fold: WalkForwardFold,
+    _parameters: Mapping[str, Any],
+    model: tuple[float, int],
+    validation: pl.DataFrame,
+    seed: int,
+) -> tuple[float, Mapping[str, float]]:
+    assert model[1] == seed
+    error = abs(float(validation["target"].mean()) - model[0])
+    return error, {"absolute_error": error}
+
+
+def _evaluate_optimization_candidate(
+    _fold: WalkForwardFold,
+    _parameters: Mapping[str, Any],
+    model: tuple[float, int],
+    heldout: pl.DataFrame,
+    seed: int,
+) -> Mapping[str, float]:
+    assert model[1] == seed
+    return {"mean_error": float(heldout["target"].mean()) - model[0]}
+
+
+def _optimize(
+    frame: pl.DataFrame,
+    *,
+    max_processes: int,
+) -> tuple[WalkForwardOptimizationFoldResult, ...]:
+    runner = WalkForwardRunner(frame, timestamp_column="timestamp", config=_config())
+    return runner.optimize(
+        _optimization_parameters,
+        _fit_optimization_candidate,
+        _validate_optimization_candidate,
+        _evaluate_optimization_candidate,
+        fit_columns=["timestamp", "target"],
+        seed=314159,
+        max_processes=max_processes,
+        process_start_method="spawn",
+        max_pending_tasks=2,
+    )
+
+
 def test_rolling_schedule_exposes_explicit_purged_intervals() -> None:
     folds = WalkForwardSchedule(_timestamps(), _config()).folds
 
@@ -80,9 +151,7 @@ def test_expanding_schedule_keeps_initial_warmup_and_grows_fit_window() -> None:
 def test_schedule_identity_changes_with_time_or_configuration() -> None:
     baseline = WalkForwardSchedule(_timestamps(), _config()).folds[0].split_id
     shifted = WalkForwardSchedule(_timestamps() + np.timedelta64(1, "h"), _config()).folds[0].split_id
-    expanding = WalkForwardSchedule(
-        _timestamps(), _config(WalkForwardWindow.EXPANDING)
-    ).folds[0].split_id
+    expanding = WalkForwardSchedule(_timestamps(), _config(WalkForwardWindow.EXPANDING)).folds[0].split_id
 
     assert len({baseline, shifted, expanding}) == 3
 
@@ -133,10 +202,7 @@ def test_runner_keeps_fit_validation_and_heldout_data_separate() -> None:
 def test_perturbing_heldout_rows_cannot_change_fitted_or_validation_values() -> None:
     first = _frame(11)
     changed = first.with_columns(
-        pl.when(pl.col("feature") >= 9)
-        .then(pl.lit(1_000_000.0))
-        .otherwise(pl.col("target"))
-        .alias("target")
+        pl.when(pl.col("feature") >= 9).then(pl.lit(1_000_000.0)).otherwise(pl.col("target")).alias("target")
     )
 
     def run(frame: pl.DataFrame) -> tuple[float, float]:
@@ -222,4 +288,69 @@ def test_runner_rejects_invalid_metrics_with_fold_context() -> None:
             lambda _fold, _warmup, _fit: object(),
             lambda _fold, _model, _validation: {"score": 1.0},
             lambda _fold, _model, _heldout: {"score": float("nan")},
+        )
+
+
+def test_optimized_runner_selects_on_validation_then_refits_before_heldout() -> None:
+    result = _optimize(_optimization_frame(11), max_processes=1)[0]
+
+    assert result.selected_parameters == {"offset": 8.0, "label": "alpha"}
+    assert result.validation_cost == 0.0
+    assert result.validation_metrics == {"absolute_error": 0.0}
+    assert result.heldout_metrics == {"mean_error": 6.0}
+    assert [trial.parameters["label"] for trial in result.trials] == ["alpha", "baseline", "zeta"]
+
+
+def test_optimized_fit_allowlist_excludes_future_only_columns_and_heldout_changes() -> None:
+    baseline = _optimization_frame(11)
+    perturbed = baseline.with_columns(
+        pl.when(pl.col("feature") >= 9).then(pl.lit(1_000_000.0)).otherwise(pl.col("target")).alias("target")
+    )
+
+    first = _optimize(baseline, max_processes=1)[0]
+    changed = _optimize(perturbed, max_processes=1)[0]
+
+    assert first.selected_parameters == changed.selected_parameters
+    assert first.validation_cost == changed.validation_cost
+    assert first.validation_metrics == changed.validation_metrics
+    assert first.trials == changed.trials
+    assert first.heldout_metrics != changed.heldout_metrics
+
+
+def test_seeded_sequential_and_existing_process_scheduler_results_agree() -> None:
+    frame = _optimization_frame(11)
+
+    sequential = _optimize(frame, max_processes=1)
+    parallel = _optimize(frame, max_processes=2)
+
+    assert sequential == parallel
+
+
+def test_fold_seeds_are_reproducible_and_split_specific() -> None:
+    first = _optimize(_optimization_frame(), max_processes=1)
+    repeated = _optimize(_optimization_frame(), max_processes=1)
+
+    assert [result.seed for result in first] == [result.seed for result in repeated]
+    assert len({result.seed for result in first}) == len(first)
+
+
+def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> None:
+    runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
+
+    with pytest.raises(ValueError, match="fit_columns cannot contain duplicates"):
+        runner.optimize(
+            _optimization_parameters,
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            fit_columns=["target", "target"],
+        )
+
+    with pytest.raises(ValueError, match="produced no trials for fold 0"):
+        runner.optimize(
+            lambda _fold, _seed: (),
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            fit_columns=["timestamp", "target"],
         )

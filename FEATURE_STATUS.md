@@ -10,7 +10,7 @@ production/stable.
 |---|---|---|
 | General `Strategy`, accounting, execution, risk, and result bundles | Release candidate; public API compatibility applies, but production qualification is pending | P0 correctness, reproducibility, governance, and release-drill evidence |
 | Point-in-time market-data access and revision identity | Experimental; owned scalar/window reads plus built-in price and indicator adapters enforce observation/publication cutoffs | P1.5 representative owner-data qualification and data/core-owner approval |
-| Walk-forward experiment evaluation | Experimental; owned chronological splits separate warm-up, fit, validation, purge, and held-out rows | P1.6 training-only estimator/optimizer integration, persisted experiment evidence, parity acceptance, and quant/research-owner approval |
+| Walk-forward experiment evaluation | Experimental; owned chronological splits and an existing-optimizer adapter isolate allowlisted fitting, validation selection, purge gaps, and held-out scoring | P1.6 built-in estimator adapters, persisted experiment evidence/OOS equity, and quant/research-owner approval |
 | Native CSV/ZIP and HDF5 ingestion | Release candidate only for documented formats, limits, and caller-owned inputs | Native boundary qualification for the declared input trust model |
 | Option pricing, implied volatility, expiry, and settlement | Experimental; core accounting enforces a causal expiry cutoff but does not settle positions | P1.4 settlement-model approval plus independent numerical qualification |
 | Native factor cache, tick ring, and top-of-book/FIFO replay | Experimental | Separate correctness, recovery, capacity, and performance acceptance contract |

@@ -99,8 +99,10 @@ from gambit.optimize import (
     WalkForwardFold,
     WalkForwardFoldResult,
     WalkForwardInterval,
+    WalkForwardOptimizationFoldResult,
     WalkForwardRunner,
     WalkForwardSchedule,
+    WalkForwardTrialResult,
     WalkForwardWindow,
 )
 from gambit.portfolio import Portfolio
@@ -372,8 +374,10 @@ __all__ = [
     "WalkForwardFold",
     "WalkForwardFoldResult",
     "WalkForwardInterval",
+    "WalkForwardOptimizationFoldResult",
     "WalkForwardRunner",
     "WalkForwardSchedule",
+    "WalkForwardTrialResult",
     "WalkForwardWindow",
     "account_exposures",
     "analyze_account_risk",

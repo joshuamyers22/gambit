@@ -10,7 +10,10 @@ have not yet been released are collected below.
 - An experimental owned walk-forward runner with deterministic rolling or
   expanding split identities, separate warm-up/fit/validation/held-out frames,
   two purge boundaries, a non-overlapping refit schedule, detached finite
-  metrics, and explicit short/ambiguous-timeline rejection.
+  metrics, explicit short/ambiguous-timeline rejection, and parameter selection
+  through the existing optimizer. Optimized fits use an exact column allowlist,
+  fold-derived seeds, deterministic tie-breaking, selected-parameter refitting,
+  and isolated held-out scoring.
 - Experimental immutable point-in-time market data with separate observation,
   availability, row-revision, and dataset-revision identity; causal scalar and
   window reads; explicit missing/stale policies; bounded last-known-value age;
