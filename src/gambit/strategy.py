@@ -29,7 +29,11 @@ from gambit.callback_contracts import validate_market_trades, validate_rule_orde
 from gambit.configuration import RunConfiguration, RunProvenance
 from gambit.execution_identity import describe_component
 from gambit.execution_snapshots import snapshot_order
-from gambit.market_data import MarketDataValidationReport, PointInTimePriceFunction
+from gambit.market_data import (
+    MarketDataValidationReport,
+    PointInTimeIndicator,
+    PointInTimePriceFunction,
+)
 from gambit.order_callback_state import OrderCallbackState
 from gambit.pq_types import ContractGroup, Order, OrderStatus, RoundTripTrade, TimeInForce, Trade
 from gambit.pq_utils import assert_, get_child_logger, series_to_array
@@ -367,6 +371,15 @@ class Strategy:
             raise ValueError(f"indicator {name!r} is already registered for one or more contract groups")
         if name in self.indicator_deps and self.indicator_deps[name] != dependencies:
             raise ValueError(f"indicator {name!r} registrations must declare identical dependencies")
+        if isinstance(indicator, PointInTimeIndicator):
+            for input_name, fingerprint in indicator.input_fingerprints.items():
+                existing = self.provenance.input_fingerprints.get(input_name)
+                if existing is not None and existing != fingerprint:
+                    raise ValueError(
+                        f"point-in-time input {input_name!r} conflicts with an existing fingerprint"
+                    )
+            for input_name, fingerprint in indicator.input_fingerprints.items():
+                self.record_input_fingerprint(input_name, fingerprint)
         self.indicators.setdefault(name, indicator)
         self.indicator_deps[name] = dependencies
         self.indicator_cgroups[name] = (*existing_groups, *validated_groups)

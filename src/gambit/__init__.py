@@ -83,6 +83,7 @@ from gambit.instruments import AssetClass, InstrumentSpec, Tradability
 from gambit.market_data import (
     MarketDataAvailabilityPolicy,
     MarketDataValidationReport,
+    PointInTimeIndicator,
     PointInTimeMarketData,
     PointInTimeObservation,
     PointInTimePriceFunction,
@@ -262,6 +263,7 @@ __all__ = [
     "MarketDataShock",
     "MarketDataAvailabilityPolicy",
     "MarketDataValidationReport",
+    "PointInTimeIndicator",
     "PointInTimeMarketData",
     "PointInTimeObservation",
     "PointInTimePriceFunction",

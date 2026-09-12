@@ -81,9 +81,10 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Time:** strategy grids use non-`NaT`, strictly increasing NumPy `datetime64`
   values. Basic array adapters require a timestamp to represent when the modeled
   value is available, not merely its observation label. The experimental
-  point-in-time interface instead records observation and availability
-  separately. Normalize timezone-aware inputs before the NumPy boundary;
-  exchange calendars do not repair localization mistakes.
+  point-in-time interface and its built-in price/indicator adapters instead
+  record observation and availability separately. Normalize timezone-aware
+  inputs before the NumPy boundary; exchange calendars do not repair
+  localization mistakes.
 - **Precision and units:** quantities are signed, finite, nonzero whole
   instrument units. Prices, fees, and commissions are finite real values;
   instrument multipliers convert price movement to account-currency P&L.

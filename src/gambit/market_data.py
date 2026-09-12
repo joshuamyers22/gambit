@@ -560,9 +560,69 @@ class PointInTimePriceFunction:
         return price(contract)
 
 
+@dataclass(frozen=True)
+class PointInTimeIndicator:
+    """Indicator stage that resolves each heartbeat through an owned dataset."""
+
+    data: PointInTimeMarketData
+    symbol: str
+    field_name: str = "price"
+    allow_previous: bool = False
+    max_age: np.timedelta64 | None = None
+    missing_policy: MarketDataAvailabilityPolicy = MarketDataAvailabilityPolicy.ERROR
+    stale_policy: MarketDataAvailabilityPolicy = MarketDataAvailabilityPolicy.ERROR
+    provenance_name: str = "market_data"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.data, PointInTimeMarketData):
+            raise TypeError("data must be PointInTimeMarketData")
+        if not isinstance(self.symbol, str) or not self.symbol:
+            raise ValueError("indicator symbol must be a non-empty string")
+        if not isinstance(self.field_name, str) or not self.field_name:
+            raise ValueError("indicator field_name must be a non-empty string")
+        if type(self.allow_previous) is not bool:
+            raise TypeError("allow_previous must be a bool")
+        _maximum_age_ns(self.max_age)
+        for policy in (self.missing_policy, self.stale_policy):
+            if not isinstance(policy, MarketDataAvailabilityPolicy):
+                raise TypeError("indicator availability policies must be MarketDataAvailabilityPolicy values")
+        if not isinstance(self.provenance_name, str) or not self.provenance_name:
+            raise ValueError("provenance_name must be a non-empty string")
+
+    @property
+    def input_fingerprints(self) -> Mapping[str, str]:
+        return MappingProxyType({self.provenance_name: self.data.fingerprint})
+
+    def __call__(
+        self,
+        _contract_group: Any,
+        timestamps: np.ndarray,
+        _parent_values: SimpleNamespace,
+        _strategy_context: SimpleNamespace,
+    ) -> np.ndarray:
+        values: np.ndarray = np.empty(len(timestamps), dtype=float)
+        for index, timestamp in enumerate(timestamps):
+            heartbeat = _point_in_time_timestamp(
+                cast(np.datetime64, timestamp), label="indicator heartbeat"
+            )
+            observation = self.data.read(
+                self.symbol,
+                self.field_name,
+                heartbeat,
+                as_of=heartbeat,
+                allow_previous=self.allow_previous,
+                max_age=self.max_age,
+                missing_policy=self.missing_policy,
+                stale_policy=self.stale_policy,
+            )
+            values[index] = math.nan if observation is None else observation.value
+        return values
+
+
 __all__ = [
     "MarketDataAvailabilityPolicy",
     "MarketDataValidationReport",
+    "PointInTimeIndicator",
     "PointInTimeMarketData",
     "PointInTimeObservation",
     "PointInTimePriceFunction",

@@ -45,12 +45,12 @@ book/queue record layouts are also experimental, not general Strategy backends.
 
 ## Experimental point-in-time data APIs
 
-`PointInTimeMarketData`, `PointInTimeObservation`, and
-`PointInTimePriceFunction` are the first P1.5 causal-data slice. They enforce
+`PointInTimeMarketData`, `PointInTimeObservation`, `PointInTimePriceFunction`,
+and `PointInTimeIndicator` are the P1.5 causal-data interfaces. They enforce
 observation/publication cutoffs only for reads routed through those objects;
 arbitrary callbacks and retained external arrays remain outside that boundary.
-Production promotion requires built-in workflow adoption, hosted acceptance,
-and data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
+Production promotion requires representative owner-data qualification and
+data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
 
 ## Internal scheduling and debugging storage
 

@@ -22,6 +22,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
         "ContractGroup",
         "MarketOrder",
         "MarketDataAvailabilityPolicy",
+        "PointInTimeIndicator",
         "PointInTimeMarketData",
         "PointInTimeObservation",
         "PointInTimePriceFunction",

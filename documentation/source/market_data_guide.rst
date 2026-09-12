@@ -94,7 +94,14 @@ For example::
        allow_previous=True,
        max_age=np.timedelta64(5, "m"),
    )
+   published_price = gambit.PointInTimeIndicator(
+       point_in_time,
+       symbol="ESZ6",
+       allow_previous=True,
+       max_age=np.timedelta64(5, "m"),
+   )
    strategy = gambit.Strategy(event_times, groups, price_function)
+   strategy.add_indicator("published_price", published_price)
 
 The price adapter uses each strategy heartbeat as both the requested observation
 cutoff and the publication ``as_of`` time. ``allow_previous=True`` is a causal
@@ -105,11 +112,23 @@ missing value without a warning. Missing and stale observations have separate
 policies.
 
 The dataset fingerprint incorporates its canonical rows, source name, and
-dataset revision. A ``PointInTimePriceFunction`` registers that fingerprint in
-``Strategy`` provenance automatically. For point-in-time datasets used only by
-custom indicators or rules, register ``point_in_time.fingerprint`` explicitly
-with ``Strategy.record_input_fingerprint`` and pass the owned interface—not its
-full frame—to callbacks.
+dataset revision. ``PointInTimePriceFunction`` and ``PointInTimeIndicator``
+register that fingerprint in ``Strategy`` provenance automatically. Conflicting
+automatic registrations using the same provenance name fail during stage
+registration. For point-in-time datasets used only by custom indicators or
+rules, register ``point_in_time.fingerprint`` explicitly with
+``Strategy.record_input_fingerprint`` and pass the owned interface—not its full
+frame—to callbacks.
+
+``PointInTimeIndicator`` implements the built-in indicator-stage protocol. It
+resolves each output independently with that heartbeat as both observation
+cutoff and ``as_of`` time, so a delayed row cannot affect an earlier element.
+The :download:`executable point-in-time strategy example
+<../../examples/point_in_time_strategy.py>` demonstrates the stage and price
+adapter using one owned dataset. The returned vector is causal element by
+element, but a custom vectorized consumer can still combine a current element
+with later elements; such callback logic remains outside the enforcement
+boundary.
 
 This interface is experimental. It does not localize timezones, infer vendor
 publication times, fetch historical vintages, or prevent arbitrary callbacks

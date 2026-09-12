@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
 import numpy as np
 import polars as pl
 import pytest
@@ -7,10 +12,12 @@ import pytest
 from gambit.factor_identity import FactorColumnSchema, FactorNodeIdentity
 from gambit.market_data import (
     MarketDataAvailabilityPolicy,
+    PointInTimeIndicator,
     PointInTimeMarketData,
     PointInTimePriceFunction,
 )
 from gambit.pq_types import Contract, ContractGroup
+from gambit.stages import IndicatorStage
 from gambit.strategy import Strategy
 
 pytestmark = pytest.mark.acceptance
@@ -259,6 +266,48 @@ def test_point_in_time_price_adapter_values_basket_components_causally() -> None
     assert adapter(basket, timestamps, 0, None) == 100.0
 
 
+def test_point_in_time_indicator_is_a_causal_stage_and_records_provenance() -> None:
+    data = _data()
+    indicator = PointInTimeIndicator(
+        data,
+        symbol="A",
+        allow_previous=True,
+        max_age=np.timedelta64(2, "m"),
+    )
+    group = ContractGroup.get("point-in-time-indicator")
+    timestamps = np.array(
+        ["2024-01-02T09:30", "2024-01-02T09:31", "2024-01-02T09:32"],
+        dtype="datetime64[ns]",
+    )
+
+    assert isinstance(indicator, IndicatorStage)
+    assert indicator(group, timestamps, SimpleNamespace(), SimpleNamespace()).tolist() == [
+        100.0,
+        100.0,
+        102.0,
+    ]
+
+    strategy = Strategy(timestamps, [group], lambda *_args: 100.0)
+    strategy.add_indicator("published_price", indicator)
+    strategy.run_indicators()
+    assert strategy.indicator_values[group.name].published_price.tolist() == [100.0, 100.0, 102.0]
+    assert strategy.provenance.input_fingerprints == {"market_data": data.fingerprint}
+
+
+def test_point_in_time_indicator_rejects_conflicting_automatic_provenance() -> None:
+    first = _data(dataset_revision="snapshot-1")
+    second = _data(dataset_revision="snapshot-2")
+    timestamps = np.array(["2024-01-02T09:30"], dtype="datetime64[ns]")
+    group = ContractGroup.get("point-in-time-conflicting-provenance")
+    strategy = Strategy(timestamps, [group], PointInTimePriceFunction(first))
+
+    with pytest.raises(ValueError, match="conflicts with an existing fingerprint"):
+        strategy.add_indicator("conflicting", PointInTimeIndicator(second, symbol="A"))
+
+    assert strategy.indicators == {}
+    assert strategy.provenance.input_fingerprints == {"market_data": first.fingerprint}
+
+
 def test_dataset_revision_invalidates_factor_identity() -> None:
     first = _data(dataset_revision="snapshot-1")
     second = _data(dataset_revision="snapshot-2")
@@ -297,3 +346,17 @@ def test_dataset_revision_invalidates_factor_identity() -> None:
 def test_point_in_time_dataset_rejects_ambiguous_rows(frame: pl.DataFrame, message: str) -> None:
     with pytest.raises((TypeError, ValueError), match=message):
         PointInTimeMarketData(frame, source="vendor-bars", dataset_revision="snapshot-1")
+
+
+def test_point_in_time_strategy_example_runs() -> None:
+    script = Path(__file__).parents[1] / "examples" / "point_in_time_strategy.py"
+    completed = subprocess.run(
+        [sys.executable, str(script)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert "Causal indicator values: [100.0, 100.0, 102.0]" in completed.stdout

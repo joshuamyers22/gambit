@@ -366,7 +366,7 @@ due triggers are not calendar commitments.
 
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
-| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | In progress; owned reads, availability/revision identity, price adapter, and provenance implemented 2026-09-12; stage adoption and owner approval pending |
+| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Not started |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
@@ -398,7 +398,7 @@ or distinguish an observation time from when a revised value became available.
   dataset revision. Retain explicit source fingerprints in run provenance.
 - [x] Implement fail/missing/stale policies and age-limited forward filling.
   Future-assisted interpolation must not be used in causal execution.
-- [ ] Adapt built-in examples and stages to use the interface; document that
+- [x] Adapt built-in examples and stages to use the interface; document that
   arbitrary callbacks retaining external arrays are outside its enforcement.
 
 Acceptance: changing future observations or later revisions cannot change an
@@ -1439,6 +1439,31 @@ release merely because another library offers them.
   passed the full Linux/macOS and CPython 3.10–3.12 matrix at `6f85970`; the
   same-SHA pull-request CI and documentation workflows also passed. Built-in
   example/stage adoption and data/core-owner approval keep P1.5 open.
+
+### 2026-09-12 — Twenty-fifth slice (causal built-in indicator adoption)
+
+- Added a built-in point-in-time indicator stage that resolves every output
+  independently with its strategy heartbeat as both the observation cutoff and
+  availability boundary. It uses the same explicit missing, stale, prior-value,
+  and maximum-age policies as the price adapter.
+- Registering the stage automatically retains its dataset fingerprint in run
+  provenance. A price adapter and indicator using different datasets under the
+  same provenance name now fail during registration without partially adding
+  the stage or replacing the existing identity.
+- Added an executable strategy recipe using one owned dataset for price and
+  indicator access. Acceptance coverage runs the recipe, verifies delayed
+  publication produces `[100.0, 100.0, 102.0]`, and confirms the owned dataset
+  exposes no public full-frame accessor. Documentation explicitly retains the
+  boundary that custom vectorized consumers can combine future output elements
+  or retain external arrays and therefore remain outside enforcement.
+- Focused local evidence passed **57 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,996 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  matrix evidence is pending. All repository implementation checkboxes for P1.5
+  are complete; representative owner-data qualification and data/core-owner
+  approval keep the item open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
