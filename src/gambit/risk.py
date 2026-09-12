@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Protocol, Sequence
 
@@ -12,7 +12,7 @@ import numpy as np
 from gambit.account import Account
 from gambit.instruments import Tradability
 from gambit.order_callback_state import OrderCallbackState
-from gambit.pq_types import Order, _whole_quantity
+from gambit.pq_types import LimitOrder, Order, RollOrder, StopLimitOrder, VWAPOrder, _whole_quantity
 
 
 class DecisionStatus(str, Enum):
@@ -27,6 +27,7 @@ class RiskContext:
     open_orders: Sequence[Order]
 
     def projected_position(self, order: Order) -> float:
+        """Net position assuming all pending orders and the proposal fill."""
         positions = self.account.positions(order.contract.contract_group, self.timestamp)
         current = sum(qty for contract, qty in positions if contract.symbol == order.contract.symbol)
         pending = sum(
@@ -35,6 +36,22 @@ class RiskContext:
             if pending_order.is_open() and pending_order.contract.symbol == order.contract.symbol
         )
         return current + pending + order.qty
+
+    def position_bounds(self, order: Order) -> tuple[float, float]:
+        """Reachable short/long endpoints for independently fillable orders.
+
+        Includes no fill through full fill of each remaining quantity and the
+        proposal. Cancellation requests reserve exposure until acknowledged.
+        """
+        positions = self.account.positions(order.contract.contract_group, self.timestamp)
+        current = sum(qty for contract, qty in positions if contract.symbol == order.contract.symbol)
+        lower = current + min(0, order.qty)
+        upper = current + max(0, order.qty)
+        for pending in self.open_orders:
+            if pending.is_open() and pending.contract.symbol == order.contract.symbol:
+                lower += min(0, pending.qty)
+                upper += max(0, pending.qty)
+        return lower, upper
 
 
 @dataclass(frozen=True)
@@ -60,7 +77,73 @@ class RiskPolicy(Protocol):
 
 
 @dataclass(frozen=True)
+class OrderSnapshot:
+    """Detached decision-time fields for built-in order types.
+
+    Arbitrary user properties and custom subclass terms are not serialized.
+    Roll-leg identity is the only engine-owned property captured here.
+    """
+
+    symbol: str
+    contract_group: str
+    multiplier: float
+    expiry: np.datetime64 | None
+    submitted_at: np.datetime64
+    qty: float
+    order_type: str
+    time_in_force: str
+    order_status: str
+    reason_code: str
+    limit_price: float | None
+    trigger_price: float | None
+    triggered: bool | None
+    vwap_stop: float | None
+    vwap_end_time: np.datetime64 | None
+    reopen_symbol: str | None
+    reopen_contract_group: str | None
+    close_qty: float | None
+    reopen_qty: float | None
+    roll_id: str | None
+    roll_leg: str | None
+
+    @classmethod
+    def capture(cls, order: Order) -> OrderSnapshot:
+        def roll_property(name: str) -> str | None:
+            value = getattr(order.properties, name, None)
+            return value if isinstance(value, str) else None
+
+        return cls(
+            symbol=order.contract.symbol,
+            contract_group=order.contract.contract_group.name,
+            multiplier=order.contract.multiplier,
+            expiry=order.contract.expiry,
+            submitted_at=order.timestamp,
+            qty=order.qty,
+            order_type=type(order).__name__,
+            time_in_force=order.time_in_force.name,
+            order_status=order.status.name.lower(),
+            reason_code=order.reason_code,
+            limit_price=order.limit_price if isinstance(order, (LimitOrder, StopLimitOrder)) else None,
+            trigger_price=order.trigger_price if isinstance(order, StopLimitOrder) else None,
+            triggered=order.triggered if isinstance(order, StopLimitOrder) else None,
+            vwap_stop=order.vwap_stop if isinstance(order, VWAPOrder) else None,
+            vwap_end_time=order.vwap_end_time if isinstance(order, VWAPOrder) else None,
+            reopen_symbol=order.reopen_contract.symbol if isinstance(order, RollOrder) else None,
+            reopen_contract_group=order.reopen_contract.contract_group.name if isinstance(order, RollOrder) else None,
+            close_qty=order.close_qty if isinstance(order, RollOrder) else None,
+            reopen_qty=order.reopen_qty if isinstance(order, RollOrder) else None,
+            roll_id=roll_property("_gambit_roll_id"),
+            roll_leg=roll_property("_gambit_roll_leg"),
+        )
+
+
+@dataclass(frozen=True)
 class OrderDecision:
+    """Policy outcome with an immutable snapshot and a live compatibility order.
+
+    Use ``snapshot`` for audit values; ``order`` follows execution lifecycle.
+    """
+
     order: Order
     status: DecisionStatus
     policy: str
@@ -68,6 +151,10 @@ class OrderDecision:
     message: str
     proposed_qty: float
     timestamp: np.datetime64
+    snapshot: OrderSnapshot = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "snapshot", OrderSnapshot.capture(self.order))
 
 
 @dataclass(frozen=True)
@@ -92,6 +179,12 @@ class MaxOrderQuantity:
 
 @dataclass(frozen=True)
 class MaxPositionQuantity:
+    """Cap each independently reachable side, permitting breach reduction.
+
+    An order must leave the endpoint it extends within the cap. The other
+    endpoint is unchanged, so an existing breach on that side does not prevent
+    reduction. Opposite pending orders never provide admission credit.
+    """
     maximum: float
     name: str = "max_position_quantity"
 
@@ -100,15 +193,13 @@ class MaxPositionQuantity:
             raise ValueError("maximum position quantity must be finite and positive")
 
     def evaluate(self, order: Order, context: RiskContext) -> PolicyResult:
-        projected = context.projected_position(order)
-        position_before_order = projected - order.qty
-        within_limit = abs(projected) <= self.maximum
-        reduces_existing_breach = abs(projected) < abs(position_before_order)
-        if not within_limit and not reduces_existing_breach:
+        lower, upper = context.position_bounds(order)
+        within_limit = upper <= self.maximum if order.qty > 0 else lower >= -self.maximum
+        if not within_limit:
             return PolicyResult(
                 False,
                 "position_quantity_exceeded",
-                f"projected position {projected:g} exceeds {self.maximum:g}",
+                f"reachable position range [{lower:g}, {upper:g}] extends beyond {self.maximum:g}",
             )
         return PolicyResult(True)
 

@@ -19,6 +19,8 @@ NATIVE_MODULES = {
     "test_factor_operations.py",
     "test_factor_store.py",
     "test_native_io_hardening.py",
+    "test_native_memory_probe.py",
+    "test_numpy_leak_runner.py",
     "test_native_reference.py",
     "test_tick_ring.py",
 }

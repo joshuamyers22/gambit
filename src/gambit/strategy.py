@@ -898,7 +898,7 @@ class Strategy:
         )
         decisions = pl.DataFrame(
             {
-                "symbol": [decision.order.contract.symbol for decision in self.order_decisions],
+                "symbol": [decision.snapshot.symbol for decision in self.order_decisions],
                 "timestamp": np.asarray(
                     [decision.timestamp for decision in self.order_decisions], dtype="datetime64[ns]"
                 ),
@@ -917,6 +917,22 @@ class Strategy:
                 "message": pl.String,
                 "proposed_qty": pl.Float64,
             },
+        )
+        # These columns are decision-time facts, not terminal order state.
+        snapshot_types = {
+            "contract_group": pl.String, "multiplier": pl.Float64,
+            "order_type": pl.String, "time_in_force": pl.String,
+            "order_status": pl.String, "reason_code": pl.String,
+            "limit_price": pl.Float64, "trigger_price": pl.Float64, "triggered": pl.Boolean,
+            "vwap_stop": pl.Float64, "reopen_symbol": pl.String, "reopen_contract_group": pl.String,
+            "close_qty": pl.Float64, "reopen_qty": pl.Float64, "roll_id": pl.String, "roll_leg": pl.String,
+        }
+        decisions = decisions.with_columns(
+            *[pl.Series(name, [getattr(d.snapshot, name) for d in self.order_decisions], dtype=dtype)
+              for name, dtype in snapshot_types.items()],
+            *[pl.Series(name, np.asarray([getattr(d.snapshot, name) for d in self.order_decisions],
+                                        dtype="datetime64[ns]"), dtype=pl.Datetime("ns"))
+              for name in ("submitted_at", "expiry", "vwap_end_time")],
         )
         risk_measures = _concat_artifact_frames(self._recorded_risk_results)
         risk_exposures = _concat_report_frames(self._recorded_risk_reports, "exposures")

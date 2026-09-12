@@ -37,7 +37,7 @@ def _require_h5py() -> None:
 
 
 def _normalize_hdf5_key(key: str) -> str:
-    if not isinstance(key, str) or not key.strip("/"):
+    if not isinstance(key, str) or not key.strip("/") or "\x00" in key:
         raise ValueError("HDF5 key must be a non-empty path")
     parts = key.strip("/").split("/")
     if any(not part or part in {".", ".."} or part.endswith((".__gambit_pending", ".__gambit_backup")) for part in parts):
@@ -61,7 +61,7 @@ def _validate_hdf5_arrays(
     row_count: int | None = None
     total_bytes = 0
     for name, array in data.items():
-        if not isinstance(name, str) or not name or "/" in name or name in {".", ".."}:
+        if not isinstance(name, str) or not name or "/" in name or "\x00" in name or name in {".", ".."}:
             raise ValueError(f"invalid HDF5 column name: {name!r}")
         if not isinstance(array, np.ndarray):
             raise TypeError(f"HDF5 column {name} must be a NumPy array")
@@ -193,6 +193,28 @@ def np_arrays_to_hdf5(
             raise
 
 
+def _hdf5_local_object(group: Any, path: str) -> Any:
+    """Resolve hard links component-by-component, without following indirection."""
+    current = group
+    for component in path.split("/"):
+        if not isinstance(current, h5py.Group):
+            raise ValueError(f"HDF5 path component is not a group: {path}")
+        link = current.get(component, getlink=True)
+        if link is None:
+            return None
+        if not isinstance(link, h5py.HardLink):
+            raise ValueError(f"HDF5 soft/external links are not supported: {path}")
+        current = current[component]
+    return current
+
+
+def _hdf5_integer_attribute(group: Any, name: str, default: int) -> int:
+    value = group.attrs.get(name, default)
+    if isinstance(value, (bool, np.bool_)) or not isinstance(value, (int, np.integer)):
+        raise ValueError(f"HDF5 {name} must be an integer scalar")
+    return int(value)
+
+
 def hdf5_to_np_arrays(
     filename: str,
     key: str,
@@ -214,18 +236,16 @@ def hdf5_to_np_arrays(
     _validate_resource_limits(max_columns, max_rows, max_bytes)
     ret: dict[str, np.ndarray] = {}
     with h5py.File(filename, "r") as f:
-        read_key = key
-        backup_key = key + ".__gambit_backup"
-        if read_key not in f and backup_key in f:
-            read_key = backup_key
-        if read_key not in f:
+        grp = _hdf5_local_object(f, key)
+        if grp is None:
+            grp = _hdf5_local_object(f, key + ".__gambit_backup")
+        if grp is None:
             _logger.info(f"{key} not found in {filename}")
             return dict()
-        grp = f[read_key]
-        if "type" not in grp.attrs or grp.attrs["type"] != "dataframe":
+        if not isinstance(grp, h5py.Group) or "type" not in grp.attrs or grp.attrs["type"] != "dataframe":
             raise ValueError(f"HDF5 group is not a dataframe: {key}")
         if "schema_version" in grp.attrs:
-            version = int(grp.attrs["schema_version"])
+            version = _hdf5_integer_attribute(grp, "schema_version", 0)
             if grp.attrs.get("format") != HDF5_FORMAT or version != HDF5_SCHEMA_VERSION:
                 raise ValueError(f"unsupported HDF5 dataframe schema version: {version}")
             if grp.attrs.get("state") != "committed":
@@ -239,8 +259,9 @@ def hdf5_to_np_arrays(
             utf8_cols = grp.attrs.get("utf8_cols", "").split(",")
         if (
             not isinstance(columns, list)
+            or not all(isinstance(column, str) and column and "/" not in column
+                       and "\x00" not in column and column not in {".", ".."} for column in columns)
             or len(set(columns)) != len(columns)
-            or not all(isinstance(column, str) and column for column in columns)
         ):
             raise ValueError("invalid HDF5 dataframe column manifest")
         if not isinstance(utf8_cols, list) or not all(isinstance(column, str) for column in utf8_cols):
@@ -249,32 +270,41 @@ def hdf5_to_np_arrays(
             raise ValueError("HDF5 UTF-8 manifest references unknown columns")
         if len(columns) > max_columns:
             raise ValueError(f"HDF5 column count exceeds limit of {max_columns}")
-        declared_rows = int(grp.attrs.get("rows", 0))
+        declared_rows = _hdf5_integer_attribute(grp, "rows", 0)
         if declared_rows < 0 or declared_rows > max_rows:
             raise ValueError(f"HDF5 row count exceeds limit of {max_rows}")
         total_bytes = 0
+        datasets = []
         for col in columns:
-            if col not in grp or not isinstance(grp[col], h5py.Dataset):
+            dataset = _hdf5_local_object(grp, col)
+            if not isinstance(dataset, h5py.Dataset):
                 raise ValueError(f"HDF5 dataframe column is missing or invalid: {col}")
-            dataset = grp[col]
+            if dataset.is_virtual or dataset.external:
+                raise ValueError(f"external/virtual HDF5 dataset storage is not supported: {col}")
             if dataset.ndim != 1 or len(dataset) != declared_rows:
                 raise ValueError(f"HDF5 dataframe column has inconsistent rows: {col}")
-            if dataset.dtype.kind == "O":
+            if dataset.dtype.hasobject:
                 raise ValueError(f"variable-length HDF5 columns are not supported: {col}")
-            total_bytes += math.prod(dataset.shape) * dataset.dtype.itemsize
+            if col in utf8_cols and dataset.dtype.kind != "S":
+                raise ValueError(f"HDF5 UTF-8 column must use fixed-width bytes: {col}")
+            # Bytes are returned as NumPy Unicode (four bytes per code point).
+            # UTF-8 cannot decode to more code points than source bytes. Count
+            # each output, even when two names hard-link the same dataset.
+            width = dataset.dtype.itemsize * (4 if dataset.dtype.kind == "S" else 1)
+            total_bytes += math.prod(dataset.shape) * width
             if total_bytes > max_bytes:
                 raise ValueError(f"HDF5 dataset size exceeds limit of {max_bytes} bytes")
+            datasets.append((col, dataset))
+        # No payload is materialized until every selected dataset and the
+        # aggregate returned-payload estimate has passed admission.
+        for col, dataset in datasets:
             array = dataset[:]
             if col in utf8_cols:
                 array = np.char.decode(array, "utf-8")
-                dtype = f"U{array.dtype.itemsize}"
-            if array.dtype.kind == "S":
+            elif array.dtype.kind == "S":
                 # decode bytes to numpy unicode
                 dtype = f"U{array.dtype.itemsize}"
                 array = array.astype(dtype)
-            elif array.dtype == "O":
-                array = array.astype("S")
-                array = np.char.decode(array, encoding="utf-8")
             ret[col] = array
     return ret
 

@@ -80,3 +80,48 @@ count when loaded. Record every external input that should affect reproducibilit
    strategy.record_polars_input("features", feature_frame)
    result = strategy.run()
    result.save("research/run-001.gambit")
+
+Bounded result loading
+~~~~~~~~~~~~~~~~~~~~~~
+
+``BacktestResult.load`` checks the entire bundle before decoding any table:
+bounded manifest reads, typed metadata, exact table filenames, SHA-256 digests,
+Arrow schema and record-batch dimensions, buffer references, and allocation
+estimates. It reads regular, non-symlink member files into bounded byte snapshots;
+decoding does not reopen paths that another writer could replace. Duplicate JSON
+keys, malformed metadata, unsupported layouts, and budget violations raise
+``BacktestBundleError``. Hashes detect changes, not who authored a bundle.
+
+The default ``BundleLoadLimits`` policy allows a 1 MiB manifest, 64 MiB per table,
+256 MiB across table files, 1 million rows per table, 4 million rows in total,
+128 columns per table, 1,024 batches per table, and 1 MiB of IPC metadata per
+table. Estimated decoded payload is capped at 256 MiB per table and 512 MiB
+overall. The estimate includes per-cell conversion headroom, referenced buffers,
+and logical expansion of string views. It is not a hard RSS guarantee: byte
+snapshots, Python/native allocator overhead, and library state also consume
+memory. Use an OS-isolated process for strict memory/time ceilings, and keep
+Polars patched; this preflight is not a complete native-decoder security audit.
+
+Override individual positive-integer limits for a reviewed workload::
+
+   limits = gambit.BundleLoadLimits(
+       max_table_rows=2_000_000,
+       max_total_rows=8_000_000,
+   )
+   restored = gambit.BacktestResult.load("research/run-001.gambit", limits=limits)
+
+The accepted Arrow profile is little-endian, uncompressed, flat columns:
+8–64-bit integers, 32/64-bit floats, booleans, strings/binary (offset or view
+layouts), nulls, day-resolution dates, nanosecond time, ms/us/ns datetime and
+duration, and 128-bit decimals. Nested/list/struct, categorical/dictionary,
+extension/custom-metadata, compressed, and other encodings are rejected rather
+than passed to an unbounded decoder. There is no unsafe bypass flag. Normalize
+unsupported custom analytics in a trusted environment before storing them in a
+bundle intended for this loader.
+
+Versions 2, 3, and 4 remain readable within this profile and the chosen limits;
+older schema columns are preserved without inventing missing values. The file
+format and writer are unchanged by these limits: saving a very large result or
+unsupported custom table does not guarantee admission by the default loader.
+The profile follows the `Arrow columnar format and IPC metadata specifications
+<https://arrow.apache.org/docs/format/Columnar.html>`_.

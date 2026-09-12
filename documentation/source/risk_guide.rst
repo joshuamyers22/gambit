@@ -16,9 +16,40 @@ small policies rather than embedding every constraint in one rule::
        )
    )
 
-Rejected proposals remain auditable through immutable ``OrderDecision`` records.
+Accepted and rejected proposals retain detached, frozen ``OrderDecision.snapshot``
+records (``OrderSnapshot``). Use the snapshot for historical symbol/group,
+submission time, quantity, order type, time-in-force, status, reason, and built-in
+limit/VWAP/roll terms. ``OrderDecision.order`` remains the live operational order
+for compatibility: its quantity and status change during execution, and its
+contract reference can be reassigned. It is not an immutable audit record.
+Arbitrary user properties and custom order-subclass terms are not captured;
+engine-generated roll identity and leg markers are captured explicitly.
 A policy is part of the simulation and must use only information available at
 its decision timestamp.
+
+``MaxPositionQuantity`` checks independent fill exposure for each symbol. With
+current position ``p``, reachable positions range from ``p + sum(sell quantities)``
+to ``p + sum(buy quantities)``, including the proposal and remaining open orders.
+A buy must leave the upper endpoint at or below the cap; a sell must leave the
+lower endpoint at or above the negative cap. Opposite pending orders provide no
+offsetting credit. For example, a pending sell of 100 cannot justify buying 200
+against a cap of 100 from a flat account.
+
+An existing breach on the opposite side does not block a reducing order, but
+the order may not create a new opposite-side breach. A position of +10 with cap
+5 can sell 2 (reducing the breach) or 15 (ending at -5), but cannot sell 16.
+Existing unsafe pending exposure is not automatically cancelled by this policy;
+owners must resolve it. Cancellation requests retain their remaining exposure
+until cancellation is acknowledged. Filled/cancelled orders no longer reserve
+exposure. Roll legs are admitted separately, with no atomic/netting exemption:
+there is no verified all-or-none fill-group contract across custom simulators.
+The existing ``RiskContext.projected_position`` remains a net-all-fills helper
+for other/custom policies; use ``position_bounds`` for independent-fill endpoints.
+
+New strategy results persist snapshot fields in bundle version 4. Versions 2
+and 3 remain readable with their original decision columns; missing historical
+terms are not reconstructed from terminal orders, including when re-saving a
+legacy result. Check column availability before using the additional fields.
 
 Use ``gambit.risk.decide_order`` for standalone pre-trade decisions. Before any
 policy runs, it checks the proposal and all still-open context quantities as

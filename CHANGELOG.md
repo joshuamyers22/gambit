@@ -7,6 +7,21 @@ have not yet been released are collected below.
 
 ### Added
 
+- Isolated NumPy array-data allocation-failure tests covering partial native
+  results, retries, datetime conversion errors and array/allocator lifetimes;
+  a dedicated unsuppressed Linux leak-check step awaits hosted qualification.
+- Draft threat model and bounded CSV/ZIP coverage-guided fuzz targets, with
+  sanitizer seed replay for platforms without a libFuzzer runtime.
+- Native CSV input/output byte budgets and a selected-column limit, with
+  checked fixed-string widths and defaults of 1 GiB input, 256 MiB output,
+  and 4,096 selected columns. Read-ahead/header bytes count toward input work.
+- Configurable `BundleLoadLimits` for manifest/file bytes, rows, columns, IPC
+  metadata, batch counts, and decoded-payload estimates. Bundle versions 2–4 use
+  the same bounded admission policy, without changing their persisted schemas.
+- Frozen `OrderSnapshot` records preserve decision-time identity and built-in
+  order terms independently of the live `OrderDecision.order` reference.
+  New strategy results persist these fields in result-bundle version 4;
+  versions 2 and 3 remain readable without fabricating missing historical terms.
 - Opt-in conservative FIFO exchange-queue simulation for the native experimental
   backtester: resting best-price limits, trade-only volume-ahead depletion,
   explicit arrival audit, independent Python trace tests, and synthetic benchmarks.
@@ -20,6 +35,18 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Native leak-stress checks now release their final result arrays before invoking
+  LeakSanitizer and require its runtime in CI. The independent NumPy leak check
+  runs after a successful native build even if the preceding stress probe fails.
+- HDF5 readers now preflight every selected column before reading any payload,
+  count conservative Unicode expansion in the aggregate byte budget, reject
+  non-integer row/version metadata and refuse soft/external links, virtual
+  datasets and external raw-data storage. Materialize linked inputs into local
+  datasets; previously source-byte-only string budgets may need adjustment.
+- Native CSV/ZIP ``i4``, ``i8`` and integer-backed datetime parsing now accepts
+  signed extrema without undefined behavior and rejects out-of-range prefixes
+  with ``RuntimeError``. Validate inputs and rerun results affected by formerly
+  overflowed integers; existing in-range prefix/separator semantics are retained.
 - Simulator fill membership and engine-applied fill totals now use batch-local
   identity indexes instead of repeated order/trade scans. These bookkeeping
   steps are linear in orders plus fills, preserving validation, callback order
@@ -54,6 +81,31 @@ have not yet been released are collected below.
 
 ### Fixed
 
+- Scope the dedicated NumPy leak probe before Python initialization so startup
+  allocations do not contaminate native-call evidence. A mandatory deliberate
+  NumPy buffer leak verifies detection remains active; no suppressions are added.
+
+- Native CSV staging and NumPy conversion now use automatic ownership rather
+  than dtype-dependent `void*` deletion and manual array-buffer handoffs.
+  `max_rows` no longer preallocates its requested capacity or parses an extra
+  row after reaching its limit. Strings retain only their requested width.
+  Allocation failures become `MemoryError`; partial results are not published.
+  New standalone ASan/UBSan allocation-failure probes cover CSV and ZIP reads.
+  The obsolete native demo functions with developer-local paths were replaced
+  by an argument-driven smoke executable as part of the internal API migration.
+- Result loading now validates every member before materializing any table and
+  decodes checked byte snapshots instead of reopening paths. Malformed metadata,
+  duplicate JSON keys, special/symlink members, forged Arrow dimensions and
+  buffer references, and budget violations fail with `BacktestBundleError`.
+  Compressed, nested, dictionary, and extension/custom-metadata layouts are now
+  explicitly unsupported; normalize custom analytics in a trusted environment.
+  These checks bound payload work, not total process RSS or native-decoder risk.
+- `MaxPositionQuantity` now checks independently reachable long/short positions
+  instead of netting opposite pending orders. Cancellation requests reserve
+  remaining exposure until acknowledged, and reducing an existing breach cannot
+  create an opposite-side breach. Rerun backtests whose admissions relied on
+  pending-order netting or breach-reducing overshoots; prior decision identities
+  affected by order mutation cannot be reliably reconstructed from old bundles.
 - Standalone ``decide_order`` now validates proposed and open pending quantities
   before any policy runs, even when no policies are configured. Mutated fractional
   or NaN quantities can no longer receive acceptance; invalid inputs raise using
