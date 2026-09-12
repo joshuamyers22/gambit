@@ -1318,7 +1318,10 @@ release merely because another library offers them.
   financial mutants killed**, frozen-lock, Ruff, mypy over 55 source files,
   native-warning, strict-Sphinx, documentation-source, notebook, wheel/sdist,
   Twine, and artifact-inspection gates on macOS / CPython 3.10.20. Hosted
-  evidence follows; external retention configuration, full-disk/permission
+  [CI run 34712649385](https://github.com/joshuamyers22/gambit/actions/runs/34712649385)
+  then passed the complete push workflow, including the required Linux/macOS
+  CPython 3.10–3.12 matrix, at `670d540`; pull-request CI and documentation also
+  passed at that SHA. External retention configuration, full-disk/permission
   drills, elapsed RTO, and owner approval keep P1.1 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
