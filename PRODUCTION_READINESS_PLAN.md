@@ -1492,7 +1492,12 @@ release merely because another library offers them.
   module coverage floors, **10/10** financial mutation checks, frozen-lock,
   Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
   Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
-  matrix evidence is attached after the implementation commit is exercised.
+  push [CI run 34721493644](https://github.com/joshuamyers22/gambit/actions/runs/34721493644)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `ba44fdf`;
+  same-SHA pull-request
+  [CI run 34721478366](https://github.com/joshuamyers22/gambit/actions/runs/34721478366)
+  and [documentation run 34721478371](https://github.com/joshuamyers22/gambit/actions/runs/34721478371)
+  also passed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
