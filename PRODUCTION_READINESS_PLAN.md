@@ -1434,9 +1434,11 @@ release merely because another library offers them.
   CPython 3.10.20 passed **1,993 tests** at **86% aggregate coverage**, all six
   module coverage floors, **10/10** financial mutation checks, frozen-lock,
   Ruff, mypy over 55 source files, native-warning, strict-Sphinx, wheel/sdist,
-  Twine, and release-artifact verification gates. Hosted matrix evidence is
-  pending. Built-in example/stage adoption and data/core-owner approval keep
-  P1.5 open.
+  Twine, and release-artifact verification gates. Hosted push
+  [CI run 34718164707](https://github.com/joshuamyers22/gambit/actions/runs/34718164707)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `6f85970`; the
+  same-SHA pull-request CI and documentation workflows also passed. Built-in
+  example/stage adoption and data/core-owner approval keep P1.5 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
