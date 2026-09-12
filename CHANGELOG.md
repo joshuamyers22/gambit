@@ -16,6 +16,10 @@ have not yet been released are collected below.
   and isolated held-out scoring. An owned training-set callback boundary returns
   detached warm-up/fit frames and fits generic estimators plus Gambit's
   covariance and tail-risk models only through the final fit timestamp.
+  Optimized experiment results also retain deterministic full-input and
+  caller-supplied selected-model SHA-256 identities, successful and failed
+  trials, and a detached chronological equity observation for every held-out
+  timestamp; sequential and process-pool failures share the same record shape.
 - Experimental immutable point-in-time market data with separate observation,
   availability, row-revision, and dataset-revision identity; causal scalar and
   window reads; explicit missing/stale policies; bounded last-known-value age;

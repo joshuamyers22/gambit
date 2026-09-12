@@ -10,14 +10,15 @@ import json
 import multiprocessing as mp
 import os
 from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Callable, TypeAlias, TypeVar
+from typing import Any, Callable, TypeAlias, TypeVar, overload
 
 import numpy as np
 import polars as pl
 
+from gambit.configuration import fingerprint_polars_frame
 from gambit.covariance_risk import CovarianceEstimate, CovarianceRiskModel
 from gambit.pq_utils import get_child_logger, has_display
 from gambit.var_risk import FittedTailRiskModel, TailRiskModel
@@ -291,7 +292,10 @@ WalkForwardCandidateValidationFunction: TypeAlias = Callable[
     [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], tuple[float, Mapping[str, float]]
 ]
 WalkForwardCandidateHeldoutFunction: TypeAlias = Callable[
-    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], Mapping[str, float]
+    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], "WalkForwardHeldoutEvaluation"
+]
+WalkForwardModelFingerprintFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, int], str
 ]
 
 
@@ -347,6 +351,64 @@ def _parameter_identity(parameters: Mapping[str, Any]) -> str:
     return json.dumps(dict(parameters), sort_keys=True, separators=(",", ":"))
 
 
+def _walk_forward_sha256(value: str, *, name: str, fold: int) -> str:
+    if not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(f"walk-forward {name} for fold {fold} must be a lowercase SHA-256 digest")
+    return value
+
+
+@dataclass(frozen=True, init=False)
+class WalkForwardHeldoutEvaluation:
+    """Detached held-out metrics and the corresponding equity observations."""
+
+    metrics: Mapping[str, float]
+    _equity: pl.DataFrame
+
+    def __init__(self, metrics: Mapping[str, float], equity: pl.DataFrame) -> None:
+        if not isinstance(equity, pl.DataFrame):
+            raise TypeError("walk-forward held-out equity must be a Polars DataFrame")
+        object.__setattr__(self, "metrics", MappingProxyType(dict(metrics)))
+        object.__setattr__(self, "_equity", equity.clone())
+
+    @property
+    def equity(self) -> pl.DataFrame:
+        return self._equity.clone()
+
+
+def _walk_forward_heldout_evaluation(
+    value: WalkForwardHeldoutEvaluation,
+    *,
+    expected: pl.DataFrame,
+    timestamp_column: str,
+    fold: int,
+) -> tuple[Mapping[str, float], pl.DataFrame]:
+    if not isinstance(value, WalkForwardHeldoutEvaluation):
+        raise TypeError(f"walk-forward held-out evaluation for fold {fold} must be WalkForwardHeldoutEvaluation")
+    metrics = _walk_forward_metrics(value.metrics, stage="held-out", fold=fold)
+    equity = value.equity
+    if equity.columns != [timestamp_column, "equity"]:
+        raise ValueError(
+            f"walk-forward held-out equity for fold {fold} must contain exactly "
+            f"[{timestamp_column!r}, 'equity']"
+        )
+    timestamp_dtype = equity.schema[timestamp_column]
+    if timestamp_dtype != pl.Date and not isinstance(timestamp_dtype, pl.Datetime):
+        raise TypeError(f"walk-forward held-out equity timestamps for fold {fold} must be Date or Datetime")
+    if isinstance(timestamp_dtype, pl.Datetime) and timestamp_dtype.time_zone is not None:
+        raise ValueError(f"walk-forward held-out equity timestamps for fold {fold} must be timezone-naive")
+    if not equity.schema["equity"].is_numeric():
+        raise TypeError(f"walk-forward held-out equity values for fold {fold} must be numeric")
+    normalized = equity.with_columns(
+        pl.col(timestamp_column).cast(pl.Datetime("ns")),
+        pl.col("equity").cast(pl.Float64),
+    )
+    if normalized.height != expected.height or not normalized[timestamp_column].equals(expected[timestamp_column]):
+        raise ValueError(f"walk-forward held-out equity timestamps for fold {fold} must exactly match held-out rows")
+    if normalized.null_count().sum_horizontal().item() or not bool(np.isfinite(normalized["equity"].to_numpy()).all()):
+        raise ValueError(f"walk-forward held-out equity for fold {fold} cannot contain null or non-finite values")
+    return metrics, normalized
+
+
 @dataclass(frozen=True)
 class WalkForwardTrialResult:
     """One detached candidate result scored only on a validation interval."""
@@ -364,6 +426,22 @@ class WalkForwardTrialResult:
 
 
 @dataclass(frozen=True)
+class WalkForwardTrialFailure:
+    """One candidate that failed before producing finite validation evidence."""
+
+    parameters: Mapping[str, Any]
+    error_type: str
+    message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "parameters", _walk_forward_parameters(self.parameters, fold=-1))
+        if not isinstance(self.error_type, str) or not self.error_type:
+            raise ValueError("walk-forward failure error_type must be a non-empty string")
+        if not isinstance(self.message, str):
+            raise TypeError("walk-forward failure message must be a string")
+
+
+@dataclass(frozen=True)
 class WalkForwardOptimizationFoldResult:
     """Selected parameters, trials, and separated metrics for one fold."""
 
@@ -374,11 +452,79 @@ class WalkForwardOptimizationFoldResult:
     validation_metrics: Mapping[str, float]
     heldout_metrics: Mapping[str, float]
     trials: tuple[WalkForwardTrialResult, ...]
+    failures: tuple[WalkForwardTrialFailure, ...]
+    input_sha256: str
+    model_sha256: str
+    _heldout_equity: pl.DataFrame = field(compare=False, repr=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "selected_parameters", MappingProxyType(dict(self.selected_parameters)))
         object.__setattr__(self, "validation_metrics", MappingProxyType(dict(self.validation_metrics)))
         object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
+        object.__setattr__(self, "failures", tuple(self.failures))
+        object.__setattr__(self, "input_sha256", _walk_forward_sha256(
+            self.input_sha256, name="input fingerprint", fold=self.fold.index
+        ))
+        object.__setattr__(self, "model_sha256", _walk_forward_sha256(
+            self.model_sha256, name="model fingerprint", fold=self.fold.index
+        ))
+        object.__setattr__(self, "_heldout_equity", self._heldout_equity.clone())
+
+    @property
+    def heldout_equity(self) -> pl.DataFrame:
+        return self._heldout_equity.clone()
+
+
+@dataclass(frozen=True, init=False)
+class WalkForwardExperimentResult(Sequence[WalkForwardOptimizationFoldResult]):
+    """Immutable fold evidence with one chronological out-of-sample equity series."""
+
+    input_sha256: str
+    folds: tuple[WalkForwardOptimizationFoldResult, ...]
+    _out_of_sample_equity: pl.DataFrame
+
+    def __init__(self, input_sha256: str, folds: Iterable[WalkForwardOptimizationFoldResult]) -> None:
+        normalized = tuple(folds)
+        _walk_forward_sha256(input_sha256, name="input fingerprint", fold=-1)
+        if not normalized:
+            raise ValueError("walk-forward experiment must contain at least one fold")
+        if any(result.input_sha256 != input_sha256 for result in normalized):
+            raise ValueError("walk-forward fold input fingerprints must match the experiment")
+        if any(result.fold.index != index for index, result in enumerate(normalized)):
+            raise ValueError("walk-forward experiment folds must be complete and ordered")
+        equity = pl.concat([result.heldout_equity for result in normalized], how="vertical")
+        timestamps = equity[equity.columns[0]].to_numpy().astype("datetime64[ns]")
+        if len(timestamps) > 1 and not bool(np.all(np.diff(timestamps.astype(np.int64)) > 0)):
+            raise ValueError("walk-forward out-of-sample equity timestamps must be strictly increasing")
+        object.__setattr__(self, "input_sha256", input_sha256)
+        object.__setattr__(self, "folds", normalized)
+        object.__setattr__(self, "_out_of_sample_equity", equity)
+
+    def __len__(self) -> int:
+        return len(self.folds)
+
+    @overload
+    def __getitem__(self, index: int) -> WalkForwardOptimizationFoldResult: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[WalkForwardOptimizationFoldResult, ...]: ...
+
+    def __getitem__(self, index: int | slice) -> WalkForwardOptimizationFoldResult | tuple[WalkForwardOptimizationFoldResult, ...]:
+        return self.folds[index]
+
+    @property
+    def out_of_sample_equity(self) -> pl.DataFrame:
+        return self._out_of_sample_equity.clone()
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, WalkForwardExperimentResult):
+            return NotImplemented
+        if self.input_sha256 != other.input_sha256 or len(self) != len(other):
+            return False
+        return all(
+            left == right and left.heldout_equity.equals(right.heldout_equity)
+            for left, right in zip(self.folds, other.folds, strict=True)
+        )
 
 
 @dataclass(frozen=True)
@@ -437,6 +583,7 @@ class WalkForwardRunner:
         self.schedule = WalkForwardSchedule(timestamps, config)
         self.timestamp_column = timestamp_column
         self._data = normalized
+        self.input_sha256 = fingerprint_polars_frame(normalized)
 
     def _select(self, interval: WalkForwardInterval) -> pl.DataFrame:
         return self._data.slice(interval.start, interval.size).clone()
@@ -499,19 +646,21 @@ class WalkForwardRunner:
         fit: WalkForwardCandidateFitFunction,
         validate: WalkForwardCandidateValidationFunction,
         evaluate_heldout: WalkForwardCandidateHeldoutFunction,
+        model_fingerprint: WalkForwardModelFingerprintFunction,
         *,
         fit_columns: Sequence[str],
         seed: int = 0,
         max_processes: int | None = 1,
         process_start_method: str = "spawn",
         max_pending_tasks: int | None = None,
-    ) -> tuple[WalkForwardOptimizationFoldResult, ...]:
+    ) -> WalkForwardExperimentResult:
         """Select on validation data, refit, then evaluate held-out rows."""
         for name, callback in (
             ("parameter_source", parameter_source),
             ("fit", fit),
             ("validate", validate),
             ("evaluate_heldout", evaluate_heldout),
+            ("model_fingerprint", model_fingerprint),
         ):
             if not callable(callback):
                 raise TypeError(f"walk-forward {name} callback must be callable")
@@ -546,9 +695,12 @@ class WalkForwardRunner:
                 process_start_method=process_start_method,
                 max_pending_tasks=max_pending_tasks,
             )
-            optimizer.run(raise_on_error=True)
+            optimizer.run(raise_on_error=False)
             if not optimizer.experiments:
-                raise ValueError(f"walk-forward parameter source produced no trials for fold {fold.index}")
+                raise ValueError(
+                    f"walk-forward parameter source produced no successful trials for fold {fold.index}; "
+                    f"{len(optimizer.failures)} failed"
+                )
             trials = tuple(
                 sorted(
                     (
@@ -563,21 +715,45 @@ class WalkForwardRunner:
                 )
             )
             selected = min(trials, key=lambda trial: (trial.validation_cost, _parameter_identity(trial.parameters)))
+            failures = tuple(
+                sorted(
+                    (
+                        WalkForwardTrialFailure(
+                            parameters=failure.suggestion,
+                            error_type=failure.error_type,
+                            message=failure.message,
+                        )
+                        for failure in optimizer.failures
+                    ),
+                    key=lambda failure: (
+                        _parameter_identity(failure.parameters),
+                        failure.error_type,
+                        failure.message,
+                    ),
+                )
+            )
             model = fit(
                 fold,
                 selected.parameters,
                 training_set,
                 fold_seed,
             )
-            heldout_metrics = self._metrics(
+            model_sha256 = _walk_forward_sha256(
+                model_fingerprint(fold, selected.parameters, model, fold_seed),
+                name="model fingerprint",
+                fold=fold.index,
+            )
+            heldout = self._select(fold.heldout)
+            heldout_metrics, heldout_equity = _walk_forward_heldout_evaluation(
                 evaluate_heldout(
                     fold,
                     selected.parameters,
                     model,
-                    self._select(fold.heldout),
+                    heldout.clone(),
                     fold_seed,
                 ),
-                stage="held-out",
+                expected=heldout,
+                timestamp_column=self.timestamp_column,
                 fold=fold.index,
             )
             results.append(
@@ -589,9 +765,13 @@ class WalkForwardRunner:
                     validation_metrics=selected.validation_metrics,
                     heldout_metrics=heldout_metrics,
                     trials=trials,
+                    failures=failures,
+                    input_sha256=self.input_sha256,
+                    model_sha256=model_sha256,
+                    _heldout_equity=heldout_equity,
                 )
             )
-        return tuple(results)
+        return WalkForwardExperimentResult(self.input_sha256, results)
 
 
 def _plotting_modules():
@@ -651,6 +831,18 @@ class OptimizerWorkerError(RuntimeError):
     """A cost function failed in a worker process."""
 
 
+@dataclass(frozen=True)
+class OptimizerFailure:
+    """Detached identity and exception summary for one failed suggestion."""
+
+    suggestion: Mapping[str, Any]
+    error_type: str
+    message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "suggestion", MappingProxyType(dict(self.suggestion)))
+
+
 class Optimizer:
     """Optimizer is used to optimize parameters for a strategy."""
 
@@ -686,8 +878,9 @@ class Optimizer:
             raise ValueError("max_pending_tasks must be positive")
         self.max_pending_tasks = max_pending_tasks if max_pending_tasks is not None else worker_count * 2
         self.experiments: list[Experiment] = []
+        self.failures: list[OptimizerFailure] = []
 
-    def _run_single_process(self) -> None:
+    def _run_single_process(self, raise_on_error: bool) -> None:
         suggestions = iter(self.generator)
         send_feedback = getattr(suggestions, "send", None)
         try:
@@ -696,7 +889,14 @@ class Optimizer:
                 if suggestion is None:
                     suggestion = next(suggestions)
                     continue
-                cost, other_costs = self.cost_func(suggestion)
+                try:
+                    cost, other_costs = self.cost_func(suggestion)
+                except Exception as error:
+                    self.failures.append(OptimizerFailure(suggestion, type(error).__name__, str(error)))
+                    if raise_on_error:
+                        raise
+                    suggestion = next(suggestions)
+                    continue
                 self.experiments.append(Experiment(suggestion, cost, other_costs))
                 if send_feedback is not None:
                     suggestion = send_feedback((cost, other_costs))
@@ -734,6 +934,7 @@ class Optimizer:
                         try:
                             cost, other_costs = future.result()
                         except Exception as error:
+                            self.failures.append(OptimizerFailure(suggestion, type(error).__name__, str(error)))
                             worker_error = OptimizerWorkerError(f"cost function failed for suggestion {suggestion!r}")
                             if raise_on_error:
                                 raise worker_error from error
@@ -750,11 +951,13 @@ class Optimizer:
         """Run the optimizer.
 
         Args:
-            raise_on_error: If set to True, even if we are running a multiprocess optimization, any Exceptions will bubble up and stop the Optimizer.
-              This can be useful for debugging to see stack traces for Exceptions.
+            raise_on_error: If true, the first cost exception stops execution.
+              Otherwise, sequential and multiprocess runs retain a detached
+              ``OptimizerFailure`` and continue to the next suggestion. Failed
+              adaptive suggestions receive no cost feedback.
         """
         if self.max_processes == 1:
-            self._run_single_process()
+            self._run_single_process(raise_on_error)
         else:
             self._run_multi_process(raise_on_error)
 

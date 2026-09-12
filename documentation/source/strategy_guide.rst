@@ -153,6 +153,7 @@ schema supplied to candidate fitting and selected-parameter refitting:
        fit_candidate,
        score_candidate_validation,
        score_selected_heldout,
+       fingerprint_selected_model,
        fit_columns=["timestamp", "return", "target"],
        seed=42,
        max_processes=1,
@@ -194,6 +195,29 @@ module-level, pickleable callbacks and a static candidate source when selecting
 ``max_processes > 1``; adaptive generators remain an existing single-process
 ``Optimizer`` feature.
 
+The selected-model fingerprint callback must return a lowercase SHA-256 digest
+of the fitted model's reproducible state. Held-out evaluation returns both
+finite metrics and an equity observation for every held-out timestamp:
+
+.. code-block:: python
+
+   import polars as pl
+
+   def score_selected_heldout(fold, parameters, model, heldout, seed):
+       metrics, equity_values = evaluate_model(model, heldout)
+       equity = pl.DataFrame(
+           {"timestamp": heldout["timestamp"], "equity": equity_values}
+       )
+       return gambit.WalkForwardHeldoutEvaluation(metrics, equity)
+
+The equity frame must contain exactly the configured timestamp column and a
+numeric ``equity`` column. Its timestamps must exactly match the held-out rows;
+the combined ``optimized.out_of_sample_equity`` series is chronological and
+non-overlapping. The runner fingerprints its complete owned input, records the
+selected-model digest, and retains failed candidate parameters and exception
+summaries separately from successful validation trials. Returned equity frames
+are detached clones.
+
 Sizes are row counts and all intervals are half-open. Timestamps must be
 timezone-naive, non-null, strictly increasing, and unique. ``fit_model``
 receives the warm-up and fit frames separately; neither validation nor held-out
@@ -210,6 +234,5 @@ mappings. ``fit_columns`` prevents undeclared columns from entering optimized
 fits, but it cannot detect whether an allowed column was itself computed using
 future information. Callback closures, external data, and arbitrary fitted-
 object mutation remain caller responsibilities. P1.6 still requires forecast-
-scalar integration once that P2.3 capability exists, persisted experiment
-identities, failed trials and model/input hashes, and chronological out-of-
-sample equity.
+scalar integration once that P2.3 capability exists and durable experiment
+persistence.

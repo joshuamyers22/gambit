@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -10,9 +12,10 @@ import pytest
 from gambit.covariance_risk import CovarianceRiskModel
 from gambit.optimize import (
     WalkForwardConfig,
+    WalkForwardExperimentResult,
     WalkForwardFold,
+    WalkForwardHeldoutEvaluation,
     WalkForwardInterval,
-    WalkForwardOptimizationFoldResult,
     WalkForwardRunner,
     WalkForwardSchedule,
     WalkForwardTrainingSet,
@@ -68,12 +71,21 @@ def _optimization_parameters(
     ]
 
 
+def _optimization_parameters_with_failure(
+    fold: WalkForwardFold,
+    seed: int,
+) -> Iterable[dict[str, Any]]:
+    return [*_optimization_parameters(fold, seed), {"offset": 4.0, "label": "failure"}]
+
+
 def _fit_optimization_candidate(
     _fold: WalkForwardFold,
     parameters: Mapping[str, Any],
     training: WalkForwardTrainingSet,
     seed: int,
 ) -> tuple[float, int]:
+    if parameters.get("label") == "failure":
+        raise ArithmeticError("deliberate candidate failure")
     assert training.columns == ("timestamp", "target")
     assert training.warmup_frame().columns == training.fit_frame().columns == ["timestamp", "target"]
     prediction = float(training.fit_frame()["target"].mean()) + float(parameters["offset"])
@@ -98,22 +110,41 @@ def _evaluate_optimization_candidate(
     model: tuple[float, int],
     heldout: pl.DataFrame,
     seed: int,
-) -> Mapping[str, float]:
+) -> WalkForwardHeldoutEvaluation:
     assert model[1] == seed
-    return {"mean_error": float(heldout["target"].mean()) - model[0]}
+    errors = heldout["target"] - model[0]
+    return WalkForwardHeldoutEvaluation(
+        {"mean_error": float(errors.mean())},
+        heldout.select("timestamp").with_columns(errors.cum_sum().alias("equity")),
+    )
+
+
+def _model_fingerprint(
+    _fold: WalkForwardFold,
+    parameters: Mapping[str, Any],
+    model: tuple[float, int],
+    seed: int,
+) -> str:
+    payload = json.dumps(
+        {"parameters": dict(parameters), "prediction": model[0], "seed": seed},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def _optimize(
     frame: pl.DataFrame,
     *,
     max_processes: int,
-) -> tuple[WalkForwardOptimizationFoldResult, ...]:
+) -> WalkForwardExperimentResult:
     runner = WalkForwardRunner(frame, timestamp_column="timestamp", config=_config())
     return runner.optimize(
         _optimization_parameters,
         _fit_optimization_candidate,
         _validate_optimization_candidate,
         _evaluate_optimization_candidate,
+        _model_fingerprint,
         fit_columns=["timestamp", "target"],
         seed=314159,
         max_processes=max_processes,
@@ -337,6 +368,101 @@ def test_fold_seeds_are_reproducible_and_split_specific() -> None:
     assert len({result.seed for result in first}) == len(first)
 
 
+def test_optimized_result_owns_hashes_and_chronological_out_of_sample_equity() -> None:
+    result = _optimize(_optimization_frame(), max_processes=1)
+
+    expected_timestamps = np.concatenate(
+        [_timestamps()[fold.fold.heldout.start : fold.fold.heldout.stop] for fold in result]
+    ).astype("datetime64[ns]")
+    assert len(result.input_sha256) == 64
+    assert {fold.input_sha256 for fold in result} == {result.input_sha256}
+    assert all(len(fold.model_sha256) == 64 for fold in result)
+    assert result.out_of_sample_equity.columns == ["timestamp", "equity"]
+    assert np.array_equal(result.out_of_sample_equity["timestamp"].to_numpy(), expected_timestamps)
+
+    detached = result.out_of_sample_equity
+    detached[0, "equity"] = 1_000_000.0
+    assert result.out_of_sample_equity[0, "equity"] != 1_000_000.0
+
+
+def test_input_identity_changes_without_leaking_heldout_changes_into_selection() -> None:
+    baseline = _optimization_frame(11)
+    changed = baseline.with_columns(
+        pl.when(pl.col("feature") >= 9).then(pl.lit(999.0)).otherwise(pl.col("target")).alias("target")
+    )
+
+    first = _optimize(baseline, max_processes=1)
+    second = _optimize(changed, max_processes=1)
+
+    assert first.input_sha256 != second.input_sha256
+    assert first[0].selected_parameters == second[0].selected_parameters
+    assert first[0].model_sha256 == second[0].model_sha256
+
+
+def test_failed_trials_are_retained_with_seeded_process_parity() -> None:
+    def optimize(max_processes: int) -> WalkForwardExperimentResult:
+        runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
+        return runner.optimize(
+            _optimization_parameters_with_failure,
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            _model_fingerprint,
+            fit_columns=["timestamp", "target"],
+            seed=2718,
+            max_processes=max_processes,
+            process_start_method="spawn",
+            max_pending_tasks=2,
+        )
+
+    sequential = optimize(1)
+    parallel = optimize(2)
+
+    assert sequential == parallel
+    assert len(sequential[0].trials) == 3
+    assert len(sequential[0].failures) == 1
+    assert sequential[0].failures[0].parameters["label"] == "failure"
+    assert sequential[0].failures[0].error_type == "ArithmeticError"
+    assert sequential[0].failures[0].message == "deliberate candidate failure"
+
+
+def test_optimized_runner_rejects_unaligned_equity_and_invalid_model_identity() -> None:
+    runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
+
+    def shifted_equity(
+        fold: WalkForwardFold,
+        parameters: Mapping[str, Any],
+        model: tuple[float, int],
+        heldout: pl.DataFrame,
+        seed: int,
+    ) -> WalkForwardHeldoutEvaluation:
+        evaluation = _evaluate_optimization_candidate(fold, parameters, model, heldout, seed)
+        return WalkForwardHeldoutEvaluation(
+            evaluation.metrics,
+            evaluation.equity.with_columns(pl.col("timestamp") + pl.duration(days=1)),
+        )
+
+    with pytest.raises(ValueError, match="must exactly match held-out rows"):
+        runner.optimize(
+            _optimization_parameters,
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            shifted_equity,
+            _model_fingerprint,
+            fit_columns=["timestamp", "target"],
+        )
+
+    with pytest.raises(ValueError, match="must be a lowercase SHA-256 digest"):
+        runner.optimize(
+            _optimization_parameters,
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            lambda _fold, _parameters, _model, _seed: "not-a-sha",
+            fit_columns=["timestamp", "target"],
+        )
+
+
 def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> None:
     runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
 
@@ -346,6 +472,7 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
             _fit_optimization_candidate,
             _validate_optimization_candidate,
             _evaluate_optimization_candidate,
+            _model_fingerprint,
             fit_columns=["target", "target"],
         )
 
@@ -355,15 +482,27 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
             _fit_optimization_candidate,
             _validate_optimization_candidate,
             _evaluate_optimization_candidate,
+            _model_fingerprint,
             fit_columns=["target"],
         )
 
-    with pytest.raises(ValueError, match="produced no trials for fold 0"):
+    with pytest.raises(ValueError, match="produced no successful trials for fold 0; 0 failed"):
         runner.optimize(
             lambda _fold, _seed: (),
             _fit_optimization_candidate,
             _validate_optimization_candidate,
             _evaluate_optimization_candidate,
+            _model_fingerprint,
+            fit_columns=["timestamp", "target"],
+        )
+
+    with pytest.raises(ValueError, match="produced no successful trials for fold 0; 1 failed"):
+        runner.optimize(
+            lambda _fold, _seed: ({"offset": 4.0, "label": "failure"},),
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            _model_fingerprint,
             fit_columns=["timestamp", "target"],
         )
 
@@ -398,6 +537,7 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
         fit_risk_models,
         _validate_optimization_candidate,
         _evaluate_optimization_candidate,
+        _model_fingerprint,
         fit_columns=["timestamp", "target"],
         seed=7,
         max_processes=1,

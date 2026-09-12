@@ -57,14 +57,18 @@ data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
 `WalkForwardConfig`, `WalkForwardInterval`, `WalkForwardFold`,
 `WalkForwardSchedule`, `WalkForwardRunner`, `WalkForwardFoldResult`, and
 `WalkForwardWindow` are the initial P1.6 experiment-evaluation boundary.
-`WalkForwardTrialResult` and `WalkForwardOptimizationFoldResult` expose detached
-in-memory optimization outcomes. `WalkForwardTrainingSet` provides cloned
+`WalkForwardTrialResult`, `WalkForwardTrialFailure`,
+`WalkForwardOptimizationFoldResult`, and `WalkForwardExperimentResult` expose
+detached in-memory optimization outcomes, including model/input SHA-256
+identities and chronological out-of-sample equity.
+`WalkForwardHeldoutEvaluation` binds held-out metrics to exact held-out equity
+timestamps. `WalkForwardTrainingSet` provides cloned
 warm-up/fit frames and training-only generic, covariance, and tail-risk fit
 adapters. The runner owns a chronological frame and exposes only each callback's
 permitted interval; optimized fitting additionally uses an exact column
 allowlist and the existing `Optimizer` process scheduler. It does not inspect
 the semantics of allowed precomputed columns or callback closures, freeze
-arbitrary fitted objects against mutation, or persist trials and models. These
+arbitrary fitted objects against mutation, or durably persist experiments. These
 APIs remain experimental until the remaining P1.6 acceptance work and
 quant/research-owner approval are complete.
 
