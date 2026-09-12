@@ -21,9 +21,12 @@ Numeric-boundary rows distinguish an intentionally missing NaN mark from invalid
 NaN/Inf order, trade, and valuation inputs. Finite-input overflow rows cover
 unrealized and realized arithmetic, cumulative costs, cross-contract P&L,
 equity, and native quantity range; every case must fail without publishing a
-non-finite result. The calendar case uses the published 2024 US Independence Day
-closure and adjacent weekdays; it is short enough to review without treating
-the calendar adapter as the oracle.
+non-finite result. Five compact NYSE calendar cases cover Independence Day,
+exchange-only Good Friday, weekend-observed Christmas, Thanksgiving plus its
+early-close Friday, and a New Year boundary. Their expected dates are written
+out for review instead of treating the calendar adapter as the oracle. Because
+Gambit's calendar API is day-level, the early-close fixture asserts that the day
+is open but does not claim session-hour support.
 
 Quantities, statuses, timestamps, schemas, and persisted frames must match
 exactly. Currency values use an absolute tolerance of `1e-9` and zero relative
@@ -44,5 +47,4 @@ equity, and result telemetry. Changing seeds or bounds is an acceptance-corpus
 change, not routine randomization.
 
 Passing these corpora is necessary but not sufficient for P0.2: mutation
-testing, more calendar boundaries, and the supported hosted
-interpreter/platform matrix remain open.
+testing and the supported hosted interpreter/platform matrix remain open.

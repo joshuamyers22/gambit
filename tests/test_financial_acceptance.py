@@ -33,7 +33,7 @@ pytestmark = pytest.mark.acceptance
 
 def corpus() -> dict[str, Any]:
     data = json.loads(CORPUS_PATH.read_text())
-    assert data["schema_version"] == 3
+    assert data["schema_version"] == 4
     return data
 
 
@@ -548,8 +548,10 @@ def test_finite_input_arithmetic_overflow_fails_without_non_finite_publication(
         account.df_account_pnl()
 
 
-def test_calendar_matches_manual_independence_day_case() -> None:
-    case = corpus()["calendar_case"]
+@pytest.mark.parametrize(
+    "case", corpus()["calendar_cases"], ids=lambda case: case["name"]
+)
+def test_calendar_matches_manual_boundary_cases(case: dict[str, Any]) -> None:
     calendar = Calendar(case["calendar"])
 
     for observation in case["observations"]:
@@ -563,6 +565,12 @@ def test_calendar_matches_manual_independence_day_case() -> None:
         include_last=range_case["include_last"],
     )
     assert actual.astype(str).tolist() == range_case["expected"]
+    assert calendar.num_trading_days(
+        range_case["start"],
+        range_case["end"],
+        include_first=range_case["include_first"],
+        include_last=range_case["include_last"],
+    ) == len(range_case["expected"])
 
     for offset in case["offsets"]:
         actual_date = calendar.add_trading_days(

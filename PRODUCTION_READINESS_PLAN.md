@@ -617,8 +617,8 @@ trade lag, pre-trade controls, and callback rollback contracts.
   oracle. Cover long/short, scale-in/out, cross-zero, partial fills, costs,
   multipliers, rolls, execution lag, VWAP causality, risk rejection, calendar
   boundaries, NaN/Inf, overflow, and persisted-result round trips. (Data-driven
-  ledger, integration, partial-fill, roll, VWAP, persistence, calendar, invalid
-  numeric, and finite-overflow cases implemented 2026-09-12.)
+  ledger, integration, partial-fill, roll, VWAP, persistence, five calendar
+  boundaries, invalid numeric, and finite-overflow cases implemented 2026-09-12.)
 - [ ] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
   (Four replayable order/trade/account seeds implemented 2026-09-12; targeted
@@ -1203,8 +1203,27 @@ release merely because another library offers them.
   coverage floors, frozen-lock validation, Ruff, mypy (55 source files), native
   warning checks, strict Sphinx, notebook cleanliness, wheel/sdist builds,
   Twine, and artifact inspection passed on macOS / CPython 3.10.20. Mutation
-  testing, additional calendar boundaries, owner review, and supported hosted-
-  matrix evidence remain open; P0.2 is not closed.
+  testing, owner review, and supported hosted-matrix evidence remain open;
+  P0.2 is not closed.
+
+### 2026-09-12 — Seventeenth slice (calendar-boundary acceptance)
+
+- Bumped the independently versioned financial corpus to schema 4 and expanded
+  its single NYSE holiday example to five compact, manually listed boundaries:
+  midweek Independence Day, exchange-only Good Friday, weekend-observed
+  Christmas, Thanksgiving and its early-close Friday, and New Year across a
+  calendar-year transition.
+- Each case checks adjacent open and closed dates, an inclusive expected range,
+  agreement between enumeration and count, and offsets across the closure.
+  Good Friday also checks preceding and following rolls. The Thanksgiving case
+  explicitly treats its Friday as a trading day without claiming session-hour
+  support from Gambit's day-level calendar API.
+- Local evidence: **1,943 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), native
+  warning checks, strict Sphinx, notebook cleanliness, wheel/sdist builds,
+  Twine, and artifact inspection passed on macOS / CPython 3.10.20. Mutation
+  testing, owner review, and supported hosted-matrix qualification remain open;
+  P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "currency_absolute_tolerance": 1e-9,
   "accounting_cases": [
     {
@@ -269,24 +269,117 @@
       "error": "signed platform integer range"
     }
   ],
-  "calendar_case": {
-    "calendar": "NYSE",
-    "observations": [
-      {"date": "2024-07-03", "is_trading_day": true},
-      {"date": "2024-07-04", "is_trading_day": false},
-      {"date": "2024-07-05", "is_trading_day": true},
-      {"date": "2024-07-06", "is_trading_day": false}
-    ],
-    "range": {
-      "start": "2024-07-02",
-      "end": "2024-07-08",
-      "include_first": true,
-      "include_last": true,
-      "expected": ["2024-07-02", "2024-07-03", "2024-07-05", "2024-07-08"]
+  "calendar_cases": [
+    {
+      "name": "independence_day_2024",
+      "calendar": "NYSE",
+      "basis": "Independence Day was Thursday 2024-07-04; adjacent weekdays were full trading days.",
+      "observations": [
+        {"date": "2024-07-03", "is_trading_day": true},
+        {"date": "2024-07-04", "is_trading_day": false},
+        {"date": "2024-07-05", "is_trading_day": true},
+        {"date": "2024-07-06", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-07-02",
+        "end": "2024-07-08",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-07-02", "2024-07-03", "2024-07-05", "2024-07-08"]
+      },
+      "offsets": [
+        {"start": "2024-07-03", "days": 1, "roll": "raise", "expected": "2024-07-05"},
+        {"start": "2024-07-04", "days": 0, "roll": "following", "expected": "2024-07-05"}
+      ]
     },
-    "offsets": [
-      {"start": "2024-07-03", "days": 1, "roll": "raise", "expected": "2024-07-05"},
-      {"start": "2024-07-04", "days": 0, "roll": "following", "expected": "2024-07-05"}
-    ]
-  }
+    {
+      "name": "good_friday_2024",
+      "calendar": "NYSE",
+      "basis": "Good Friday was an exchange closure on Friday 2024-03-29, between trading weekdays.",
+      "observations": [
+        {"date": "2024-03-28", "is_trading_day": true},
+        {"date": "2024-03-29", "is_trading_day": false},
+        {"date": "2024-03-30", "is_trading_day": false},
+        {"date": "2024-04-01", "is_trading_day": true}
+      ],
+      "range": {
+        "start": "2024-03-27",
+        "end": "2024-04-02",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-03-27", "2024-03-28", "2024-04-01", "2024-04-02"]
+      },
+      "offsets": [
+        {"start": "2024-03-28", "days": 1, "roll": "raise", "expected": "2024-04-01"},
+        {"start": "2024-03-29", "days": 0, "roll": "following", "expected": "2024-04-01"},
+        {"start": "2024-03-29", "days": 0, "roll": "preceding", "expected": "2024-03-28"}
+      ]
+    },
+    {
+      "name": "christmas_weekend_observance_2021",
+      "calendar": "NYSE",
+      "basis": "Christmas fell on Saturday 2021-12-25 and the exchange observed the closure on Friday 2021-12-24.",
+      "observations": [
+        {"date": "2021-12-23", "is_trading_day": true},
+        {"date": "2021-12-24", "is_trading_day": false},
+        {"date": "2021-12-25", "is_trading_day": false},
+        {"date": "2021-12-27", "is_trading_day": true}
+      ],
+      "range": {
+        "start": "2021-12-22",
+        "end": "2021-12-28",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2021-12-22", "2021-12-23", "2021-12-27", "2021-12-28"]
+      },
+      "offsets": [
+        {"start": "2021-12-23", "days": 1, "roll": "raise", "expected": "2021-12-27"},
+        {"start": "2021-12-24", "days": 0, "roll": "following", "expected": "2021-12-27"}
+      ]
+    },
+    {
+      "name": "thanksgiving_and_early_close_2024",
+      "calendar": "NYSE",
+      "basis": "Thanksgiving was closed Thursday 2024-11-28; the early-close session on Friday remained a trading day.",
+      "observations": [
+        {"date": "2024-11-27", "is_trading_day": true},
+        {"date": "2024-11-28", "is_trading_day": false},
+        {"date": "2024-11-29", "is_trading_day": true},
+        {"date": "2024-11-30", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-11-26",
+        "end": "2024-12-02",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-11-26", "2024-11-27", "2024-11-29", "2024-12-02"]
+      },
+      "offsets": [
+        {"start": "2024-11-27", "days": 1, "roll": "raise", "expected": "2024-11-29"},
+        {"start": "2024-11-28", "days": 0, "roll": "following", "expected": "2024-11-29"}
+      ]
+    },
+    {
+      "name": "new_year_boundary_2025",
+      "calendar": "NYSE",
+      "basis": "New Year's Day was closed Wednesday 2025-01-01, with trading weekdays on both sides.",
+      "observations": [
+        {"date": "2024-12-31", "is_trading_day": true},
+        {"date": "2025-01-01", "is_trading_day": false},
+        {"date": "2025-01-02", "is_trading_day": true},
+        {"date": "2025-01-04", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-12-30",
+        "end": "2025-01-03",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-12-30", "2024-12-31", "2025-01-02", "2025-01-03"]
+      },
+      "offsets": [
+        {"start": "2024-12-31", "days": 1, "roll": "raise", "expected": "2025-01-02"},
+        {"start": "2025-01-01", "days": 0, "roll": "following", "expected": "2025-01-02"}
+      ]
+    }
+  ]
 }
