@@ -18,6 +18,10 @@ have not yet been released are collected below.
 - A deterministic financial mutation gate covering ten high-consequence risk
   and P&L changes. It runs each mutant in an isolated package, rejects invalid
   runner outcomes, and is required by the reusable CI workflow.
+- A machine-readable historical-output correction ledger and owner register
+  template covering risk admission, execution lag, sizing, VWAP causality and
+  inputs, callback/fill integrity, and numeric failures. The accompanying policy
+  defines conservative retain, rerun, and invalidate decisions.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

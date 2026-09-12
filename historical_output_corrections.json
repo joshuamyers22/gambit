@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "policy": "HISTORICAL_OUTPUT_DISPOSITION.md",
+  "register": "HISTORICAL_OUTPUT_REGISTER.csv",
+  "inventory": {
+    "tracked_result_bundles": 0,
+    "external_inventory_required": true,
+    "owner": "quant/domain owner"
+  },
+  "allowed_dispositions": ["retain", "rerun_required", "invalidate"],
+  "allowed_trigger_statuses": ["affected", "unaffected", "unknown"],
+  "missing_or_unverifiable_provenance": "rerun_required_if_sources_exist_else_invalidate",
+  "corrections": [
+    {
+      "id": "pending_position_cap",
+      "category": "risk_admission",
+      "correction_commits": ["ec7390bbc863f4907e2867c04ff62e448dc5c741"],
+      "trigger": "The run used MaxPositionQuantity and admission could rely on opposing pending orders, cancellation-requested exposure, or a breach-reducing order that could overshoot the opposite cap.",
+      "affected_disposition": "rerun_required",
+      "reason": "Independently fillable orders can reach a different position path and decision set under the corrected cap.",
+      "evidence": ["tests/test_position_fill_sequences.py", "tests/test_financial_acceptance.py"]
+    },
+    {
+      "id": "heartbeat_execution_lag",
+      "category": "execution_timing",
+      "correction_commits": ["2794e620a80952aff5ae392c8121ecd346eb3b2c"],
+      "trigger": "A general Strategy run used trade_lag greater than one heartbeat.",
+      "affected_disposition": "rerun_required",
+      "reason": "Older runs could expose orders to simulators before the configured lag elapsed.",
+      "evidence": ["tests/test_execution_lag.py", "tests/test_financial_acceptance.py"]
+    },
+    {
+      "id": "multiplier_aware_entry_sizing",
+      "category": "position_sizing",
+      "correction_commits": ["d40b95745742c6d1ee4348757d52cb8cae75a354"],
+      "trigger": "The run used equity, bracket, or VWAP entry sizing with a non-unit contract multiplier, or relied on bracket notional caps or no-stop VWAP allocation.",
+      "affected_disposition": "rerun_required",
+      "reason": "Corrected quantities and contract allocation can change orders, fills, risk, and P&L.",
+      "evidence": ["tests/test_entry_rules.py", "tests/test_position_sizing.py"]
+    },
+    {
+      "id": "vwap_future_observation_causality",
+      "category": "execution_causality",
+      "correction_commits": ["8411325a64258a0eb4b60114a80badae8038770c"],
+      "trigger": "VWAPMarketSimulator forced a fill at a calendar-day boundary before the requested end time.",
+      "affected_disposition": "rerun_required",
+      "reason": "Future prices and volumes could change the historical fill price and P&L.",
+      "evidence": ["tests/test_vwap_causality.py", "tests/test_financial_acceptance.py"]
+    },
+    {
+      "id": "vwap_invalid_terms",
+      "category": "execution_admission",
+      "correction_commits": [
+        "f584de0f5020b4e5c245db7a4f805121dd9c2c82",
+        "6157e3af8742e420567c764ccecf65ae9bdbab2c"
+      ],
+      "trigger": "A VWAP order used an infinite, boolean, or non-real stop, or a missing, malformed, or reversed execution window.",
+      "affected_disposition": "invalidate",
+      "reason": "The corrected engine rejects these terms; an old successful result is outside the supported input contract.",
+      "evidence": ["tests/test_vwap_stop_validation.py", "tests/test_vwap_window_validation.py"]
+    },
+    {
+      "id": "callback_and_fill_integrity",
+      "category": "callback_contract",
+      "correction_commits": [
+        "74d6718e67db4eca6477a50eac25c9c09c2dbcb4",
+        "a0ce5c4992769ed251e2e775889e815f59513cc7",
+        "6161fd89b6c5445f52ccabf6bb8e2a18f862ba50"
+      ],
+      "trigger": "A rule, risk policy, or simulator mutated protected order identity/lifecycle fields, returned opposite-direction or aggregate overfills, or emitted trades with invalid order references or chronology.",
+      "affected_disposition": "invalidate",
+      "reason": "The old output depended on callback behavior that the corrected execution contract rejects and cannot be repaired after the fact.",
+      "evidence": [
+        "tests/test_order_callback_state.py",
+        "tests/test_simulator_fill_quantities.py",
+        "tests/test_trade_reference_boundary.py"
+      ]
+    },
+    {
+      "id": "numeric_admission_and_overflow",
+      "category": "numeric_contract",
+      "correction_commits": [
+        "57c2cfd4d98e255149968543d9be9735408ebcf2",
+        "aefe8ae1490a5e3df48ccda03be65ad9f11c9ded",
+        "cab002d0a9b7f153ba808c471c94a4d1af939ac9",
+        "ea6dbd91d8928850282ca3c409eebfdd44cc8690",
+        "8da770499151d18f43dc2496493abc0a84529ee3"
+      ],
+      "trigger": "Orders or fills used non-whole/non-finite quantities or invalid numeric terms, or any weighted price, realized/unrealized P&L, cost, aggregate P&L, or equity result overflowed binary64.",
+      "affected_disposition": "invalidate",
+      "reason": "The corrected engine rejects the input or arithmetic instead of publishing a financially invalid value.",
+      "evidence": [
+        "tests/test_order_numeric_admission.py",
+        "tests/test_trade_numeric_boundary.py",
+        "tests/test_financial_acceptance.py"
+      ]
+    }
+  ]
+}

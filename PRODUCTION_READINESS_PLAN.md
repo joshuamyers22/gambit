@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; acceptance corpus, targeted mutation gate, and hosted matrix passed 2026-09-12; owner review and historical-output disposition pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; corpus, mutation gate, hosted matrix, and disposition policy implemented 2026-09-12; external inventory and owner approval pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -628,6 +628,10 @@ trade lag, pre-trade controls, and callback rollback contracts.
   [CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)).
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
   VWAP, sizing, callback, and numeric-admission fixes already in the changelog.
+  (Seven correction families, exact commits, evidence, and conservative
+  dispositions are recorded in `historical_output_corrections.json`; no bundles
+  are tracked here, so the quant/domain owner must populate and approve the
+  external `HISTORICAL_OUTPUT_REGISTER.csv` before this item can close.)
 
 Exit: supported behavior has independent evidence on every supported interpreter
 and platform, and unsupported behavior cannot be mistaken for supported behavior.
@@ -1255,6 +1259,32 @@ release merely because another library offers them.
   then passed the mutation gate and the required Linux/macOS CPython 3.10–3.12
   matrix at `22b75c6`. Owner approval and historical-output disposition still
   keep P0.2 open.
+
+### 2026-09-12 — Nineteenth slice (historical-output disposition)
+
+- Confirmed that the repository tracks no Gambit result bundles or external
+  output catalog. Added an explicitly empty owner register template rather than
+  treating repository absence as proof that no affected outputs exist.
+- Added a schema-1 machine-readable ledger covering seven correction families:
+  pending-position caps, heartbeat lag, multiplier-aware sizing, causal VWAP,
+  invalid VWAP terms, callback/fill integrity, and numeric admission/overflow.
+  Each rule names exact correction commits, its trigger, rerun or invalidation
+  disposition, rationale, and existing regression evidence.
+- Added the canonical policy for inventory, commit/provenance comparison,
+  conservative unknown handling, precedence, rerun reconciliation, downstream
+  report withdrawal, and owner sign-off. Package version 1.1.0 alone is not a
+  safe cutoff because the corrections remain unreleased development commits.
+  API stability, project scope, release readiness, and acceptance documentation
+  link the policy.
+- Acceptance tests validate rule-family completeness, full commit identities,
+  allowed dispositions, live evidence paths, conservative wording, the exact
+  empty-register schema, and product-contract links. Local evidence passed with
+  **1,957 tests**, **86% aggregate coverage**, all six focused coverage floors,
+  **10/10 financial mutants killed**, frozen-lock, Ruff, mypy over 55 source
+  files, native-warning, strict-Sphinx, notebook, wheel/sdist, Twine, and artifact
+  inspection gates on macOS / CPython 3.10.20. Hosted execution of this slice is
+  pending; external inventory and quant/domain-owner approval remain required,
+  so P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

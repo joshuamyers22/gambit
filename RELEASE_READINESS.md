@@ -9,13 +9,12 @@ not promote experimental capabilities or make the distribution
 production/stable. Restoring a stable classifier requires approval of every P0
 gate in [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md).
 
-Local hardening on 2026-09-06 corrected multiplier-aware entry sizing and
-multi-contract VWAP entry, made publication depend on complete same-commit CI,
-and moved reference CI installs to the frozen lock. The isolated local gate
-passes 816 tests, documentation, native warnings, and packaging checks; see
-`PRODUCTION_TEMPLATE_REVIEW_2026-09-06.md` for evidence and remaining work.
-The historical hosted run below predates these changes and does not establish
-hosted acceptance of the current working tree.
+Hardening through 2026-09-12 added independently expected financial acceptance,
+targeted mutation testing, and a historical-output disposition policy. Required
+[CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)
+passed the current financial suite on Linux/macOS and CPython 3.10–3.12 at
+`22b75c6`. That run establishes same-commit CI evidence but does not replace the
+separate non-publishing release workflow or the external approval steps below.
 
 The repository now has automated release-candidate gates for the supported
 CPython 3.10-3.12 matrix on Linux x86_64 and macOS x86_64/arm64. Each wheel is
@@ -41,6 +40,10 @@ sdist installation checks. Both publishing jobs were skipped.
 
 ## Remaining release decisions and external checks
 
+- Inventory and approve every pre-correction result under
+  [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md). The
+  repository supplies correction rules and a register template but contains no
+  owner-controlled external result inventory.
 - Confirm the `testpypi` and `pypi` GitHub environments, maintainer approval,
   and Trusted Publisher records described in `RELEASING.md`. These settings
   cannot be proven from the repository checkout.

@@ -69,6 +69,9 @@ Source hashes and dataclass parameters do not capture arbitrary callback state,
 closures, globals, external data or transitive dependencies. The manifest lists
 unresolved scope and must not be treated as a complete reproducibility certificate.
 Result provenance is detached from later registrations or parameter changes.
+Use [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md) to
+classify pre-correction bundles and downstream reports. Missing provenance is
+not evidence that an older result is unaffected.
 
 Invalid option types and duplicate YAML keys now fail at the configuration
 boundary. Before-run changes to the existing runtime lag/log/final-calculation

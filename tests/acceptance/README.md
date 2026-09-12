@@ -58,3 +58,8 @@ ordinary pytest failure counts as a kill; collection or infrastructure errors
 fail the gate. This targeted score protects inclusive quantity caps, pending
 exposure, policy rejection, multipliers, cost signs, and missing-mark behavior.
 It is deliberately not presented as a whole-repository mutation score.
+
+Historical results are governed by `HISTORICAL_OUTPUT_DISPOSITION.md` and the
+machine-readable `historical_output_corrections.json` ledger. The empty CSV
+register is a required owner template, not a claim that external result stores
+contain no affected outputs.

@@ -66,7 +66,9 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Source of truth:** caller-owned, timestamped source data plus its declared
   schema/revision identity; immutable run configuration and registered input
   fingerprints; and the resulting versioned bundle. A cache is never the source
-  of record. Gambit does not certify vendor data as correct.
+  of record. Gambit does not certify vendor data as correct. Pre-correction
+  outputs follow [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md);
+  the external owner register is not stored or inferred by Gambit.
 - **Classification and retention:** the repository and tests contain public
   source, synthetic fixtures, and generated research examples. Proprietary or
   licensed market data and user results stay outside Git. Their owner determines
@@ -131,4 +133,3 @@ release documents must remain pre-production.
 | Which independent corpus qualifies core financial behavior? | Before production release | Quant/domain owner | P0.2 |
 | Does native replay remain experimental or receive a measured target? | Before native replay promotion | Native/performance owner | P1.2 / Milestone 5 |
 | Does the factor-cache CLI become independently operated? | Before scheduling/deploying it outside a research environment | Product/operations owner | P2.2 |
-
