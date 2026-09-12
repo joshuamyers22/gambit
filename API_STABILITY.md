@@ -27,6 +27,9 @@ production-readiness plan's P0 gates are accepted.
   Writers now emit version 4; readers explicitly support versions 2 and 3 as
   well. Missing historical execution manifests and decision snapshots remain
   absent, not reconstructed from current registrations or terminal orders.
+  The [data lifecycle and recovery contract](documentation/source/data_lifecycle.rst)
+  defines schema ownership, migration, verified backup/restore, and corruption
+  handling without expanding the supported format set.
 
 ## Experimental native APIs
 

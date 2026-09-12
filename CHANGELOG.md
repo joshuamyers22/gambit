@@ -22,6 +22,11 @@ have not yet been released are collected below.
   template covering risk admission, execution lag, sizing, VWAP causality and
   inputs, callback/fill integrity, and numeric failures. The accompanying policy
   defines conservative retain, rerun, and invalidate decisions.
+- A persisted-research lifecycle and recovery contract covering authority,
+  schema ownership, retention/deletion, result-bundle migration, verified
+  backup/restore, corruption and interrupted publication, and disposable factor
+  cache rebuilds. Cross-process acceptance exercises retain the last complete
+  artifact and reject repair-in-place.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

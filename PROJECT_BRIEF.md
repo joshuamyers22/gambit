@@ -55,8 +55,10 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Recovery objectives:** no authoritative server state is owned by Gambit.
   The target RPO is the last externally retained source input/result bundle; the
   target RTO is the time required to restore that input or rerun the research.
-  These are caller obligations until the data-lifecycle drills in P1.1 are
-  accepted. Factor caches are disposable and must be rebuildable.
+  The repository-owned behavior and caller obligations are defined in the
+  [data lifecycle and recovery contract](documentation/source/data_lifecycle.rst).
+  Its synthetic drills do not replace owner approval or a drill on owner storage.
+  Factor caches are disposable and must be rebuildable.
 - **Legal boundary:** BSD-3-Clause project license. Users own authorization for
   market data, models, and downstream use. The library does not provide trading,
   investment, regulatory, or compliance approval.
@@ -72,8 +74,9 @@ The current capability posture is maintained in [FEATURE_STATUS.md](FEATURE_STAT
 - **Classification and retention:** the repository and tests contain public
   source, synthetic fixtures, and generated research examples. Proprietary or
   licensed market data and user results stay outside Git. Their owner determines
-  access, retention, deletion, and backup until P1.1 establishes a supported
-  lifecycle policy.
+  access, retention, deletion, and backup under the
+  [data lifecycle contract](documentation/source/data_lifecycle.rst); owner
+  approval and an external storage exercise remain open in P1.1.
 - **Time:** strategy grids use non-`NaT`, strictly increasing NumPy `datetime64`
   values. A timestamp must represent when the modeled value is available, not
   merely its observation label. Normalize timezone-aware inputs before the

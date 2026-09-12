@@ -4,6 +4,7 @@ from gambit.pq_types import Contract, ContractGroup
 
 INTEGRATION_MODULES = {
     "test_backtest_result.py",
+    "test_data_lifecycle.py",
     "test_financial_acceptance.py",
     "test_hdf5_hardening.py",
     "test_moving_average_crossover.py",

@@ -92,7 +92,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | P0.7 | Netting opposing pending orders can admit an order that breaches a hard position cap when filled first | Implement worst-case pending-fill exposure checks and define treatment of existing breaches, cancellations, partial fills, and rolls | Cap-100/pending-sell-100/proposed-buy-200 case is rejected; buy/sell fill permutations cannot create a new breach; genuine reductions of existing breaches remain supported | Quant/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.8 | Historical risk decisions reference mutable order identity | Capture immutable decision-time order identity and terms; use that snapshot for audit reports and persistence | Mutating, filling, cancelling, or reusing the original order cannot alter historical audit fields; persisted snapshots round-trip with explicit format compatibility | Core/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.9 | Result bundles are read and materialized before resource and shape checks can bound allocation | Add bounded manifest reads, schema validation, and per-table/aggregate resource limits before Arrow materialization | Oversized or malformed bundles fail with bounded payload work and contextual errors; v2/v3/v4 bundles within the supported flat IPC profile still load | Data/storage owner | Before supporting untrusted result bundles | Implemented locally 2026-09-11 for flat IPC; CI/security review pending |
-| P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress |
+| P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress; repository contract and synthetic recovery drills implemented 2026-09-12, owner approval and external-storage drill pending |
 | P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress |
 | P1.3 | Dependency and security automation do not fully match the current template | Change Dependabot to the `uv` ecosystem, review cadence/groups, add secret scanning and proportionate Python/C++ static analysis, and test workflow policy | Automated lock/action updates produce reviewable PRs; gitleaks and selected SAST/static-analysis jobs are required; workflow-policy tests enforce pins, permissions, timeouts, and credential handling | Build/security owner | Before ongoing production maintenance | Not started |
 | P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | Not started |
@@ -658,6 +658,11 @@ and platform, and unsupported behavior cannot be mistaken for supported behavior
 - [ ] Define bundle/cache schema ownership, compatibility, atomicity, retention,
   deletion, backup, restore, and repair. Exercise interrupted write, corrupt
   metadata, mixed versions, concurrent access, and full-disk/permission failures.
+  (The repository contract, bundle backup/corruption/restore and abrupt-death
+  exercises, legacy result read/resave, factor migration, four publication-death
+  stages, and concurrent lease/writer evidence are implemented. External-storage,
+  full-disk, permission-failure, retention, elapsed-RTO, and owner-approval work
+  remains.)
 - [ ] Expand `SECURITY.md` with supported versions, a concrete private route,
   acknowledgement/remediation targets, disclosure policy, and response owner.
 
@@ -1288,6 +1293,33 @@ release merely because another library offers them.
   CPython 3.10–3.12 matrix, at `888e670`. The pull-request CI and documentation
   workflows also passed at the same SHA. External inventory and
   quant/domain-owner approval remain required, so P0.2 is not closed.
+
+### 2026-09-12 — Twentieth slice (data lifecycle and recovery)
+
+- Consolidated result-bundle and factor-cache authority, format ownership,
+  compatibility, migration, retention/deletion, backup/restore, corruption,
+  partial-publication, and rebuild rules into a user-facing lifecycle contract.
+  Result bundles are immutable derived audit artifacts; factor stores remain
+  experimental disposable caches and are explicitly excluded from backup/RPO
+  claims.
+- Defined the repository RPO as the last externally retained source input or
+  independently retained verified result, and RTO as the caller's measured time
+  to restore or rerun. Gambit makes no fixed duration or external-storage
+  durability claim. Data/storage-owner approval and a drill on owner-controlled
+  storage remain required.
+- Added cross-process acceptance exercises for a verified backup, corrupted
+  primary, restore to a new path, and process death after staging is durable but
+  before the atomic bundle rename. The death case proves no partial destination
+  is published, then follows the documented orphan cleanup and rerun procedure.
+  Existing tests retain result version-2/3 read/resave, factor segment migration,
+  concurrent lease/writer, and four-stage factor-publication death evidence.
+- Focused local evidence passed **23 tests**. Full local evidence passed **1,960
+  tests**, **86% aggregate coverage**, all six focused coverage floors, **10/10
+  financial mutants killed**, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, strict-Sphinx, documentation-source, notebook, wheel/sdist,
+  Twine, and artifact-inspection gates on macOS / CPython 3.10.20. Hosted
+  evidence follows; external retention configuration, full-disk/permission
+  drills, elapsed RTO, and owner approval keep P1.1 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
