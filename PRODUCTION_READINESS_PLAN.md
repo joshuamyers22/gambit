@@ -1374,9 +1374,13 @@ release merely because another library offers them.
   module coverage floors, **10/10** financial mutation checks, frozen-lock,
   Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx,
   documentation-source, wheel/sdist, Twine, and release-artifact verification
-  gates. Hosted evidence follows. Representative strategy/data, reference host,
-  measurement boundary, capacities, repetition count, threshold, and
-  native/performance-owner approval keep P1.2 open.
+  gates. Hosted push
+  [CI run 34715052837](https://github.com/joshuamyers22/gambit/actions/runs/34715052837)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `61a052a`; the
+  same-SHA pull-request CI and documentation workflows also passed.
+  Representative strategy/data, reference host, measurement boundary,
+  capacities, repetition count, threshold, and native/performance-owner approval
+  keep P1.2 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
