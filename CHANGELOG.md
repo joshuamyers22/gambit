@@ -8,8 +8,9 @@ have not yet been released are collected below.
 ### Added
 
 - A versioned, human-reviewable financial acceptance corpus with manually
-  calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, position
-  rejection, result persistence, and an Independence Day calendar boundary.
+  calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
+  fills, unequal-multiplier rolls, causal VWAP, position rejection, result
+  persistence, and an Independence Day calendar boundary.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

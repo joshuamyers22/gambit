@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "currency_absolute_tolerance": 1e-9,
   "accounting_cases": [
     {
@@ -86,6 +86,96 @@
       "final_commission": 5.0,
       "final_net_pnl": 205.0,
       "final_equity": 1205.0
+    }
+  },
+  "partial_fill_case": {
+    "name": "three_heartbeat_partial_fill",
+    "starting_equity": 1000.0,
+    "multiplier": 5.0,
+    "timestamps": [
+      "2024-04-01T09:30",
+      "2024-04-01T09:31",
+      "2024-04-01T09:32",
+      "2024-04-01T15:00"
+    ],
+    "marks": [100.0, 102.0, 104.0, 110.0],
+    "order_qty": 3,
+    "fill_qty": [1, 1, 1],
+    "fill_price": [100.0, 102.0, 104.0],
+    "fill_commission": [0.25, 0.25, 0.25],
+    "expected": {
+      "fill_status": ["partially_filled", "partially_filled", "filled"],
+      "remaining_qty": [2, 1, 0],
+      "final_position": 3,
+      "final_realized": 0.0,
+      "final_unrealized": 120.0,
+      "final_commission": 0.75,
+      "final_net_pnl": 119.25,
+      "final_equity": 1119.25
+    }
+  },
+  "roll_case": {
+    "name": "long_future_roll_with_unequal_multipliers",
+    "starting_equity": 10000.0,
+    "commission_per_unit": 1.0,
+    "timestamps": [
+      "2024-06-17T09:30",
+      "2024-06-18T09:30",
+      "2024-06-18T15:00"
+    ],
+    "outgoing": {
+      "symbol": "ACCEPT-ROLL-JUN",
+      "multiplier": 50.0,
+      "prices": [100.0, 105.0, 105.0]
+    },
+    "incoming": {
+      "symbol": "ACCEPT-ROLL-SEP",
+      "multiplier": 25.0,
+      "prices": [80.0, 80.0, 82.0]
+    },
+    "initial_qty": 2,
+    "reopen_qty": 3,
+    "expected": {
+      "trade_symbol": ["ACCEPT-ROLL-JUN", "ACCEPT-ROLL-JUN", "ACCEPT-ROLL-SEP"],
+      "trade_qty": [2, -2, 3],
+      "trade_price": [100.0, 105.0, 80.0],
+      "order_status": ["filled", "filled", "filled"],
+      "decision_status": ["accepted", "accepted", "accepted"],
+      "outgoing_position": 0,
+      "outgoing_realized": 500.0,
+      "outgoing_commission": 4.0,
+      "outgoing_net_pnl": 496.0,
+      "incoming_position": 3,
+      "incoming_unrealized": 150.0,
+      "incoming_commission": 3.0,
+      "incoming_net_pnl": 147.0,
+      "aggregate_net_pnl": 643.0,
+      "aggregate_equity": 10643.0
+    }
+  },
+  "vwap_causality_case": {
+    "name": "day_boundary_ignores_future_liquidity",
+    "timestamps": [
+      "2024-06-30T23:57",
+      "2024-06-30T23:58",
+      "2024-06-30T23:59",
+      "2024-07-01T00:00",
+      "2024-07-01T00:01"
+    ],
+    "submitted_index": 1,
+    "evaluated_index": 2,
+    "end_index": 4,
+    "order_qty": 8,
+    "known_prices": [9999.0, 100.0, 104.0],
+    "known_volumes": [1000.0, 1.0, 3.0],
+    "future_variants": [
+      {"prices": [1.0, 1.0], "volumes": [1.0, 1.0]},
+      {"prices": [1000.0, 1000.0], "volumes": [10000.0, 10000.0]}
+    ],
+    "expected": {
+      "fill_price": 103.0,
+      "fill_index": 2,
+      "terminal_status": "filled"
     }
   },
   "calendar_case": {

@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; initial reviewable corpus implemented 2026-09-12, stateful/mutation/hosted evidence pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; accounting/lifecycle corpus expanded 2026-09-12, numeric/stateful/mutation/hosted evidence pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -616,9 +616,9 @@ trade lag, pre-trade controls, and callback rollback contracts.
 - [ ] Create compact, reviewable golden cases from an implementation-independent
   oracle. Cover long/short, scale-in/out, cross-zero, partial fills, costs,
   multipliers, rolls, execution lag, VWAP causality, risk rejection, calendar
-  boundaries, NaN/Inf, overflow, and persisted-result round trips. (Initial
-  data-driven ledger/integration/calendar corpus implemented 2026-09-12; partial
-  fills, rolls, VWAP, invalid numerics, and overflow remain to be consolidated.)
+  boundaries, NaN/Inf, overflow, and persisted-result round trips. (Data-driven
+  ledger, integration, partial-fill, roll, VWAP, persistence, and calendar cases
+  implemented 2026-09-12; invalid numerics and overflow remain to be consolidated.)
 - [ ] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
@@ -1131,6 +1131,30 @@ release merely because another library offers them.
   passed on macOS / CPython 3.10.20. Hosted matrix execution, independent owner
   review, partial-fill/roll/VWAP/numeric-failure corpus rows, seeded stateful
   reconciliation, and mutation testing remain open; P0.2 is not closed.
+
+### 2026-09-12 — Fourteenth slice (fill, roll, and causal VWAP acceptance)
+
+- Bumped the independently versioned financial corpus to schema 2 and added a
+  three-heartbeat GTC fill case. Its manually derived ledger checks each
+  partial/terminal status and remaining quantity, then reconciles three FIFO
+  lots, multiplier-aware final marking, per-fill commissions, net P&L, and equity.
+  The first test run correctly exposed that an unspecified lifetime defaulted to
+  FOK and cancelled after one fill; the fixture now names GTC explicitly.
+- Added a complete roll case: buy two outgoing multiplier-50 contracts, close
+  them five points higher, and open three multiplier-25 contracts before a
+  two-point final mark. The expected per-contract ledgers independently reconcile
+  `496 + 147 = 643` net P&L after seven units of commission. Tests also require
+  close/reopen leg order, shared roll identity, statuses, positions, and aggregate
+  equity; this does not claim cross-simulator roll atomicity beyond the built-in path.
+- Added a day-boundary VWAP acceptance case for both trade sides. Extreme changes
+  to later price and volume values leave the earlier `103` volume-weighted fill,
+  quantity, timestamp, and terminal status unchanged, making causality part of
+  the release corpus rather than only an isolated regression.
+- Local evidence: **1,922 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, and mypy (55 source files)
+  passed on macOS / CPython 3.10.20. Invalid-numeric/overflow corpus rows, seeded
+  stateful reconciliation, mutation testing, owner review, and hosted matrix
+  evidence remain open; P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
