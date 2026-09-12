@@ -1402,9 +1402,12 @@ release merely because another library offers them.
   module coverage floors, **10/10** financial mutation checks, frozen-lock,
   Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
   Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
-  matrix qualification and quant/accounting-owner approval remain pending, and
-  P1.4 remains open for a settlement-model decision and independent option
-  pricing/implied-volatility validation.
+  push [CI run 34716269837](https://github.com/joshuamyers22/gambit/actions/runs/34716269837)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `c8e07e1`; the
+  same-SHA pull-request CI and documentation workflows also passed.
+  Quant/accounting-owner approval is still pending, and P1.4 remains open for a
+  settlement-model decision and independent option pricing/implied-volatility
+  validation.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
