@@ -25,8 +25,9 @@ have not yet been released are collected below.
 - A persisted-research lifecycle and recovery contract covering authority,
   schema ownership, retention/deletion, result-bundle migration, verified
   backup/restore, corruption and interrupted publication, and disposable factor
-  cache rebuilds. Cross-process acceptance exercises retain the last complete
-  artifact and reject repair-in-place.
+  cache rebuilds. Cross-process and storage-failure acceptance exercises retain
+  the last complete artifact, reject repair-in-place, and cover injected
+  ``ENOSPC``/``EACCES`` failures.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

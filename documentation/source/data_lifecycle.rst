@@ -93,6 +93,23 @@ factor identities. Use CLI ``inventory`` and ``health`` before mutation,
 the plan. Full-disk and permission failures must fail the cache operation; they
 must not be converted into a successful research result.
 
+Storage-failure drills
+----------------------
+
+The acceptance suite injects POSIX ``ENOSPC`` (no space) and ``EACCES``
+(permission denied) rather than trying to exhaust or reconfigure a CI host.
+Result-bundle failures after staging begins propagate the original error, remove
+staging, and leave the destination absent. A factor-column ``ENOSPC`` failure
+also cleans staging and preserves ``CURRENT``. If ``EACCES`` prevents the final
+factor ``CURRENT`` pointer replacement, the old generation remains readable and
+the completed but invisible new generation is reclaimable with the normal
+lease-aware collector.
+
+These are deterministic library-boundary drills. The owner must separately test
+the actual filesystem, quota, mount, backup product, and account permissions in
+use; remote and network filesystems may not provide the local atomic-rename and
+directory-flush behavior assumed by the publication protocol.
+
 Deletion and evidence
 ---------------------
 
@@ -102,8 +119,9 @@ backup copies permit deletion. Cache eviction follows its configured quota and
 lease rules and has no authority to delete source inputs or result bundles.
 
 ``tests/test_data_lifecycle.py`` exercises verified backup/restore, corruption
-fallback, and abrupt publication death. Existing result tests cover version-2/3
-read-and-resave behavior, while factor-store tests cover version-1/2-to-3
-migration and process death at column, manifest, generation, and pointer stages.
-These synthetic filesystem drills establish the library contract, not the
-owner's storage durability, elapsed RTO, retention approval, or backup inventory.
+fallback, abrupt publication death, ``ENOSPC``, and ``EACCES``. Existing result
+tests cover version-2/3 read-and-resave behavior, while factor-store tests cover
+version-1/2-to-3 migration, storage failures, and process death at column,
+manifest, generation, and pointer stages. These synthetic filesystem drills
+establish the library contract, not the owner's storage durability, elapsed RTO,
+retention approval, or backup inventory.

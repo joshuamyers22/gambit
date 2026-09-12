@@ -43,8 +43,9 @@ sdist installation checks. Both publishing jobs were skipped.
 - Obtain data/storage-owner approval of the
   [data lifecycle and recovery contract](documentation/source/data_lifecycle.rst)
   and run its verified backup/restore procedure on the owner's actual storage.
-  Repository tests exercise the library behavior but cannot establish external
-  retention, durability, RPO, or elapsed RTO.
+  Repository tests exercise the library behavior, including injected `ENOSPC`
+  and `EACCES`, but cannot establish external retention, durability, RPO, or
+  elapsed RTO.
 - Inventory and approve every pre-correction result under
   [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md). The
   repository supplies correction rules and a register template but contains no

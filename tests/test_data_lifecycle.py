@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import multiprocessing
 import os
 import shutil
@@ -109,6 +110,33 @@ def test_process_death_cannot_publish_partial_bundle_and_rerun_recovers(tmp_path
     assert restored.provenance.run_fingerprint == expected.provenance.run_fingerprint
 
 
+@pytest.mark.parametrize(
+    ("error_type", "error_number"),
+    [(OSError, errno.ENOSPC), (PermissionError, errno.EACCES)],
+    ids=["full-disk", "permission-denied"],
+)
+def test_result_storage_failures_publish_nothing_and_clean_staging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    error_type: type[OSError],
+    error_number: int,
+) -> None:
+    import gambit.backtest_result as persistence
+
+    destination = tmp_path / "failed.gambit"
+
+    def fail_digest(_path: Path) -> str:
+        raise error_type(error_number, os.strerror(error_number))
+
+    monkeypatch.setattr(persistence, "_file_digest", fail_digest)
+    with pytest.raises(error_type) as raised:
+        _result().save(destination)
+
+    assert raised.value.errno == error_number
+    assert not destination.exists()
+    assert list(tmp_path.glob(".failed.gambit.*")) == []
+
+
 def test_lifecycle_contract_is_linked_and_keeps_external_ownership_explicit() -> None:
     policy = LIFECYCLE_PATH.read_text()
     assert "RPO: the last externally retained source input" in policy
@@ -116,5 +144,6 @@ def test_lifecycle_contract_is_linked_and_keeps_external_ownership_explicit() ->
     assert "Gambit makes no fixed duration claim" in policy
     assert "Do not back up a factor cache as authoritative data" in policy
     assert "Never overwrite or repair" in policy
+    assert "ENOSPC" in policy and "EACCES" in policy
     for document in ("PROJECT_BRIEF.md", "API_STABILITY.md", "RELEASE_READINESS.md"):
         assert "data_lifecycle" in (ROOT / document).read_text()
