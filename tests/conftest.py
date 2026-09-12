@@ -10,6 +10,7 @@ INTEGRATION_MODULES = {
     "test_optional_dependencies.py",
     "test_polars_integration.py",
     "test_risk_examples.py",
+    "test_stateful_reconciliation.py",
     "test_strategy_golden.py",
 }
 NATIVE_MODULES = {

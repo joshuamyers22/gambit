@@ -11,7 +11,9 @@ have not yet been released are collected below.
   calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
   fills, unequal-multiplier rolls, causal VWAP, position rejection, result
   persistence, explicit NaN/Inf and finite-overflow boundaries, and an
-  Independence Day calendar boundary.
+  Independence Day calendar boundary. Four fixed state-machine seeds reconcile
+  orders, partial fills, cancellations, trades, two-contract FIFO ledgers,
+  decision snapshots, group equity, and telemetry across execution lags 0–2.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

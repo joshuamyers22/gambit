@@ -32,6 +32,17 @@ below the smallest currency amount in the fixtures and must not scale with P&L.
 
 The corpus schema is versioned independently of the result-bundle schema. Any
 fixture change requires a written rationale and review of the manual arithmetic.
-Passing this corpus is necessary but not sufficient for P0.2: seeded stateful
-reconciliation, mutation testing, more calendar boundaries, and the supported
-hosted interpreter/platform matrix remain open.
+
+`stateful_reconciliation.json` defines four fixed, replayable strategy seeds
+across execution lags zero, one, and two. Each run generates 48 heartbeats of
+two-contract proposals, partial fills, cancellations, costs, rebates, and FIFO
+crossings. The test records the seed, lag, step, and timestamp in ledger failures
+and compares every state against a separate test-only FIFO implementation. It
+also reconciles original quantity to fills plus remaining quantity, lifecycle
+status, immutable decision quantity, trade history, group position, net P&L,
+equity, and result telemetry. Changing seeds or bounds is an acceptance-corpus
+change, not routine randomization.
+
+Passing these corpora is necessary but not sufficient for P0.2: mutation
+testing, more calendar boundaries, and the supported hosted
+interpreter/platform matrix remain open.
