@@ -47,8 +47,8 @@ equity, and result telemetry. Changing seeds or bounds is an acceptance-corpus
 change, not routine randomization.
 
 Passing these corpora and the targeted mutation gate is necessary but not
-sufficient for P0.2: owner review and the supported hosted
-interpreter/platform matrix remain open.
+sufficient for P0.2: owner review and historical-output disposition remain
+open even after the supported hosted interpreter/platform matrix passes.
 
 Run `make mutation-financial` for the bounded mutation gate. It makes ten
 explicit, reviewable changes to `risk.py` and `contract_pnl.py` in an isolated

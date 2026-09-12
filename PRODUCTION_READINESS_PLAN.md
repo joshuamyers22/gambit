@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; acceptance corpus and targeted mutation gate expanded 2026-09-12, hosted evidence pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; acceptance corpus, targeted mutation gate, and hosted matrix passed 2026-09-12; owner review and historical-output disposition pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -611,6 +611,8 @@ trade lag, pre-trade controls, and callback rollback contracts.
   include their regressions in the test suite (local evidence 2026-09-11).
 - [ ] Run those regressions on the supported hosted matrix and obtain owner
   acceptance before promoting their local evidence to release qualification.
+  ([CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)
+  passed Linux/macOS and CPython 3.10–3.12 on `22b75c6`; owner acceptance remains.)
 - [ ] If options enter the supported release scope, complete P1.4 lifecycle and
   numerical qualification; otherwise preserve their experimental status.
 - [ ] Create compact, reviewable golden cases from an implementation-independent
@@ -622,7 +624,8 @@ trade lag, pre-trade controls, and callback rollback contracts.
 - [x] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
   (Four replayable order/trade/account seeds and a 10/10 risk/P&L mutation gate
-  implemented locally 2026-09-12; hosted execution awaits the pushed CI run.)
+  implemented locally 2026-09-12; the mutation job passed in
+  [CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)).
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
   VWAP, sizing, callback, and numeric-admission fixes already in the changelog.
 
@@ -1247,8 +1250,10 @@ release merely because another library offers them.
   mutants killed**, all six focused coverage floors, frozen-lock validation,
   Ruff, mypy (55 source files), native warning checks, strict Sphinx, notebook
   cleanliness, wheel/sdist builds, Twine, and artifact inspection passed on
-  macOS / CPython 3.10.20. Owner approval, the new hosted mutation run, broader
-  hosted platform-matrix qualification, and historical-output disposition still
+  macOS / CPython 3.10.20. Hosted
+  [CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)
+  then passed the mutation gate and the required Linux/macOS CPython 3.10–3.12
+  matrix at `22b75c6`. Owner approval and historical-output disposition still
   keep P0.2 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
