@@ -7,6 +7,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+from gambit.covariance_risk import CovarianceRiskModel
 from gambit.optimize import (
     WalkForwardConfig,
     WalkForwardFold,
@@ -14,8 +15,10 @@ from gambit.optimize import (
     WalkForwardOptimizationFoldResult,
     WalkForwardRunner,
     WalkForwardSchedule,
+    WalkForwardTrainingSet,
     WalkForwardWindow,
 )
+from gambit.var_risk import TailRiskModel
 
 pytestmark = pytest.mark.acceptance
 
@@ -68,12 +71,12 @@ def _optimization_parameters(
 def _fit_optimization_candidate(
     _fold: WalkForwardFold,
     parameters: Mapping[str, Any],
-    warmup: pl.DataFrame,
-    training: pl.DataFrame,
+    training: WalkForwardTrainingSet,
     seed: int,
 ) -> tuple[float, int]:
-    assert warmup.columns == training.columns == ["timestamp", "target"]
-    prediction = float(training["target"].mean()) + float(parameters["offset"])
+    assert training.columns == ("timestamp", "target")
+    assert training.warmup_frame().columns == training.fit_frame().columns == ["timestamp", "target"]
+    prediction = float(training.fit_frame()["target"].mean()) + float(parameters["offset"])
     return prediction, seed
 
 
@@ -346,6 +349,15 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
             fit_columns=["target", "target"],
         )
 
+    with pytest.raises(ValueError, match="must include the timestamp column"):
+        runner.optimize(
+            _optimization_parameters,
+            _fit_optimization_candidate,
+            _validate_optimization_candidate,
+            _evaluate_optimization_candidate,
+            fit_columns=["target"],
+        )
+
     with pytest.raises(ValueError, match="produced no trials for fold 0"):
         runner.optimize(
             lambda _fold, _seed: (),
@@ -354,3 +366,42 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
             _evaluate_optimization_candidate,
             fit_columns=["timestamp", "target"],
         )
+
+
+def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
+    runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
+    observed: list[tuple[np.datetime64, np.datetime64, float]] = []
+
+    def fit_risk_models(
+        fold: WalkForwardFold,
+        parameters: Mapping[str, Any],
+        training: WalkForwardTrainingSet,
+        seed: int,
+    ) -> tuple[float, int]:
+        covariance = training.fit_covariance(
+            CovarianceRiskModel(lookback=4, min_observations=2),
+            symbols=["target"],
+        )
+        tail_risk = training.fit_tail_risk(
+            TailRiskModel(lookback=4, min_observations=2),
+            symbols=["target"],
+        )
+        fitted_mean = training.fit_estimator(lambda frame: float(frame["target"].mean()))
+        detached = training.fit_frame()
+        detached[0, "target"] = 999.0
+        assert training.fit_frame()[0, "target"] == 2.0
+        observed.append((covariance.as_of, tail_risk.as_of, fitted_mean))
+        return _fit_optimization_candidate(fold, parameters, training, seed)
+
+    runner.optimize(
+        _optimization_parameters,
+        fit_risk_models,
+        _validate_optimization_candidate,
+        _evaluate_optimization_candidate,
+        fit_columns=["timestamp", "target"],
+        seed=7,
+        max_processes=1,
+    )
+
+    expected_as_of = np.datetime64("2024-01-05", "ns")
+    assert observed == [(expected_as_of, expected_as_of, 5.0)] * 4

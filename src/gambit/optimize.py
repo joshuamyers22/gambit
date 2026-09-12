@@ -13,17 +13,20 @@ from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable, TypeAlias, TypeVar
 
 import numpy as np
 import polars as pl
 
+from gambit.covariance_risk import CovarianceEstimate, CovarianceRiskModel
 from gambit.pq_utils import get_child_logger, has_display
+from gambit.var_risk import FittedTailRiskModel, TailRiskModel
 
 _logger = get_child_logger(__name__)
 
 Suggestion: TypeAlias = dict[str, Any]
 SuggestionSource: TypeAlias = Iterator[Suggestion] | Generator[Suggestion, tuple[float, dict[str, float]], None]
+_FittedValue = TypeVar("_FittedValue")
 
 
 class WalkForwardWindow(str, Enum):
@@ -195,11 +198,94 @@ class WalkForwardFoldResult:
         object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
 
 
+@dataclass(frozen=True)
+class WalkForwardTrainingSet:
+    """Owned, allowlisted warm-up and fit data for one walk-forward fold."""
+
+    fold: WalkForwardFold
+    timestamp_column: str
+    _warmup: pl.DataFrame
+    _fit: pl.DataFrame
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.fold, WalkForwardFold):
+            raise TypeError("walk-forward training fold must be WalkForwardFold")
+        if not isinstance(self.timestamp_column, str) or not self.timestamp_column:
+            raise ValueError("walk-forward training timestamp_column must be a non-empty string")
+        if not isinstance(self._warmup, pl.DataFrame) or not isinstance(self._fit, pl.DataFrame):
+            raise TypeError("walk-forward training intervals must be Polars DataFrames")
+        if self._warmup.columns != self._fit.columns:
+            raise ValueError("walk-forward warm-up and fit columns must match")
+        if self.timestamp_column not in self._fit.columns:
+            raise ValueError("walk-forward training data must include its timestamp column")
+        if self._fit.is_empty():
+            raise ValueError("walk-forward fit interval cannot be empty")
+        object.__setattr__(self, "_warmup", self._warmup.clone())
+        object.__setattr__(self, "_fit", self._fit.clone())
+
+    @property
+    def columns(self) -> tuple[str, ...]:
+        return tuple(self._fit.columns)
+
+    @property
+    def as_of(self) -> np.datetime64:
+        maximum = self._fit[self.timestamp_column].max()
+        if maximum is None:
+            raise ValueError("walk-forward fit interval has no timestamp")
+        return np.datetime64(maximum, "ns")
+
+    def warmup_frame(self) -> pl.DataFrame:
+        """Return a detached warm-up frame, excluded from estimator fitting."""
+        return self._warmup.clone()
+
+    def fit_frame(self) -> pl.DataFrame:
+        """Return a detached frame containing only permitted fit rows and columns."""
+        return self._fit.clone()
+
+    def fit_estimator(self, estimator: Callable[[pl.DataFrame], _FittedValue]) -> _FittedValue:
+        """Fit an arbitrary estimator on a detached fit frame."""
+        if not callable(estimator):
+            raise TypeError("walk-forward estimator must be callable")
+        return estimator(self.fit_frame())
+
+    def fit_covariance(
+        self,
+        model: CovarianceRiskModel,
+        *,
+        symbols: Sequence[str] | None = None,
+    ) -> CovarianceEstimate:
+        """Fit Gambit's covariance model strictly through this fit interval."""
+        if not isinstance(model, CovarianceRiskModel):
+            raise TypeError("walk-forward covariance model must be CovarianceRiskModel")
+        return model.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            symbols=symbols,
+            as_of=self.as_of,
+        )
+
+    def fit_tail_risk(
+        self,
+        model: TailRiskModel,
+        *,
+        symbols: Sequence[str] | None = None,
+    ) -> FittedTailRiskModel:
+        """Fit Gambit's tail-risk model strictly through this fit interval."""
+        if not isinstance(model, TailRiskModel):
+            raise TypeError("walk-forward tail-risk model must be TailRiskModel")
+        return model.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            symbols=symbols,
+            as_of=self.as_of,
+        )
+
+
 WalkForwardFitFunction: TypeAlias = Callable[[WalkForwardFold, pl.DataFrame, pl.DataFrame], Any]
 WalkForwardScoreFunction: TypeAlias = Callable[[WalkForwardFold, Any, pl.DataFrame], Mapping[str, float]]
 WalkForwardParameterSource: TypeAlias = Callable[[WalkForwardFold, int], Iterable[dict[str, Any]]]
 WalkForwardCandidateFitFunction: TypeAlias = Callable[
-    [WalkForwardFold, Mapping[str, Any], pl.DataFrame, pl.DataFrame, int], Any
+    [WalkForwardFold, Mapping[str, Any], WalkForwardTrainingSet, int], Any
 ]
 WalkForwardCandidateValidationFunction: TypeAlias = Callable[
     [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], tuple[float, Mapping[str, float]]
@@ -299,8 +385,7 @@ class WalkForwardOptimizationFoldResult:
 class _WalkForwardCandidateCost:
     fold: WalkForwardFold
     seed: int
-    warmup: pl.DataFrame
-    training: pl.DataFrame
+    training: WalkForwardTrainingSet
     validation: pl.DataFrame
     fit: WalkForwardCandidateFitFunction
     validate: WalkForwardCandidateValidationFunction
@@ -310,8 +395,7 @@ class _WalkForwardCandidateCost:
         model = self.fit(
             self.fold,
             parameters,
-            self.warmup.clone(),
-            self.training.clone(),
+            self.training,
             self.seed,
         )
         cost, metrics = self.validate(
@@ -374,6 +458,8 @@ class WalkForwardRunner:
         missing = [name for name in normalized if name not in self._data.columns]
         if missing:
             raise ValueError(f"walk-forward fit columns are missing: {missing}")
+        if self.timestamp_column not in normalized:
+            raise ValueError("walk-forward fit_columns must include the timestamp column")
         return normalized
 
     @staticmethod
@@ -437,12 +523,17 @@ class WalkForwardRunner:
             fold_seed = self._fold_seed(seed, fold)
             warmup = self._select(fold.warmup).select(training_columns)
             training = self._select(fold.fit).select(training_columns)
+            training_set = WalkForwardTrainingSet(
+                fold=fold,
+                timestamp_column=self.timestamp_column,
+                _warmup=warmup,
+                _fit=training,
+            )
             validation = self._select(fold.validation)
             candidate_cost = _WalkForwardCandidateCost(
                 fold=fold,
                 seed=fold_seed,
-                warmup=warmup,
-                training=training,
+                training=training_set,
                 validation=validation,
                 fit=fit,
                 validate=validate,
@@ -475,8 +566,7 @@ class WalkForwardRunner:
             model = fit(
                 fold,
                 selected.parameters,
-                warmup.clone(),
-                training.clone(),
+                training_set,
                 fold_seed,
             )
             heldout_metrics = self._metrics(

@@ -367,7 +367,7 @@ due triggers are not calendar commitments.
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, allowlisted existing-optimizer selection, and seeded process parity implemented 2026-09-12; built-in estimator adapters, persistence/OOS equity, and owner approval pending |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, training-only generic/covariance/tail-risk fitting, allowlisted optimizer selection, and seeded process parity implemented 2026-09-12; forecast-scalar integration, persistence/OOS equity, and owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
@@ -1531,6 +1531,28 @@ release merely because another library offers them.
   [CI run 34723921716](https://github.com/joshuamyers22/gambit/actions/runs/34723921716)
   and [documentation run 34723921710](https://github.com/joshuamyers22/gambit/actions/runs/34723921710)
   also passed.
+
+### 2026-09-12 — Twenty-eighth slice (training-only estimator adapters)
+
+- Replaced raw optimized-fit frames with an owned `WalkForwardTrainingSet`.
+  Its public frame accessors return detached clones, the exact fit allowlist must
+  include the schedule timestamp, and warm-up data remains separately available
+  for causal initialization without entering estimator fitting.
+- Added a generic fit-only estimator hook plus built-in covariance and tail-risk
+  adapters. Both risk adapters receive only fit rows and force their `as_of` to
+  the final fit timestamp, preventing a callback from accidentally extending
+  the existing model cutoffs into validation or held-out intervals.
+- Acceptance coverage fits all three adapter forms, verifies covariance and
+  tail-risk cutoffs stop at the final fit row, proves mutation of a returned fit
+  frame cannot alter the owned snapshot, and retains exact seeded process-pool
+  parity. Gambit has no forecast-scalar estimator yet; that P2.3 dependency and
+  persistence/OOS artifacts keep the broader P1.6 estimator item open.
+- Focused local evidence passed **199 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,017 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  matrix evidence is attached after the implementation commit is exercised.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

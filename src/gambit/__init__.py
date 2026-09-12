@@ -102,6 +102,7 @@ from gambit.optimize import (
     WalkForwardOptimizationFoldResult,
     WalkForwardRunner,
     WalkForwardSchedule,
+    WalkForwardTrainingSet,
     WalkForwardTrialResult,
     WalkForwardWindow,
 )
@@ -377,6 +378,7 @@ __all__ = [
     "WalkForwardOptimizationFoldResult",
     "WalkForwardRunner",
     "WalkForwardSchedule",
+    "WalkForwardTrainingSet",
     "WalkForwardTrialResult",
     "WalkForwardWindow",
     "account_exposures",

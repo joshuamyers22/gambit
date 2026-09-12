@@ -158,6 +158,32 @@ schema supplied to candidate fitting and selected-parameter refitting:
        max_processes=1,
    )
 
+An optimized fit callback receives a ``WalkForwardTrainingSet`` rather than raw
+validation or held-out data. Use its detached frames or built-in adapters:
+
+.. code-block:: python
+
+   def fit_candidate(fold, parameters, training, seed):
+       covariance = training.fit_covariance(
+           gambit.CovarianceRiskModel(
+               lookback=int(parameters["lookback"]),
+               min_observations=60,
+           ),
+           symbols=["asset_a", "asset_b"],
+       )
+       tail_risk = training.fit_tail_risk(
+           gambit.TailRiskModel(lookback=252, min_observations=60),
+           symbols=["asset_a", "asset_b"],
+       )
+       fitted_transform = training.fit_estimator(fit_transform)
+       return fitted_transform, covariance, tail_risk
+
+``fit_frame()`` and ``warmup_frame()`` return clones. Warm-up rows are available
+for causal feature initialization but are deliberately excluded by
+``fit_estimator``, ``fit_covariance``, and ``fit_tail_risk``. The built-in risk
+adapters force ``as_of`` to the final fit timestamp. ``fit_columns`` must include
+the timestamp column used to establish that boundary.
+
 ``candidate_parameters(fold, seed)`` returns that fold's finite scalar
 parameter mappings. Candidate models are fitted only on the allowed warm-up and
 fit columns and ranked by finite validation cost; held-out rows are unavailable
@@ -183,6 +209,7 @@ timestamp grid and schedule, and detaches finite validation and held-out metric
 mappings. ``fit_columns`` prevents undeclared columns from entering optimized
 fits, but it cannot detect whether an allowed column was itself computed using
 future information. Callback closures, external data, and arbitrary fitted-
-object mutation remain caller responsibilities. P1.6 still requires explicit
-built-in transform/scalar/covariance adapters, persisted experiment identities,
-failed trials and model/input hashes, and chronological out-of-sample equity.
+object mutation remain caller responsibilities. P1.6 still requires forecast-
+scalar integration once that P2.3 capability exists, persisted experiment
+identities, failed trials and model/input hashes, and chronological out-of-
+sample equity.
