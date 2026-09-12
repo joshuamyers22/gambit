@@ -33,7 +33,7 @@ pytestmark = pytest.mark.acceptance
 
 def corpus() -> dict[str, Any]:
     data = json.loads(CORPUS_PATH.read_text())
-    assert data["schema_version"] == 4
+    assert data["schema_version"] == 5
     return data
 
 
@@ -90,6 +90,53 @@ def test_accounting_ledgers_match_manual_acceptance_cases(case: dict[str, Any]) 
     observed_equity = case["starting_equity"] + actual["net_pnl"].to_numpy()
     np.testing.assert_allclose(observed_equity, expected["equity"], rtol=0.0, atol=tolerance)
     assert account.equity(timestamps[-1]) == pytest.approx(expected["equity"][-1], abs=tolerance)
+
+
+@pytest.mark.parametrize("case", corpus()["expiry_cases"], ids=lambda case: case["name"])
+def test_expiry_cutoff_matches_manual_acceptance_cases(case: dict[str, Any]) -> None:
+    tolerance = corpus()["currency_absolute_tolerance"]
+    group = ContractGroup.get(f"acceptance-{case['name']}")
+    timestamps = np.asarray(case["timestamps"], dtype="datetime64[ns]")
+    contract = Contract.create(
+        case["name"],
+        group,
+        expiry=np.datetime64(case["expiry"]),
+        multiplier=case["multiplier"],
+    )
+    state = SimpleNamespace(marks=np.asarray(case["marks"], dtype=float), requested=[])
+
+    def mark_price(
+        _contract: Contract,
+        _timestamps: np.ndarray,
+        index: int,
+        context: SimpleNamespace,
+    ) -> float:
+        context.requested.append(index)
+        return float(context.marks[index])
+
+    account = Account(
+        [group], timestamps, mark_price, state, starting_equity=case["starting_equity"]
+    )
+    account.add_trades(
+        [
+            Trade(
+                contract,
+                MarketOrder(contract=contract, timestamp=timestamps[0], qty=1),
+                timestamps[0],
+                1,
+                case["entry_price"],
+            )
+        ]
+    )
+
+    assert account.equity(timestamps[-1]) == pytest.approx(
+        case["expected_final_equity"], abs=tolerance
+    )
+    ledger = account.symbol_pnls[contract.symbol]
+    assert ledger.net_pnl(timestamps[-1]) == pytest.approx(
+        case["expected_final_net_pnl"], abs=tolerance
+    )
+    assert state.requested == [0, case["expected_cutoff_index"]]
 
 
 def test_integrated_strategy_matches_manual_case_and_persists_exactly(tmp_path: Path) -> None:

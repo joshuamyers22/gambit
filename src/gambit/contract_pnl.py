@@ -16,6 +16,7 @@ from sortedcontainers import SortedDict
 from gambit.boundaries import (
     checked_finite_float,
     checked_fsum,
+    final_timestamp_at_or_before,
     timestamp_index,
     validate_price_value,
     validate_timestamp_grid,
@@ -163,6 +164,11 @@ class ContractPNL:
             if timestamp >= first_timestamp:
                 del self._net_pnl[timestamp]
 
+        # A newly admitted trade at or before expiry invalidates any terminal
+        # value previously derived from the earlier trade set.
+        if self.contract.expiry is not None:
+            self.final_pnl = np.nan
+
         if self.first_trade_timestamp is None:
             self.first_trade_timestamp = first_timestamp
 
@@ -240,9 +246,16 @@ class ContractPNL:
             return
         if self.first_trade_timestamp is None or timestamp < self.first_trade_timestamp:
             return
-        # TODO: Option expiry should be a special case.  If option expires at 3:00 pm, we put in an expiry order at 3 pm and the
-        # trade comes in at 3:01 pm.  In this case, the final pnl is recorded at 3:01 but should be at 3 pm.
-        if self.contract.expiry is not None and timestamp > self.contract.expiry and not math.isnan(self.final_pnl):
+        if self.contract.expiry is not None and timestamp > self.contract.expiry:
+            if not math.isnan(self.final_pnl):
+                return
+            cutoff = final_timestamp_at_or_before(self._account_timestamps, self.contract.expiry)
+            if cutoff is None or cutoff < self.first_trade_timestamp:
+                return
+            self.calc_net_pnl(cutoff)
+            cutoff_index = find_index_before(self._net_pnl, cutoff)
+            if cutoff_index != -1:
+                _, (_, _, _, self.final_pnl) = self._net_pnl.peekitem(cutoff_index)
             return
 
         # make sure timestamp is in the sequence of timestamps we were given
@@ -291,7 +304,7 @@ class ContractPNL:
         )
 
         self._net_pnl[timestamp] = (price, open_qty, unrealized, net_pnl)
-        if self.contract.expiry is not None and timestamp > self.contract.expiry:
+        if self.contract.expiry is not None and timestamp == self.contract.expiry:
             self.final_pnl = net_pnl
         self.new_trades_added = False
 

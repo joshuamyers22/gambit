@@ -9,7 +9,7 @@ have not yet been released are collected below.
 
 - A versioned, human-reviewable financial acceptance corpus with manually
   calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
-  fills, unequal-multiplier rolls, causal VWAP, position rejection, result
+  fills, unequal-multiplier rolls, causal VWAP, expiry cutoffs, position rejection, result
   persistence, explicit NaN/Inf and finite-overflow boundaries, and
   five NYSE holiday, observance, and year-transition calendar boundaries. Four
   fixed state-machine seeds reconcile orders, partial fills, cancellations,
@@ -68,6 +68,10 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Expiring contracts now reject executions after their inclusive expiry
+  timestamp and freeze P&L at the last account-grid mark at or before expiry,
+  without reading post-expiry prices. The core account still does not exercise,
+  assign, deliver, cash-settle, or liquidate the remaining position.
 - The distribution maturity classifier is now Beta while production-readiness
   gates remain open. A canonical feature-status matrix and draft project brief
   separate release-candidate, experimental, utility, and out-of-scope behavior;

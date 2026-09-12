@@ -728,6 +728,11 @@ def _validate_trade_references(contract: Contract, order: Order, timestamp: np.d
         raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
     if timestamp < order.timestamp:
         raise ValueError("trade timestamp cannot precede its originating order")
+    if contract.expiry is not None and timestamp > contract.expiry:
+        raise ValueError(
+            f"trade timestamp {timestamp} is after contract expiry {contract.expiry} "
+            f"for {contract.symbol}"
+        )
 
 
 class Trade:

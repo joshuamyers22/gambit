@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "currency_absolute_tolerance": 1e-9,
   "accounting_cases": [
     {
@@ -51,6 +51,40 @@
         "net_pnl": [-1.5, 145.5, 344.5],
         "equity": [998.5, 1145.5, 1344.5]
       }
+    }
+  ],
+  "expiry_cases": [
+    {
+      "name": "exact_expiry_uses_expiry_mark",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-01-02T14:59",
+        "2024-01-02T15:00",
+        "2024-01-02T15:01"
+      ],
+      "expiry": "2024-01-02T15:00",
+      "marks": [100.0, 105.0, 999.0],
+      "entry_price": 100.0,
+      "expected_cutoff_index": 1,
+      "expected_final_net_pnl": 50.0,
+      "expected_final_equity": 1050.0
+    },
+    {
+      "name": "between_heartbeats_uses_preceding_mark",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-01-02T14:58",
+        "2024-01-02T14:59",
+        "2024-01-02T15:01"
+      ],
+      "expiry": "2024-01-02T15:00",
+      "marks": [100.0, 104.0, 999.0],
+      "entry_price": 100.0,
+      "expected_cutoff_index": 1,
+      "expected_final_net_pnl": 40.0,
+      "expected_final_equity": 1040.0
     }
   ],
   "integrated_strategy_case": {

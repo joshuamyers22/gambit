@@ -95,6 +95,31 @@ submission order; partial fills remain eligible on later heartbeats without
 restarting the lag. Callbacks still run with an empty order tuple when no orders
 are eligible. The account accepts reported fills only for the eligible tuple.
 
+Expiry cutoff and unsupported settlement
+----------------------------------------
+
+``Contract.expiry`` is an inclusive execution and valuation cutoff. A trade at
+the expiry timestamp is admissible; a trade after it is rejected both when the
+trade is constructed and when a mutable trade reaches the account boundary. An
+expiring contract's terminal P&L uses the last account-grid mark at or before
+expiry. Later equity requests do not ask the price callback for post-expiry
+data. If expiry falls between heartbeats, the preceding heartbeat is the cutoff;
+Gambit does not interpolate or invent a settlement price.
+
+All timestamps are NumPy ``datetime64`` values without an attached exchange
+timezone or session calendar. The caller must normalize order, execution,
+account-grid, and expiry timestamps to one documented time basis and must supply
+any holiday or early-close adjustment. An open position remains reported after
+the cutoff: frozen P&L does not mean the position was exercised, assigned,
+delivered, cash-settled, or liquidated.
+
+The core account does not model cash or physical settlement, exercise,
+assignment, a settlement-price source, or settlement lag. Strategies requiring
+those economics must use an explicit specialized accounting layer and must not
+describe the core cutoff as option settlement. Option lifecycle behavior,
+pricing, and implied volatility remain experimental pending P1.4 numerical and
+domain-owner qualification.
+
 Order-state assumptions
 -----------------------
 
@@ -274,7 +299,7 @@ The core account does not invent assumptions for:
 * FX conversion or settlement timing;
 * tax lots other than FIFO;
 * exchange priority, queue position, or hidden liquidity;
-* forced liquidation, option exercise, or assignment; or
+* forced liquidation, option exercise, assignment, or expiry settlement; or
 * stale-mark haircuts and valuation reserves.
 
 Represent a relevant effect in adjusted data, explicit cash-flow/cost logic, a

@@ -95,7 +95,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress; repository contract, synthetic recovery, and storage-fault drills implemented 2026-09-12; owner approval and external-storage drill pending |
 | P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress; candidate latency/capacity budget implemented 2026-09-12, workload and threshold approval pending |
 | P1.3 | Dependency and security automation do not fully match the current template | Change Dependabot to the `uv` ecosystem, review cadence/groups, add secret scanning and proportionate Python/C++ static analysis, and test workflow policy | Automated lock/action updates produce reviewable PRs; gitleaks and selected SAST/static-analysis jobs are required; workflow-policy tests enforce pins, permissions, timeouts, and credential handling | Build/security owner | Before ongoing production maintenance | Not started |
-| P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | Not started |
+| P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | In progress; causal cutoff and post-expiry trade rejection implemented 2026-09-12; settlement model and numerical qualification pending |
 | P2.1 | Legacy duplicate interfaces and source-only test helpers create drift and artifact noise | Remove or delegate `build.sh`/`dist.sh`, retire unused requirements files or generate them from `uv.lock`, consolidate version authority, remove hard-coded developer paths and dormant test functions from `csv_reader.cpp`, and mark historical plans as superseded | `rg` finds no machine-specific source paths; one documented dependency/version/build authority remains; clean artifact contents and `make check` pass | Core/build owner | During hardening cycle | Not started |
 | P2.2 | The factor-cache CLI deployment model is undecided | Record it as an in-environment library utility, or add the template's pinned non-root container and smoke test if it is operated independently | ADR states the decision. Library-utility path documents the Docker exception; standalone path builds a digest-pinned image, runs as non-root, and passes CI smoke/restore tests | Product/operations owner | Before operating CLI outside a research environment | Decision required |
 
@@ -306,10 +306,10 @@ later time. [`RELEASING.md`](RELEASING.md) separately defers option-pricing and
 implied-volatility reference validation. The timing case needs a regression
 reproduction before selecting its correction.
 
-- [ ] Define supported cash/physical settlement, exercise/assignment scope,
+- [x] Define supported cash/physical settlement, exercise/assignment scope,
   settlement-price source, expiry timestamp/timezone/calendar, and interactions
   with execution lag and accounting. Explicitly reject unsupported behavior.
-- [ ] Add hand-calculated cases at, before, and after expiry; correct event and
+- [x] Add hand-calculated cases at, before, and after expiry; correct event and
   ledger timing without inventing prices or exposing future settlement data.
 - [ ] Validate pricing and implied volatility against independent reference
   cases, including boundary values and numerical tolerances. Keep the feature
@@ -1381,6 +1381,30 @@ release merely because another library offers them.
   Representative strategy/data, reference host, measurement boundary,
   capacities, repetition count, threshold, and native/performance-owner approval
   keep P1.2 open.
+
+### 2026-09-12 — Twenty-third slice (causal expiry cutoff)
+
+- Replaced the acknowledged first-post-expiry valuation behavior with an
+  inclusive expiry boundary. Terminal P&L now uses the last account-grid mark at
+  or before expiry and never requests a later price; expiry between heartbeats
+  conservatively uses the preceding heartbeat without interpolation.
+- Rejects executions after expiry at both trade construction and mutable account
+  ingestion. Exact-expiry trades remain admissible and invalidate a previously
+  cached terminal value so a legal closing fill is reflected atomically.
+- Added versioned, hand-calculated acceptance cases for exact and between-grid
+  expiry, plus lifecycle regressions for exact-expiry recalculation,
+  constructor rejection, and atomic rejection of a mutated mixed trade batch.
+  The accounting contract explicitly leaves positions open and disclaims cash
+  or physical settlement, exercise, assignment, delivery, liquidation, exchange
+  calendars, and timezone inference.
+- Focused local evidence passed **96 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,974 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  matrix qualification and quant/accounting-owner approval remain pending, and
+  P1.4 remains open for a settlement-model decision and independent option
+  pricing/implied-volatility validation.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

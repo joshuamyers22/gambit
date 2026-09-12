@@ -37,6 +37,19 @@ def test_preproduction_maturity_claims_share_one_canonical_status():
     assert "Live trading, brokerage connectivity, and production order routing | Out of scope" in status
 
 
+def test_experimental_expiry_cutoff_does_not_claim_settlement_support():
+    status = (ROOT / "FEATURE_STATUS.md").read_text()
+    accounting = (ROOT / "documentation" / "source" / "accounting_assumptions.rst").read_text()
+
+    assert "Experimental; core accounting enforces a causal expiry cutoff" in status
+    assert "does not settle positions" in status
+    assert "inclusive execution and valuation cutoff" in accounting
+    assert "last account-grid mark at or before" in accounting
+    assert "do not ask the price callback for post-expiry" in accounting
+    for unsupported in ("cash or physical settlement", "exercise", "assignment", "settlement lag"):
+        assert unsupported in accounting
+
+
 def workflow(name):
     # BaseLoader preserves GitHub's YAML 1.2 `on` key rather than treating it as True.
     return yaml.load((ROOT / ".github" / "workflows" / name).read_text(), Loader=yaml.BaseLoader)
