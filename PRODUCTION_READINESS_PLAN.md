@@ -1282,9 +1282,12 @@ release merely because another library offers them.
   **1,957 tests**, **86% aggregate coverage**, all six focused coverage floors,
   **10/10 financial mutants killed**, frozen-lock, Ruff, mypy over 55 source
   files, native-warning, strict-Sphinx, notebook, wheel/sdist, Twine, and artifact
-  inspection gates on macOS / CPython 3.10.20. Hosted execution of this slice is
-  pending; external inventory and quant/domain-owner approval remain required,
-  so P0.2 is not closed.
+  inspection gates on macOS / CPython 3.10.20. Hosted
+  [CI run 34706032394](https://github.com/joshuamyers22/gambit/actions/runs/34706032394)
+  then passed the complete push workflow, including the required Linux/macOS
+  CPython 3.10–3.12 matrix, at `888e670`. The pull-request CI and documentation
+  workflows also passed at the same SHA. External inventory and
+  quant/domain-owner approval remain required, so P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
