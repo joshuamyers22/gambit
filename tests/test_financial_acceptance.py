@@ -33,8 +33,18 @@ pytestmark = pytest.mark.acceptance
 
 def corpus() -> dict[str, Any]:
     data = json.loads(CORPUS_PATH.read_text())
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     return data
+
+
+def numeric_token(value: str | float) -> float:
+    if not isinstance(value, str):
+        return value
+    return {
+        "nan": float("nan"),
+        "positive_infinity": float("inf"),
+        "negative_infinity": float("-inf"),
+    }[value]
 
 
 @pytest.mark.parametrize("case", corpus()["accounting_cases"], ids=lambda case: case["name"])
@@ -373,6 +383,169 @@ def test_vwap_acceptance_fill_is_invariant_to_future_market_values() -> None:
             assert trade.timestamp == timestamps[expected["fill_index"]]
 
     assert {price for price, _qty, _status, _timestamp in observed} == {expected["fill_price"]}
+
+
+@pytest.mark.parametrize(
+    "case", corpus()["invalid_numeric_cases"], ids=lambda case: case["name"]
+)
+def test_non_finite_financial_inputs_fail_at_admission_without_account_mutation(
+    case: dict[str, Any],
+) -> None:
+    value = numeric_token(case["value"])
+    timestamp = np.datetime64("2024-07-08T09:30", "ns")
+    timestamps = np.asarray([timestamp])
+    group = ContractGroup.get(f"acceptance-{case['name']}")
+    contract = Contract.create(case["name"], group)
+
+    if case["boundary"] == "order_qty":
+        with pytest.raises(ValueError, match=case["error"]):
+            MarketOrder(contract=contract, timestamp=timestamp, qty=value)
+        return
+
+    mark = value if case["boundary"] == "account_mark" else 100.0
+    account = Account([group], timestamps, lambda *_args: mark, SimpleNamespace())
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    trade = Trade(contract, order, timestamp, 1, 100.0)
+    if case["boundary"].startswith("trade_"):
+        setattr(trade, case["boundary"].removeprefix("trade_"), value)
+
+    with pytest.raises(ValueError, match=case["error"]):
+        account.add_trades([trade])
+    assert account.trade_count == 0
+    assert account.symbols() == []
+    assert account.trades() == []
+
+
+def test_nan_mark_carries_the_last_finite_unrealized_pnl() -> None:
+    case = corpus()["missing_mark_case"]
+    group = ContractGroup.get(f"acceptance-{case['name']}")
+    contract = Contract.create(case["name"], group, multiplier=case["multiplier"])
+    timestamps = np.asarray(case["timestamps"], dtype="datetime64[ns]")
+    marks = [numeric_token(value) for value in case["marks"]]
+    account = Account(
+        [group],
+        timestamps,
+        lambda _contract, _timestamps, index, _context: marks[index],
+        SimpleNamespace(),
+        starting_equity=case["starting_equity"],
+    )
+    order = MarketOrder(contract=contract, timestamp=timestamps[0], qty=1)
+    account.add_trades(
+        [Trade(contract, order, timestamps[0], 1, case["execution_price"])]
+    )
+    account.calc(timestamps[-1])
+
+    pnl = account.symbol_pnls[contract.symbol].df()
+    assert pnl["unrealized"].to_list() == case["expected_unrealized"]
+    assert [account.equity(timestamp) for timestamp in timestamps] == case["expected_equity"]
+
+
+@pytest.mark.parametrize(
+    "case", corpus()["finite_overflow_cases"], ids=lambda case: case["name"]
+)
+def test_finite_input_arithmetic_overflow_fails_without_non_finite_publication(
+    case: dict[str, Any],
+) -> None:
+    timestamp = np.datetime64("2024-07-09T09:30", "ns")
+    timestamps = np.asarray([timestamp])
+    group = ContractGroup.get(f"acceptance-{case['name']}")
+
+    if case["operation"] == "quantity":
+        contract = Contract.create(case["name"], group)
+        bounds = np.iinfo(np.int_)
+        for quantity in (int(bounds.min) - 1, int(bounds.max) + 1):
+            with pytest.raises(ValueError, match=case["error"]):
+                MarketOrder(contract=contract, timestamp=timestamp, qty=quantity)
+        return
+
+    if case["operation"] == "aggregate":
+        account = Account([group], timestamps, lambda *_args: 100.0, SimpleNamespace())
+        trades = []
+        for index in range(2):
+            contract = Contract.create(f"{case['name']}-{index}", group)
+            order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+            trades.append(
+                Trade(
+                    contract,
+                    order,
+                    timestamp,
+                    1,
+                    100.0,
+                    fee=case["rebate_per_contract"],
+                )
+            )
+        account.add_trades(trades)
+        for _attempt in range(2):
+            with pytest.raises(OverflowError, match=case["error"]):
+                account.equity(timestamp)
+        with pytest.raises(OverflowError, match=case.get("table_error", case["error"])):
+            account.df_account_pnl()
+        return
+
+    starting_equity = case.get("starting_equity", 1_000.0)
+    multiplier = case.get("multiplier", 1.0)
+    contract = Contract.create(case["name"], group, multiplier=multiplier)
+    initial_mark = (
+        case["mark_price"]
+        if case["operation"] == "unrealized"
+        else case.get("entry_price", 100.0)
+    )
+    account = Account(
+        [group],
+        timestamps,
+        lambda *_args: initial_mark,
+        SimpleNamespace(),
+        starting_equity=starting_equity,
+    )
+
+    if case["operation"] == "cost":
+        orders = [MarketOrder(contract=contract, timestamp=timestamp, qty=1) for _ in range(2)]
+        trades = [
+            Trade(contract, order, timestamp, 1, 100.0, fee=case["fee_per_trade"])
+            for order in orders
+        ]
+        with pytest.raises(OverflowError, match=case["error"]):
+            account.add_trades(trades)
+        assert account.trade_count == 0
+        assert account.symbols() == []
+        return
+
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    rebate = case.get("rebate", 0.0)
+    opening_trade = Trade(
+        contract,
+        order,
+        timestamp,
+        1,
+        case.get("entry_price", 100.0),
+        fee=rebate,
+    )
+
+    if case["operation"] == "unrealized":
+        with pytest.raises(OverflowError, match=case["error"]):
+            account.add_trades([opening_trade])
+        assert account.trade_count == 0
+        assert account.symbols() == []
+        return
+
+    account.add_trades([opening_trade])
+    if case["operation"] == "realized":
+        equity_before = account.equity(timestamp)
+        closing_order = MarketOrder(contract=contract, timestamp=timestamp, qty=-1)
+        closing_trade = Trade(
+            contract, closing_order, timestamp, -1, case["exit_price"]
+        )
+        with pytest.raises(OverflowError, match=case["error"]):
+            account.add_trades([closing_trade])
+        assert account.trade_count == 1
+        assert account.position(group, timestamp) == 1
+        assert account.equity(timestamp) == equity_before
+        return
+
+    with pytest.raises(OverflowError, match=case["error"]):
+        account.equity(timestamp)
+    with pytest.raises(OverflowError, match=case["error"]):
+        account.df_account_pnl()
 
 
 def test_calendar_matches_manual_independence_day_case() -> None:

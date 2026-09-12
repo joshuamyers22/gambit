@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; accounting/lifecycle corpus expanded 2026-09-12, numeric/stateful/mutation/hosted evidence pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; accounting/lifecycle/numeric corpus expanded 2026-09-12, stateful/mutation/hosted evidence pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -617,8 +617,8 @@ trade lag, pre-trade controls, and callback rollback contracts.
   oracle. Cover long/short, scale-in/out, cross-zero, partial fills, costs,
   multipliers, rolls, execution lag, VWAP causality, risk rejection, calendar
   boundaries, NaN/Inf, overflow, and persisted-result round trips. (Data-driven
-  ledger, integration, partial-fill, roll, VWAP, persistence, and calendar cases
-  implemented 2026-09-12; invalid numerics and overflow remain to be consolidated.)
+  ledger, integration, partial-fill, roll, VWAP, persistence, calendar, invalid
+  numeric, and finite-overflow cases implemented 2026-09-12.)
 - [ ] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
@@ -1155,6 +1155,31 @@ release merely because another library offers them.
   passed on macOS / CPython 3.10.20. Invalid-numeric/overflow corpus rows, seeded
   stateful reconciliation, mutation testing, owner review, and hosted matrix
   evidence remain open; P0.2 is not closed.
+
+### 2026-09-12 — Fifteenth slice (numeric failure and overflow acceptance)
+
+- Bumped the financial corpus to schema 3 and made the numeric policy
+  reviewable as data. Representative NaN/Inf rows cover order construction,
+  mutated trade import, and account marks; a separate NaN-mark case proves the
+  documented carry-forward behavior instead of treating missing data as an
+  invalid infinity.
+- Reproduced six previously unqualified finite-input failures: quantities above
+  the native signed-integer range were admitted, while unrealized and realized
+  price differences, cumulative fees, multi-contract net P&L, and equity
+  addition could publish infinity. Each is now an acceptance row with an
+  explicit failure boundary and rollback or repeat-read assertion.
+- Whole-unit quantities now reject values outside the platform integer used by
+  the FIFO kernel. Shared checked-binary64 helpers cover stable weighted-open
+  prices, realized/unrealized/net P&L, cumulative costs, account aggregation,
+  tabular account output, and equity. Contract-level overflow during trade
+  ingestion restores the prior ledger; aggregate/equity overflow is never
+  cached as a valid public result.
+- Local evidence: **1,935 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), strict
+  Sphinx, notebook cleanliness, wheel/sdist builds, Twine, and artifact
+  inspection passed on macOS / CPython 3.10.20. Stateful reconciliation,
+  mutation testing, owner review, and supported hosted-matrix evidence remain
+  open; P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

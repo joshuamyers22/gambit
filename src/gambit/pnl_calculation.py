@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+from gambit.boundaries import checked_finite_float
 from gambit.compute_pnl import calc_trade_pnl
 
 
@@ -23,7 +24,7 @@ def calculate_trade_pnl(
         new_prices,
         multiplier,
     )
-    return quantities, prices, float(realized)
+    return quantities, prices, checked_finite_float(realized, label="realized P&L")
 
 
 __all__ = ["calculate_trade_pnl"]

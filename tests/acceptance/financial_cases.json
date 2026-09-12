@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "currency_absolute_tolerance": 1e-9,
   "accounting_cases": [
     {
@@ -178,6 +178,97 @@
       "terminal_status": "filled"
     }
   },
+  "invalid_numeric_cases": [
+    {
+      "name": "order_nan_quantity",
+      "boundary": "order_qty",
+      "value": "nan",
+      "error": "order qty must be finite and nonzero, in whole shares or contracts"
+    },
+    {
+      "name": "order_positive_infinity_quantity",
+      "boundary": "order_qty",
+      "value": "positive_infinity",
+      "error": "order qty must be finite and nonzero, in whole shares or contracts"
+    },
+    {
+      "name": "trade_negative_infinity_price",
+      "boundary": "trade_price",
+      "value": "negative_infinity",
+      "error": "trade price must be a finite real number"
+    },
+    {
+      "name": "trade_nan_fee",
+      "boundary": "trade_fee",
+      "value": "nan",
+      "error": "trade fee must be a finite real number"
+    },
+    {
+      "name": "trade_positive_infinity_commission",
+      "boundary": "trade_commission",
+      "value": "positive_infinity",
+      "error": "trade commission must be a finite real number"
+    },
+    {
+      "name": "mark_negative_infinity",
+      "boundary": "account_mark",
+      "value": "negative_infinity",
+      "error": "account price callback returned a non-finite price"
+    }
+  ],
+  "missing_mark_case": {
+    "name": "nan_mark_carries_prior_unrealized_pnl",
+    "starting_equity": 1000.0,
+    "multiplier": 10.0,
+    "timestamps": ["2024-07-08T09:30", "2024-07-08T15:00"],
+    "execution_price": 100.0,
+    "marks": [105.0, "nan"],
+    "expected_unrealized": [50.0, 50.0],
+    "expected_equity": [1050.0, 1050.0]
+  },
+  "finite_overflow_cases": [
+    {
+      "name": "unrealized_price_difference",
+      "operation": "unrealized",
+      "entry_price": 1e308,
+      "mark_price": -1e308,
+      "multiplier": 1.0,
+      "error": "unrealized P&L"
+    },
+    {
+      "name": "realized_price_difference",
+      "operation": "realized",
+      "entry_price": 1e308,
+      "exit_price": -1e308,
+      "multiplier": 1.0,
+      "error": "realized P&L"
+    },
+    {
+      "name": "cumulative_fees",
+      "operation": "cost",
+      "fee_per_trade": 1e308,
+      "error": "cumulative fee"
+    },
+    {
+      "name": "aggregate_contract_pnl",
+      "operation": "aggregate",
+      "rebate_per_contract": -1e308,
+      "error": "aggregate net P&L",
+      "table_error": "aggregate fee"
+    },
+    {
+      "name": "starting_equity_plus_pnl",
+      "operation": "equity",
+      "starting_equity": 1e308,
+      "rebate": -1e308,
+      "error": "account equity"
+    },
+    {
+      "name": "quantity_outside_native_range",
+      "operation": "quantity",
+      "error": "signed platform integer range"
+    }
+  ],
   "calendar_case": {
     "calendar": "NYSE",
     "observations": [

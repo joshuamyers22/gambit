@@ -10,7 +10,8 @@ have not yet been released are collected below.
 - A versioned, human-reviewable financial acceptance corpus with manually
   calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
   fills, unequal-multiplier rolls, causal VWAP, position rejection, result
-  persistence, and an Independence Day calendar boundary.
+  persistence, explicit NaN/Inf and finite-overflow boundaries, and an
+  Independence Day calendar boundary.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.
@@ -51,6 +52,12 @@ have not yet been released are collected below.
   gates remain open. A canonical feature-status matrix and draft project brief
   separate release-candidate, experimental, utility, and out-of-scope behavior;
   delivery-policy tests keep package and release claims aligned.
+- Whole-unit order and trade quantities now fail admission when they exceed the
+  signed platform integer range required by the native FIFO kernel. Accounting
+  uses overflow-checked binary64 arithmetic for weighted prices, realized and
+  unrealized P&L, cumulative costs, contract aggregation, and equity; finite
+  inputs that would publish infinity raise ``OverflowError``, with account trade
+  batches rolled back atomically.
 - HDF5 array readers now require scalar text metadata, normalize malformed JSON
   and excessive nesting to `ValueError`, and apply a combined 1 MiB manifest
   parsing budget (`max_manifest_bytes`). Trusted larger manifests require an

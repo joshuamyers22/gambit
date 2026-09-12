@@ -16,10 +16,14 @@ cross-zero reversal, multipliers, and separate fees/commissions. The integrated
 strategy case adds heartbeat execution lag, a position-limit rejection, final
 mark-to-market, and versioned result persistence. Separate cases cover an order
 filled over three heartbeats, a two-contract roll with unequal multipliers, and
-a day-boundary VWAP whose later prices and volumes cannot change the fill. The
-calendar case uses the published 2024 US Independence Day closure and adjacent
-weekdays; it is short enough to review without treating the calendar adapter as
-the oracle.
+a day-boundary VWAP whose later prices and volumes cannot change the fill.
+Numeric-boundary rows distinguish an intentionally missing NaN mark from invalid
+NaN/Inf order, trade, and valuation inputs. Finite-input overflow rows cover
+unrealized and realized arithmetic, cumulative costs, cross-contract P&L,
+equity, and native quantity range; every case must fail without publishing a
+non-finite result. The calendar case uses the published 2024 US Independence Day
+closure and adjacent weekdays; it is short enough to review without treating
+the calendar adapter as the oracle.
 
 Quantities, statuses, timestamps, schemas, and persisted frames must match
 exactly. Currency values use an absolute tolerance of `1e-9` and zero relative
@@ -28,7 +32,6 @@ below the smallest currency amount in the fixtures and must not scale with P&L.
 
 The corpus schema is versioned independently of the result-bundle schema. Any
 fixture change requires a written rationale and review of the manual arithmetic.
-Passing this initial corpus is necessary but not sufficient for P0.2: seeded
-stateful reconciliation, mutation testing, more calendar boundaries, numeric
-failure/overflow cases, and the supported hosted interpreter/platform matrix
-remain open.
+Passing this corpus is necessary but not sufficient for P0.2: seeded stateful
+reconciliation, mutation testing, more calendar boundaries, and the supported
+hosted interpreter/platform matrix remain open.

@@ -9,8 +9,9 @@ Units and signs
 
 Order, trade, and position quantities are signed instrument units. Positive is
 long or buy; negative is short or sell. Prices and quantities must be finite at
-execution. A contract's ``multiplier`` converts one price-unit move in one
-instrument unit into account-currency P&L.
+execution, and each order/fill quantity must fit the platform's signed integer
+range used by the native FIFO kernel. A contract's ``multiplier`` converts one
+price-unit move in one instrument unit into account-currency P&L.
 
 The core account has one account currency. It does not automatically translate
 foreign-currency fills, cash balances, or P&L. Use explicit conversion inputs
@@ -47,6 +48,16 @@ When an open position has no mark because the price callback returns ``NaN``,
 Gambit carries forward the previous unrealized P&L. It does not force the mark
 to zero and does not liquidate the position. Infinite marks and non-real values
 are errors. A closed position has zero unrealized P&L.
+
+All accepted inputs can be finite while their combination exceeds binary64—for
+example, an extreme price change times a multiplier, two extreme cumulative
+costs, aggregate contract P&L, or starting equity plus P&L. Gambit raises
+``OverflowError`` instead of publishing an infinite realized, unrealized, net
+P&L, or equity value. A trade batch that overflows contract accounting is rolled
+back using the same atomic account-ingestion boundary as other invalid batches.
+An aggregate or equity overflow remains an error on later reads; it is not cached
+as a usable account result. Callers must correct the units or input scale and
+rerun the affected backtest.
 
 Costs and cash
 --------------

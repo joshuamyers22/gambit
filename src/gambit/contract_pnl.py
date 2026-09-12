@@ -13,7 +13,13 @@ import polars as pl
 from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
-from gambit.boundaries import timestamp_index, validate_price_value, validate_timestamp_grid
+from gambit.boundaries import (
+    checked_finite_float,
+    checked_fsum,
+    timestamp_index,
+    validate_price_value,
+    validate_timestamp_grid,
+)
 from gambit.pnl_calculation import calculate_trade_pnl
 from gambit.pq_types import Contract, Trade
 
@@ -172,17 +178,29 @@ class ContractPNL:
                 self.contract.multiplier,
             )
 
-            open_qty = int(np.sum(open_qtys))
+            open_qty = sum(int(qty) for qty in open_qtys)
             if open_qty == 0:
                 weighted_avg_price = 0.0
             else:
-                weighted_avg_price = np.sum(open_qtys * open_prices) / open_qty
+                weighted_avg_price = checked_fsum(
+                    (
+                        (int(qty) / open_qty) * float(price)
+                        for qty, price in zip(open_qtys, open_prices, strict=True)
+                    ),
+                    label=f"weighted open price for {self.contract.symbol} at {timestamp}",
+                )
 
             self.open_qtys = open_qtys
             self.open_prices = open_prices
             position_chg = sum([trade.qty for trade in t_trades])
-            commission_chg = sum([trade.commission for trade in t_trades])
-            fee_chg = sum([trade.fee for trade in t_trades])
+            commission_chg = checked_fsum(
+                (trade.commission for trade in t_trades),
+                label=f"cumulative commission for {self.contract.symbol} at {timestamp}",
+            )
+            fee_chg = checked_fsum(
+                (trade.fee for trade in t_trades),
+                label=f"cumulative fee for {self.contract.symbol} at {timestamp}",
+            )
             index = find_index_before(self._trade_pnl, timestamp)
             if index == -1:
                 self._trade_pnl[timestamp] = (
@@ -199,9 +217,18 @@ class ContractPNL:
                 )
                 self._trade_pnl[timestamp] = (
                     prev_position + position_chg,
-                    prev_realized + realized_chg,
-                    prev_fee + fee_chg,
-                    prev_commission + commission_chg,
+                    checked_fsum(
+                        (prev_realized, realized_chg),
+                        label=f"cumulative realized P&L for {self.contract.symbol} at {timestamp}",
+                    ),
+                    checked_fsum(
+                        (prev_fee, fee_chg),
+                        label=f"cumulative fee for {self.contract.symbol} at {timestamp}",
+                    ),
+                    checked_fsum(
+                        (prev_commission, commission_chg),
+                        label=f"cumulative commission for {self.contract.symbol} at {timestamp}",
+                    ),
                     open_qty,
                     weighted_avg_price,
                 )
@@ -249,9 +276,19 @@ class ContractPNL:
                     _, (_, _, prev_unrealized, _) = self._net_pnl.peekitem(index)
                 unrealized = prev_unrealized
             else:
-                unrealized = open_qty * (price - weighted_avg_price) * self.contract.multiplier
+                price_change = checked_finite_float(
+                    price - weighted_avg_price,
+                    label=f"unrealized P&L for {self.contract.symbol} at {timestamp}",
+                )
+                unrealized = checked_finite_float(
+                    open_qty * price_change * self.contract.multiplier,
+                    label=f"unrealized P&L for {self.contract.symbol} at {timestamp}",
+                )
 
-        net_pnl = realized + unrealized - commission - fee
+        net_pnl = checked_fsum(
+            (realized, unrealized, -commission, -fee),
+            label=f"net P&L for {self.contract.symbol} at {timestamp}",
+        )
 
         self._net_pnl[timestamp] = (price, open_qty, unrealized, net_pnl)
         if self.contract.expiry is not None and timestamp > self.contract.expiry:

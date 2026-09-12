@@ -15,7 +15,13 @@ import polars as pl
 from numpy.typing import NDArray
 from sortedcontainers import SortedDict
 
-from gambit.boundaries import timestamp_index, validate_date_range, validate_timestamp_grid
+from gambit.boundaries import (
+    checked_finite_float,
+    checked_fsum,
+    timestamp_index,
+    validate_date_range,
+    validate_timestamp_grid,
+)
 from gambit.contract_pnl import ContractPNL, ContractPNLState, find_index_before
 from gambit.execution_snapshots import snapshot_trade
 from gambit.pq_types import (
@@ -276,10 +282,14 @@ class Account:
             intermediate_calc_timestamps = np.append(intermediate_calc_timestamps, timestamp)
 
         for ts in intermediate_calc_timestamps:
-            net_pnl = 0.0
+            symbol_net_pnls = []
             for symbol_pnl in self.symbol_pnls.values():
                 symbol_pnl.calc_net_pnl(ts)
-                net_pnl += symbol_pnl.net_pnl(ts)
+                symbol_net_pnls.append(symbol_pnl.net_pnl(ts))
+            net_pnl = checked_fsum(
+                symbol_net_pnls,
+                label=f"aggregate net P&L at {ts}",
+            )
             self._pnl[ts] = net_pnl
 
     def position(self, contract_group: ContractGroup, timestamp: np.datetime64) -> float:
@@ -311,7 +321,10 @@ class Account:
         if pnl is None:
             self.calc(timestamp)
             pnl = self._pnl[timestamp]
-        return self.starting_equity + pnl
+        return checked_fsum(
+            (self.starting_equity, pnl),
+            label=f"account equity at {timestamp}",
+        )
 
     def get_trades_for_date(self, symbol: str, date: np.datetime64) -> list[Trade]:
         ret = self._trades_for_date.get((symbol, date))
@@ -432,22 +445,43 @@ class Account:
 
         for i in range(1, len(timestamps)):
             timestamp = cast(np.datetime64, timestamps[i])
+            rows = []
             for symbol_pnl in symbol_pnls:
-                _position, _price, _realized, _unrealized, _fee, _commission, _net_pnl = symbol_pnl.pnl(
-                    timestamp
+                rows.append(symbol_pnl.pnl(timestamp))
+            position[i] = checked_finite_float(
+                sum(row[0] for row in rows),
+                label=f"aggregate position at {timestamp}",
+            )
+            realized[i] = checked_fsum(
+                (row[2] for row in rows),
+                label=f"aggregate realized P&L at {timestamp}",
+            )
+            unrealized[i] = checked_fsum(
+                (row[3] for row in rows),
+                label=f"aggregate unrealized P&L at {timestamp}",
+            )
+            fee[i] = checked_fsum(
+                (row[4] for row in rows),
+                label=f"aggregate fee at {timestamp}",
+            )
+            commission[i] = checked_fsum(
+                (row[5] for row in rows),
+                label=f"aggregate commission at {timestamp}",
+            )
+            net_pnl[i] = checked_fsum(
+                (row[6] for row in rows),
+                label=f"aggregate net P&L at {timestamp}",
+            )
+
+        equity = np.asarray(
+            [
+                checked_fsum(
+                    (self.starting_equity, value),
+                    label=f"account equity at {timestamp}",
                 )
-                if math.isfinite(_position):
-                    position[i] += _position
-                if math.isfinite(_realized):
-                    realized[i] += _realized
-                if math.isfinite(_unrealized):
-                    unrealized[i] += _unrealized
-                if math.isfinite(_fee):
-                    fee[i] += _fee
-                if math.isfinite(_commission):
-                    commission[i] += _commission
-                if math.isfinite(_net_pnl):
-                    net_pnl[i] += _net_pnl
+                for timestamp, value in zip(timestamps, net_pnl, strict=True)
+            ]
+        )
 
         df = pl.DataFrame(
             {
@@ -458,9 +492,10 @@ class Account:
                 "commission": commission,
                 "fee": fee,
                 "net_pnl": net_pnl,
+                "equity": equity,
             }
         )
-        return df.with_columns((self.starting_equity + pl.col("net_pnl")).alias("equity")).select(
+        return df.select(
             "timestamp", "position", "unrealized", "realized", "commission", "fee", "net_pnl", "equity"
         )
 

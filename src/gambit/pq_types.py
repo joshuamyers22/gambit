@@ -390,15 +390,27 @@ class TimeInForce(Enum):
 
 
 def _whole_quantity(value: float, *, field_name: str) -> int:
-    if (
-        isinstance(value, (bool, np.bool_))
-        or not isinstance(value, (int, float, np.integer, np.floating))
-        or not np.isfinite(value)
-        or math.isclose(float(value), 0)
-        or not float(value).is_integer()
+    if isinstance(value, (bool, np.bool_)) or not isinstance(
+        value, (int, float, np.integer, np.floating)
     ):
         raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
-    return int(value)
+    if isinstance(value, (int, np.integer)):
+        quantity = int(value)
+    else:
+        numeric_value = float(value)
+        if (
+            not math.isfinite(numeric_value)
+            or math.isclose(numeric_value, 0)
+            or not numeric_value.is_integer()
+        ):
+            raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
+        quantity = int(numeric_value)
+    if quantity == 0:
+        raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
+    quantity_bounds = np.iinfo(np.int_)
+    if quantity < quantity_bounds.min or quantity > quantity_bounds.max:
+        raise ValueError(f"{field_name} must fit the signed platform integer range")
+    return quantity
 
 
 def _finite_real(value: float, *, field_name: str) -> float:
