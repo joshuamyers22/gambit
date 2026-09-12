@@ -1345,8 +1345,12 @@ release merely because another library offers them.
   at **86% aggregate coverage**, all six module coverage floors, **10/10**
   financial mutation checks, frozen-lock, Ruff, mypy, native-warning,
   notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
-  verification gates. Hosted evidence follows; the external storage/retention
-  exercise, elapsed RTO, and data/storage-owner approval keep P1.1 open.
+  verification gates. Hosted push
+  [CI run 34713954187](https://github.com/joshuamyers22/gambit/actions/runs/34713954187)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `1942e8d`; the
+  same-SHA pull-request CI and documentation workflows also passed. The external
+  storage/retention exercise, elapsed RTO, and data/storage-owner approval keep
+  P1.1 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

@@ -11,9 +11,9 @@ gate in [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md).
 
 Hardening through 2026-09-12 added independently expected financial acceptance,
 targeted mutation testing, and a historical-output disposition policy. Required
-[CI run 34712649385](https://github.com/joshuamyers22/gambit/actions/runs/34712649385)
+[CI run 34713954187](https://github.com/joshuamyers22/gambit/actions/runs/34713954187)
 passed the current financial suite on Linux/macOS and CPython 3.10–3.12 at
-`670d540`. That run establishes same-commit CI evidence but does not replace the
+`1942e8d`. That run establishes same-commit CI evidence but does not replace the
 separate non-publishing release workflow or the external approval steps below.
 
 The repository now has automated release-candidate gates for the supported
