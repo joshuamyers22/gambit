@@ -30,7 +30,7 @@ libFuzzer's RSS guard. These are test controls, not production process limits.
 Linux enables LeakSanitizer; macOS disables unsupported leak checking. System
 libzip is not instrumented. Python/NumPy, HDF5 and IPC are outside this target.
 
-Outputs retain `fuzz.log`, corpus, executable and failure artifacts; CI retains
+Outputs retain `run.json`, `fuzz.log`, corpus, executable and failure artifacts; CI retains
 failure outputs for seven days. Use synthetic inputs only: artifacts may contain
 entire source files. Reproduce using the saved executable, set
 `GAMBIT_FUZZ_FORMAT` to the original format and `GAMBIT_FUZZ_INPUT` to a disposable
@@ -38,11 +38,29 @@ file in a trusted scratch directory, and pass the artifact path as its argument.
 Rebuild with equivalent compiler/sanitizers on another machine. Minimize findings
 into checked-in regression tests/seeds.
 
+The separate `native-fuzz.yml` workflow adds weekly Monday 04:17 UTC campaigns
+and a manual trigger. Each CSV/ZIP job stops at one million executions or ten
+minutes, with a fifteen-minute job backstop and the same per-input/RSS limits.
+Its nonzero uint32 seed varies with the GitHub run ID and is recorded alongside
+the source commit, compiler/run commands and sanitizer settings in `run.json`.
+For local runs, `source_commit` is null unless `GITHUB_SHA` is set; record the
+checkout and any local changes separately. Metadata is diagnostic provenance,
+not an attestation that a worktree is clean.
+
+The weekly workflow retains synthetic corpora, logs and failure inputs for seven
+days whether the campaign passes or fails; it does not restore arbitrary remote
+corpora, upload executables, request repository write permissions, or publish
+packages. A parent timeout preserves and prints partial diagnostics and fails
+the run. Long campaigns supplement the existing per-change CI fuzz checks; they
+do not replace required checks or qualify HDF5/IPC. Until this workflow is merged
+and executed, scheduled campaign qualification remains pending.
+
 On 2026-09-11 local seed replay reproduced signed overflow in `str_to_int32`;
 six Python CSV/ZIP cases also failed against the prior extension. Checked
 unsigned-magnitude parsing fixes i4/i8 and integer-backed datetime extrema and
 overflow while preserving in-range prefix semantics. The installed Apple compiler
-lacks libFuzzer. Hosted campaigns, longer scheduled runs and independent review
+lacks libFuzzer. Short hosted CSV/ZIP campaigns have passed. Longer scheduled
+runs and independent review
 remain [P0.3](../PRODUCTION_READINESS_PLAN.md) work.
 
 ## NumPy allocation-failure probe
@@ -143,8 +161,10 @@ exclude startup allocations. In an ARM64 Debian/GCC 12/CPython 3.12.11 container
 the original probe reproduced startup reports (1,092,763 bytes / 948 allocations),
 while the pre-interpreter launcher passed unsuppressed with all 425 injected
 failures and caught exactly the deliberate 16-byte NumPy leak. This verifies that
-scoped Linux workload, not whole-interpreter leak freedom or hosted x86-64
-qualification. The updated hosted gate still needs to run before P0.3 can close.
+scoped Linux workload, not whole-interpreter leak freedom. The updated gate also
+passed on hosted x86-64 in [PR #31's CI run](https://github.com/joshuamyers22/gambit/actions/runs/34659756969)
+before merge to `main`. P0.3 still needs broader HDF5/IPC campaigns, resource
+containment and independent security review; this does not close it alone.
 
 CI now attempts the independent NumPy check whenever the native build succeeds,
 even if the preceding stress probe fails, unless the run is cancelled. An earlier

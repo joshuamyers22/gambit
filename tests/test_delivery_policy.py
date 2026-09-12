@@ -90,7 +90,30 @@ def test_native_stress_probe_requires_a_real_leak_runtime():
     assert "detect_leaks=1" in step["env"]["ASAN_OPTIONS"]
 
 
-@pytest.mark.parametrize("name", ["ci.yml", "docs.yml", "performance.yml"])
+def test_extended_fuzzing_is_bounded_independent_and_retains_evidence():
+    config = workflow("native-fuzz.yml")
+    assert config["on"]["schedule"] == [{"cron": "17 4 * * 1"}]
+    assert "workflow_dispatch" in config["on"]
+    assert "push" not in config["on"] and "pull_request" not in config["on"]
+    assert config["concurrency"]["cancel-in-progress"] == "false"
+    job = config["jobs"]["fuzz"]
+    assert job["strategy"]["matrix"]["format"] == ["csv", "zip"]
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["timeout-minutes"] == "15"
+    assert job.get("continue-on-error", "false") == "false"
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert "tools/run_native_fuzz.py" in commands
+    assert "--runs 1000000 --seconds 600" in commands
+    assert '--seed "$((GITHUB_RUN_ID % 4294967295 + 1))"' in commands
+    assert "--replay-only" not in commands
+    artifact = next(step for step in job["steps"] if "upload-artifact@" in step.get("uses", ""))
+    assert artifact["if"] == "always()"
+    assert artifact["with"]["retention-days"] == "7"
+    for name in ("run.json", "fuzz.log", "corpus/", "crash-*", "leak-*", "timeout-*", "oom-*"):
+        assert f"fuzz-output/{name}" in artifact["with"]["path"].splitlines()
+
+
+@pytest.mark.parametrize("name", ["ci.yml", "docs.yml", "performance.yml", "native-fuzz.yml"])
 def test_reference_workflows_use_frozen_installs_and_read_only_credentials(name):
     config = workflow(name)
     assert config["permissions"] == {"contents": "read"}

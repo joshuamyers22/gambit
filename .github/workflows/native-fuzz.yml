@@ -1,0 +1,48 @@
+name: Extended native fuzzing
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extended-native-fuzz-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        format: [csv, zip]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install fuzz compiler and native dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang libzip-dev pkg-config
+      - name: Extended synthetic campaign with ASan, UBSan and Linux leak checking
+        run: >-
+          python3 tools/run_native_fuzz.py
+          --format ${{ matrix.format }} --output-dir fuzz-output
+          --runs 1000000 --seconds 600
+          --seed "$((GITHUB_RUN_ID % 4294967295 + 1))"
+      - name: Retain synthetic corpus and reproducible diagnostics
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: extended-native-fuzz-${{ matrix.format }}-${{ github.run_id }}
+          path: |
+            fuzz-output/run.json
+            fuzz-output/fuzz.log
+            fuzz-output/corpus/
+            fuzz-output/crash-*
+            fuzz-output/leak-*
+            fuzz-output/timeout-*
+            fuzz-output/oom-*
+          retention-days: 7
