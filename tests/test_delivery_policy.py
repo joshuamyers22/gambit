@@ -76,6 +76,16 @@ def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     assert "uv build --python python" in package_commands, "wheel ABI must match the configured package-job interpreter"
 
 
+def test_financial_acceptance_corpus_runs_on_supported_python_os_matrix():
+    job = workflow("ci.yml")["jobs"]["test"]
+    assert job["strategy"]["matrix"] == {
+        "os": ["ubuntu-latest", "macos-latest"],
+        "python-version": ["3.10", "3.11", "3.12"],
+    }
+    commands = "\n".join(step.get("run", "") for step in job["steps"])
+    assert 'pytest -m "unit or acceptance"' in commands
+
+
 def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
     job = workflow("ci.yml")["jobs"]["native-fuzz"]
     assert job["strategy"]["matrix"]["format"] == ["csv", "zip"]

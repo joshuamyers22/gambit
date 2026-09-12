@@ -91,8 +91,8 @@ jobs:
         run: |
           uv sync --frozen --all-extras --python python
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
-      - name: Run unit suite
-        run: python -m pytest -m unit --cov=gambit --cov-report=term-missing
+      - name: Run unit and financial acceptance suites
+        run: python -m pytest -m "unit or acceptance" --cov=gambit --cov-report=term-missing
       - name: Enforce supported policy coverage floors
         run: python tools/check_coverage_policy.py
       - run: python -m ruff check src tests tools

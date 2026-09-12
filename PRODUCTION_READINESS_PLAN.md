@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; initial reviewable corpus implemented 2026-09-12, stateful/mutation/hosted evidence pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -616,7 +616,9 @@ trade lag, pre-trade controls, and callback rollback contracts.
 - [ ] Create compact, reviewable golden cases from an implementation-independent
   oracle. Cover long/short, scale-in/out, cross-zero, partial fills, costs,
   multipliers, rolls, execution lag, VWAP causality, risk rejection, calendar
-  boundaries, NaN/Inf, overflow, and persisted-result round trips.
+  boundaries, NaN/Inf, overflow, and persisted-result round trips. (Initial
+  data-driven ledger/integration/calendar corpus implemented 2026-09-12; partial
+  fills, rolls, VWAP, invalid numerics, and overflow remain to be consolidated.)
 - [ ] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
@@ -1103,6 +1105,32 @@ release merely because another library offers them.
   Sphinx, notebook cleanliness, wheel/sdist builds, Twine, and artifact inspection
   passed on macOS / CPython 3.10.20. Owner approval and hosted matrix evidence
   remain open; no production promotion or package publication occurred.
+
+### 2026-09-12 — Thirteenth slice (initial financial acceptance corpus)
+
+- Added a versioned JSON acceptance corpus whose expected values are stored
+  independently of Gambit's output. Two manually derived ledgers cover long and
+  short entry, scale-out, cross-zero reversal, contract multipliers, and separate
+  fee/commission accumulation. Exact expected positions and a fixed `1e-9`
+  absolute currency tolerance are documented beside the fixtures.
+- Added an end-to-end strategy case covering one-heartbeat execution lag,
+  multiplier-aware realized/unrealized P&L, per-unit commissions, a safe
+  cross-zero order, a rejected position-limit breach, and exact v4 result-bundle
+  frame/provenance/telemetry round trips. Fill and submission timestamps are
+  asserted separately so same-bar execution cannot satisfy the case.
+- Added a short manually reviewable NYSE Independence Day case covering adjacent
+  trading/weekend dates, inclusive enumeration, and holiday rolling. This binds
+  the locked calendar adapter to known expected behavior without using a broad
+  mutable vendor date range as its own oracle.
+- Added a dedicated `acceptance` pytest marker. The supported Linux/macOS and
+  CPython 3.10-3.12 test matrix now runs `unit or acceptance`; a delivery-policy
+  regression protects the matrix and command. The corpus also remains in the
+  separate integration suite.
+- Local evidence: **1,919 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, and mypy (55 source files)
+  passed on macOS / CPython 3.10.20. Hosted matrix execution, independent owner
+  review, partial-fill/roll/VWAP/numeric-failure corpus rows, seeded stateful
+  reconciliation, and mutation testing remain open; P0.2 is not closed.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

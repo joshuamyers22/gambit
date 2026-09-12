@@ -85,6 +85,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--strict-config --strict-markers"
 markers = [
+  "acceptance: implementation-independent release acceptance evidence",
   "fuzz: deterministic hostile-input crash and hang probes",
   "integration: crosses package, process, persistence, or example boundaries",
   "native: requires compiled native extensions",

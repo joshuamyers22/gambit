@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "currency_absolute_tolerance": 1e-9,
+  "accounting_cases": [
+    {
+      "name": "long_scale_out_with_multiplier_and_costs",
+      "starting_equity": 10000.0,
+      "multiplier": 50.0,
+      "timestamps": [
+        "2024-01-02T09:30",
+        "2024-01-02T10:30",
+        "2024-01-02T15:00"
+      ],
+      "marks": [100.0, 110.0, 90.0],
+      "trades": [
+        {"qty": 2, "price": 100.0, "fee": 1.0, "commission": 2.0},
+        {"qty": -1, "price": 110.0, "fee": 0.5, "commission": 1.0},
+        {"qty": -1, "price": 90.0, "fee": 0.5, "commission": 1.0}
+      ],
+      "expected": {
+        "position": [2, 1, 0],
+        "realized": [0.0, 500.0, 0.0],
+        "unrealized": [0.0, 500.0, 0.0],
+        "fee": [1.0, 1.5, 2.0],
+        "commission": [2.0, 3.0, 4.0],
+        "net_pnl": [-3.0, 995.5, -6.0],
+        "equity": [9997.0, 10995.5, 9994.0]
+      }
+    },
+    {
+      "name": "short_cross_zero_and_close_long",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-02-05T09:30",
+        "2024-02-05T10:30",
+        "2024-02-05T15:00"
+      ],
+      "marks": [50.0, 45.0, 55.0],
+      "trades": [
+        {"qty": -3, "price": 50.0, "fee": 1.0, "commission": 0.5},
+        {"qty": 5, "price": 45.0, "fee": 2.0, "commission": 1.0},
+        {"qty": -2, "price": 55.0, "fee": 0.5, "commission": 0.5}
+      ],
+      "expected": {
+        "position": [-3, 2, 0],
+        "realized": [0.0, 150.0, 350.0],
+        "unrealized": [0.0, 0.0, 0.0],
+        "fee": [1.0, 3.0, 3.5],
+        "commission": [0.5, 1.5, 2.0],
+        "net_pnl": [-1.5, 145.5, 344.5],
+        "equity": [998.5, 1145.5, 1344.5]
+      }
+    }
+  ],
+  "integrated_strategy_case": {
+    "name": "lagged_cross_zero_with_risk_rejection_and_persistence",
+    "starting_equity": 1000.0,
+    "multiplier": 10.0,
+    "trade_lag": 1,
+    "commission_per_unit": 1.0,
+    "maximum_position": 2.0,
+    "timestamps": [
+      "2024-03-04T09:30",
+      "2024-03-04T09:31",
+      "2024-03-04T09:32",
+      "2024-03-04T09:33",
+      "2024-03-04T09:34",
+      "2024-03-04T15:00"
+    ],
+    "prices": [100.0, 102.0, 99.0, 110.0, 106.0, 105.0],
+    "proposals": [2, 0, -3, 0, 4, 0],
+    "expected": {
+      "submitted_at": ["2024-03-04T09:30", "2024-03-04T09:32"],
+      "filled_at": ["2024-03-04T09:31", "2024-03-04T09:33"],
+      "trade_qty": [2, -3],
+      "trade_price": [102.0, 110.0],
+      "trade_commission": [2.0, 3.0],
+      "order_status": ["filled", "filled", "cancelled"],
+      "decision_status": ["accepted", "accepted", "rejected"],
+      "decision_code": ["accepted", "accepted", "position_quantity_exceeded"],
+      "final_position": -1,
+      "final_realized": 160.0,
+      "final_unrealized": 50.0,
+      "final_fee": 0.0,
+      "final_commission": 5.0,
+      "final_net_pnl": 205.0,
+      "final_equity": 1205.0
+    }
+  },
+  "calendar_case": {
+    "calendar": "NYSE",
+    "observations": [
+      {"date": "2024-07-03", "is_trading_day": true},
+      {"date": "2024-07-04", "is_trading_day": false},
+      {"date": "2024-07-05", "is_trading_day": true},
+      {"date": "2024-07-06", "is_trading_day": false}
+    ],
+    "range": {
+      "start": "2024-07-02",
+      "end": "2024-07-08",
+      "include_first": true,
+      "include_last": true,
+      "expected": ["2024-07-02", "2024-07-03", "2024-07-05", "2024-07-08"]
+    },
+    "offsets": [
+      {"start": "2024-07-03", "days": 1, "roll": "raise", "expected": "2024-07-05"},
+      {"start": "2024-07-04", "days": 0, "roll": "following", "expected": "2024-07-05"}
+    ]
+  }
+}
