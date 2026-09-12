@@ -84,7 +84,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
 | P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; accounting/lifecycle/numeric/stateful corpus expanded 2026-09-12, mutation/hosted evidence pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; acceptance corpus and targeted mutation gate expanded 2026-09-12, hosted evidence pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -619,10 +619,10 @@ trade lag, pre-trade controls, and callback rollback contracts.
   boundaries, NaN/Inf, overflow, and persisted-result round trips. (Data-driven
   ledger, integration, partial-fill, roll, VWAP, persistence, five calendar
   boundaries, invalid numeric, and finite-overflow cases implemented 2026-09-12.)
-- [ ] Add seeded stateful/property tests for trade/order/account reconciliation
+- [x] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
-  (Four replayable order/trade/account seeds implemented 2026-09-12; targeted
-  mutation testing remains open.)
+  (Four replayable order/trade/account seeds and a 10/10 risk/P&L mutation gate
+  implemented locally 2026-09-12; hosted execution awaits the pushed CI run.)
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
   VWAP, sizing, callback, and numeric-admission fixes already in the changelog.
 
@@ -1224,6 +1224,32 @@ release merely because another library offers them.
   Twine, and artifact inspection passed on macOS / CPython 3.10.20. Mutation
   testing, owner review, and supported hosted-matrix qualification remain open;
   P0.2 is not closed.
+
+### 2026-09-12 — Eighteenth slice (targeted financial mutation gate)
+
+- Added a dependency-free mutation runner with ten explicit semantic changes
+  across `risk.py` and `contract_pnl.py`: inclusive order and position caps,
+  pending exposure, accepted/rejected policy handling, realized and unrealized
+  multipliers, fee and commission signs, and missing-mark carry-forward.
+- Each mutant runs from an isolated temporary package against focused risk and
+  independent accounting acceptance tests. Mutation anchors must match exactly
+  once, mutated source must compile, and the gate distinguishes a killed mutant
+  (ordinary pytest test failure) from a survivor or infrastructure/collection
+  failure. Tests protect the runner definition and its two-module scope.
+- The initial campaign scored **9/10** and exposed missing exact-boundary
+  evidence for `MaxOrderQuantity`; a new regression now proves both `-maximum`
+  and `maximum` are accepted. Review then found and fixed cross-mutant temporary-
+  package contamination before the isolated rerun scored **10/10 killed**.
+- `make check` now includes the mutation gate. The reusable CI workflow has a
+  required, ten-minute Linux / CPython 3.12 mutation job, and delivery-policy
+  tests prevent its removal or conversion to a conditional/non-blocking job.
+- Local evidence: **1,950 passed**, **86% aggregate coverage**, **10/10 isolated
+  mutants killed**, all six focused coverage floors, frozen-lock validation,
+  Ruff, mypy (55 source files), native warning checks, strict Sphinx, notebook
+  cleanliness, wheel/sdist builds, Twine, and artifact inspection passed on
+  macOS / CPython 3.10.20. Owner approval, the new hosted mutation run, broader
+  hosted platform-matrix qualification, and historical-output disposition still
+  keep P0.2 open.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

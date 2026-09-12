@@ -15,6 +15,9 @@ have not yet been released are collected below.
   fixed state-machine seeds reconcile orders, partial fills, cancellations,
   trades, two-contract FIFO ledgers, decision snapshots, group equity, and
   telemetry across execution lags 0–2.
+- A deterministic financial mutation gate covering ten high-consequence risk
+  and P&L changes. It runs each mutant in an isolated package, rejects invalid
+  runner outcomes, and is required by the reusable CI workflow.
 - Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
   subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
   is excluded from this target; an explicit seed-replay mode supports other hosts.

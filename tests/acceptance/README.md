@@ -46,5 +46,15 @@ status, immutable decision quantity, trade history, group position, net P&L,
 equity, and result telemetry. Changing seeds or bounds is an acceptance-corpus
 change, not routine randomization.
 
-Passing these corpora is necessary but not sufficient for P0.2: mutation
-testing and the supported hosted interpreter/platform matrix remain open.
+Passing these corpora and the targeted mutation gate is necessary but not
+sufficient for P0.2: owner review and the supported hosted
+interpreter/platform matrix remain open.
+
+Run `make mutation-financial` for the bounded mutation gate. It makes ten
+explicit, reviewable changes to `risk.py` and `contract_pnl.py` in an isolated
+temporary package and requires the focused risk and accounting suites to kill
+each one. Anchors must match exactly once, every mutant must compile, and only an
+ordinary pytest failure counts as a kill; collection or infrastructure errors
+fail the gate. This targeted score protects inclusive quantity caps, pending
+exposure, policy rejection, multipliers, cost signs, and missing-mark behavior.
+It is deliberately not presented as a whole-repository mutation score.

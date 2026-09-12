@@ -63,7 +63,7 @@ def test_publication_requires_same_commit_quality_and_artifact_verification(publ
 
 def test_required_ci_retains_sanitizers_audit_and_benchmark_correctness():
     jobs = workflow("ci.yml")["jobs"]
-    for name in ("test", "integration", "native", "notebooks", "native-fuzz", "ipc-preflight-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
+    for name in ("test", "financial-mutation", "integration", "native", "notebooks", "native-fuzz", "ipc-preflight-fuzz", "native-sanitizers", "native-thread-sanitizer", "dependency-audit", "package"):
         assert "lock" in ancestors(jobs, name)
         assert "if" not in jobs[name], f"required quality job {name} must not be conditional"
         assert jobs[name].get("continue-on-error", "false") == "false"
@@ -84,6 +84,10 @@ def test_financial_acceptance_corpus_runs_on_supported_python_os_matrix():
     }
     commands = "\n".join(step.get("run", "") for step in job["steps"])
     assert 'pytest -m "unit or acceptance"' in commands
+    mutation = workflow("ci.yml")["jobs"]["financial-mutation"]
+    assert int(mutation["timeout-minutes"]) <= 10
+    mutation_commands = "\n".join(step.get("run", "") for step in mutation["steps"])
+    assert "make mutation-financial" in mutation_commands
 
 
 def test_native_fuzz_gate_covers_both_formats_and_retains_failures():
