@@ -367,7 +367,7 @@ due triggers are not calendar commitments.
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, training-only generic/covariance/tail-risk fitting, allowlisted optimizer selection, seeded process parity, experiment identities/failures, and chronological OOS equity implemented 2026-09-12; forecast-scalar integration, durable persistence, and owner approval pending |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, training-only generic/covariance/tail-risk fitting, allowlisted optimizer selection, seeded process parity, durable experiment identities/failures, and chronological OOS equity implemented 2026-09-12; forecast-scalar integration and owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
@@ -423,7 +423,7 @@ costs; the caller currently owns the train/test split and leakage controls.
 - [ ] Fit transforms, forecast scalars, covariance estimates, and parameter
   selection only on permitted training data. Support a gap/purge policy when
   labels or holding periods overlap evaluation boundaries.
-- [ ] Persist split identities, seeds, selected parameters, failed trials,
+- [x] Persist split identities, seeds, selected parameters, failed trials,
   metrics, and model/input hashes with each experiment; produce a chronological
   out-of-sample equity series. Keep in-sample scores visibly separate.
 
@@ -1583,6 +1583,24 @@ release merely because another library offers them.
   integration, hosted evidence, and quant/research-owner approval keep P1.6
   open. This work remains local and will not be pushed unless explicitly
   requested.
+
+### 2026-09-12 — Thirtieth slice (durable walk-forward experiment format)
+
+- Added a dedicated version-one walk-forward artifact, separate from the
+  backtest result bundle. Atomic publication writes a canonical manifest for
+  every split interval, seed, selected parameter, successful/failed trial,
+  metric, and model/input SHA-256 identity plus a checksummed uncompressed Arrow
+  table for chronological out-of-sample equity.
+- Added reconstruction through ``WalkForwardExperimentResult.load`` with format,
+  checksum, exact Datetime(ns)/Float64 schema, row-count, fold-offset, interval,
+  finite-value, identity, and chronological-order validation. Fitted executable
+  model objects remain outside the artifact; only their reproducible identities
+  are retained.
+- Acceptance coverage round-trips every evidence category, rejects replacement
+  of an existing destination, and rejects modified equity or an unsupported
+  artifact version. Local evidence: pending. Forecast-scalar integration,
+  hosted evidence, and quant/research-owner approval keep P1.6 open. This work
+  remains local and will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

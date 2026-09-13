@@ -12,6 +12,7 @@ import os
 from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, TypeAlias, TypeVar, overload
 
@@ -96,6 +97,22 @@ class WalkForwardFold:
     validation: WalkForwardInterval
     heldout: WalkForwardInterval
     split_id: str
+
+    def __post_init__(self) -> None:
+        if type(self.index) is not int or self.index < 0:
+            raise ValueError("walk-forward fold index must be a non-negative integer")
+        if any(
+            not isinstance(interval, WalkForwardInterval)
+            for interval in (self.warmup, self.fit, self.validation, self.heldout)
+        ):
+            raise TypeError("walk-forward fold intervals must be WalkForwardInterval values")
+        if not (
+            self.warmup.stop == self.fit.start
+            and self.fit.stop <= self.validation.start
+            and self.validation.stop <= self.heldout.start
+        ):
+            raise ValueError("walk-forward fold intervals must be chronological and non-overlapping")
+        _walk_forward_sha256(self.split_id, name="split identity", fold=self.index)
 
 
 class WalkForwardSchedule:
@@ -458,17 +475,42 @@ class WalkForwardOptimizationFoldResult:
     _heldout_equity: pl.DataFrame = field(compare=False, repr=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "selected_parameters", MappingProxyType(dict(self.selected_parameters)))
-        object.__setattr__(self, "validation_metrics", MappingProxyType(dict(self.validation_metrics)))
-        object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
-        object.__setattr__(self, "failures", tuple(self.failures))
+        if not isinstance(self.fold, WalkForwardFold):
+            raise TypeError("walk-forward optimization result fold must be WalkForwardFold")
+        if type(self.seed) is not int or self.seed < 0 or self.seed > np.iinfo(np.uint64).max:
+            raise ValueError("walk-forward fold seed must be an integer in the uint64 range")
+        object.__setattr__(self, "selected_parameters", _walk_forward_parameters(
+            self.selected_parameters, fold=self.fold.index
+        ))
+        object.__setattr__(self, "validation_cost", _walk_forward_cost(
+            self.validation_cost, fold=self.fold.index
+        ))
+        object.__setattr__(self, "validation_metrics", _walk_forward_metrics(
+            self.validation_metrics, stage="validation", fold=self.fold.index
+        ))
+        object.__setattr__(self, "heldout_metrics", _walk_forward_metrics(
+            self.heldout_metrics, stage="held-out", fold=self.fold.index
+        ))
+        trials = tuple(self.trials)
+        failures = tuple(self.failures)
+        if any(not isinstance(trial, WalkForwardTrialResult) for trial in trials):
+            raise TypeError("walk-forward trials must be WalkForwardTrialResult values")
+        if any(not isinstance(failure, WalkForwardTrialFailure) for failure in failures):
+            raise TypeError("walk-forward failures must be WalkForwardTrialFailure values")
+        if not isinstance(self._heldout_equity, pl.DataFrame):
+            raise TypeError("walk-forward held-out equity must be a Polars DataFrame")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "failures", failures)
         object.__setattr__(self, "input_sha256", _walk_forward_sha256(
             self.input_sha256, name="input fingerprint", fold=self.fold.index
         ))
         object.__setattr__(self, "model_sha256", _walk_forward_sha256(
             self.model_sha256, name="model fingerprint", fold=self.fold.index
         ))
-        object.__setattr__(self, "_heldout_equity", self._heldout_equity.clone())
+        equity = self._heldout_equity.clone()
+        if equity.width != 2 or equity.columns[1] != "equity" or equity.height != self.fold.heldout.size:
+            raise ValueError("walk-forward held-out equity shape must match the held-out interval")
+        object.__setattr__(self, "_heldout_equity", equity)
 
     @property
     def heldout_equity(self) -> pl.DataFrame:
@@ -515,6 +557,19 @@ class WalkForwardExperimentResult(Sequence[WalkForwardOptimizationFoldResult]):
     @property
     def out_of_sample_equity(self) -> pl.DataFrame:
         return self._out_of_sample_equity.clone()
+
+    def save(self, destination: str | Path) -> Path:
+        """Atomically publish this experiment in its separate versioned format."""
+        from gambit.walk_forward_io import save_walk_forward_result
+
+        return save_walk_forward_result(self, destination)
+
+    @classmethod
+    def load(cls, source: str | Path) -> WalkForwardExperimentResult:
+        """Load and validate a persisted walk-forward experiment."""
+        from gambit.walk_forward_io import load_walk_forward_result
+
+        return load_walk_forward_result(source)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, WalkForwardExperimentResult):

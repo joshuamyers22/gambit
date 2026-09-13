@@ -62,15 +62,17 @@ data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
 detached in-memory optimization outcomes, including model/input SHA-256
 identities and chronological out-of-sample equity.
 `WalkForwardHeldoutEvaluation` binds held-out metrics to exact held-out equity
-timestamps. `WalkForwardTrainingSet` provides cloned
+timestamps. `WalkForwardResultError` reports invalid separate-format artifacts.
+`WalkForwardTrainingSet` provides cloned
 warm-up/fit frames and training-only generic, covariance, and tail-risk fit
 adapters. The runner owns a chronological frame and exposes only each callback's
 permitted interval; optimized fitting additionally uses an exact column
 allowlist and the existing `Optimizer` process scheduler. It does not inspect
 the semantics of allowed precomputed columns or callback closures, freeze
-arbitrary fitted objects against mutation, or durably persist experiments. These
-APIs remain experimental until the remaining P1.6 acceptance work and
-quant/research-owner approval are complete.
+arbitrary fitted objects against mutation, or serialize fitted model objects.
+The versioned experiment manifest persists their caller-supplied identities,
+not executable models. These APIs remain experimental until the remaining P1.6
+acceptance work and quant/research-owner approval are complete.
 
 ## Internal scheduling and debugging storage
 

@@ -20,6 +20,8 @@ have not yet been released are collected below.
   caller-supplied selected-model SHA-256 identities, successful and failed
   trials, and a detached chronological equity observation for every held-out
   timestamp; sequential and process-pool failures share the same record shape.
+  The complete evidence record can be atomically saved and loaded through a
+  separate versioned manifest plus checksummed Arrow equity table.
 - Experimental immutable point-in-time market data with separate observation,
   availability, row-revision, and dataset-revision identity; causal scalar and
   window reads; explicit missing/stale policies; bounded last-known-value age;

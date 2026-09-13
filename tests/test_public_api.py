@@ -35,6 +35,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
         "WalkForwardHeldoutEvaluation",
         "WalkForwardInterval",
         "WalkForwardOptimizationFoldResult",
+        "WalkForwardResultError",
         "WalkForwardRunner",
         "WalkForwardSchedule",
         "WalkForwardTrainingSet",

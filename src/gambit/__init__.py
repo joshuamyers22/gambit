@@ -216,6 +216,7 @@ from gambit.var_risk import (
     TailRiskMethod,
     TailRiskModel,
 )
+from gambit.walk_forward_io import WalkForwardResultError
 
 __all__ = [
     "__version__",
@@ -383,6 +384,7 @@ __all__ = [
     "WalkForwardHeldoutEvaluation",
     "WalkForwardInterval",
     "WalkForwardOptimizationFoldResult",
+    "WalkForwardResultError",
     "WalkForwardRunner",
     "WalkForwardSchedule",
     "WalkForwardTrainingSet",

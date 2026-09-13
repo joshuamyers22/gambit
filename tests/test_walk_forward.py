@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -22,6 +23,7 @@ from gambit.optimize import (
     WalkForwardWindow,
 )
 from gambit.var_risk import TailRiskModel
+from gambit.walk_forward_io import WalkForwardResultError
 
 pytestmark = pytest.mark.acceptance
 
@@ -147,6 +149,22 @@ def _optimize(
         _model_fingerprint,
         fit_columns=["timestamp", "target"],
         seed=314159,
+        max_processes=max_processes,
+        process_start_method="spawn",
+        max_pending_tasks=2,
+    )
+
+
+def _optimize_with_failure(*, max_processes: int = 1) -> WalkForwardExperimentResult:
+    runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
+    return runner.optimize(
+        _optimization_parameters_with_failure,
+        _fit_optimization_candidate,
+        _validate_optimization_candidate,
+        _evaluate_optimization_candidate,
+        _model_fingerprint,
+        fit_columns=["timestamp", "target"],
+        seed=2718,
         max_processes=max_processes,
         process_start_method="spawn",
         max_pending_tasks=2,
@@ -400,23 +418,8 @@ def test_input_identity_changes_without_leaking_heldout_changes_into_selection()
 
 
 def test_failed_trials_are_retained_with_seeded_process_parity() -> None:
-    def optimize(max_processes: int) -> WalkForwardExperimentResult:
-        runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
-        return runner.optimize(
-            _optimization_parameters_with_failure,
-            _fit_optimization_candidate,
-            _validate_optimization_candidate,
-            _evaluate_optimization_candidate,
-            _model_fingerprint,
-            fit_columns=["timestamp", "target"],
-            seed=2718,
-            max_processes=max_processes,
-            process_start_method="spawn",
-            max_pending_tasks=2,
-        )
-
-    sequential = optimize(1)
-    parallel = optimize(2)
+    sequential = _optimize_with_failure(max_processes=1)
+    parallel = _optimize_with_failure(max_processes=2)
 
     assert sequential == parallel
     assert len(sequential[0].trials) == 3
@@ -424,6 +427,47 @@ def test_failed_trials_are_retained_with_seeded_process_parity() -> None:
     assert sequential[0].failures[0].parameters["label"] == "failure"
     assert sequential[0].failures[0].error_type == "ArithmeticError"
     assert sequential[0].failures[0].message == "deliberate candidate failure"
+
+
+def test_experiment_artifact_round_trip_retains_all_evidence(tmp_path: Path) -> None:
+    result = _optimize_with_failure()
+    destination = tmp_path / "walk-forward-result"
+
+    assert result.save(destination) == destination
+    restored = WalkForwardExperimentResult.load(destination)
+
+    assert restored == result
+    assert restored[0].trials == result[0].trials
+    assert restored[0].failures == result[0].failures
+    manifest = json.loads((destination / "manifest.json").read_text())
+    assert manifest["format"] == "gambit.walk-forward-experiment"
+    assert manifest["version"] == 1
+    assert manifest["folds"][0]["split_id"] == result[0].fold.split_id
+    assert manifest["folds"][0]["model_sha256"] == result[0].model_sha256
+    assert manifest["folds"][0]["failures"][0]["error_type"] == "ArithmeticError"
+
+    with pytest.raises(FileExistsError):
+        result.save(destination)
+
+
+def test_experiment_artifact_rejects_checksum_and_version_changes(tmp_path: Path) -> None:
+    destination = tmp_path / "walk-forward-result"
+    _optimize(_optimization_frame(11), max_processes=1).save(destination)
+    equity_path = destination / "equity.arrow"
+    equity_path.write_bytes(equity_path.read_bytes() + b"changed")
+
+    with pytest.raises(WalkForwardResultError, match="checksum mismatch"):
+        WalkForwardExperimentResult.load(destination)
+
+    replacement = tmp_path / "unsupported-result"
+    _optimize(_optimization_frame(11), max_processes=1).save(replacement)
+    manifest_path = replacement / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["version"] = 999
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(WalkForwardResultError, match="unsupported"):
+        WalkForwardExperimentResult.load(replacement)
 
 
 def test_optimized_runner_rejects_unaligned_equity_and_invalid_model_identity() -> None:

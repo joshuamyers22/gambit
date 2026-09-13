@@ -218,6 +218,22 @@ selected-model digest, and retains failed candidate parameters and exception
 summaries separately from successful validation trials. Returned equity frames
 are detached clones.
 
+Persist the complete evidence record independently of a backtest-result bundle:
+
+.. code-block:: python
+
+   optimized.save("research/walk-forward-2026-09-12")
+   restored = gambit.WalkForwardExperimentResult.load(
+       "research/walk-forward-2026-09-12"
+   )
+
+The destination must not already exist. Publication is atomic and the
+versioned manifest records every fold, interval, seed, selected parameter,
+successful and failed trial, metric, and model/input identity. The detached
+out-of-sample equity table is stored separately as checksummed Arrow data.
+Model objects are deliberately not serialized; the manifest preserves the
+identity supplied by ``fingerprint_selected_model``.
+
 Sizes are row counts and all intervals are half-open. Timestamps must be
 timezone-naive, non-null, strictly increasing, and unique. ``fit_model``
 receives the warm-up and fit frames separately; neither validation nor held-out
@@ -234,5 +250,4 @@ mappings. ``fit_columns`` prevents undeclared columns from entering optimized
 fits, but it cannot detect whether an allowed column was itself computed using
 future information. Callback closures, external data, and arbitrary fitted-
 object mutation remain caller responsibilities. P1.6 still requires forecast-
-scalar integration once that P2.3 capability exists and durable experiment
-persistence.
+scalar integration once that P2.3 capability exists.
