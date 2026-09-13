@@ -21,6 +21,9 @@ have not yet been released are collected below.
   only. A reusable long-only policy rejects independently reachable shorts.
   Long-only and maximum-position policies override buffering for proposals that
   reduce an existing breach, without bypassing ordinary admission.
+  A typed executable-target rule adapter obtains point-in-time inputs, reserves
+  Strategy's live pending orders, retains its latest diagnostic result, and
+  returns accepted orders through Strategy validation and final re-admission.
 - Experimental cost and turnover diagnostics for explicitly attributed
   incremental P&L and trade rows. Daily, weekly, or monthly output preserves
   instrument/rule identity, capital assumptions, gross/net P&L and returns,

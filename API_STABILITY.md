@@ -123,8 +123,9 @@ still required.
 ## Experimental executable-target APIs
 
 ``ExecutableTargetBuilder``, ``ExecutableTargetResult``,
-``TradableUnitRule``, and ``TargetRounding`` form the first P1.7 conversion
-boundary. They translate base-currency exposure targets through point-in-time
+``ExecutableTargetInputs``, ``ExecutableTargetRule``, ``TradableUnitRule``, and
+``TargetRounding`` form the P1.7 conversion and Strategy-adapter boundary. They
+translate base-currency exposure targets through point-in-time
 positive local prices, contract multipliers, and explicit FX into deterministic
 whole-lot targets. Each unit rule may declare an inclusive symmetric
 base-currency no-trade band around its rounded target. Diagnostics retain the
@@ -143,6 +144,13 @@ required reduction; that proposal bypasses the band but still must pass ordinary
 admission. Custom policies can opt into the same behavior with a non-mutating
 ``requires_reduction(order, context) -> bool`` method. The builder does not
 submit orders.
+
+An ``ExecutableTargetRule`` input provider receives the current timestamp,
+account, and strategy context and returns explicitly timestamped inputs. The
+adapter automatically supplies Strategy's open orders to the builder and retains
+the latest detached result. Returned orders still pass Strategy validation and
+final policy admission. Applications must register equivalent policies on the
+adapter and Strategy; the adapter cannot mutate Strategy configuration.
 
 ## Internal scheduling and debugging storage
 

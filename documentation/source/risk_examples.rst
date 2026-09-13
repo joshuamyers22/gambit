@@ -78,6 +78,23 @@ The proposed 250-share order is below the 500-share order limit and below the
 limit. The resulting ``OrderDecision`` retains the rejecting policy, stable
 machine-readable code, human-readable message, timestamp, and proposed size.
 
+Executable targets in Strategy
+------------------------------
+
+``ExecutableTargetRule`` adapts point-in-time target inputs to the ordinary
+Strategy callback contract. It reserves all still-open orders while constructing
+the target and returns only admitted orders. Strategy then validates and admits
+those fresh orders again against live state. Register the same policy set on the
+rule and Strategy so construction evidence and final admission do not drift.
+
+.. literalinclude:: ../../examples/risk/executable_target_strategy.py
+   :language: python
+   :linenos:
+
+The two-bar execution lag deliberately leaves the first three-unit order open at
+the next target evaluation. The adapter sees that remaining quantity and emits
+no duplicate; the original order fills at the third timestamp.
+
 Covariance risk overlay
 -----------------------
 

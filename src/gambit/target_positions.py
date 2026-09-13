@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from enum import Enum
 from numbers import Integral, Real
 from types import MappingProxyType
+from typing import Any, cast
 
 import numpy as np
 import polars as pl
@@ -17,7 +18,7 @@ from gambit.boundaries import timestamp_index
 from gambit.calculation import CalculationContext
 from gambit.currency import FxRateSnapshot
 from gambit.execution_snapshots import snapshot_order
-from gambit.pq_types import Contract, MarketOrder, Order, _validate_order_references, _whole_quantity
+from gambit.pq_types import Contract, ContractGroup, MarketOrder, Order, _validate_order_references, _whole_quantity
 from gambit.risk import (
     DecisionStatus,
     OrderDecision,
@@ -154,6 +155,16 @@ class ExecutableTargetResult:
     def decisions(self) -> tuple[OrderDecision, ...]:
         """Detached admission decisions for every nonzero buffered proposal."""
         return tuple(self._snapshot_decision(item) for item in self._decisions)
+
+
+@dataclass(frozen=True)
+class ExecutableTargetInputs:
+    """Point-in-time target, price, FX, and calculation inputs for a rule call."""
+
+    exposures: pl.DataFrame
+    prices: pl.DataFrame
+    fx: FxRateSnapshot
+    calculation: CalculationContext
 
 
 @dataclass(frozen=True)
@@ -506,9 +517,82 @@ class ExecutableTargetBuilder:
         return _whole_quantity(quantity, field_name="current target position")
 
 
+TargetInputProvider = Callable[[np.datetime64, Account, Any], ExecutableTargetInputs]
+
+
+@dataclass
+class ExecutableTargetRule:
+    """Adapt point-in-time executable targets to Strategy's rule contract."""
+
+    builder: ExecutableTargetBuilder
+    contracts: Sequence[Contract]
+    inputs: TargetInputProvider
+    risk_measures: Sequence[RiskMeasure] = ()
+    risk_policies: Sequence[RiskPolicy] = ()
+    _latest_result: ExecutableTargetResult | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.builder, ExecutableTargetBuilder):
+            raise TypeError("executable target rule builder must be an ExecutableTargetBuilder")
+        if not isinstance(self.contracts, Sequence) or isinstance(self.contracts, (str, bytes)):
+            raise TypeError("executable target rule contracts must be a sequence")
+        self.contracts = tuple(self.contracts)
+        if not self.contracts or any(not isinstance(contract, Contract) for contract in self.contracts):
+            raise TypeError("executable target rule contracts must contain Contract objects")
+        if not callable(self.inputs):
+            raise TypeError("executable target rule inputs must be callable")
+        if not isinstance(self.risk_measures, Sequence) or isinstance(self.risk_measures, (str, bytes)):
+            raise TypeError("executable target rule risk_measures must be a sequence")
+        self.risk_measures = tuple(self.risk_measures)
+        self.risk_policies = self.builder._policies(self.risk_policies)
+
+    @property
+    def latest_result(self) -> ExecutableTargetResult:
+        """Return the latest detached target construction and admission evidence."""
+        if self._latest_result is None:
+            raise RuntimeError("executable target rule has not been evaluated")
+        return self._latest_result
+
+    def __call__(
+        self,
+        contract_group: ContractGroup,
+        index: int,
+        timestamps: np.ndarray,
+        _indicators: Any,
+        _signal: np.ndarray,
+        account: Account,
+        pending_orders: Sequence[Order],
+        strategy_context: Any,
+    ) -> list[Order]:
+        timestamp = cast(np.datetime64, timestamps[index])
+        if any(contract.contract_group is not contract_group for contract in self.contracts):
+            raise ValueError("executable target rule contracts must belong to the callback contract group")
+        inputs = self.inputs(timestamp, account, strategy_context)
+        if not isinstance(inputs, ExecutableTargetInputs):
+            raise TypeError("executable target rule input provider must return ExecutableTargetInputs")
+        if inputs.calculation.valuation_time != timestamp:
+            raise ValueError("executable target rule calculation time must match the callback timestamp")
+        result = self.builder.build(
+            inputs.exposures,
+            self.contracts,
+            inputs.prices,
+            inputs.fx,
+            inputs.calculation,
+            account,
+            pending_orders=pending_orders,
+            risk_measures=self.risk_measures,
+            risk_policies=self.risk_policies,
+        )
+        self._latest_result = result
+        return list(result.orders)
+
+
 __all__ = [
     "ExecutableTargetBuilder",
+    "ExecutableTargetInputs",
     "ExecutableTargetResult",
+    "ExecutableTargetRule",
+    "TargetInputProvider",
     "TargetRounding",
     "TradableUnitRule",
 ]

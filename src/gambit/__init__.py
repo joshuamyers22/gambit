@@ -230,7 +230,10 @@ from gambit.strategy_components import (
 )
 from gambit.target_positions import (
     ExecutableTargetBuilder,
+    ExecutableTargetInputs,
     ExecutableTargetResult,
+    ExecutableTargetRule,
+    TargetInputProvider,
     TargetRounding,
     TradableUnitRule,
 )
@@ -289,7 +292,9 @@ __all__ = [
     "ExecutionStage",
     "ExecutionPriceDiagnostic",
     "ExecutableTargetBuilder",
+    "ExecutableTargetInputs",
     "ExecutableTargetResult",
+    "ExecutableTargetRule",
     "Experiment",
     "ExposureLimit",
     "ExposureLimitResult",
@@ -404,6 +409,7 @@ __all__ = [
     "TailRiskMethod",
     "TailRiskModel",
     "TargetRounding",
+    "TargetInputProvider",
     "TickFactorProcessor",
     "TickBatchLease",
     "TickRing",

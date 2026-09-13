@@ -22,6 +22,7 @@ RISK_EXAMPLES = (
     "cost_turnover_diagnostics.py",
     "cost_sensitivity.py",
     "executable_targets.py",
+    "executable_target_strategy.py",
 )
 
 

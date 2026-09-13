@@ -14,7 +14,15 @@ from gambit.instruments import InstrumentSpec
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
 from gambit.risk import DecisionStatus, LongOnly, MaxPositionQuantity
 from gambit.risk_measures import NetExposureMeasure
-from gambit.target_positions import ExecutableTargetBuilder, TargetRounding, TradableUnitRule
+from gambit.strategy import Strategy
+from gambit.strategy_components import SimpleMarketSimulator
+from gambit.target_positions import (
+    ExecutableTargetBuilder,
+    ExecutableTargetInputs,
+    ExecutableTargetRule,
+    TargetRounding,
+    TradableUnitRule,
+)
 
 pytestmark = pytest.mark.acceptance
 
@@ -522,3 +530,58 @@ def test_target_results_own_positions_and_order_snapshots() -> None:
 
     assert result.positions[0, "target_quantity"] == 11
     assert result.orders[0].qty == 8
+
+
+def test_executable_target_rule_uses_strategy_pending_and_readmission_path() -> None:
+    timestamps = np.array(
+        [TIMESTAMP, TIMESTAMP + np.timedelta64(1, "m"), TIMESTAMP + np.timedelta64(2, "m")]
+    )
+    group = ContractGroup.get("target-rule-group")
+    contract = Contract.create("TARGET-RULE", group)
+
+    def price(_contract, _timestamps, _index, _context):
+        return 100.0
+
+    def inputs(timestamp, _account, _strategy_context):
+        return ExecutableTargetInputs(
+            pl.DataFrame(
+                {"symbol": [contract.symbol], "currency": ["USD"], "net_exposure": [300.0]}
+            ),
+            pl.DataFrame(
+                {
+                    "symbol": [contract.symbol],
+                    "currency": ["USD"],
+                    "price": [100.0],
+                    "as_of": np.array([timestamp], dtype="datetime64[ns]"),
+                }
+            ),
+            FxRateSnapshot("USD", timestamp, {}),
+            CalculationContext(timestamp, base_currency="USD"),
+        )
+
+    policy = MaxPositionQuantity(3)
+    rule = ExecutableTargetRule(
+        ExecutableTargetBuilder({contract.symbol: TradableUnitRule()}),
+        [contract],
+        inputs,
+        risk_measures=[NetExposureMeasure()],
+        risk_policies=[policy],
+    )
+    with pytest.raises(RuntimeError, match="has not been evaluated"):
+        rule.latest_result
+    strategy = Strategy(timestamps, [group], price, trade_lag=2)
+    strategy.add_signal("target", lambda *_args: np.ones(3, dtype=bool))
+    strategy.add_rule("target", rule, signal_name="target")
+    strategy.add_risk_policy(policy)
+    strategy.add_market_sim(SimpleMarketSimulator(price))
+
+    strategy.run()
+
+    assert len(strategy.orders()) == 1
+    assert [decision.status for decision in strategy.order_decisions] == [DecisionStatus.ACCEPTED]
+    assert strategy.order_decisions[0].snapshot.qty == 3
+    assert [(trade.timestamp, trade.qty) for trade in strategy.trades()] == [(timestamps[2], 3)]
+    assert rule.latest_result.orders == ()
+    assert rule.latest_result.positions.select("current_quantity", "pending_quantity").row(0) == (0, 3)
+    assert rule.latest_result.risk is not None
+    assert rule.latest_result.risk.aggregate()[0, "value"] == 300.0
