@@ -1598,9 +1598,15 @@ release merely because another library offers them.
   are retained.
 - Acceptance coverage round-trips every evidence category, rejects replacement
   of an existing destination, and rejects modified equity or an unsupported
-  artifact version. Local evidence: pending. Forecast-scalar integration,
-  hosted evidence, and quant/research-owner approval keep P1.6 open. This work
-  remains local and will not be pushed unless explicitly requested.
+  artifact version. Focused local evidence passed **27 walk-forward tests**.
+  Full local evidence on macOS / CPython 3.10.20 passed **2,023 tests** at
+  **86% aggregate coverage**, all six module coverage floors including
+  **83.42%** for the optimizer, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. Forecast-scalar integration, hosted evidence, and
+  quant/research-owner approval keep P1.6 open. This work remains local and
+  will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
