@@ -159,6 +159,7 @@ files = [
   "src/gambit/strategy_components.py",
   "src/gambit/strategy_inputs.py",
   "src/gambit/strategy_contracts.py",
+  "src/gambit/target_positions.py",
   "src/gambit/trade_reconciliation.py",
   "src/gambit/tick_backtest.py",
   "src/gambit/universe.py",

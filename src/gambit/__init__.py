@@ -227,6 +227,12 @@ from gambit.strategy_components import (
     get_contract_price_from_array_dict,
     get_contract_price_from_dict,
 )
+from gambit.target_positions import (
+    ExecutableTargetBuilder,
+    ExecutableTargetResult,
+    TargetRounding,
+    TradableUnitRule,
+)
 from gambit.universe import ContractGroupSpec, ContractSpec, ContractUniverse, create_contract_groups
 from gambit.var_risk import (
     FittedTailRiskModel,
@@ -281,6 +287,8 @@ __all__ = [
     "Evaluator",
     "ExecutionStage",
     "ExecutionPriceDiagnostic",
+    "ExecutableTargetBuilder",
+    "ExecutableTargetResult",
     "Experiment",
     "ExposureLimit",
     "ExposureLimitResult",
@@ -393,11 +401,13 @@ __all__ = [
     "TailRiskEstimate",
     "TailRiskMethod",
     "TailRiskModel",
+    "TargetRounding",
     "TickFactorProcessor",
     "TickBatchLease",
     "TickRing",
     "TimeInForce",
     "Tradability",
+    "TradableUnitRule",
     "Trade",
     "TradingMode",
     "TradingOverride",

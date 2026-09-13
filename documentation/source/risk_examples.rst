@@ -180,6 +180,31 @@ Both adapters supply only fit rows and fix ``as_of`` to the last fit timestamp.
 Rule columns supplied to the combination estimator should contain the historical
 scaled/capped forecasts whose joint behavior is being estimated.
 
+Executable exposure targets
+---------------------------
+
+Convert base-currency exposure targets from the volatility or VaR sizing stage
+into whole-contract incremental order proposals:
+
+.. literalinclude:: ../../examples/risk/executable_targets.py
+   :language: python
+   :linenos:
+
+``ExecutableTargetBuilder`` requires one explicit ``TradableUnitRule`` per
+target symbol. Currency-labelled local point-in-time prices, contract multipliers, and an
+``FxRateSnapshot`` determine each base-currency unit notional. ``NEAREST`` uses
+half-away-from-zero rounding in lot units; ``TOWARD_ZERO`` is the conservative
+alternative. Zero and negative prices are unsupported and fail explicitly.
+
+The result retains raw and rounded targets, achieved exposure and tracking
+error, current holdings, still-open order quantity, projected holdings, and the
+new incremental quantity. Cancellation-requested orders remain reserved until
+their cancellation is acknowledged, so repeating an unchanged target does not
+create duplicate exposure. Returned orders are proposals only: this first P1.7
+boundary does not submit them or bypass existing risk admission. No-trade bands,
+post-rounding portfolio-risk rechecks, and constraint-aware submission remain
+pending.
+
 Cost and turnover diagnostics
 -----------------------------
 

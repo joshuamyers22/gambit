@@ -120,6 +120,18 @@ differences only. The runner does not implement the P1.7 target buffer or prove
 that a callback applied its declared assumptions; representative evidence is
 still required.
 
+## Experimental executable-target APIs
+
+``ExecutableTargetBuilder``, ``ExecutableTargetResult``,
+``TradableUnitRule``, and ``TargetRounding`` form the first P1.7 conversion
+boundary. They translate base-currency exposure targets through point-in-time
+positive local prices, contract multipliers, and explicit FX into deterministic
+whole-lot targets. Diagnostics retain achieved exposure and tracking error;
+incremental proposals account for current holdings and all still-open orders.
+The builder returns detached market-order proposals but does not submit them,
+apply a no-trade band, re-evaluate portfolio risk after rounding, or replace
+existing risk admission.
+
 ## Internal scheduling and debugging storage
 
 Simulator-result order membership and engine-applied fill aggregation use

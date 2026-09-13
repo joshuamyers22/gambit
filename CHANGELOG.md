@@ -7,6 +7,11 @@ have not yet been released are collected below.
 
 ### Added
 
+- Experimental executable exposure targets convert base-currency sizing output
+  through point-in-time positive local prices, contract multipliers, FX, and
+  explicit whole-lot rounding. Detached diagnostics retain raw/rounded targets,
+  achieved exposure, tracking error, current and pending quantities, while
+  incremental market-order proposals reserve cancellation-requested exposure.
 - Experimental cost and turnover diagnostics for explicitly attributed
   incremental P&L and trade rows. Daily, weekly, or monthly output preserves
   instrument/rule identity, capital assumptions, gross/net P&L and returns,
