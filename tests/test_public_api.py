@@ -25,6 +25,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
         "FittedForecastScalars",
         "ForecastCombinationEstimator",
         "ForecastCombinationResult",
+        "ForecastCombinationResultError",
         "ForecastScalarEstimator",
         "ForecastScaleCap",
         "MarketOrder",

@@ -19,6 +19,10 @@ have not yet been released are collected below.
   correlation, and a bounded diversification multiplier from complete rows.
   Perfectly duplicated rules receive no diversification credit; zero-variance
   history fails, and missing-rule renormalization requires an explicit policy.
+  Combined results can be atomically persisted as a versioned canonical manifest
+  plus separately checksummed Arrow forecast and contribution tables; loading
+  validates table schemas and reconciles every aggregate to its contribution
+  ledger.
 - An experimental owned walk-forward runner with deterministic rolling or
   expanding split identities, separate warm-up/fit/validation/held-out frames,
   two purge boundaries, a non-overlapping refit schedule, detached finite

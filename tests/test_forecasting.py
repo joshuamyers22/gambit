@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import polars as pl
 import pytest
 
 from gambit.covariance_risk import CovarianceEstimate
+from gambit.forecast_io import ForecastCombinationResultError
 from gambit.forecasting import (
     FixedForecastCombiner,
     ForecastCombinationEstimator,
@@ -349,3 +352,53 @@ def test_combination_estimator_uses_complete_rows_and_rejects_zero_variance() ->
         ForecastCombinationEstimator(min_observations=2).fit(
             frame, timestamp_column="timestamp", rule_columns=["first", "second"]
         )
+
+
+def test_combination_artifact_round_trip_retains_all_evidence(tmp_path: Path) -> None:
+    result = FixedForecastCombiner({"carry": 0.75, "momentum": 0.25}).combine(_scaled())
+    destination = tmp_path / "forecast-combination"
+
+    assert result.save(destination) == destination
+    restored = type(result).load(destination)
+
+    assert restored.forecasts.equals(result.forecasts)
+    assert restored.contributions.equals(result.contributions)
+    manifest = json.loads((destination / "manifest.json").read_text())
+    assert manifest["format"] == "gambit.forecast-combination"
+    assert manifest["version"] == 1
+    assert manifest["tables"]["forecasts"]["rows"] == result.forecasts.height
+    assert manifest["tables"]["contributions"]["rows"] == result.contributions.height
+    duplicate = tmp_path / "forecast-combination-copy"
+    result.save(duplicate)
+    assert (duplicate / "manifest.json").read_bytes() == (destination / "manifest.json").read_bytes()
+    assert (duplicate / "forecasts.arrow").read_bytes() == (destination / "forecasts.arrow").read_bytes()
+    assert (duplicate / "contributions.arrow").read_bytes() == (destination / "contributions.arrow").read_bytes()
+    with pytest.raises(FileExistsError):
+        result.save(destination)
+
+
+def test_combination_artifact_rejects_checksum_version_and_unreconciled_values(tmp_path: Path) -> None:
+    result = FixedForecastCombiner.equal(["carry", "momentum"]).combine(_scaled())
+    destination = tmp_path / "forecast-combination"
+    result.save(destination)
+    contribution_path = destination / "contributions.arrow"
+    contribution_path.write_bytes(contribution_path.read_bytes() + b"changed")
+
+    with pytest.raises(ForecastCombinationResultError, match="checksum mismatch"):
+        type(result).load(destination)
+
+    replacement = tmp_path / "unsupported-forecast-combination"
+    result.save(replacement)
+    manifest_path = replacement / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["version"] = 999
+    manifest_path.write_text(json.dumps(manifest))
+    with pytest.raises(ForecastCombinationResultError, match="unsupported"):
+        type(result).load(replacement)
+
+    invalid = type(result)(
+        result.forecasts.with_columns((pl.col("raw_forecast") + 1.0).alias("raw_forecast")),
+        result.contributions,
+    )
+    with pytest.raises(ForecastCombinationResultError, match="do not reconcile"):
+        invalid.save(tmp_path / "invalid-forecast-combination")

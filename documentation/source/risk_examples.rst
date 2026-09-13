@@ -153,6 +153,13 @@ the missing rule zero effective weight. ``RENORMALIZE`` is the explicit opt-in
 policy that rescales available positive weights to one; contribution rows retain
 both base and effective weights plus the fitted diversification multiplier.
 
+Persist a completed result with ``result.save(path)`` and restore it with
+``ForecastCombinationResult.load(path)``. This publishes a canonical versioned
+manifest plus separate uncompressed Arrow tables for the combined forecasts and
+complete contribution ledger. Both tables are checksummed. Loading validates
+their exact schemas, row counts, ordering, finite values, contribution formulas,
+and aggregate reconciliation. Existing destinations are never overwritten.
+
 Inside optimization, fit this estimator only through the owned training set:
 
 .. code-block:: python

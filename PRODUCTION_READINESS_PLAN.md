@@ -370,7 +370,7 @@ due triggers are not calendar commitments.
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
-| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | In progress; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, and sizer handoff implemented locally 2026-09-12; durable contribution evidence and owner approval pending |
+| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
 | P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | Not started |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
@@ -492,7 +492,7 @@ from [weighted combination and diversification scaling](https://github.com/pst-g
 Gambit gap: signals and sizing are extensible, but the inspected code has no
 reusable stage for normalizing multiple rule forecasts and combining them.
 
-- [ ] Add Polars stages for scaling, capping, and combining forecasts with
+- [x] Add Polars stages for scaling, capping, and combining forecasts with
   fixed/equal weights first; persist each rule's contribution and availability.
 - [x] Add historical estimates of weights/correlation and bounded diversification
   scaling only through P1.6. Define missing-rule renormalization, warm-up,
@@ -1627,6 +1627,26 @@ release merely because another library offers them.
   durable contribution evidence, diversification scaling, and
   quant/research-owner approval keep P2.3 open. This work remains local and will
   not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-fourth slice (durable forecast contribution evidence)
+
+- Added a separate version-one ``gambit.forecast-combination`` artifact. Atomic
+  publication writes a canonical manifest plus uncompressed Arrow tables for
+  combined forecasts and the complete rule-contribution ledger, fsyncs files and
+  directories, refuses to overwrite an existing destination, and records each
+  table's SHA-256 digest and row count.
+- Loading admits only the declared filenames, exact schemas, bounded files,
+  checksums, row counts, sorted unique identities, coherent availability/null
+  state, finite numeric values, valid weights/scales, and contributions matching
+  ``capped_forecast * effective_weight * diversification_multiplier``. Combined
+  forecasts and available-rule counts must reconcile exactly to their ledger.
+- Added ``ForecastCombinationResult.save/load`` and the public
+  ``ForecastCombinationResultError``. Round-trip coverage preserves both
+  detached tables and rejects overwrite, corruption, unsupported versions, and
+  unreconciled output. API stability, feature posture, risk guidance, and the
+  changelog describe this durable evidence boundary. Focused/full local evidence
+  is pending; quant/research-owner approval is the remaining P2.3 gate. This work
+  remains local and will not be pushed unless explicitly requested.
 
 ### 2026-09-12 — Thirty-second slice (training-only forecast scalars)
 

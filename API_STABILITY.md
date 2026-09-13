@@ -79,7 +79,8 @@ acceptance work and quant/research-owner approval are complete.
 `ForecastScaleCap`, `ForecastScalarEstimator`, `FittedForecastScalars`,
 `ForecastCombinationEstimator`, `FittedForecastCombination`,
 `FixedForecastCombiner`, `ForecastCombinationResult`, and
-`MissingForecastPolicy` are the P2.3 rule-forecast boundary. They accept
+`ForecastCombinationResultError`, and `MissingForecastPolicy` are the P2.3
+rule-forecast boundary. They accept
 long-form Polars rows keyed by timestamp, symbol, and rule; retain detached
 raw/scaled/capped/contribution evidence; and emit combined `raw_forecast` rows
 compatible with the existing risk sizers. Scalars may be fixed inputs or fitted
@@ -89,8 +90,11 @@ diversification multiplier can likewise be fitted from complete historical rule
 rows. ``WalkForwardTrainingSet.fit_forecast_scalars`` and
 ``fit_forecast_combination`` confine both fits to the permitted training
 interval. Missing rules use an explicit fail, zero, or renormalize policy.
-Durable contribution persistence and quant/research-owner approval remain
-outside this experimental boundary.
+``ForecastCombinationResult.save`` atomically persists combined forecasts and
+their full contribution ledger in a separate versioned manifest plus two
+checksummed Arrow tables; ``load`` verifies schemas and reconciliation before
+returning detached evidence. Quant/research-owner approval remains outside this
+experimental boundary.
 
 ## Internal scheduling and debugging storage
 

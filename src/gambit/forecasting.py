@@ -6,6 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from types import MappingProxyType
 
 import numpy as np
@@ -246,6 +247,19 @@ class ForecastCombinationResult:
     @property
     def contributions(self) -> pl.DataFrame:
         return self._contributions.clone()
+
+    def save(self, destination: str | Path) -> Path:
+        """Atomically publish this result in its separate versioned format."""
+        from gambit.forecast_io import save_forecast_combination_result
+
+        return save_forecast_combination_result(self, destination)
+
+    @classmethod
+    def load(cls, source: str | Path) -> ForecastCombinationResult:
+        """Load and validate a persisted forecast-combination result."""
+        from gambit.forecast_io import load_forecast_combination_result
+
+        return load_forecast_combination_result(source)
 
 
 @dataclass(frozen=True)

@@ -78,6 +78,7 @@ from gambit.factor_operations import (
     calibrate_factor_cache,
     inspect_factor_cache,
 )
+from gambit.forecast_io import ForecastCombinationResultError
 from gambit.forecasting import (
     FittedForecastCombination,
     FittedForecastScalars,
@@ -272,6 +273,7 @@ __all__ = [
     "ForecastCombinationEstimator",
     "FittedTailRiskModel",
     "ForecastCombinationResult",
+    "ForecastCombinationResultError",
     "ForecastScalarEstimator",
     "ForecastScaleCap",
     "FxRateSnapshot",
