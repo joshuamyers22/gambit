@@ -203,6 +203,13 @@ class MaxPositionQuantity:
             )
         return PolicyResult(True)
 
+    def requires_reduction(self, order: Order, context: RiskContext) -> bool:
+        after = context.projected_position(order)
+        before = after - order.qty
+        return (before > self.maximum and after < before) or (
+            before < -self.maximum and after > before
+        )
+
 
 @dataclass(frozen=True)
 class LongOnly:
@@ -221,6 +228,11 @@ class LongOnly:
                 f"reachable position {lower:g} is below the long-only floor",
             )
         return PolicyResult(True)
+
+    def requires_reduction(self, order: Order, context: RiskContext) -> bool:
+        after = context.projected_position(order)
+        before = after - order.qty
+        return before < 0 and after > before
 
 
 @dataclass(frozen=True)
@@ -276,6 +288,34 @@ class InstrumentTradabilityPolicy:
             f"instrument_{spec.tradability.value}",
             f"{order.contract.symbol} is marked {spec.tradability.value}",
         )
+
+
+def requires_risk_reduction(
+    order: Order,
+    context: RiskContext,
+    policies: Sequence[RiskPolicy],
+) -> bool:
+    """Return whether a policy identifies this proposal as breach-reducing."""
+    for policy in policies:
+        requirement = getattr(policy, "requires_reduction", None)
+        if requirement is None:
+            continue
+        if not callable(requirement):
+            raise TypeError(f"risk policy {policy.name!r} requires_reduction must be callable")
+        states = [OrderCallbackState.capture(item) for item in (order, *context.open_orders)]
+        try:
+            required = requirement(order, context)
+            for state in states:
+                state.validate_unchanged()
+        except BaseException:
+            for state in states:
+                state.restore()
+            raise
+        if not isinstance(required, bool):
+            raise TypeError(f"risk policy {policy.name!r} requires_reduction must return a bool")
+        if required:
+            return True
+    return False
 
 
 def decide_order(order: Order, context: RiskContext, policies: Sequence[RiskPolicy]) -> OrderDecision:

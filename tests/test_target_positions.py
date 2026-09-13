@@ -12,7 +12,7 @@ from gambit.covariance_risk import CovarianceEstimate, PortfolioVolatilityMeasur
 from gambit.currency import FxRateSnapshot
 from gambit.instruments import InstrumentSpec
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
-from gambit.risk import DecisionStatus, MaxPositionQuantity
+from gambit.risk import DecisionStatus, LongOnly, MaxPositionQuantity
 from gambit.risk_measures import NetExposureMeasure
 from gambit.target_positions import ExecutableTargetBuilder, TargetRounding, TradableUnitRule
 
@@ -213,6 +213,45 @@ def test_no_trade_band_uses_pending_projection_but_allows_material_reduction() -
     ).row(0) == (1, 4, 1, True, 0)
     assert [(order.contract.symbol, order.qty) for order in reduction.orders] == [
         (contracts[0].symbol, -3)
+    ]
+
+
+def test_no_trade_band_is_overridden_for_required_constraint_reductions() -> None:
+    _builder, exposures, contracts, prices, fx, context, account = _fixture("buffer-override")
+    builder = ExecutableTargetBuilder(
+        {
+            contracts[0].symbol: TradableUnitRule(no_trade_band=1_000.0),
+            contracts[1].symbol: TradableUnitRule(no_trade_band=1_000.0),
+        }
+    )
+    reduced = exposures.with_columns(
+        pl.Series("net_exposure", [200.0, -600.0], dtype=pl.Float64)
+    )
+
+    result = builder.build(
+        reduced,
+        contracts,
+        prices,
+        fx,
+        context,
+        account,
+        risk_policies=[MaxPositionQuantity(2), LongOnly()],
+    )
+
+    assert result.positions.select(
+        "inside_no_trade_band",
+        "buffer_applied",
+        "buffer_overridden_for_risk",
+        "proposal_quantity",
+        "admission_status",
+        "order_quantity",
+    ).rows() == [
+        (True, False, True, -1, "accepted", -1),
+        (True, False, True, 1, "accepted", 1),
+    ]
+    assert [(order.contract.symbol, order.qty) for order in result.orders] == [
+        (contracts[0].symbol, -1),
+        (contracts[1].symbol, 1),
     ]
 
 

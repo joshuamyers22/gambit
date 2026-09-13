@@ -19,6 +19,8 @@ have not yet been released are collected below.
   policies use shared pre-trade admission; detached decisions retain rejected
   proposals while returned orders and achieved risk include accepted quantities
   only. A reusable long-only policy rejects independently reachable shorts.
+  Long-only and maximum-position policies override buffering for proposals that
+  reduce an existing breach, without bypassing ordinary admission.
 - Experimental cost and turnover diagnostics for explicitly attributed
   incremental P&L and trade rows. Daily, weekly, or monthly output preserves
   instrument/rule identity, capital assumptions, gross/net P&L and returns,

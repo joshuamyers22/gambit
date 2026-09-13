@@ -18,7 +18,14 @@ from gambit.calculation import CalculationContext
 from gambit.currency import FxRateSnapshot
 from gambit.execution_snapshots import snapshot_order
 from gambit.pq_types import Contract, MarketOrder, Order, _validate_order_references, _whole_quantity
-from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
+from gambit.risk import (
+    DecisionStatus,
+    OrderDecision,
+    RiskContext,
+    RiskPolicy,
+    decide_order,
+    requires_risk_reduction,
+)
 from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 
 
@@ -223,6 +230,20 @@ class ExecutableTargetBuilder:
                 abs(rounded_target_exposure - projected_exposure) <= rule.no_trade_band
             )
             buffer_applied = bool(unbuffered_order_quantity and inside_no_trade_band)
+            buffer_overridden_for_risk = False
+            if buffer_applied:
+                reduction = MarketOrder(
+                    contract=contract,
+                    timestamp=calculation.valuation_time,
+                    qty=unbuffered_order_quantity,
+                    reason_code=self.reason_code,
+                )
+                buffer_overridden_for_risk = requires_risk_reduction(
+                    reduction,
+                    RiskContext(account, calculation.valuation_time, (*pending, *orders)),
+                    policies,
+                )
+                buffer_applied = not buffer_overridden_for_risk
             proposal_quantity = 0 if buffer_applied else unbuffered_order_quantity
             order_quantity = 0
             admission_status = "not_proposed"
@@ -281,6 +302,7 @@ class ExecutableTargetBuilder:
                     "unbuffered_order_quantity": unbuffered_order_quantity,
                     "inside_no_trade_band": inside_no_trade_band,
                     "buffer_applied": buffer_applied,
+                    "buffer_overridden_for_risk": buffer_overridden_for_risk,
                     "proposal_quantity": proposal_quantity,
                     "admission_status": admission_status,
                     "admission_policy": admission_policy,
@@ -320,6 +342,7 @@ class ExecutableTargetBuilder:
                 "unbuffered_order_quantity": pl.Int64,
                 "inside_no_trade_band": pl.Boolean,
                 "buffer_applied": pl.Boolean,
+                "buffer_overridden_for_risk": pl.Boolean,
                 "proposal_quantity": pl.Int64,
                 "admission_status": pl.String,
                 "admission_policy": pl.String,

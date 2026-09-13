@@ -138,7 +138,11 @@ including caller-supplied pending orders and earlier accepted target orders.
 Detached decisions preserve rejected proposals; returned orders and achieved
 risk include accepted quantities only. A rule returning these orders to
 ``Strategy`` still receives admission against then-current engine state. The
-builder does not submit orders or override a buffer for required risk reduction.
+long-only and maximum-position policies may identify a buffered proposal as a
+required reduction; that proposal bypasses the band but still must pass ordinary
+admission. Custom policies can opt into the same behavior with a non-mutating
+``requires_reduction(order, context) -> bool`` method. The builder does not
+submit orders.
 
 ## Internal scheduling and debugging storage
 

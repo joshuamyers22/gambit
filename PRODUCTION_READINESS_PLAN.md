@@ -368,7 +368,7 @@ due triggers are not calendar commitments.
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
-| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time conversion, whole-lot rounding, no-trade bands, achieved-risk recomputation, tracking diagnostics, current/pending-aware proposals, and shared policy admission implemented locally through 2026-09-13; buffer overrides for required reductions, supported strategy-adapter evidence, representative evidence, and owner approval pending |
+| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time conversion, whole-lot rounding, no-trade bands, required-reduction overrides, achieved-risk recomputation, tracking diagnostics, current/pending-aware proposals, and shared policy admission implemented locally through 2026-09-13; supported strategy-adapter evidence, representative evidence, and owner approval pending |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
 | P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; representative cost/participation and executable-buffer comparison evidence plus owner approval pending |
@@ -452,9 +452,10 @@ quantities and incremental orders that accounts for existing and pending positio
 - [ ] Recompute risk after rounding and enforce constraints through existing
   admission. Achieved-risk evaluation and shared policy admission (including a
   reusable long-only policy and existing reduce-only/no-trade/position policies)
-  are complete. Override buffering for required reductions and prove the
-  supported Strategy adapter. Account for pending orders so repeated target
-  evaluation cannot duplicate outstanding exposure.
+  are complete, and long-only/position-limit breach reductions override the
+  buffer without bypassing admission. Prove the supported Strategy adapter.
+  Account for pending orders so repeated target evaluation cannot duplicate
+  outstanding exposure.
 
 Acceptance: hand-calculated FX/multiplier cases reconcile to whole-contract
 targets; small-capital, impossible-target, partial-fill, pending-cancel, and
@@ -1932,6 +1933,22 @@ release merely because another library offers them.
   native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
   release-artifact verification gates. This work remains local and will not be
   pushed unless explicitly requested.
+
+### 2026-09-13 — Forty-second slice (required-reduction buffer overrides)
+
+- Added a policy-owned reduction hook used only when a nonzero target adjustment
+  would otherwise be suppressed by its no-trade band. ``LongOnly`` and
+  ``MaxPositionQuantity`` identify moves that improve an existing breach using
+  projected holdings, including still-open orders.
+- Required reductions bypass the buffer but not admission. Diagnostics retain
+  both the inside-band condition and an explicit override flag, followed by the
+  ordinary accepted/rejected policy evidence and accepted-only achieved state.
+- Controlled long- and short-breach cases prove that small reductions remain
+  executable while ordinary in-band changes stay suppressed. Custom policy
+  hooks are mutation-checked at the shared risk boundary. Supported Strategy
+  adapter evidence, representative evidence, and quant/execution-owner approval
+  keep P1.7 open. This work remains local and will not be pushed unless
+  explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
