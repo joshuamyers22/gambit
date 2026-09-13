@@ -12,6 +12,7 @@ from gambit.covariance_risk import CovarianceEstimate, PortfolioVolatilityMeasur
 from gambit.currency import FxRateSnapshot
 from gambit.instruments import InstrumentSpec
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
+from gambit.risk import DecisionStatus, MaxPositionQuantity
 from gambit.risk_measures import NetExposureMeasure
 from gambit.target_positions import ExecutableTargetBuilder, TargetRounding, TradableUnitRule
 
@@ -280,6 +281,47 @@ def test_achieved_exposure_and_risk_results_are_detached() -> None:
     assert result.risk.data[0, "value"] == 1_100.0
 
 
+def test_target_admission_excludes_rejections_from_orders_and_achieved_risk() -> None:
+    builder, exposures, contracts, prices, fx, context, account = _fixture("admission")
+
+    result = builder.build(
+        exposures,
+        contracts,
+        prices,
+        fx,
+        context,
+        account,
+        risk_measures=[NetExposureMeasure()],
+        risk_policies=[MaxPositionQuantity(5)],
+    )
+
+    assert [(order.contract.symbol, order.qty) for order in result.orders] == [
+        (contracts[1].symbol, 4)
+    ]
+    assert [(decision.status, decision.code) for decision in result.decisions] == [
+        (DecisionStatus.REJECTED, "position_quantity_exceeded"),
+        (DecisionStatus.ACCEPTED, "accepted"),
+    ]
+    assert result.positions.select(
+        "proposal_quantity",
+        "admission_status",
+        "admission_policy",
+        "admission_code",
+        "order_quantity",
+        "post_order_quantity",
+        "achieved_net_exposure",
+    ).rows() == [
+        (8, "rejected", "max_position_quantity", "position_quantity_exceeded", 0, 3, 300.0),
+        (4, "accepted", "", "accepted", 4, 2, 1_200.0),
+    ]
+    assert result.risk is not None
+    assert result.risk.filter(measure="net_exposure").aggregate()[0, "value"] == 1_500.0
+
+    decision = result.decisions[0]
+    decision.order.qty = 999
+    assert result.decisions[0].order.qty == 8
+
+
 def test_achieved_risk_rejects_future_models_and_invalid_measure_collections() -> None:
     builder, exposures, contracts, prices, fx, context, account = _fixture("risk-cutoff")
     future = TIMESTAMP + np.timedelta64(1, "m")
@@ -310,6 +352,16 @@ def test_achieved_risk_rejects_future_models_and_invalid_measure_collections() -
             context,
             account,
             risk_measures="net_exposure",  # type: ignore[arg-type]
+        )
+    with pytest.raises(TypeError, match="risk_policies must be a sequence"):
+        builder.build(
+            exposures,
+            contracts,
+            prices,
+            fx,
+            context,
+            account,
+            risk_policies="long_only",  # type: ignore[arg-type]
         )
 
 

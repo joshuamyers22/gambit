@@ -205,6 +205,25 @@ class MaxPositionQuantity:
 
 
 @dataclass(frozen=True)
+class LongOnly:
+    """Reject sells whose independently reachable endpoint is short."""
+
+    name: str = "long_only"
+
+    def evaluate(self, order: Order, context: RiskContext) -> PolicyResult:
+        if order.qty > 0:
+            return PolicyResult(True)
+        lower, _upper = context.position_bounds(order)
+        if lower < 0:
+            return PolicyResult(
+                False,
+                "short_position_prohibited",
+                f"reachable position {lower:g} is below the long-only floor",
+            )
+        return PolicyResult(True)
+
+
+@dataclass(frozen=True)
 class MaxVolumeParticipation:
     """Reject orders exceeding a fraction of externally supplied market volume."""
 

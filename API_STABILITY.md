@@ -132,9 +132,13 @@ unbuffered quantity, buffer decision, achieved exposure, and actual tracking
 error; incremental proposals account for current holdings and all still-open
 orders. The result exposes a detached standard exposure table for the
 post-rounding/post-buffer state and can calculate the existing point-in-time risk
-measures over that achieved state. The builder returns detached market-order
-proposals but does not submit or risk-admit them, override a buffer for required
-risk reduction, or replace existing risk admission.
+measures over that achieved state. Optional risk policies admit each nonzero
+proposal through the same ``decide_order`` boundary used by ``Strategy`` while
+including caller-supplied pending orders and earlier accepted target orders.
+Detached decisions preserve rejected proposals; returned orders and achieved
+risk include accepted quantities only. A rule returning these orders to
+``Strategy`` still receives admission against then-current engine state. The
+builder does not submit orders or override a buffer for required risk reduction.
 
 ## Internal scheduling and debugging storage
 

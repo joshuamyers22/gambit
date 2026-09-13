@@ -39,6 +39,7 @@ def test_root_api_is_explicit_and_free_of_dependency_leaks() -> None:
         "ForecastCombinationResultError",
         "ForecastScalarEstimator",
         "ForecastScaleCap",
+        "LongOnly",
         "MarketOrder",
         "MarketDataAvailabilityPolicy",
         "MissingForecastPolicy",

@@ -167,6 +167,7 @@ from gambit.pq_utils import (
 from gambit.risk import (
     DecisionStatus,
     InstrumentTradabilityPolicy,
+    LongOnly,
     MaxOrderQuantity,
     MaxPositionQuantity,
     MaxVolumeParticipation,
@@ -320,6 +321,7 @@ __all__ = [
     "InstrumentTradabilityPolicy",
     "InteractivePlot",
     "LimitOrder",
+    "LongOnly",
     "LineConfig",
     "LineGraphWithDetailDisplay",
     "MappedFloat64Column",

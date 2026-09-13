@@ -18,6 +18,7 @@ from gambit.calculation import CalculationContext
 from gambit.currency import FxRateSnapshot
 from gambit.execution_snapshots import snapshot_order
 from gambit.pq_types import Contract, MarketOrder, Order, _validate_order_references, _whole_quantity
+from gambit.risk import DecisionStatus, OrderDecision, RiskContext, RiskPolicy, decide_order
 from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 
 
@@ -86,12 +87,13 @@ def _rules(values: Mapping[str, TradableUnitRule]) -> Mapping[str, TradableUnitR
 
 @dataclass(frozen=True, init=False)
 class ExecutableTargetResult:
-    """Detached target diagnostics, achieved exposures, risk, and order proposals."""
+    """Detached target diagnostics, achieved exposures, risk, and admitted orders."""
 
     _positions: pl.DataFrame
     _orders: tuple[MarketOrder, ...]
     _exposures: pl.DataFrame
     _risk: RiskResult | None
+    _decisions: tuple[OrderDecision, ...]
 
     def __init__(
         self,
@@ -99,6 +101,7 @@ class ExecutableTargetResult:
         orders: Sequence[MarketOrder],
         exposures: pl.DataFrame,
         risk: RiskResult | None,
+        decisions: Sequence[OrderDecision],
     ) -> None:
         object.__setattr__(self, "_positions", positions.clone())
         object.__setattr__(self, "_orders", tuple(snapshot_order(order) for order in orders))
@@ -107,6 +110,19 @@ class ExecutableTargetResult:
             self,
             "_risk",
             None if risk is None else RiskResult(risk.data.clone()),
+        )
+        object.__setattr__(self, "_decisions", tuple(self._snapshot_decision(item) for item in decisions))
+
+    @staticmethod
+    def _snapshot_decision(decision: OrderDecision) -> OrderDecision:
+        return OrderDecision(
+            snapshot_order(decision.order),
+            decision.status,
+            decision.policy,
+            decision.code,
+            decision.message,
+            decision.proposed_qty,
+            decision.timestamp,
         )
 
     @property
@@ -126,6 +142,11 @@ class ExecutableTargetResult:
     def risk(self) -> RiskResult | None:
         """Post-rounding and post-buffer risk, when measures were requested."""
         return None if self._risk is None else RiskResult(self._risk.data.clone())
+
+    @property
+    def decisions(self) -> tuple[OrderDecision, ...]:
+        """Detached admission decisions for every nonzero buffered proposal."""
+        return tuple(self._snapshot_decision(item) for item in self._decisions)
 
 
 @dataclass(frozen=True)
@@ -151,23 +172,27 @@ class ExecutableTargetBuilder:
         *,
         pending_orders: Sequence[Order] = (),
         risk_measures: Sequence[RiskMeasure] = (),
+        risk_policies: Sequence[RiskPolicy] = (),
     ) -> ExecutableTargetResult:
-        """Return detached diagnostics, optional achieved risk, and unsubmitted orders."""
+        """Return detached diagnostics, achieved risk, decisions, and admitted orders."""
         calculation = CalculationContext.coerce(context)
         if not isinstance(account, Account):
             raise TypeError("target account must be an Account")
         if not isinstance(risk_measures, Sequence) or isinstance(risk_measures, (str, bytes)):
             raise TypeError("target risk_measures must be a sequence")
         measures = tuple(risk_measures)
+        policies = self._policies(risk_policies)
         timestamp_index(account.timestamps, calculation.valuation_time, owner="target builder")
         exposure_values = self._exposures(exposures, calculation)
         contract_by_symbol = self._contracts(contracts, set(exposure_values["symbol"].to_list()))
         price_by_symbol = self._prices(prices, contract_by_symbol, calculation)
         self._validate_fx(fx, calculation)
-        pending_by_symbol = self._pending(pending_orders, contract_by_symbol)
+        pending = tuple(pending_orders) if isinstance(pending_orders, Sequence) else pending_orders
+        pending_by_symbol = self._pending(pending, contract_by_symbol)
 
         rows: list[dict[str, object]] = []
         orders: list[MarketOrder] = []
+        decisions: list[OrderDecision] = []
         for symbol, target_exposure in exposure_values.select("symbol", "net_exposure").iter_rows():
             contract = contract_by_symbol[symbol]
             price, price_as_of = price_by_symbol[symbol]
@@ -198,7 +223,32 @@ class ExecutableTargetBuilder:
                 abs(rounded_target_exposure - projected_exposure) <= rule.no_trade_band
             )
             buffer_applied = bool(unbuffered_order_quantity and inside_no_trade_band)
-            order_quantity = 0 if buffer_applied else unbuffered_order_quantity
+            proposal_quantity = 0 if buffer_applied else unbuffered_order_quantity
+            order_quantity = 0
+            admission_status = "not_proposed"
+            admission_policy = ""
+            admission_code = "not_proposed"
+            admission_message = ""
+            if proposal_quantity:
+                proposal = MarketOrder(
+                    contract=contract,
+                    timestamp=calculation.valuation_time,
+                    qty=proposal_quantity,
+                    reason_code=self.reason_code,
+                )
+                decision = decide_order(
+                    proposal,
+                    RiskContext(account, calculation.valuation_time, (*pending, *orders)),
+                    policies,
+                )
+                decisions.append(decision)
+                admission_status = decision.status.value
+                admission_policy = decision.policy
+                admission_code = decision.code
+                admission_message = decision.message
+                if decision.status is DecisionStatus.ACCEPTED:
+                    order_quantity = proposal_quantity
+                    orders.append(proposal)
             post_order_quantity = projected_quantity + order_quantity
             achieved_exposure = post_order_quantity * unit_notional
             tracking_error = achieved_exposure - target_exposure
@@ -231,21 +281,17 @@ class ExecutableTargetBuilder:
                     "unbuffered_order_quantity": unbuffered_order_quantity,
                     "inside_no_trade_band": inside_no_trade_band,
                     "buffer_applied": buffer_applied,
+                    "proposal_quantity": proposal_quantity,
+                    "admission_status": admission_status,
+                    "admission_policy": admission_policy,
+                    "admission_code": admission_code,
+                    "admission_message": admission_message,
                     "order_quantity": order_quantity,
                     "post_order_quantity": post_order_quantity,
                     "achieved_net_exposure": achieved_exposure,
                     "tracking_error": tracking_error,
                 }
             )
-            if order_quantity:
-                orders.append(
-                    MarketOrder(
-                        contract=contract,
-                        timestamp=calculation.valuation_time,
-                        qty=order_quantity,
-                        reason_code=self.reason_code,
-                    )
-                )
         positions = pl.DataFrame(
             rows,
             schema_overrides={
@@ -274,6 +320,11 @@ class ExecutableTargetBuilder:
                 "unbuffered_order_quantity": pl.Int64,
                 "inside_no_trade_band": pl.Boolean,
                 "buffer_applied": pl.Boolean,
+                "proposal_quantity": pl.Int64,
+                "admission_status": pl.String,
+                "admission_policy": pl.String,
+                "admission_code": pl.String,
+                "admission_message": pl.String,
                 "order_quantity": pl.Int64,
                 "post_order_quantity": pl.Int64,
                 "achieved_net_exposure": pl.Float64,
@@ -292,7 +343,19 @@ class ExecutableTargetBuilder:
             pl.col("achieved_net_exposure").abs().alias("gross_exposure"),
         )
         risk = calculate_risk(achieved_exposures, measures, calculation) if measures else None
-        return ExecutableTargetResult(positions, orders, achieved_exposures, risk)
+        return ExecutableTargetResult(positions, orders, achieved_exposures, risk, decisions)
+
+    @staticmethod
+    def _policies(policies: Sequence[RiskPolicy]) -> tuple[RiskPolicy, ...]:
+        if not isinstance(policies, Sequence) or isinstance(policies, (str, bytes)):
+            raise TypeError("target risk_policies must be a sequence")
+        normalized = tuple(policies)
+        for policy in normalized:
+            if not isinstance(getattr(policy, "name", None), str) or not policy.name:
+                raise TypeError("target risk policies must expose a non-empty name")
+            if not callable(getattr(policy, "evaluate", None)):
+                raise TypeError("target risk policies must expose evaluate")
+        return normalized
 
     def _exposures(self, exposures: pl.DataFrame, context: CalculationContext) -> pl.DataFrame:
         if not isinstance(exposures, pl.DataFrame):

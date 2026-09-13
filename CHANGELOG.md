@@ -15,7 +15,10 @@ have not yet been released are collected below.
   quantities, the buffer decision, achieved exposure, tracking error, and
   current/pending quantities while reserving cancellation-requested exposure.
   Results expose the achieved standard exposure table and optionally calculate
-  existing point-in-time risk measures after rounding and buffering.
+  existing point-in-time risk measures after rounding and buffering. Optional
+  policies use shared pre-trade admission; detached decisions retain rejected
+  proposals while returned orders and achieved risk include accepted quantities
+  only. A reusable long-only policy rejects independently reachable shorts.
 - Experimental cost and turnover diagnostics for explicitly attributed
   incremental P&L and trade rows. Daily, weekly, or monthly output preserves
   instrument/rule identity, capital assumptions, gross/net P&L and returns,

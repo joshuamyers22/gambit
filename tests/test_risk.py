@@ -4,7 +4,15 @@ import numpy as np
 import pytest
 
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus
-from gambit.risk import DecisionStatus, MaxOrderQuantity, MaxPositionQuantity, PolicyResult, RiskContext, decide_order
+from gambit.risk import (
+    DecisionStatus,
+    LongOnly,
+    MaxOrderQuantity,
+    MaxPositionQuantity,
+    PolicyResult,
+    RiskContext,
+    decide_order,
+)
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
 
@@ -71,6 +79,22 @@ def test_position_policy_allows_order_that_reduces_an_existing_breach() -> None:
     decision = decide_order(proposed, RiskContext(strategy.account, timestamp, [pending]), [MaxPositionQuantity(5)])
 
     assert decision.status is DecisionStatus.ACCEPTED
+
+
+def test_long_only_rejects_any_independently_reachable_short_position() -> None:
+    group = ContractGroup.get("long-only-risk")
+    contract = Contract.create("LONG-ONLY-RISK", group)
+    timestamp = np.datetime64("2024-01-02")
+    strategy = Strategy(np.array([timestamp]), [group], _price)
+    pending_buy = MarketOrder(contract=contract, timestamp=timestamp, qty=2)
+    context = RiskContext(strategy.account, timestamp, [pending_buy])
+
+    rejected = decide_order(MarketOrder(contract=contract, timestamp=timestamp, qty=-1), context, [LongOnly()])
+    accepted = decide_order(MarketOrder(contract=contract, timestamp=timestamp, qty=1), context, [LongOnly()])
+
+    assert rejected.status is DecisionStatus.REJECTED
+    assert rejected.code == "short_position_prohibited"
+    assert accepted.status is DecisionStatus.ACCEPTED
 
 
 def test_strategy_rejects_order_before_market_simulation() -> None:
