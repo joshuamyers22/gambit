@@ -4,6 +4,9 @@ The approved queue model is implemented and tested. **The proposed few-second
 target is not met:** the three-year native execution measurements are 9.08–9.15 s.
 These results are separate from the earlier market-order-only 1.31 s result;
 both the execution model and synthetic workload differ.
+Interpret these measurements under the candidate
+[`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md), which records the unapproved
+objective, timer limitations, resource bounds, and missing acceptance evidence.
 
 ## Measured results
 

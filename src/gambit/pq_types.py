@@ -390,15 +390,27 @@ class TimeInForce(Enum):
 
 
 def _whole_quantity(value: float, *, field_name: str) -> int:
-    if (
-        isinstance(value, (bool, np.bool_))
-        or not isinstance(value, (int, float, np.integer, np.floating))
-        or not np.isfinite(value)
-        or math.isclose(float(value), 0)
-        or not float(value).is_integer()
+    if isinstance(value, (bool, np.bool_)) or not isinstance(
+        value, (int, float, np.integer, np.floating)
     ):
         raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
-    return int(value)
+    if isinstance(value, (int, np.integer)):
+        quantity = int(value)
+    else:
+        numeric_value = float(value)
+        if (
+            not math.isfinite(numeric_value)
+            or math.isclose(numeric_value, 0)
+            or not numeric_value.is_integer()
+        ):
+            raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
+        quantity = int(numeric_value)
+    if quantity == 0:
+        raise ValueError(f"{field_name} must be finite and nonzero, in whole shares or contracts")
+    quantity_bounds = np.iinfo(np.int_)
+    if quantity < quantity_bounds.min or quantity > quantity_bounds.max:
+        raise ValueError(f"{field_name} must fit the signed platform integer range")
+    return quantity
 
 
 def _finite_real(value: float, *, field_name: str) -> float:
@@ -700,6 +712,50 @@ def _validated_trade_numbers(
     )
 
 
+@dataclass(frozen=True)
+class ExecutionPriceDiagnostic:
+    """Immutable decomposition of an execution price from its pre-cost reference."""
+
+    reference_price: float
+    modeled_price_adjustment: float
+    rounding_price_adjustment: float
+    execution_price: float
+    model_name: str
+
+    def __post_init__(self) -> None:
+        for name in (
+            "reference_price",
+            "modeled_price_adjustment",
+            "rounding_price_adjustment",
+            "execution_price",
+        ):
+            object.__setattr__(
+                self,
+                name,
+                _finite_real(getattr(self, name), field_name=f"execution diagnostic {name}"),
+            )
+        if not isinstance(self.model_name, str) or not self.model_name:
+            raise ValueError("execution diagnostic model_name must be a non-empty string")
+        expected_price = (
+            self.reference_price + self.modeled_price_adjustment + self.rounding_price_adjustment
+        )
+        if not math.isclose(expected_price, self.execution_price, rel_tol=1e-12, abs_tol=1e-12):
+            raise ValueError("execution diagnostic adjustments do not reconcile to execution_price")
+
+
+def _validate_execution_diagnostic(
+    diagnostic: ExecutionPriceDiagnostic | None, execution_price: float,
+) -> None:
+    """Recheck immutable attribution against a potentially mutable trade price."""
+    if diagnostic is None:
+        return
+    if not isinstance(diagnostic, ExecutionPriceDiagnostic):
+        raise TypeError("trade execution_diagnostic must be an ExecutionPriceDiagnostic or None")
+    diagnostic.__post_init__()
+    if not math.isclose(diagnostic.execution_price, execution_price, rel_tol=1e-12, abs_tol=1e-12):
+        raise ValueError("trade price does not match its execution diagnostic")
+
+
 def _validate_trade_references(contract: Contract, order: Order, timestamp: np.datetime64) -> None:
     """Recheck mutable trade references and execution/submission chronology."""
     if not isinstance(contract, Contract):
@@ -716,6 +772,11 @@ def _validate_trade_references(contract: Contract, order: Order, timestamp: np.d
         raise ValueError("trade order timestamp must be a valid numpy datetime64 value")
     if timestamp < order.timestamp:
         raise ValueError("trade timestamp cannot precede its originating order")
+    if contract.expiry is not None and timestamp > contract.expiry:
+        raise ValueError(
+            f"trade timestamp {timestamp} is after contract expiry {contract.expiry} "
+            f"for {contract.symbol}"
+        )
 
 
 class Trade:
@@ -729,6 +790,7 @@ class Trade:
         fee: float = 0.0,
         commission: float = 0.0,
         properties: SimpleNamespace | None = None,
+        execution_diagnostic: ExecutionPriceDiagnostic | None = None,
     ) -> None:
         """
         Args:
@@ -741,9 +803,11 @@ class Trade:
             commision: Commission paid to brokers or others. Default 0
             properties: Any data you want to store with this contract.
                 For example, you may want to store bid / ask prices at time of trade.  Default None
+            execution_diagnostic: Immutable pre-cost execution-price attribution, if available.
         """
         _validate_trade_references(contract, order, timestamp)
         qty, price, fee, commission = _validated_trade_numbers(qty, price, fee, commission)
+        _validate_execution_diagnostic(execution_diagnostic, price)
 
         self.contract = contract
         self.order = order
@@ -752,10 +816,15 @@ class Trade:
         self.price = price
         self.fee = fee
         self.commission = commission
+        self._execution_diagnostic = execution_diagnostic
 
         if properties is None:
             properties = types.SimpleNamespace()
         self.properties = properties
+
+    @property
+    def execution_diagnostic(self) -> ExecutionPriceDiagnostic | None:
+        return self._execution_diagnostic
 
     def __repr__(self) -> str:
         """

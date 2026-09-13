@@ -7,6 +7,9 @@ Reference baseline: `production-project-template` commit `e132c6e`, specifically
 `docs/LATENCY_SENSITIVE_CPP_GUIDE.md`, `templates/PROJECT_BRIEF.md`,
 `templates/LATENCY_BUDGET.md`, and `docs/CPP_SOURCE_REVIEW.md`. The executable
 C++ archetype is an ownership/validation/build reference, not an execution model.
+Gambit's candidate measurement contract is the repository
+[`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md); its proposed thresholds remain
+unapproved and do not promote this experimental path.
 
 ## Outcome and measurement boundary
 

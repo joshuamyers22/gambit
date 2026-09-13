@@ -12,7 +12,7 @@ license = "BSD-3-Clause"
 license-files = ["LICENSE.txt", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Gambit contributors" }]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Financial and Insurance Industry",
   "Operating System :: MacOS",
@@ -85,6 +85,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "--strict-config --strict-markers"
 markers = [
+  "acceptance: implementation-independent release acceptance evidence",
   "fuzz: deterministic hostile-input crash and hang probes",
   "integration: crosses package, process, persistence, or example boundaries",
   "native: requires compiled native extensions",
@@ -118,6 +119,8 @@ files = [
   "src/gambit/configuration.py",
   "src/gambit/control_plane.py",
   "src/gambit/contract_pnl.py",
+  "src/gambit/cost_diagnostics.py",
+  "src/gambit/cost_sensitivity.py",
   "src/gambit/covariance_risk.py",
   "src/gambit/currency.py",
   "src/gambit/factor_admission.py",
@@ -156,6 +159,7 @@ files = [
   "src/gambit/strategy_components.py",
   "src/gambit/strategy_inputs.py",
   "src/gambit/strategy_contracts.py",
+  "src/gambit/target_positions.py",
   "src/gambit/trade_reconciliation.py",
   "src/gambit/tick_backtest.py",
   "src/gambit/universe.py",

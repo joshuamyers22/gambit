@@ -1,4 +1,4 @@
-.PHONY: sync lock audit lint type test coverage-policy native-warnings docs notebook-clean build check
+.PHONY: sync lock audit lint type test coverage-policy mutation-financial native-warnings docs notebook-clean build check
 
 UV_RUN = uv run --frozen --all-extras
 
@@ -17,6 +17,8 @@ test:
 	$(UV_RUN) pytest --cov=gambit --cov-report=term-missing
 coverage-policy:
 	$(UV_RUN) python tools/check_coverage_policy.py
+mutation-financial:
+	$(UV_RUN) python tools/run_financial_mutations.py
 native-warnings:
 	$(UV_RUN) python tools/check_native_warnings.py
 docs:
@@ -28,4 +30,4 @@ build:
 	uv build
 	$(UV_RUN) python -m twine check dist/*
 	$(UV_RUN) python tools/verify_release_artifacts.py dist
-check: lock lint type test coverage-policy native-warnings docs notebook-clean build
+check: lock lint type test coverage-policy mutation-financial native-warnings docs notebook-clean build

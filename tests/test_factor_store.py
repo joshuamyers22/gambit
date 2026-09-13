@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import multiprocessing
 import os
@@ -487,6 +488,64 @@ def test_factor_store_recovers_from_process_death_during_publication(tmp_path, s
         else:
             assert current.generation == first
             assert np.array_equal(values, np.array([1.0]))
+
+
+def test_factor_store_full_disk_failure_cleans_staging_and_preserves_current(
+    tmp_path, monkeypatch
+) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first = publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    import gambit.factor_store as factor_store
+
+    def no_space(_path, _values):
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    monkeypatch.setattr(factor_store.MappedFloat64Column, "create_chunked_v3", no_space)
+    with pytest.raises(OSError) as raised:
+        publish_generation(tmp_path, NODE_B, {"factor": np.array([2.0])})
+
+    assert raised.value.errno == errno.ENOSPC
+    assert list((tmp_path / "generations").glob(".staging-*")) == []
+    with open_current_generation(tmp_path) as current:
+        assert current.generation == first
+        assert np.array_equal(current["factor"].values, np.array([1.0]))
+
+
+def test_factor_store_pointer_permission_failure_preserves_current_and_is_reclaimable(
+    tmp_path, monkeypatch
+) -> None:
+    if MappedFloat64Column is None:
+        pytest.skip("native factor cache extension is not built")
+    first = publish_generation(tmp_path, NODE_A, {"factor": np.array([1.0])})
+    import gambit.factor_store as factor_store
+
+    original_replace = factor_store.os.replace
+
+    def deny_current_pointer(source, destination) -> None:
+        if Path(destination).name == "CURRENT":
+            raise PermissionError(errno.EACCES, os.strerror(errno.EACCES))
+        original_replace(source, destination)
+
+    monkeypatch.setattr(factor_store.os, "replace", deny_current_pointer)
+    with pytest.raises(PermissionError) as raised:
+        publish_generation(tmp_path, NODE_B, {"factor": np.array([2.0])})
+
+    assert raised.value.errno == errno.EACCES
+    assert list(tmp_path.glob(".CURRENT-*")) == []
+    generations = {
+        path.name for path in (tmp_path / "generations").iterdir() if not path.name.startswith(".")
+    }
+    assert first in generations
+    assert len(generations) == 2
+    orphan = (generations - {first}).pop()
+    with open_current_generation(tmp_path) as current:
+        assert current.generation == first
+        assert np.array_equal(current["factor"].values, np.array([1.0]))
+
+    monkeypatch.setattr(factor_store.os, "replace", original_replace)
+    result = collect_garbage(tmp_path)
+    assert result["removed_generations"] == [orphan]
 
 
 def test_factor_store_rejects_pointer_and_manifest_substitution(tmp_path) -> None:

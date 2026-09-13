@@ -6,6 +6,9 @@
 - Extension: Josh Myers approved conservative FIFO queue-position testing on
   2026-09-04; the opt-in contract is in `fifo_queue_execution.md`.
 - Reference: production-project-template `e132c6e`, C++ guide and ADR template.
+- Measurement contract: candidate
+  [`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md); workload, host, boundary, and
+  thresholds remain unapproved.
 
 ## Context
 

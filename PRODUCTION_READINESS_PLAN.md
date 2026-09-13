@@ -83,8 +83,8 @@ the supported hosted interpreter/platform matrix before release approval.
 
 | Priority | Finding/risk | Smallest safe slice | Acceptance evidence | Proposed owner | Due/trigger | Status |
 |---:|---|---|---|---|---|---|
-| P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | Not started |
-| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress |
+| P0.1 | Product scope and maturity claims are incomplete or inconsistent | Add `PROJECT_BRIEF.md`; publish the supported/experimental/out-of-scope matrix; reconcile README, package classifier, API policy, and release checklist | Owner-approved brief with users, non-goals, failure cost, platforms, data classification, precision/timezone rules, and release criteria; policy test rejects conflicting maturity metadata | Product/repository owner | Before production-stable labeling | In progress; draft and policy enforcement implemented 2026-09-12, owner approval pending |
+| P0.2 | Financial correctness is well tested but not yet qualified as a supported product boundary | Build an independent acceptance corpus for accounting, execution, risk, causality, calendars, and persisted results; resolve option-pricing deferral by validation or experimental status | Exact/tolerance rationale, independent expected results, seeded generative cases, and cross-version/platform CI results; all backtests affected by documented corrections are rerun or explicitly invalidated | Quant/domain owner | Before production release | In progress; corpus, mutation gate, hosted matrix, and disposition policy implemented 2026-09-12; external inventory and owner approval pending |
 | P0.3 | The repository explicitly says hostile-file hardening is incomplete | Add `THREAT_MODEL.md`; complete native parser ownership/resource controls; add coverage-guided malformed CSV/ZIP/HDF5 corpus execution under sanitizers | Threat-model review; enforced compressed/uncompressed, line, row, field, allocation, path, and timeout limits; ASan/UBSan/LeakSan fuzz corpus passes; failures leave no partial or leaked state | Security/native owner | Before supporting untrusted inputs | In progress; native ownership/byte budgets implemented locally 2026-09-11 |
 | P0.4 | Build and release inputs are not fully constrained and released artifacts lack a complete inventory | Make the build use a frozen build environment or reviewed constraints; capture compiler, SDK, manylinux image, and `libzip` identity; emit checksums, SBOM, and provenance for the final artifact set | Two clean builds from the same declared inputs succeed; every wheel/sdist has SHA-256, SBOM, source SHA, toolchain/native-library inventory, and CI attestation; policy tests reject unpinned release installers | Build/release owner | Before production release | In progress |
 | P0.5 | Hosted release settings and end-to-end publication evidence are not proven by the checkout | Verify protected `main`, required checks, environments/approvals, Trusted Publishers, and Pages; run non-publishing and TestPyPI drills from the release SHA | Links to green same-SHA CI/release runs; nine-wheel matrix plus sdist; clean Linux/macOS installs from TestPyPI; metadata, licenses, attestations, docs, CLI, and rollback/forward-fix checklist signed off | Release owner | Before PyPI/GitHub production release | In progress |
@@ -92,10 +92,10 @@ the supported hosted interpreter/platform matrix before release approval.
 | P0.7 | Netting opposing pending orders can admit an order that breaches a hard position cap when filled first | Implement worst-case pending-fill exposure checks and define treatment of existing breaches, cancellations, partial fills, and rolls | Cap-100/pending-sell-100/proposed-buy-200 case is rejected; buy/sell fill permutations cannot create a new breach; genuine reductions of existing breaches remain supported | Quant/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.8 | Historical risk decisions reference mutable order identity | Capture immutable decision-time order identity and terms; use that snapshot for audit reports and persistence | Mutating, filling, cancelling, or reusing the original order cannot alter historical audit fields; persisted snapshots round-trip with explicit format compatibility | Core/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.9 | Result bundles are read and materialized before resource and shape checks can bound allocation | Add bounded manifest reads, schema validation, and per-table/aggregate resource limits before Arrow materialization | Oversized or malformed bundles fail with bounded payload work and contextual errors; v2/v3/v4 bundles within the supported flat IPC profile still load | Data/storage owner | Before supporting untrusted result bundles | Implemented locally 2026-09-11 for flat IPC; CI/security review pending |
-| P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress |
-| P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress |
+| P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress; repository contract, synthetic recovery, and storage-fault drills implemented 2026-09-12; owner approval and external-storage drill pending |
+| P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress; candidate latency/capacity budget implemented 2026-09-12, workload and threshold approval pending |
 | P1.3 | Dependency and security automation do not fully match the current template | Change Dependabot to the `uv` ecosystem, review cadence/groups, add secret scanning and proportionate Python/C++ static analysis, and test workflow policy | Automated lock/action updates produce reviewable PRs; gitleaks and selected SAST/static-analysis jobs are required; workflow-policy tests enforce pins, permissions, timeouts, and credential handling | Build/security owner | Before ongoing production maintenance | Not started |
-| P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | Not started |
+| P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | In progress; causal cutoff and post-expiry trade rejection implemented 2026-09-12; settlement model and numerical qualification pending |
 | P2.1 | Legacy duplicate interfaces and source-only test helpers create drift and artifact noise | Remove or delegate `build.sh`/`dist.sh`, retire unused requirements files or generate them from `uv.lock`, consolidate version authority, remove hard-coded developer paths and dormant test functions from `csv_reader.cpp`, and mark historical plans as superseded | `rg` finds no machine-specific source paths; one documented dependency/version/build authority remains; clean artifact contents and `make check` pass | Core/build owner | During hardening cycle | Not started |
 | P2.2 | The factor-cache CLI deployment model is undecided | Record it as an in-environment library utility, or add the template's pinned non-root container and smoke test if it is operated independently | ADR states the decision. Library-utility path documents the Docker exception; standalone path builds a digest-pinned image, runs as non-root, and passes CI smoke/restore tests | Product/operations owner | Before operating CLI outside a research environment | Decision required |
 
@@ -258,7 +258,7 @@ The third checkbox remains open: local macOS ASan/UBSan and explicit C++ allocat
 counts passed, but the installed Apple compiler lacks libFuzzer. Seed replay is
 not coverage-guided qualification. Both hosted CSV/ZIP libFuzzer jobs have passed;
 the revised independent Linux LeakSanitizer gate passed in PR #31.
-HDF5/IPC coverage-guided targets, execution of the locally added longer scheduled
+Native HDF5/IPC coverage-guided targets, execution of the merged longer scheduled
 campaigns and named security review remain outstanding. See the
 [fuzz guide](tests/NATIVE_FUZZING.md) for exact scope and reproduction instructions.
 
@@ -286,6 +286,15 @@ existing byte budget. [Regression tests](tests/test_hdf5_hardening.py) reproduce
 30 failures before this change and retain legacy/versioned and backup compatibility.
 The expanded deterministic HDF5 smoke checks all rejection families per seed;
 this is still not coverage-guided HDF5 fuzzing or metadata/process containment.
+
+IPC follow-up: a separate Atheris target now instruments twenty Python preflight
+functions/accessors and accepts only documented bundle rejections. It never sends
+mutated bytes to the native decoder. A bounded Linux x86-64 campaign completed
+100,000 executions with coverage growth from 167 to 207 edges and no unexpected
+exception; a hash-pinned CPython 3.12 test engine, per-change CI job, synthetic
+seeds and explicit non-fuzz replay are implemented locally. This is Python
+validator evidence, not native Arrow/HDF5 sanitizer qualification. Hosted
+execution of this new target, wider schemas and independent review remain open.
 The internal API migration also removed P2.1's hard-coded native demo routines,
 replacing them with an argument-driven smoke program; the other P2.1 work remains.
 
@@ -297,10 +306,10 @@ later time. [`RELEASING.md`](RELEASING.md) separately defers option-pricing and
 implied-volatility reference validation. The timing case needs a regression
 reproduction before selecting its correction.
 
-- [ ] Define supported cash/physical settlement, exercise/assignment scope,
+- [x] Define supported cash/physical settlement, exercise/assignment scope,
   settlement-price source, expiry timestamp/timezone/calendar, and interactions
   with execution lag and accounting. Explicitly reject unsupported behavior.
-- [ ] Add hand-calculated cases at, before, and after expiry; correct event and
+- [x] Add hand-calculated cases at, before, and after expiry; correct event and
   ledger timing without inventing prices or exposing future settlement data.
 - [ ] Validate pricing and implied volatility against independent reference
   cases, including boundary values and numerical tolerances. Keep the feature
@@ -357,12 +366,12 @@ due triggers are not calendar commitments.
 
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
-| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Not started |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Not started |
-| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
+| P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
+| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Complete 2026-09-13; point-in-time conversion, rounding, buffering, required-reduction overrides, achieved-risk recomputation, shared admission, and a pending-aware Strategy adapter have representative evidence; repository owner approved `P1_7_SIGNOFF.md` acting as quant/execution owner |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
-| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
-| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | Not started |
+| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
+| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; representative cost/participation and executable-buffer comparison evidence plus owner approval pending |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
 | P2.7 | Reusable schedule/risk triggers and composed conditions | P0.7, P0.8, P1.5 | Core/strategy owner | Repeated schedule/condition logic in user strategies | Not started |
@@ -384,12 +393,12 @@ as-of times, but [strategy callbacks](src/gambit/stages.py) receive full arrays.
 Those checks alone cannot prevent a callback from reading future observations
 or distinguish an observation time from when a revised value became available.
 
-- [ ] Add an optional owned market-data interface with scalar/window reads
+- [x] Add an optional owned market-data interface with scalar/window reads
   constrained by the current heartbeat, publication/availability time, and
   dataset revision. Retain explicit source fingerprints in run provenance.
-- [ ] Implement fail/missing/stale policies and age-limited forward filling.
+- [x] Implement fail/missing/stale policies and age-limited forward filling.
   Future-assisted interpolation must not be used in causal execution.
-- [ ] Adapt built-in examples and stages to use the interface; document that
+- [x] Adapt built-in examples and stages to use the interface; document that
   arbitrary callbacks retaining external arrays are outside its enforcement.
 
 Acceptance: changing future observations or later revisions cannot change an
@@ -409,12 +418,12 @@ compares results with and without multiprocessing.
 Gambit gap: [Optimizer](src/gambit/optimize.py) schedules suggestions and ranks
 costs; the caller currently owns the train/test split and leakage controls.
 
-- [ ] Add a walk-forward runner with explicit fit, validation, and held-out
+- [x] Add a walk-forward runner with explicit fit, validation, and held-out
   intervals, rolling/expanding windows, warm-up policy, and refit schedule.
-- [ ] Fit transforms, forecast scalars, covariance estimates, and parameter
+- [x] Fit transforms, forecast scalars, covariance estimates, and parameter
   selection only on permitted training data. Support a gap/purge policy when
   labels or holding periods overlap evaluation boundaries.
-- [ ] Persist split identities, seeds, selected parameters, failed trials,
+- [x] Persist split identities, seeds, selected parameters, failed trials,
   metrics, and model/input hashes with each experiment; produce a chronological
   out-of-sample equity series. Keep in-sample scores visibly separate.
 
@@ -435,14 +444,18 @@ Gambit gap: [volatility/VaR sizing](src/gambit/position_sizing.py) produces
 continuous base-currency exposures. It needs a supported bridge to tradable
 quantities and incremental orders that accounts for existing and pending positions.
 
-- [ ] Convert exposure targets using current price, contract multiplier, FX,
+- [x] Convert exposure targets using current price, contract multiplier, FX,
   and explicit tradable-unit rules. Define zero/negative-price handling and
   reject unsupported conversions instead of silently dividing by zero.
-- [ ] Start with deterministic rounding and a configurable no-trade band.
+- [x] Start with deterministic rounding and a configurable no-trade band.
   Add cost-versus-tracking-error optimization only behind that reference path.
-- [ ] Recompute risk after rounding; enforce long-only/reduce-only/no-trade and
-  position constraints. Account for pending orders so repeated target evaluation
-  cannot duplicate outstanding exposure. Submit through existing risk admission.
+- [x] Recompute risk after rounding and enforce constraints through existing
+  admission. Achieved-risk evaluation and shared policy admission (including a
+  reusable long-only policy and existing reduce-only/no-trade/position policies)
+  are complete, and long-only/position-limit breach reductions override the
+  buffer without bypassing admission. The supported Strategy adapter supplies
+  live pending orders and returns fresh orders through final re-admission, so
+  repeated target evaluation cannot duplicate outstanding exposure.
 
 Acceptance: hand-calculated FX/multiplier cases reconcile to whole-contract
 targets; small-capital, impossible-target, partial-fill, pending-cancel, and
@@ -483,9 +496,9 @@ from [weighted combination and diversification scaling](https://github.com/pst-g
 Gambit gap: signals and sizing are extensible, but the inspected code has no
 reusable stage for normalizing multiple rule forecasts and combining them.
 
-- [ ] Add Polars stages for scaling, capping, and combining forecasts with
+- [x] Add Polars stages for scaling, capping, and combining forecasts with
   fixed/equal weights first; persist each rule's contribution and availability.
-- [ ] Add historical estimates of weights/correlation and bounded diversification
+- [x] Add historical estimates of weights/correlation and bounded diversification
   scaling only through P1.6. Define missing-rule renormalization, warm-up,
   minimum history, and zero-variance behavior.
 
@@ -504,12 +517,14 @@ Gambit gap: [execution-cost models](src/gambit/execution_costs.py) and accountin
 already charge trades. Add diagnostics that explain cost drag and support
 comparison of strategy variants, rather than duplicating those charge models.
 
-- [ ] Report gross/net returns, turnover, fees/commission, and separately
+- [x] Report gross/net returns, turnover, fees/commission, and separately
   identified slippage/impact estimates by instrument, rule, and period.
-- [ ] Capture pre-cost reference prices through immutable execution diagnostics;
+- [x] Capture pre-cost reference prices through immutable execution diagnostics;
   show slippage attribution as a decomposition of realized P&L, not a second fee.
 - [ ] Add repeatable cost/participation sensitivity sweeps and buffered versus
-  unbuffered comparisons, recording assumptions with each experiment.
+  unbuffered comparisons, recording assumptions with each experiment. The
+  deterministic case/result boundary and controlled paired fixture are complete;
+  representative buffering evidence waits on P1.7's risk-admitted executable path.
 
 Acceptance: costs reconcile to the ledger with no double counting; a zero-cost
 fixture has matching gross/net results; a controlled high-turnover strategy shows
@@ -590,27 +605,39 @@ trade lag, pre-trade controls, and callback rollback contracts.
 - [ ] Create `PROJECT_BRIEF.md` from the Python data/quant template and have the
   owner approve users, supported workflows, non-goals, financial consequence of
   error, data classification, platform matrix, calendar/timezone/units/rounding,
-  look-ahead rules, reconciliation source, and recovery objectives.
-- [ ] Add one feature-status table shared by README, `API_STABILITY.md`, and
+  look-ahead rules, reconciliation source, and recovery objectives. (Draft
+  implemented 2026-09-12; owner approval remains open.)
+- [x] Add one feature-status table shared by README, `API_STABILITY.md`, and
   `RELEASE_READINESS.md`; keep native replay and any unvalidated option APIs
   visibly experimental.
-- [ ] Replace the current stable classifier until P0 is complete. Add a policy
+- [x] Replace the current stable classifier until P0 is complete. Add a policy
   test so metadata, README maturity, and release status cannot contradict one
   another.
 - [x] Implement P0.7 position-cap enforcement and P0.8 decision snapshots, then
   include their regressions in the test suite (local evidence 2026-09-11).
 - [ ] Run those regressions on the supported hosted matrix and obtain owner
   acceptance before promoting their local evidence to release qualification.
+  ([CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)
+  passed Linux/macOS and CPython 3.10–3.12 on `22b75c6`; owner acceptance remains.)
 - [ ] If options enter the supported release scope, complete P1.4 lifecycle and
   numerical qualification; otherwise preserve their experimental status.
 - [ ] Create compact, reviewable golden cases from an implementation-independent
   oracle. Cover long/short, scale-in/out, cross-zero, partial fills, costs,
   multipliers, rolls, execution lag, VWAP causality, risk rejection, calendar
-  boundaries, NaN/Inf, overflow, and persisted-result round trips.
-- [ ] Add seeded stateful/property tests for trade/order/account reconciliation
+  boundaries, NaN/Inf, overflow, and persisted-result round trips. (Data-driven
+  ledger, integration, partial-fill, roll, VWAP, persistence, five calendar
+  boundaries, invalid numeric, and finite-overflow cases implemented 2026-09-12.)
+- [x] Add seeded stateful/property tests for trade/order/account reconciliation
   and run targeted mutation testing on the highest-consequence policy modules.
+  (Four replayable order/trade/account seeds and a 10/10 risk/P&L mutation gate
+  implemented locally 2026-09-12; the mutation job passed in
+  [CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)).
 - [ ] Record which historical outputs must be regenerated after the execution-lag,
   VWAP, sizing, callback, and numeric-admission fixes already in the changelog.
+  (Seven correction families, exact commits, evidence, and conservative
+  dispositions are recorded in `historical_output_corrections.json`; no bundles
+  are tracked here, so the quant/domain owner must populate and approve the
+  external `HISTORICAL_OUTPUT_REGISTER.csv` before this item can close.)
 
 Exit: supported behavior has independent evidence on every supported interpreter
 and platform, and unsupported behavior cannot be mistaken for supported behavior.
@@ -637,6 +664,11 @@ and platform, and unsupported behavior cannot be mistaken for supported behavior
 - [ ] Define bundle/cache schema ownership, compatibility, atomicity, retention,
   deletion, backup, restore, and repair. Exercise interrupted write, corrupt
   metadata, mixed versions, concurrent access, and full-disk/permission failures.
+  (The repository contract, bundle backup/corruption/restore and abrupt-death
+  exercises, injected result/factor `ENOSPC` and `EACCES`, legacy result
+  read/resave, factor migration, four publication-death stages, and concurrent
+  lease/writer evidence are implemented. External-storage, retention,
+  elapsed-RTO, and owner-approval work remains.)
 - [ ] Expand `SECURITY.md` with supported versions, a concrete private route,
   acknowledgement/remediation targets, disclosure policy, and response owner.
 
@@ -688,8 +720,9 @@ Exit: every P0 row is accepted with same-commit evidence and a named approver.
 
 ### Milestone 5 — Experimental native replay decision
 
-- [ ] Copy the template latency-budget structure into `LATENCY_BUDGET.md` and
-  link it from the native replay ADR and performance reports.
+- [x] Copy the template latency-budget structure into `LATENCY_BUDGET.md` and
+  link it from the native replay ADR and performance reports. (Candidate budget
+  implemented 2026-09-12; proposed thresholds remain unapproved.)
 - [ ] Approve the representative strategy, order/fill rate, real or validated
   preprocessed corpus, execution semantics, hardware, compiler, repetition
   count, memory/audit capacities, overload policy, and measurement boundary.
@@ -993,6 +1026,981 @@ release merely because another library offers them.
   add coverage-guided HDF5/IPC targets. P0.3 still requires those targets, broader
   resource containment, and named security review; passing CSV/ZIP/NumPy checks
   does not establish whole-process/dependency leak freedom or production readiness.
+
+### 2026-09-11 — Tenth slice (Python IPC coverage-guided target)
+
+- At the user's request, committed the weekly fuzzing work as `b77e1d7`, pushed
+  `production-fuzz-campaigns`, and opened [PR #32](https://github.com/joshuamyers22/gambit/pull/32)
+  for protected `main`. After the queued macOS checks completed, all required
+  checks passed and the PR merged as
+  [`c3c1864`](https://github.com/joshuamyers22/gambit/commit/c3c1864b7bc7d9d28293a213d91cf38aae0fe79f).
+  [CI](https://github.com/joshuamyers22/gambit/actions/runs/34660433682) and
+  [documentation](https://github.com/joshuamyers22/gambit/actions/runs/34660433572)
+  passed before merge; no protection bypass or package release occurred.
+- Added a bounded IPC-preflight Atheris target with nineteen generated seeds,
+  fixed manifest profiles, old/new Polars layouts, empty/multi-batch data and
+  expected-rejection handling. Native decoding of mutated inputs is prohibited.
+  The CPython 3.12 Linux x86-64 engine is version/hash-pinned separately from
+  runtime dependencies; the runtime dependency lock did not change.
+- Verified a real campaign in disposable x86-64 Linux: **100,000 executions**,
+  **167 to 207 coverage edges**, **120 MiB peak reported RSS**, no unexpected
+  exception. Instrumentation is explicitly limited to twenty validator/target
+  functions and accessors. A first import-hook experiment instrumented more of
+  Gambit than intended, so it was replaced with direct function instrumentation.
+- Diagnostic environment: Debian/CPython 3.12.11, Atheris 3.1.0, Polars 1.44.1.
+  x86 emulation required the matching Polars compatibility runtime only inside
+  the container; the project lock/local environment was unchanged. No ASan,
+  UBSan, LSan or native decoder qualification is inferred from this Python run.
+  Evidence and evolved synthetic corpus are preserved in
+  `/private/tmp/gambit-ipc-fuzz-evidence.3AD2fe/focused`; the container was removed
+  after copying them, without removing application data.
+- Added twenty tests including CI policy, admission/budget controls, unexpected
+  exception propagation, selective instrumentation, missing-engine/empty-replay
+  rejection, subprocess bounds and crash/timeout/no-coverage diagnostics.
+  Full local suite: **1,877 passed**, **86% coverage**. Lock, Ruff, mypy, coverage
+  floors, native warnings, notebook cleanliness and Sphinx passed. Wheel/sdist,
+  Twine and artifact inspection also passed with approved build network access,
+  confirming fuzz tooling remains outside release artifacts.
+- Tenth-slice changes remain local/uncommitted on `main`. Next: run the merged
+  extended CSV/ZIP workflow; then land/verify the IPC job and
+  add HDF5/native-decoder coverage-guided targets. P0.3 remains open for those
+  campaigns, broader containment and named security review.
+
+### 2026-09-11 — Eleventh slice (HDF5 manifest admission and extended fuzz evidence)
+
+- Added strict scalar text admission for HDF5 type/format/state markers and
+  versioned/legacy manifests, with UTF-8 byte-scalar compatibility. Missing
+  required attributes, malformed text/JSON and excessive nesting now fail with
+  `ValueError`; optional UTF-8 manifests retain their empty defaults.
+- Added an array-reader-only `max_manifest_bytes` option (default 1 MiB) for
+  the combined UTF-8 size of both manifests before JSON parsing or legacy
+  splitting. Both manifest lists are count-bounded before name validation.
+  This intentionally does not claim to bound h5py's prior attribute allocation,
+  native metadata loading or process RSS. Trusted larger manifests require an
+  explicit reader override; writer format/schema is unchanged.
+- Initial regressions reproduced **20 failures** against the previous reader.
+  Added **36 tests** in total, including default/exact combined-byte limits,
+  multi-byte text, nesting, missing/non-scalar attributes, fixed-byte compatibility
+  and no-parse/no-payload controls. HDF5 suite: **85 passed**. Full local suite:
+  **1,913 passed**, **86% coverage**. Lock, Ruff, mypy, coverage floors, native
+  warnings and notebook cleanliness passed. Sphinx warnings-as-errors passed;
+  the tracked documentation source is intentionally edited, so its clean-tree
+  guard awaits commit. Wheel/sdist, Twine and artifact inspection passed after
+  approved network access resolved build-dependency DNS failure.
+- Ran the merged extended CSV/ZIP workflow on `c3c1864`, seed `302323349`:
+  [run 34662061708](https://github.com/joshuamyers22/gambit/actions/runs/34662061708).
+  CSV passed **285,903 executions / 601 seconds / 439 MiB peak reported RSS**.
+  ZIP failed after **223,457 executions**, reaching **519 MiB** against its
+  **512 MiB** threshold (exit 71). This is an unresolved resource failure, not
+  proof of a leak, corruption, or a harmless sanitizer artifact.
+- Saved both campaigns' synthetic corpora, logs and metadata under
+  `/private/tmp/gambit-extended-fuzz-evidence.ON0HDn`; the ZIP artifact is
+  `oom-cb7473d757121c8a6909a48840090f8044813fea`. Hosted artifacts expire after
+  seven days. **Next priority:** reproduce the ZIP failure in equivalent Linux,
+  separate single-input allocation from cumulative retention/sanitizer overhead,
+  add a regression and verify the correction without relaxing the safety gate.
+- HDF5 and the preceding IPC changes remain local/uncommitted on `main`; no
+  push, release, production approval or protection change occurred this turn.
+  P0.3 remains open, including the ZIP finding, hosted IPC qualification,
+  HDF5/native-decoder fuzz targets, broader containment and named security review.
+
+### 2026-09-12 — Twelfth slice (truthful product scope and maturity)
+
+- Surveyed all open roadmap items and selected P0.1 as the first
+  non-cybersecurity slice because inconsistent production claims block the core
+  release boundary. No hostile-input, secret-scanning, SAST, threat-model, or
+  security-governance work is included in this slice.
+- Added a template-derived `PROJECT_BRIEF.md` covering users, supported workflow,
+  non-goals, financial failure cost, platforms, data ownership, time/units,
+  accounting, causality, recovery assumptions, invariants, owners, and open
+  decisions. It remains explicitly unapproved and cannot close P0.1 alone.
+- Added `FEATURE_STATUS.md` as the canonical posture matrix. README, API policy,
+  and release readiness now reference it; option lifecycle and native replay are
+  experimental, the factor CLI is an in-environment utility, and live trading is
+  out of scope. Corrected README's stale bundle-v3 wording to v4 writes/v2-v4 reads.
+- Replaced the premature `Production/Stable` classifier with `Beta` and added a
+  delivery-policy regression that enforces the pre-production classifier,
+  canonical links, draft approval state, and key experimental/out-of-scope rows.
+- Local evidence: **1,914 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), strict
+  Sphinx, notebook cleanliness, wheel/sdist builds, Twine, and artifact inspection
+  passed on macOS / CPython 3.10.20. Owner approval and hosted matrix evidence
+  remain open; no production promotion or package publication occurred.
+
+### 2026-09-12 — Thirteenth slice (initial financial acceptance corpus)
+
+- Added a versioned JSON acceptance corpus whose expected values are stored
+  independently of Gambit's output. Two manually derived ledgers cover long and
+  short entry, scale-out, cross-zero reversal, contract multipliers, and separate
+  fee/commission accumulation. Exact expected positions and a fixed `1e-9`
+  absolute currency tolerance are documented beside the fixtures.
+- Added an end-to-end strategy case covering one-heartbeat execution lag,
+  multiplier-aware realized/unrealized P&L, per-unit commissions, a safe
+  cross-zero order, a rejected position-limit breach, and exact v4 result-bundle
+  frame/provenance/telemetry round trips. Fill and submission timestamps are
+  asserted separately so same-bar execution cannot satisfy the case.
+- Added a short manually reviewable NYSE Independence Day case covering adjacent
+  trading/weekend dates, inclusive enumeration, and holiday rolling. This binds
+  the locked calendar adapter to known expected behavior without using a broad
+  mutable vendor date range as its own oracle.
+- Added a dedicated `acceptance` pytest marker. The supported Linux/macOS and
+  CPython 3.10-3.12 test matrix now runs `unit or acceptance`; a delivery-policy
+  regression protects the matrix and command. The corpus also remains in the
+  separate integration suite.
+- Local evidence: **1,919 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, and mypy (55 source files)
+  passed on macOS / CPython 3.10.20. Hosted matrix execution, independent owner
+  review, partial-fill/roll/VWAP/numeric-failure corpus rows, seeded stateful
+  reconciliation, and mutation testing remain open; P0.2 is not closed.
+
+### 2026-09-12 — Fourteenth slice (fill, roll, and causal VWAP acceptance)
+
+- Bumped the independently versioned financial corpus to schema 2 and added a
+  three-heartbeat GTC fill case. Its manually derived ledger checks each
+  partial/terminal status and remaining quantity, then reconciles three FIFO
+  lots, multiplier-aware final marking, per-fill commissions, net P&L, and equity.
+  The first test run correctly exposed that an unspecified lifetime defaulted to
+  FOK and cancelled after one fill; the fixture now names GTC explicitly.
+- Added a complete roll case: buy two outgoing multiplier-50 contracts, close
+  them five points higher, and open three multiplier-25 contracts before a
+  two-point final mark. The expected per-contract ledgers independently reconcile
+  `496 + 147 = 643` net P&L after seven units of commission. Tests also require
+  close/reopen leg order, shared roll identity, statuses, positions, and aggregate
+  equity; this does not claim cross-simulator roll atomicity beyond the built-in path.
+- Added a day-boundary VWAP acceptance case for both trade sides. Extreme changes
+  to later price and volume values leave the earlier `103` volume-weighted fill,
+  quantity, timestamp, and terminal status unchanged, making causality part of
+  the release corpus rather than only an isolated regression.
+- Local evidence: **1,922 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, and mypy (55 source files)
+  passed on macOS / CPython 3.10.20. Invalid-numeric/overflow corpus rows, seeded
+  stateful reconciliation, mutation testing, owner review, and hosted matrix
+  evidence remain open; P0.2 is not closed.
+
+### 2026-09-12 — Fifteenth slice (numeric failure and overflow acceptance)
+
+- Bumped the financial corpus to schema 3 and made the numeric policy
+  reviewable as data. Representative NaN/Inf rows cover order construction,
+  mutated trade import, and account marks; a separate NaN-mark case proves the
+  documented carry-forward behavior instead of treating missing data as an
+  invalid infinity.
+- Reproduced six previously unqualified finite-input failures: quantities above
+  the native signed-integer range were admitted, while unrealized and realized
+  price differences, cumulative fees, multi-contract net P&L, and equity
+  addition could publish infinity. Each is now an acceptance row with an
+  explicit failure boundary and rollback or repeat-read assertion.
+- Whole-unit quantities now reject values outside the platform integer used by
+  the FIFO kernel. Shared checked-binary64 helpers cover stable weighted-open
+  prices, realized/unrealized/net P&L, cumulative costs, account aggregation,
+  tabular account output, and equity. Contract-level overflow during trade
+  ingestion restores the prior ledger; aggregate/equity overflow is never
+  cached as a valid public result.
+- Local evidence: **1,935 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), strict
+  Sphinx, notebook cleanliness, wheel/sdist builds, Twine, and artifact
+  inspection passed on macOS / CPython 3.10.20. Stateful reconciliation,
+  mutation testing, owner review, and supported hosted-matrix evidence remain
+  open; P0.2 is not closed.
+
+### 2026-09-12 — Sixteenth slice (seeded stateful financial reconciliation)
+
+- Added a separately versioned stateful acceptance corpus with four fixed,
+  reviewable seeds. Each replay runs 48 steps across two contract multipliers,
+  bounded proposals, fills, cancellations, costs, rebates, and execution lags
+  from zero through two heartbeats; CI does not choose random seeds.
+- Added an independent deque-based FIFO reference ledger and exercised the full
+  strategy path. Every run reconciles original, filled, and remaining order
+  quantities; partial and terminal statuses; decision-time quantities; exact
+  trade history; every timestamp's contract ledger; group position and equity;
+  and telemetry. Failures report the seed and lag, plus the step and timestamp
+  for ledger mismatches.
+- Two initial focused failures corrected acceptance-test assumptions rather than
+  product code: proposed quantity belongs to the decision rather than its risk
+  snapshot, and a partial-fill transition need not remain partial at the end of
+  a run. The corrected assertions preserve both lifecycle requirements.
+- Local evidence: **1,939 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), native
+  warning checks, strict Sphinx, notebook cleanliness, wheel/sdist builds,
+  Twine, and artifact inspection passed on macOS / CPython 3.10.20. Mutation
+  testing, owner review, and supported hosted-matrix evidence remain open;
+  P0.2 is not closed.
+
+### 2026-09-12 — Seventeenth slice (calendar-boundary acceptance)
+
+- Bumped the independently versioned financial corpus to schema 4 and expanded
+  its single NYSE holiday example to five compact, manually listed boundaries:
+  midweek Independence Day, exchange-only Good Friday, weekend-observed
+  Christmas, Thanksgiving and its early-close Friday, and New Year across a
+  calendar-year transition.
+- Each case checks adjacent open and closed dates, an inclusive expected range,
+  agreement between enumeration and count, and offsets across the closure.
+  Good Friday also checks preceding and following rolls. The Thanksgiving case
+  explicitly treats its Friday as a trading day without claiming session-hour
+  support from Gambit's day-level calendar API.
+- Local evidence: **1,943 passed**, **86% aggregate coverage**, all six focused
+  coverage floors, frozen-lock validation, Ruff, mypy (55 source files), native
+  warning checks, strict Sphinx, notebook cleanliness, wheel/sdist builds,
+  Twine, and artifact inspection passed on macOS / CPython 3.10.20. Mutation
+  testing, owner review, and supported hosted-matrix qualification remain open;
+  P0.2 is not closed.
+
+### 2026-09-12 — Eighteenth slice (targeted financial mutation gate)
+
+- Added a dependency-free mutation runner with ten explicit semantic changes
+  across `risk.py` and `contract_pnl.py`: inclusive order and position caps,
+  pending exposure, accepted/rejected policy handling, realized and unrealized
+  multipliers, fee and commission signs, and missing-mark carry-forward.
+- Each mutant runs from an isolated temporary package against focused risk and
+  independent accounting acceptance tests. Mutation anchors must match exactly
+  once, mutated source must compile, and the gate distinguishes a killed mutant
+  (ordinary pytest test failure) from a survivor or infrastructure/collection
+  failure. Tests protect the runner definition and its two-module scope.
+- The initial campaign scored **9/10** and exposed missing exact-boundary
+  evidence for `MaxOrderQuantity`; a new regression now proves both `-maximum`
+  and `maximum` are accepted. Review then found and fixed cross-mutant temporary-
+  package contamination before the isolated rerun scored **10/10 killed**.
+- `make check` now includes the mutation gate. The reusable CI workflow has a
+  required, ten-minute Linux / CPython 3.12 mutation job, and delivery-policy
+  tests prevent its removal or conversion to a conditional/non-blocking job.
+- Local evidence: **1,950 passed**, **86% aggregate coverage**, **10/10 isolated
+  mutants killed**, all six focused coverage floors, frozen-lock validation,
+  Ruff, mypy (55 source files), native warning checks, strict Sphinx, notebook
+  cleanliness, wheel/sdist builds, Twine, and artifact inspection passed on
+  macOS / CPython 3.10.20. Hosted
+  [CI run 34705121532](https://github.com/joshuamyers22/gambit/actions/runs/34705121532)
+  then passed the mutation gate and the required Linux/macOS CPython 3.10–3.12
+  matrix at `22b75c6`. Owner approval and historical-output disposition still
+  keep P0.2 open.
+
+### 2026-09-12 — Nineteenth slice (historical-output disposition)
+
+- Confirmed that the repository tracks no Gambit result bundles or external
+  output catalog. Added an explicitly empty owner register template rather than
+  treating repository absence as proof that no affected outputs exist.
+- Added a schema-1 machine-readable ledger covering seven correction families:
+  pending-position caps, heartbeat lag, multiplier-aware sizing, causal VWAP,
+  invalid VWAP terms, callback/fill integrity, and numeric admission/overflow.
+  Each rule names exact correction commits, its trigger, rerun or invalidation
+  disposition, rationale, and existing regression evidence.
+- Added the canonical policy for inventory, commit/provenance comparison,
+  conservative unknown handling, precedence, rerun reconciliation, downstream
+  report withdrawal, and owner sign-off. Package version 1.1.0 alone is not a
+  safe cutoff because the corrections remain unreleased development commits.
+  API stability, project scope, release readiness, and acceptance documentation
+  link the policy.
+- Acceptance tests validate rule-family completeness, full commit identities,
+  allowed dispositions, live evidence paths, conservative wording, the exact
+  empty-register schema, and product-contract links. Local evidence passed with
+  **1,957 tests**, **86% aggregate coverage**, all six focused coverage floors,
+  **10/10 financial mutants killed**, frozen-lock, Ruff, mypy over 55 source
+  files, native-warning, strict-Sphinx, notebook, wheel/sdist, Twine, and artifact
+  inspection gates on macOS / CPython 3.10.20. Hosted
+  [CI run 34706032394](https://github.com/joshuamyers22/gambit/actions/runs/34706032394)
+  then passed the complete push workflow, including the required Linux/macOS
+  CPython 3.10–3.12 matrix, at `888e670`. The pull-request CI and documentation
+  workflows also passed at the same SHA. External inventory and
+  quant/domain-owner approval remain required, so P0.2 is not closed.
+
+### 2026-09-12 — Twentieth slice (data lifecycle and recovery)
+
+- Consolidated result-bundle and factor-cache authority, format ownership,
+  compatibility, migration, retention/deletion, backup/restore, corruption,
+  partial-publication, and rebuild rules into a user-facing lifecycle contract.
+  Result bundles are immutable derived audit artifacts; factor stores remain
+  experimental disposable caches and are explicitly excluded from backup/RPO
+  claims.
+- Defined the repository RPO as the last externally retained source input or
+  independently retained verified result, and RTO as the caller's measured time
+  to restore or rerun. Gambit makes no fixed duration or external-storage
+  durability claim. Data/storage-owner approval and a drill on owner-controlled
+  storage remain required.
+- Added cross-process acceptance exercises for a verified backup, corrupted
+  primary, restore to a new path, and process death after staging is durable but
+  before the atomic bundle rename. The death case proves no partial destination
+  is published, then follows the documented orphan cleanup and rerun procedure.
+  Existing tests retain result version-2/3 read/resave, factor segment migration,
+  concurrent lease/writer, and four-stage factor-publication death evidence.
+- Focused local evidence passed **23 tests**. Full local evidence passed **1,960
+  tests**, **86% aggregate coverage**, all six focused coverage floors, **10/10
+  financial mutants killed**, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, strict-Sphinx, documentation-source, notebook, wheel/sdist,
+  Twine, and artifact-inspection gates on macOS / CPython 3.10.20. Hosted
+  [CI run 34712649385](https://github.com/joshuamyers22/gambit/actions/runs/34712649385)
+  then passed the complete push workflow, including the required Linux/macOS
+  CPython 3.10–3.12 matrix, at `670d540`; pull-request CI and documentation also
+  passed at that SHA. External retention configuration, full-disk/permission
+  drills, elapsed RTO, and owner approval keep P1.1 open.
+
+### 2026-09-12 — Twenty-first slice (storage-failure preservation)
+
+- Added deterministic POSIX `ENOSPC` and `EACCES` injection after result-bundle
+  staging begins. Both failures propagate their original error, publish no
+  destination, and remove all staging members instead of reporting a partial
+  result.
+- Added factor-store failure drills at two distinct durability boundaries. A
+  no-space failure during column creation cleans staging and preserves the prior
+  `CURRENT` generation. Permission denial during the final pointer replacement
+  also preserves the prior readable generation, removes its temporary pointer,
+  and leaves the complete invisible generation reclaimable by the lease-aware
+  collector.
+- Expanded the lifecycle contract to distinguish deterministic library fault
+  injection from the required owner exercise of the actual filesystem, quota,
+  mount, backup product, and account permissions. Remote filesystems do not gain
+  an untested local atomic-rename or directory-flush guarantee.
+- Focused local evidence passed **5 lifecycle tests** and **36 factor-store
+  tests**. Full local evidence on macOS / CPython 3.10.20 passed **1,964 tests**
+  at **86% aggregate coverage**, all six module coverage floors, **10/10**
+  financial mutation checks, frozen-lock, Ruff, mypy, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. Hosted push
+  [CI run 34713954187](https://github.com/joshuamyers22/gambit/actions/runs/34713954187)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `1942e8d`; the
+  same-SHA pull-request CI and documentation workflows also passed. The external
+  storage/retention exercise, elapsed RTO, and data/storage-owner approval keep
+  P1.1 open.
+
+### 2026-09-12 — Twenty-second slice (native replay measurement contract)
+
+- Added the template-derived `LATENCY_BUDGET.md` for the experimental native
+  replay path. It names the candidate timer boundary, monotonic clock, proposed
+  load objective, stage allowances, causal/ordering invariants, bounded failure
+  behavior, resource assumptions, evidence identity, and rollback conditions.
+- Classified the existing measurements without inflating them into acceptance:
+  the three FIFO trials span 9.084–9.150 seconds and miss the proposed five-second
+  objective; the 1.312-second market-model result uses different semantics; and
+  factor-only parity is not order-to-P&L evidence. Three trials do not establish
+  p95, p99, or worst-case behavior.
+- Linked the candidate budget from the native replay ADR, acceptance brief, and
+  all three characterization reports. New policy tests require the template
+  sections, raw artifacts, cross-document links, zero-loss/correctness boundary,
+  explicit unapproved status, and final promote/retarget/remain-experimental
+  decision.
+- Focused local evidence passed **32 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,967 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx,
+  documentation-source, wheel/sdist, Twine, and release-artifact verification
+  gates. Hosted push
+  [CI run 34715052837](https://github.com/joshuamyers22/gambit/actions/runs/34715052837)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `61a052a`; the
+  same-SHA pull-request CI and documentation workflows also passed.
+  Representative strategy/data, reference host, measurement boundary,
+  capacities, repetition count, threshold, and native/performance-owner approval
+  keep P1.2 open.
+
+### 2026-09-12 — Twenty-third slice (causal expiry cutoff)
+
+- Replaced the acknowledged first-post-expiry valuation behavior with an
+  inclusive expiry boundary. Terminal P&L now uses the last account-grid mark at
+  or before expiry and never requests a later price; expiry between heartbeats
+  conservatively uses the preceding heartbeat without interpolation.
+- Rejects executions after expiry at both trade construction and mutable account
+  ingestion. Exact-expiry trades remain admissible and invalidate a previously
+  cached terminal value so a legal closing fill is reflected atomically.
+- Added versioned, hand-calculated acceptance cases for exact and between-grid
+  expiry, plus lifecycle regressions for exact-expiry recalculation,
+  constructor rejection, and atomic rejection of a mutated mixed trade batch.
+  The accounting contract explicitly leaves positions open and disclaims cash
+  or physical settlement, exercise, assignment, delivery, liquidation, exchange
+  calendars, and timezone inference.
+- Focused local evidence passed **96 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,974 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  push [CI run 34716269837](https://github.com/joshuamyers22/gambit/actions/runs/34716269837)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `c8e07e1`; the
+  same-SHA pull-request CI and documentation workflows also passed.
+  Quant/accounting-owner approval is still pending, and P1.4 remains open for a
+  settlement-model decision and independent option pricing/implied-volatility
+  validation.
+
+### 2026-09-12 — Twenty-fourth slice (point-in-time data access)
+
+- Added an immutable, revision-aware market-data owner with causal scalar and
+  window reads. Observation time and availability time are separate, the
+  current heartbeat is an inclusive upper bound, and a later available revision
+  supersedes an earlier revision only after its release.
+- Added explicit error, warning, and skip behavior for missing and stale values,
+  plus age-limited prior-value use. Future observation requests, future-assisted
+  interpolation, timezone-aware columns without caller normalization, malformed
+  schemas, non-finite values, and duplicate availability identities are
+  rejected.
+- Added a strategy price adapter whose dataset fingerprint is automatically
+  retained in run provenance. Dataset revisions also change factor-node
+  identity, while mutation of the caller's original frame cannot alter the
+  owned snapshot. The stable market-data kernel remains free of outer-package
+  dependencies.
+- Acceptance evidence proves that future values and later dataset revisions do
+  not alter earlier reads, delayed publications remain hidden until release,
+  exact-heartbeat publication is available, and basket pricing follows the same
+  boundary. Arbitrary callbacks retaining external arrays remain explicitly
+  outside this enforcement boundary.
+- Focused local evidence passed **74 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,993 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, strict-Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. Hosted push
+  [CI run 34718164707](https://github.com/joshuamyers22/gambit/actions/runs/34718164707)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `6f85970`; the
+  same-SHA pull-request CI and documentation workflows also passed. Built-in
+  example/stage adoption and data/core-owner approval keep P1.5 open.
+
+### 2026-09-12 — Twenty-fifth slice (causal built-in indicator adoption)
+
+- Added a built-in point-in-time indicator stage that resolves every output
+  independently with its strategy heartbeat as both the observation cutoff and
+  availability boundary. It uses the same explicit missing, stale, prior-value,
+  and maximum-age policies as the price adapter.
+- Registering the stage automatically retains its dataset fingerprint in run
+  provenance. A price adapter and indicator using different datasets under the
+  same provenance name now fail during registration without partially adding
+  the stage or replacing the existing identity.
+- Added an executable strategy recipe using one owned dataset for price and
+  indicator access. Acceptance coverage runs the recipe, verifies delayed
+  publication produces `[100.0, 100.0, 102.0]`, and confirms the owned dataset
+  exposes no public full-frame accessor. Documentation explicitly retains the
+  boundary that custom vectorized consumers can combine future output elements
+  or retain external arrays and therefore remain outside enforcement.
+- Focused local evidence passed **57 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **1,996 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  push [CI run 34719511839](https://github.com/joshuamyers22/gambit/actions/runs/34719511839)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `cc5d276`; the
+  same-SHA pull-request CI and documentation workflows also passed. All
+  repository implementation checkboxes for P1.5 are complete; representative
+  owner-data qualification and data/core-owner approval keep the item open.
+
+### 2026-09-12 — Twenty-sixth slice (owned walk-forward split boundary)
+
+- Added an experimental walk-forward schedule and sequential runner with
+  explicit warm-up, fit, validation, and held-out intervals; fixed rolling or
+  growing expanding fits; two configurable purge gaps; and non-overlapping
+  held-out refit intervals. Too-short, null, unordered, duplicate, or
+  timezone-aware timelines fail before any callback runs, and incomplete final
+  folds are not reported.
+- The runner owns its normalized input snapshot and gives the fit callback only
+  separate warm-up and fit frames. Stable SHA-256 split identities bind the
+  complete timestamp grid, schedule configuration, fold index, and interval
+  bounds. Validation and held-out metrics must be finite and are detached from
+  callback-owned mappings.
+- Acceptance coverage proves exact rolling/expanding boundaries, purge
+  exclusion, identity sensitivity, caller-input ownership, callback frame
+  separation, and that perturbing held-out targets cannot alter fitted or
+  validation values. Public documentation retains the limits around semantic
+  future-derived columns, retained callback state, and scoring-time model
+  mutation; the remaining training-only optimizer, persistence/equity, seeded
+  parity, and owner-approval work keeps P1.6 open.
+- Focused local evidence passed **179 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,011 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  push [CI run 34721493644](https://github.com/joshuamyers22/gambit/actions/runs/34721493644)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `ba44fdf`;
+  same-SHA pull-request
+  [CI run 34721478366](https://github.com/joshuamyers22/gambit/actions/runs/34721478366)
+  and [documentation run 34721478371](https://github.com/joshuamyers22/gambit/actions/runs/34721478371)
+  also passed.
+
+### 2026-09-12 — Twenty-seventh slice (walk-forward optimizer isolation)
+
+- Added parameter selection to the owned walk-forward runner by constructing
+  one existing `Optimizer` per fold. Candidate fitting and the selected-
+  parameter refit receive only the exact declared fit-column allowlist over
+  warm-up and fit intervals; candidates are ranked on validation cost before
+  the selected model can receive held-out rows. No second process scheduler was
+  introduced.
+- Derived a reproducible uint64 seed from the caller seed and split identity for
+  every fold. Candidate parameters are detached finite scalar mappings,
+  validation costs and metrics must be finite, and equal-cost candidates use a
+  canonical parameter identity rather than nondeterministic completion order.
+  In-memory trial and selected-fold results keep validation and held-out metrics
+  visibly separate.
+- Acceptance coverage excludes a deliberately predictive undeclared column from
+  all fits, proves held-out perturbation leaves trials, selected parameters, and
+  validation metrics unchanged, and compares exact seeded results between one
+  process and the existing spawn-based process pool. Documentation retains that
+  allowed columns can still be improperly precomputed and closures can retain
+  external data; built-in estimator adapters and persisted/OOS artifacts remain
+  open under P1.6.
+- Focused local evidence passed **184 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,016 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  push [CI run 34723920455](https://github.com/joshuamyers22/gambit/actions/runs/34723920455)
+  passed the full Linux/macOS and CPython 3.10–3.12 matrix at `f9f9f48`;
+  same-SHA pull-request
+  [CI run 34723921716](https://github.com/joshuamyers22/gambit/actions/runs/34723921716)
+  and [documentation run 34723921710](https://github.com/joshuamyers22/gambit/actions/runs/34723921710)
+  also passed.
+
+### 2026-09-12 — Twenty-eighth slice (training-only estimator adapters)
+
+- Replaced raw optimized-fit frames with an owned `WalkForwardTrainingSet`.
+  Its public frame accessors return detached clones, the exact fit allowlist must
+  include the schedule timestamp, and warm-up data remains separately available
+  for causal initialization without entering estimator fitting.
+- Added a generic fit-only estimator hook plus built-in covariance and tail-risk
+  adapters. Both risk adapters receive only fit rows and force their `as_of` to
+  the final fit timestamp, preventing a callback from accidentally extending
+  the existing model cutoffs into validation or held-out intervals.
+- Acceptance coverage fits all three adapter forms, verifies covariance and
+  tail-risk cutoffs stop at the final fit row, proves mutation of a returned fit
+  frame cannot alter the owned snapshot, and retains exact seeded process-pool
+  parity. Gambit has no forecast-scalar estimator yet; that P2.3 dependency and
+  persistence/OOS artifacts keep the broader P1.6 estimator item open.
+- Focused local evidence passed **199 tests**. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,017 tests** at **86% aggregate coverage**, all six
+  module coverage floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy over 55 source files, native-warning, notebook-cleanliness, strict
+  Sphinx, wheel/sdist, Twine, and release-artifact verification gates. Hosted
+  evidence remains pending because this local commit was intentionally removed
+  from the remote branch at user direction.
+
+### 2026-09-12 — Twenty-ninth slice (walk-forward experiment evidence)
+
+- Added an immutable optimized-experiment result that carries the deterministic
+  fingerprint of the runner's complete owned input and a caller-supplied
+  lowercase SHA-256 identity of every selected refitted model. Input changes are
+  now visible even when held-out perturbations correctly leave selection and
+  the fitted model unchanged.
+- Required optimized held-out callbacks to bind finite metrics to exactly one
+  numeric equity observation per held-out timestamp. Per-fold frames and the
+  combined strictly chronological, non-overlapping out-of-sample series are
+  returned as detached clones, while validation metrics remain visibly
+  separate.
+- Extended the existing optimizer scheduler to retain failed suggestion
+  parameters and exception summaries in both sequential and process-pool
+  execution. Walk-forward results sort those records deterministically and
+  continue when other candidates produce valid validation evidence; an
+  all-failed fold stops clearly before held-out evaluation.
+- Focused local evidence passed **25 walk-forward tests**. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,021 tests** at **86% aggregate
+  coverage**, all six module coverage floors including **83.93%** for the
+  optimizer, **10/10** financial mutation checks, frozen-lock, Ruff, mypy over
+  55 source files, native-warning, notebook-cleanliness, strict Sphinx,
+  wheel/sdist, Twine, and release-artifact verification gates. The isolated
+  build initially lacked sandbox DNS and passed unchanged when rerun with
+  approved network access. Durable experiment persistence, forecast-scalar
+  integration, hosted evidence, and quant/research-owner approval keep P1.6
+  open. This work remains local and will not be pushed unless explicitly
+  requested.
+
+### 2026-09-12 — Thirtieth slice (durable walk-forward experiment format)
+
+- Added a dedicated version-one walk-forward artifact, separate from the
+  backtest result bundle. Atomic publication writes a canonical manifest for
+  every split interval, seed, selected parameter, successful/failed trial,
+  metric, and model/input SHA-256 identity plus a checksummed uncompressed Arrow
+  table for chronological out-of-sample equity.
+- Added reconstruction through ``WalkForwardExperimentResult.load`` with format,
+  checksum, exact Datetime(ns)/Float64 schema, row-count, fold-offset, interval,
+  finite-value, identity, and chronological-order validation. Fitted executable
+  model objects remain outside the artifact; only their reproducible identities
+  are retained.
+- Acceptance coverage round-trips every evidence category, rejects replacement
+  of an existing destination, and rejects modified equity or an unsupported
+  artifact version. Focused local evidence passed **27 walk-forward tests**.
+  Full local evidence on macOS / CPython 3.10.20 passed **2,023 tests** at
+  **86% aggregate coverage**, all six module coverage floors including
+  **83.42%** for the optimizer, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. Forecast-scalar integration, hosted evidence, and
+  quant/research-owner approval keep P1.6 open. This work remains local and
+  will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-first slice (fixed forecast scale/cap/combine)
+
+- Added long-form Polars forecast stages keyed by normalized timestamp, symbol,
+  and rule. Fixed positive per-rule scalars feed a symmetric cap while preserving
+  detached raw, scaled, capped, and availability columns.
+- Added fixed and equal-weight combination with a complete rule contribution
+  table and one combined ``raw_forecast`` per timestamp/symbol. Fixed weights
+  sum to one, so duplicated identical rules receive no implicit diversification
+  multiplier. Missing configured rules fail by default; the explicit zero policy
+  retains an unavailable row with zero contribution and does not silently
+  renormalize remaining rules.
+- Acceptance coverage matches manual scale/cap/weight calculations, proves
+  future rows cannot change earlier fixed output, confirms returned audit frames
+  are detached, and feeds the combined output directly into the existing
+  volatility-target sizer. The documented offline example and consolidated local
+  gates recorded in the next slice passed. Historical weights/correlation,
+  durable contribution evidence, diversification scaling, and
+  quant/research-owner approval keep P2.3 open. This work remains local and will
+  not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-fourth slice (durable forecast contribution evidence)
+
+- Added a separate version-one ``gambit.forecast-combination`` artifact. Atomic
+  publication writes a canonical manifest plus uncompressed Arrow tables for
+  combined forecasts and the complete rule-contribution ledger, fsyncs files and
+  directories, refuses to overwrite an existing destination, and records each
+  table's SHA-256 digest and row count.
+- Loading admits only the declared filenames, exact schemas, bounded files,
+  checksums, row counts, sorted unique identities, coherent availability/null
+  state, finite numeric values, valid weights/scales, and contributions matching
+  ``capped_forecast * effective_weight * diversification_multiplier``. Combined
+  forecasts and available-rule counts must reconcile exactly to their ledger.
+- Added ``ForecastCombinationResult.save/load`` and the public
+  ``ForecastCombinationResultError``. Round-trip coverage preserves both
+  detached tables and rejects overwrite, corruption, unsupported versions, and
+  unreconciled output. API stability, feature posture, risk guidance, and the
+  changelog describe this durable evidence boundary.
+- Focused local evidence passed **32 forecast, public-API, and executable-example
+  tests**, plus Ruff, mypy, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,042 tests** at **86% aggregate coverage**, with
+  **81%** forecasting-module, **78%** forecast-persistence-module, and **83.36%**
+  optimizer coverage, all six enforced module floors, **10/10** financial
+  mutation checks, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. The isolated build initially lacked
+  sandbox DNS and passed unchanged with approved network access.
+  Quant/research-owner approval is the remaining P2.3 gate. This work remains
+  local and will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-second slice (training-only forecast scalars)
+
+- Added a historical scalar estimator for wide rule-forecast columns. Each
+  positive scalar targets a configured mean absolute forecast using only finite
+  observations at or before a declared cutoff; insufficient history, duplicate
+  rule columns, non-chronological timestamps, and all-zero history fail
+  explicitly.
+- Added immutable fitted scalar evidence with per-rule observation counts and an
+  ``as_of`` timestamp. The fitted result constructs the fixed scale/cap stage
+  without discarding its estimated values.
+- Integrated the estimator through
+  ``WalkForwardTrainingSet.fit_forecast_scalars``. The adapter passes only the
+  fit frame and forces the cutoff to the final fit timestamp alongside the
+  existing covariance and tail-risk adapters, completing the remaining P1.6
+  implementation checklist item.
+- Focused local evidence passed **43 forecast, walk-forward, and public-API
+  tests**, plus the documented offline example. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,035 tests** at **86% aggregate coverage**, with
+  **81%** forecasting-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 55 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. The isolated build initially
+  lacked sandbox DNS and passed unchanged with approved network access.
+  Quant/research-owner approval still gates P1.6. Estimated weights/correlation,
+  diversification scaling, durable contribution evidence, and owner approval
+  keep P2.3 open. This work remains local and will not be pushed unless
+  explicitly requested.
+
+### 2026-09-12 — Thirty-third slice (training-only forecast combination estimates)
+
+- Added a historical combination estimator for wide scaled/capped rule columns.
+  It uses complete rows through a declared cutoff, requires a configurable
+  minimum history, derives normalized inverse-volatility weights and empirical
+  correlation, and fails explicitly for constant or non-finite rule history.
+- Added bounded diversification scaling from ``1 / sqrt(w' C w)``. The fitted
+  artifact retains detached weights, correlation, observation count, cutoff,
+  realized multiplier, and configured maximum. Perfectly duplicated rules have
+  a multiplier of one and therefore receive no unwarranted diversification
+  credit.
+- Added explicit missing-rule renormalization alongside the existing fail and
+  zero policies. Contribution rows retain base weight, effective weight, and
+  diversification multiplier, and an entirely unavailable group fails instead
+  of producing an invented forecast.
+- Added ``WalkForwardTrainingSet.fit_forecast_combination`` so the estimator sees
+  only owned fit rows and uses the final fit timestamp as its cutoff. Public API,
+  feature posture, strategy/risk guidance, changelog, and the executable offline
+  example describe the boundary.
+- Focused local evidence passed **48 forecast, walk-forward, and public-API
+  tests**, Ruff, mypy, and the documented offline example. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,040 tests** at **86% aggregate
+  coverage**, with **80%** forecasting-module and **83.36%** optimizer coverage,
+  all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The isolated build initially lacked sandbox DNS and passed
+  unchanged with approved network access. Durable contribution persistence and
+  quant/research-owner approval keep P2.3 open. This work remains local and will
+  not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-fifth slice (reconciled cost and turnover diagnostics)
+
+- Added a Polars cost/turnover analyzer over explicitly attributed incremental
+  P&L and executed-trade rows. Daily, weekly, or monthly output is keyed by
+  period, instrument, and rule and retains the fixed capital/bucket assumptions,
+  gross/net P&L and returns, signed fee and commission totals, explicit cost
+  drag, absolute traded notional, capital-normalized turnover, and trade count.
+- The analyzer requires gross minus net P&L to reconcile to the actual trade
+  ledger's fees and commissions within a declared tolerance. Gross P&L is
+  defined after fill-price effects, so slippage is never added again as an
+  invented fee. Numeric types, finite values, positive multipliers, nonzero
+  quantities, and non-empty attribution identities fail explicitly.
+- Added manual zero-cost, controlled high-turnover/cost-drag, multi-rule,
+  malformed-input, and detached-result acceptance coverage plus an executable
+  offline example. Public API, feature posture, risk guidance, and changelog
+  describe that caller-supplied rule attribution is required; shared-position
+  ownership is not guessed.
+- Focused local evidence passed **19 cost-diagnostic, public-API, and executable
+  risk-example tests**, plus Ruff, mypy, the standalone example, and strict
+  Sphinx. Full local evidence on macOS / CPython 3.10.20 passed **2,048 tests**
+  at **86% aggregate coverage**, with **86%** cost-diagnostics-module coverage,
+  all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The isolated build initially lacked sandbox DNS and
+  passed unchanged with approved network access. Immutable pre-cost references,
+  slippage/impact decomposition, sensitivity sweeps, buffered comparisons, and
+  quant/analytics-owner approval keep P2.4 open. This work remains local and
+  will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-sixth slice (immutable execution-price attribution)
+
+- Added an immutable execution-price diagnostic to built-in simple-simulator
+  fills. It preserves the pre-cost reference price, the slippage/impact model
+  name and adjustment, a separate rounding adjustment, and the final fill price;
+  construction, callback admission, and account ingestion require the
+  decomposition to reconcile after mutable trade callbacks.
+- Account trade exports retain nullable diagnostic columns and a signed monetary
+  price effect, where positive is adverse and negative is price improvement.
+  Custom simulator fills remain supported, but their missing evidence is
+  explicit rather than reconstructed from an unknowable reference price.
+- Extended cost reports with attributed/missing fill counts and a detached
+  model-level price-effects table separating modeled and rounding contributions.
+  These values decompose gross P&L and never enter the existing fee/commission
+  reconciliation, preventing a second slippage charge.
+- Focused local evidence passed **117 execution-cost, boundary, cost-diagnostic,
+  public-API, and executable risk-example tests**, plus Ruff, mypy, the standalone
+  example, and strict Sphinx. Full local evidence on macOS / CPython 3.10.20
+  passed **2,054 tests** at **86% aggregate coverage**, with **85%**
+  cost-diagnostics-module coverage, all six enforced module floors, **10/10**
+  financial mutation checks, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. The isolated build initially lacked
+  sandbox DNS and passed unchanged with approved network access. Sensitivity
+  sweeps, buffered comparisons, representative evidence, and
+  quant/analytics-owner approval keep P2.4 open. This work remains local and
+  will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-seventh slice (repeatable cost-sensitivity boundary)
+
+- Added immutable cost-sensitivity cases with canonical JSON-scalar assumptions,
+  unsigned seeds, buffered/unbuffered labels, and deterministic case SHA-256
+  identities. A runner binds the surface to explicit input and strategy
+  fingerprints, executes cases once in declared order, and requires the same
+  finite named metrics from every independent path.
+- Added detached long-form results that repeat the complete assumptions and all
+  fingerprints on every metric row. Exact case failures retain their identity
+  and original cause; malformed result schemas, fingerprints, ordering,
+  metadata, assumptions, and incomparable metric sets fail explicitly.
+- Added paired buffering comparisons keyed by a caller-declared comparison
+  identity. They report only the observed ``buffered - unbuffered`` difference
+  and deliberately impose no monotonic-cost or performance assertion when
+  execution, risk, or strategy paths change.
+- Added a controlled executable cost/participation/buffering surface and manual
+  coverage for deterministic replay, path-dependent non-monotonic outcomes,
+  immutable ownership, complete-pair selection, malformed cases, evaluator
+  failures, and fingerprint reconciliation. Mypy now explicitly covers both
+  P2.4 modules instead of reaching them only through a skipped import.
+- Focused local evidence passed **33 cost-sensitivity, cost-diagnostic,
+  public-API, and executable risk-example tests**, plus Ruff, mypy over 57 source
+  files, the standalone example, and strict Sphinx. Full local evidence on macOS
+  / CPython 3.10.20 passed **2,066 tests** at **86% aggregate coverage**, with
+  **83%** cost-sensitivity-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 57 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine,
+  and release-artifact verification gates. Initial sandbox dependency resolution
+  lacked DNS; the complete gate passed unchanged with approved network access.
+  Representative strategy evidence and a real buffered/unbuffered comparison
+  wait on P1.7's executable target layer; quant/analytics-owner approval also
+  remains pending. This work remains local and will not be pushed unless
+  explicitly requested.
+
+### 2026-09-12 — Thirty-eighth slice (executable exposure targets)
+
+- Added an experimental conversion boundary from base-currency exposure targets
+  to deterministic whole-contract targets and detached incremental market-order
+  proposals. Currency-labelled point-in-time local prices, positive contract
+  multipliers, and an explicit FX snapshot determine base-currency unit notionals.
+- Added per-instrument whole-lot rules with half-away-from-zero or toward-zero
+  rounding. Diagnostics retain raw and rounded quantities, achieved exposure,
+  tracking error, current holdings, every still-open pending quantity, projected
+  holdings, and the resulting incremental order quantity.
+- Cancellation-requested quantities remain reserved until acknowledged, so an
+  unchanged target cannot create duplicate exposure. Canonical contract identity,
+  exact instrument inputs, valuation-grid membership, market-data cutoffs,
+  currency agreement, finite positive prices, available FX, and signed platform
+  quantity bounds fail explicitly. The builder proposes orders only and does not
+  bypass supported risk admission.
+- Focused local evidence passed **41 executable-target, sizing, currency,
+  public-API, and executable risk-example tests**, plus Ruff, mypy over 58 source
+  files, the standalone example, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,079 tests** at **86% aggregate coverage**, with
+  **84%** executable-target-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 58 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine,
+  and release-artifact verification gates. Initial sandbox dependency resolution
+  lacked DNS; the complete gate passed unchanged with approved network access.
+  No-trade buffering, post-rounding risk/constraint rechecks, supported admission,
+  representative evidence, and quant/execution-owner approval keep P1.7 open.
+  This work remains local and will not be pushed unless explicitly requested.
+
+### 2026-09-13 — Thirty-ninth slice (deterministic no-trade buffering)
+
+- Added an optional finite non-negative ``no_trade_band`` to each tradable-unit
+  rule. Its units are an absolute amount in the calculation base currency, and
+  its inclusive symmetric boundary is centered on the rounded executable target
+  rather than an untradable fractional quantity. A zero band preserves the
+  unbuffered reference path.
+- Buffer decisions compare the rounded target exposure with projected exposure,
+  including current holdings and every still-open order. A position inside the
+  band emits no proposal; a position outside trades to the deterministic rounded
+  target. Quantity and exposure arithmetic must remain within explicit platform
+  and finite-value bounds.
+- Extended detached diagnostics with rounded-target and projected exposures,
+  the unbuffered quantity, inclusive-band decision, applied-buffer flag,
+  post-order quantity, achieved exposure, and actual residual tracking error.
+  The documented example now demonstrates one buffered and one executable
+  adjustment without implying submission or risk admission.
+- Focused local evidence passed **48 executable-target, sizing, currency,
+  public-API, and executable risk-example tests**, including a controlled
+  oscillating-target comparison, pending-order projection, inclusive boundaries,
+  invalid band values, and an outside-band flattening move. Ruff, mypy over 58
+  source files, the standalone example, and strict Sphinx also passed. Full local
+  evidence on macOS / CPython 3.10.20 passed **2,086 tests** at **86% aggregate
+  coverage**, with **84%** executable-target-module coverage, all six enforced
+  module floors, **10/10** financial mutation checks, frozen-lock, Ruff, mypy
+  over 58 source files, native-warning, notebook-cleanliness, strict Sphinx,
+  wheel/sdist, Twine, and release-artifact verification gates. The initial
+  sandbox run reached the isolated release build before dependency resolution
+  lacked DNS; the complete gate passed unchanged with approved network access.
+  Post-rounding risk/constraint rechecks, buffer overrides for required
+  reductions, supported admission, representative evidence, and
+  quant/execution-owner approval keep P1.7 open. This work remains local and
+  will not be pushed unless explicitly requested.
+
+### 2026-09-13 — Fortieth slice (achieved target risk evidence)
+
+- Added a detached standard exposure table for the actual post-rounding and
+  post-buffer portfolio. Each row identifies its symbol, contract group, asset
+  class, base currency, base-currency price, whole quantity, multiplier, net
+  exposure, and gross exposure, so existing risk measures consume the same
+  achieved state represented by the order diagnostics.
+- Added optional point-in-time risk-measure evaluation directly to executable
+  target construction. Covariance, tail-risk, scenario, and ordinary exposure
+  measures retain their existing calculation context and lookahead checks; an
+  omitted measure set leaves risk explicitly absent rather than inventing a
+  portfolio metric.
+- Result accessors return owned exposure frames and risk data. Coverage proves
+  that rounding and an applied no-trade band flow into achieved volatility and
+  net exposure, local EUR prices translate into USD before risk evaluation,
+  caller mutation cannot rewrite retained evidence, and future-dated models fail.
+- Focused local evidence passed **69 executable-target, sizing, currency,
+  covariance, tail-risk, generic-risk, public-API, and executable risk-example
+  tests**, plus Ruff, mypy over 58 source files, the standalone example, and
+  strict Sphinx. Full local evidence on macOS / CPython 3.10.20 passed **2,089
+  tests** at **86% aggregate coverage**, with **85%** executable-target-module
+  coverage, all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 58 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The sandbox run reached the isolated release build before
+  dependency resolution lacked DNS; the complete gate passed unchanged with
+  approved network access. Constraint rechecks, buffer overrides for required
+  reductions, supported admission, representative evidence, and
+  quant/execution-owner approval keep P1.7 open. This work remains local and
+  will not be pushed unless explicitly requested.
+
+### 2026-09-13 — Forty-first slice (shared executable-target admission)
+
+- Routed every nonzero post-buffer target proposal through the existing
+  ``decide_order`` boundary. Admission sees caller-supplied pending orders plus
+  earlier accepted proposals, matching Strategy's sequential reservation model.
+- Added a reusable ``LongOnly`` policy that rejects any sell whose independently
+  reachable endpoint is short. Opposite pending orders provide no admission
+  credit, while buys and genuine short reductions remain possible.
+- Target results retain detached decisions for accepted and rejected proposals.
+  Diagnostics distinguish candidate and admitted quantities and record status,
+  policy, code, and message; returned orders, achieved exposure, tracking error,
+  and optional achieved risk include accepted quantities only.
+- The builder remains non-submitting. Orders returned through a Strategy rule
+  are admitted again against then-current engine state. Buffer overrides for
+  mandatory reductions and representative adapter evidence remain pending, as
+  does quant/execution-owner approval.
+- Focused local evidence passed **74 executable-target, pre-trade-risk,
+  fill-sequence, control-plane, and public-API tests**, plus Ruff, mypy over 58
+  source files, the executable example, and strict Sphinx. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,091 tests** at **86% aggregate
+  coverage**, with **86%** executable-target-module coverage, all six enforced
+  module floors, **10/10** financial mutation checks, frozen-lock, Ruff, mypy,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. This work remains local and will not be
+  pushed unless explicitly requested.
+
+### 2026-09-13 — Forty-second slice (required-reduction buffer overrides)
+
+- Added a policy-owned reduction hook used only when a nonzero target adjustment
+  would otherwise be suppressed by its no-trade band. ``LongOnly`` and
+  ``MaxPositionQuantity`` identify moves that improve an existing breach using
+  projected holdings, including still-open orders.
+- Required reductions bypass the buffer but not admission. Diagnostics retain
+  both the inside-band condition and an explicit override flag, followed by the
+  ordinary accepted/rejected policy evidence and accepted-only achieved state.
+- Controlled long- and short-breach cases prove that small reductions remain
+  executable while ordinary in-band changes stay suppressed. Custom policy
+  hooks are mutation-checked at the shared risk boundary. Supported Strategy
+  adapter evidence, representative evidence, and quant/execution-owner approval
+  keep P1.7 open.
+- Focused local evidence passed **75 executable-target, pre-trade-risk,
+  fill-sequence, control-plane, and public-API tests**, plus Ruff, mypy over 58
+  source files, the executable example, and strict Sphinx. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,092 tests** at **86% aggregate
+  coverage**, with **86%** executable-target-module and **94%** risk-module
+  coverage, all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx,
+  wheel/sdist, Twine, and release-artifact verification gates. The sandbox run
+  reached the isolated build before DNS resolution failed; the unchanged gate
+  passed with approved network access. This work remains local and will not be
+  pushed unless explicitly requested.
+
+### 2026-09-13 — Forty-third slice (supported executable-target Strategy adapter)
+
+- Added typed point-in-time target inputs and a callable ``ExecutableTargetRule``
+  that fits the existing Strategy rule contract. It receives the live account
+  and immutable pending-order view, delegates conversion/buffering/admission to
+  the target builder, retains the latest detached evidence, and returns fresh
+  accepted orders through Strategy validation and final risk re-admission.
+- Added a deterministic end-to-end Strategy fixture and executable documentation
+  example with a two-bar fill lag. The second target evaluation reserves the
+  still-open three-unit order and emits no duplicate; the original order fills
+  on the third timestamp with its decision-time quantity preserved in Strategy's
+  audit snapshot.
+- Documented the operational requirement to register equivalent policies on the
+  adapter and Strategy so construction evidence and final admission do not
+  drift. With representative rounding, FX/multiplier, small-target,
+  impossible-price, partial-fill/pending lifecycle, breach-reduction, buffering,
+  achieved-risk, and Strategy-adapter cases now covered, P1.7 implementation and
+  its engineering acceptance checklist are complete. Quant/execution-owner
+  approval remains an external production signoff.
+- Focused local evidence passed **42 executable-target, public-API, and
+  executable risk-example tests**, plus the standalone adapter example, Ruff,
+  mypy over 58 source files, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,094 tests** at **86% aggregate coverage**, with
+  **86%** executable-target-module and **94%** risk-module coverage, all six
+  enforced module floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. The sandbox run reached the
+  isolated build before DNS resolution failed; the unchanged gate passed with
+  approved network access.
+
+### 2026-09-13 — Forty-fourth slice (P1.7 owner-review packet)
+
+- Added `P1_7_SIGNOFF.md`, pinned to the tested implementation baseline, with a
+  requirement-to-test evidence matrix, explicit operational decisions and
+  non-goals, reviewer commands, and immutable-commit/evidence fields.
+- Kept the gate truthfully open: automation cannot populate the named reviewer,
+  date, decision, conditions, or evidence location. The quant/execution owner
+  must record that external decision before experimental status can change.
+- The repository owner subsequently provided explicit approval in the workspace
+  session on 2026-09-13, acting as quant/execution owner. The decision and
+  reviewed commit are recorded in `P1_7_SIGNOFF.md`; P1.7 is complete.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

@@ -65,22 +65,23 @@ Cost sensitivity
 ----------------
 
 Treat cost assumptions as parameters and report a surface, not one preferred
-number::
+number. ``CostSensitivityRunner`` executes each immutable case independently,
+requires the same finite metrics from every case, and records canonical
+assumptions plus input, strategy, and case fingerprints on every result row.
+Use ``CostSensitivityVariant`` to label paired buffered/unbuffered cases; the
+runner reports the observed difference without imposing a monotonic cost or
+performance relationship.
 
-   spreads = [0.00, 0.01, 0.02, 0.05]
-   outcomes = []
-   for spread in spreads:
-       simulator = gambit.SimpleMarketSimulator(
-           price_function,
-           slippage_model=gambit.BidAskSpreadSlippage(spread),
-           commission_model=gambit.PerUnitCharge(0.005),
-       )
-       strategy = build_strategy(simulator=simulator)
-       strategy.run()
-       outcomes.append(
-           {"spread": spread, "ending_equity": strategy.account.equity(strategy.timestamps[-1])}
-       )
-   sensitivity = pl.DataFrame(outcomes)
+.. literalinclude:: ../../examples/risk/cost_sensitivity.py
+   :language: python
+   :linenos:
+
+The example evaluator is a controlled offline fixture. In research, its callback
+must construct and run a fresh strategy for each case, applying every recorded
+slippage, fee, commission, participation, and buffer assumption. Reusing one
+realized trade path and merely subtracting scaled costs is not a sensitivity
+backtest because costs and participation can change fills, risk decisions, and
+later signals.
 
 Persist and verify a result
 ---------------------------

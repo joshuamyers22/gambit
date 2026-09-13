@@ -81,6 +81,14 @@ Costs should be explicit and directionally correct::
 Calibrate costs from venue and broker data. A strategy whose result disappears
 under a small, defensible cost perturbation is not robust.
 
+Every fill created by ``SimpleMarketSimulator`` carries an immutable
+``ExecutionPriceDiagnostic``. It records the raw reference price, the selected
+slippage/impact model and adjustment, the separate rounding adjustment, and the
+final execution price. ``Account.df_trades()`` exposes those values plus a
+signed ``price_effect``; positive values are adverse and negative values are
+price improvement. Custom simulators that do not provide this evidence retain
+null diagnostic fields rather than receiving an inferred reference price.
+
 Custom rules
 ------------
 
@@ -116,3 +124,148 @@ Evaluation
 Inspect trades and reconciled P&L before summary ratios. Confirm order reasons,
 fill timestamps, quantities, costs, end positions, realized P&L, unrealized P&L,
 and equity. Only then evaluate Sharpe ratio, drawdown, or optimization results.
+
+Experimental walk-forward evaluation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``WalkForwardRunner`` to give each refit an explicit warm-up, fit,
+validation, and held-out interval. This is an experimental P1.6 boundary; it
+does not make optimized research production-qualified.
+
+.. code-block:: python
+
+   config = gambit.WalkForwardConfig(
+       fit_size=252,
+       validation_size=63,
+       heldout_size=21,
+       warmup_size=20,
+       purge_size=5,
+       refit_every=21,
+       window=gambit.WalkForwardWindow.ROLLING,
+   )
+   runner = gambit.WalkForwardRunner(
+       chronological_frame,
+       timestamp_column="timestamp",
+       config=config,
+   )
+   results = runner.run(fit_model, score_validation, score_heldout)
+
+For parameter selection, ``runner.optimize`` reuses Gambit's existing
+``Optimizer`` scheduler. The required ``fit_columns`` allowlist is the exact
+schema supplied to candidate fitting and selected-parameter refitting:
+
+.. code-block:: python
+
+   optimized = runner.optimize(
+       candidate_parameters,
+       fit_candidate,
+       score_candidate_validation,
+       score_selected_heldout,
+       fingerprint_selected_model,
+       fit_columns=["timestamp", "return", "target"],
+       seed=42,
+       max_processes=1,
+   )
+
+An optimized fit callback receives a ``WalkForwardTrainingSet`` rather than raw
+validation or held-out data. Use its detached frames or built-in adapters:
+
+.. code-block:: python
+
+   def fit_candidate(fold, parameters, training, seed):
+       covariance = training.fit_covariance(
+           gambit.CovarianceRiskModel(
+               lookback=int(parameters["lookback"]),
+               min_observations=60,
+           ),
+           symbols=["asset_a", "asset_b"],
+       )
+       tail_risk = training.fit_tail_risk(
+           gambit.TailRiskModel(lookback=252, min_observations=60),
+           symbols=["asset_a", "asset_b"],
+       )
+       fitted_transform = training.fit_estimator(fit_transform)
+       forecast_scalars = training.fit_forecast_scalars(
+           gambit.ForecastScalarEstimator(min_observations=60),
+           rule_columns=["carry_forecast", "momentum_forecast"],
+       )
+       forecast_combination = training.fit_forecast_combination(
+           gambit.ForecastCombinationEstimator(min_observations=60),
+           rule_columns=["carry_forecast", "momentum_forecast"],
+       )
+       return fitted_transform, covariance, tail_risk, forecast_scalars, forecast_combination
+
+``fit_frame()`` and ``warmup_frame()`` return clones. Warm-up rows are available
+for causal feature initialization but are deliberately excluded by
+``fit_estimator``, ``fit_covariance``, ``fit_tail_risk``, and
+``fit_forecast_scalars``, and ``fit_forecast_combination``. The built-in risk,
+scalar, and combination adapters force ``as_of`` to the final fit timestamp.
+``fit_columns`` must include the timestamp column and every forecast column
+needed to establish that boundary.
+
+``candidate_parameters(fold, seed)`` returns that fold's finite scalar
+parameter mappings. Candidate models are fitted only on the allowed warm-up and
+fit columns and ranked by finite validation cost; held-out rows are unavailable
+until the winner is selected and refitted. Ties use a canonical parameter
+identity rather than process completion order. A fold-specific seed derived
+from the base seed and split identity is supplied to every callback. Use
+module-level, pickleable callbacks and a static candidate source when selecting
+``max_processes > 1``; adaptive generators remain an existing single-process
+``Optimizer`` feature.
+
+The selected-model fingerprint callback must return a lowercase SHA-256 digest
+of the fitted model's reproducible state. Held-out evaluation returns both
+finite metrics and an equity observation for every held-out timestamp:
+
+.. code-block:: python
+
+   import polars as pl
+
+   def score_selected_heldout(fold, parameters, model, heldout, seed):
+       metrics, equity_values = evaluate_model(model, heldout)
+       equity = pl.DataFrame(
+           {"timestamp": heldout["timestamp"], "equity": equity_values}
+       )
+       return gambit.WalkForwardHeldoutEvaluation(metrics, equity)
+
+The equity frame must contain exactly the configured timestamp column and a
+numeric ``equity`` column. Its timestamps must exactly match the held-out rows;
+the combined ``optimized.out_of_sample_equity`` series is chronological and
+non-overlapping. The runner fingerprints its complete owned input, records the
+selected-model digest, and retains failed candidate parameters and exception
+summaries separately from successful validation trials. Returned equity frames
+are detached clones.
+
+Persist the complete evidence record independently of a backtest-result bundle:
+
+.. code-block:: python
+
+   optimized.save("research/walk-forward-2026-09-12")
+   restored = gambit.WalkForwardExperimentResult.load(
+       "research/walk-forward-2026-09-12"
+   )
+
+The destination must not already exist. Publication is atomic and the
+versioned manifest records every fold, interval, seed, selected parameter,
+successful and failed trial, metric, and model/input identity. The detached
+out-of-sample equity table is stored separately as checksummed Arrow data.
+Model objects are deliberately not serialized; the manifest preserves the
+identity supplied by ``fingerprint_selected_model``.
+
+Sizes are row counts and all intervals are half-open. Timestamps must be
+timezone-naive, non-null, strictly increasing, and unique. ``fit_model``
+receives the warm-up and fit frames separately; neither validation nor held-out
+rows are exposed to it. One purge gap separates fit from validation and another
+separates validation from held-out evaluation. Expanding windows preserve the
+initial warm-up and grow the fit interval. Rolling windows move a fixed-size
+warm-up and fit pair. ``refit_every`` cannot be shorter than the held-out size,
+so reported held-out intervals cannot overlap. An incomplete terminal fold is
+not evaluated, and data too short for one complete fold fails explicitly.
+
+The runner copies its input, produces stable split identities from the complete
+timestamp grid and schedule, and detaches finite validation and held-out metric
+mappings. ``fit_columns`` prevents undeclared columns from entering optimized
+fits, but it cannot detect whether an allowed column was itself computed using
+future information. Callback closures, external data, and arbitrary fitted-
+object mutation remain caller responsibilities. P1.6 remains experimental until
+quant/research-owner approval is recorded.

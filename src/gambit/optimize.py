@@ -4,21 +4,867 @@
 from __future__ import annotations
 
 import concurrent.futures
+import hashlib
 import itertools
+import json
 import multiprocessing as mp
 import os
-from collections.abc import Generator, Iterator, Sequence
-from typing import Any, Callable, TypeAlias
+from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any, Callable, TypeAlias, TypeVar, overload
 
 import numpy as np
 import polars as pl
 
+from gambit.configuration import fingerprint_polars_frame
+from gambit.covariance_risk import CovarianceEstimate, CovarianceRiskModel
+from gambit.forecasting import (
+    FittedForecastCombination,
+    FittedForecastScalars,
+    ForecastCombinationEstimator,
+    ForecastScalarEstimator,
+)
 from gambit.pq_utils import get_child_logger, has_display
+from gambit.var_risk import FittedTailRiskModel, TailRiskModel
 
 _logger = get_child_logger(__name__)
 
 Suggestion: TypeAlias = dict[str, Any]
 SuggestionSource: TypeAlias = Iterator[Suggestion] | Generator[Suggestion, tuple[float, dict[str, float]], None]
+_FittedValue = TypeVar("_FittedValue")
+
+
+class WalkForwardWindow(str, Enum):
+    """Training-window behavior for a walk-forward schedule."""
+
+    EXPANDING = "expanding"
+    ROLLING = "rolling"
+
+
+@dataclass(frozen=True)
+class WalkForwardConfig:
+    """Index-based walk-forward sizes; every interval is half-open."""
+
+    fit_size: int
+    validation_size: int
+    heldout_size: int
+    warmup_size: int = 0
+    purge_size: int = 0
+    refit_every: int | None = None
+    window: WalkForwardWindow = WalkForwardWindow.EXPANDING
+
+    def __post_init__(self) -> None:
+        for name in ("fit_size", "validation_size", "heldout_size"):
+            value = getattr(self, name)
+            if type(value) is not int or value <= 0:
+                raise ValueError(f"walk-forward {name} must be a positive integer")
+        for name in ("warmup_size", "purge_size"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"walk-forward {name} must be a non-negative integer")
+        if not isinstance(self.window, WalkForwardWindow):
+            raise TypeError("walk-forward window must be a WalkForwardWindow value")
+        refit_every = self.heldout_size if self.refit_every is None else self.refit_every
+        if type(refit_every) is not int or refit_every <= 0:
+            raise ValueError("walk-forward refit_every must be a positive integer")
+        if refit_every < self.heldout_size:
+            raise ValueError("walk-forward refit_every cannot create overlapping held-out intervals")
+        object.__setattr__(self, "refit_every", refit_every)
+
+
+@dataclass(frozen=True)
+class WalkForwardInterval:
+    """One positional, half-open interval in an owned chronological frame."""
+
+    start: int
+    stop: int
+
+    def __post_init__(self) -> None:
+        if type(self.start) is not int or type(self.stop) is not int:
+            raise TypeError("walk-forward interval bounds must be integers")
+        if self.start < 0 or self.stop < self.start:
+            raise ValueError("walk-forward interval bounds must satisfy 0 <= start <= stop")
+
+    @property
+    def size(self) -> int:
+        return self.stop - self.start
+
+
+@dataclass(frozen=True)
+class WalkForwardFold:
+    """Explicit warm-up, fit, validation, and held-out intervals for one refit."""
+
+    index: int
+    warmup: WalkForwardInterval
+    fit: WalkForwardInterval
+    validation: WalkForwardInterval
+    heldout: WalkForwardInterval
+    split_id: str
+
+    def __post_init__(self) -> None:
+        if type(self.index) is not int or self.index < 0:
+            raise ValueError("walk-forward fold index must be a non-negative integer")
+        if any(
+            not isinstance(interval, WalkForwardInterval)
+            for interval in (self.warmup, self.fit, self.validation, self.heldout)
+        ):
+            raise TypeError("walk-forward fold intervals must be WalkForwardInterval values")
+        if not (
+            self.warmup.stop == self.fit.start
+            and self.fit.stop <= self.validation.start
+            and self.validation.stop <= self.heldout.start
+        ):
+            raise ValueError("walk-forward fold intervals must be chronological and non-overlapping")
+        _walk_forward_sha256(self.split_id, name="split identity", fold=self.index)
+
+
+class WalkForwardSchedule:
+    """Deterministic rolling or expanding folds over strict timestamps."""
+
+    def __init__(self, timestamps: np.ndarray, config: WalkForwardConfig) -> None:
+        if not isinstance(config, WalkForwardConfig):
+            raise TypeError("walk-forward config must be WalkForwardConfig")
+        values = np.asarray(timestamps)
+        if values.ndim != 1 or not np.issubdtype(values.dtype, np.datetime64):
+            raise TypeError("walk-forward timestamps must be a one-dimensional datetime64 array")
+        normalized = values.astype("datetime64[ns]", copy=True)
+        if np.isnat(normalized).any():
+            raise ValueError("walk-forward timestamps cannot contain NaT")
+        if len(normalized) > 1 and not bool(np.all(np.diff(normalized.astype(np.int64)) > 0)):
+            raise ValueError("walk-forward timestamps must be strictly increasing and unique")
+        normalized.flags.writeable = False
+        self._timestamps = normalized
+        self.config = config
+        self._folds = self._build_folds()
+
+    def _build_folds(self) -> tuple[WalkForwardFold, ...]:
+        config = self.config
+        first_heldout = (
+            config.warmup_size + config.fit_size + config.purge_size + config.validation_size + config.purge_size
+        )
+        last_heldout = len(self._timestamps) - config.heldout_size
+        if first_heldout > last_heldout:
+            raise ValueError("walk-forward data is too short for one complete fold")
+
+        schedule_identity = hashlib.sha256(self._timestamps.tobytes())
+        schedule_identity.update(
+            json.dumps(
+                {
+                    "fit_size": config.fit_size,
+                    "validation_size": config.validation_size,
+                    "heldout_size": config.heldout_size,
+                    "warmup_size": config.warmup_size,
+                    "purge_size": config.purge_size,
+                    "refit_every": config.refit_every,
+                    "window": config.window.value,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        )
+        schedule_digest = schedule_identity.hexdigest()
+        folds: list[WalkForwardFold] = []
+        refit_every = config.heldout_size if config.refit_every is None else config.refit_every
+        for index, heldout_start in enumerate(range(first_heldout, last_heldout + 1, refit_every)):
+            validation_stop = heldout_start - config.purge_size
+            validation_start = validation_stop - config.validation_size
+            fit_stop = validation_start - config.purge_size
+            if config.window is WalkForwardWindow.EXPANDING:
+                warmup_start = 0
+                fit_start = config.warmup_size
+            else:
+                fit_start = fit_stop - config.fit_size
+                warmup_start = fit_start - config.warmup_size
+            warmup_stop = fit_start
+            fold_intervals = {
+                "warmup": (warmup_start, warmup_stop),
+                "fit": (fit_start, fit_stop),
+                "validation": (validation_start, validation_stop),
+                "heldout": (heldout_start, heldout_start + config.heldout_size),
+            }
+            split_id = hashlib.sha256(
+                json.dumps(
+                    {"schedule": schedule_digest, "index": index, **fold_intervals},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode()
+            ).hexdigest()
+            folds.append(
+                WalkForwardFold(
+                    index=index,
+                    warmup=WalkForwardInterval(*fold_intervals["warmup"]),
+                    fit=WalkForwardInterval(*fold_intervals["fit"]),
+                    validation=WalkForwardInterval(*fold_intervals["validation"]),
+                    heldout=WalkForwardInterval(*fold_intervals["heldout"]),
+                    split_id=split_id,
+                )
+            )
+        return tuple(folds)
+
+    @property
+    def folds(self) -> tuple[WalkForwardFold, ...]:
+        return self._folds
+
+
+@dataclass(frozen=True)
+class WalkForwardFoldResult:
+    """Detached validation and held-out metrics for one completed fold."""
+
+    fold: WalkForwardFold
+    validation_metrics: Mapping[str, float]
+    heldout_metrics: Mapping[str, float]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "validation_metrics", MappingProxyType(dict(self.validation_metrics)))
+        object.__setattr__(self, "heldout_metrics", MappingProxyType(dict(self.heldout_metrics)))
+
+
+@dataclass(frozen=True)
+class WalkForwardTrainingSet:
+    """Owned, allowlisted warm-up and fit data for one walk-forward fold."""
+
+    fold: WalkForwardFold
+    timestamp_column: str
+    _warmup: pl.DataFrame
+    _fit: pl.DataFrame
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.fold, WalkForwardFold):
+            raise TypeError("walk-forward training fold must be WalkForwardFold")
+        if not isinstance(self.timestamp_column, str) or not self.timestamp_column:
+            raise ValueError("walk-forward training timestamp_column must be a non-empty string")
+        if not isinstance(self._warmup, pl.DataFrame) or not isinstance(self._fit, pl.DataFrame):
+            raise TypeError("walk-forward training intervals must be Polars DataFrames")
+        if self._warmup.columns != self._fit.columns:
+            raise ValueError("walk-forward warm-up and fit columns must match")
+        if self.timestamp_column not in self._fit.columns:
+            raise ValueError("walk-forward training data must include its timestamp column")
+        if self._fit.is_empty():
+            raise ValueError("walk-forward fit interval cannot be empty")
+        object.__setattr__(self, "_warmup", self._warmup.clone())
+        object.__setattr__(self, "_fit", self._fit.clone())
+
+    @property
+    def columns(self) -> tuple[str, ...]:
+        return tuple(self._fit.columns)
+
+    @property
+    def as_of(self) -> np.datetime64:
+        maximum = self._fit[self.timestamp_column].max()
+        if maximum is None:
+            raise ValueError("walk-forward fit interval has no timestamp")
+        return np.datetime64(maximum, "ns")
+
+    def warmup_frame(self) -> pl.DataFrame:
+        """Return a detached warm-up frame, excluded from estimator fitting."""
+        return self._warmup.clone()
+
+    def fit_frame(self) -> pl.DataFrame:
+        """Return a detached frame containing only permitted fit rows and columns."""
+        return self._fit.clone()
+
+    def fit_estimator(self, estimator: Callable[[pl.DataFrame], _FittedValue]) -> _FittedValue:
+        """Fit an arbitrary estimator on a detached fit frame."""
+        if not callable(estimator):
+            raise TypeError("walk-forward estimator must be callable")
+        return estimator(self.fit_frame())
+
+    def fit_covariance(
+        self,
+        model: CovarianceRiskModel,
+        *,
+        symbols: Sequence[str] | None = None,
+    ) -> CovarianceEstimate:
+        """Fit Gambit's covariance model strictly through this fit interval."""
+        if not isinstance(model, CovarianceRiskModel):
+            raise TypeError("walk-forward covariance model must be CovarianceRiskModel")
+        return model.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            symbols=symbols,
+            as_of=self.as_of,
+        )
+
+    def fit_tail_risk(
+        self,
+        model: TailRiskModel,
+        *,
+        symbols: Sequence[str] | None = None,
+    ) -> FittedTailRiskModel:
+        """Fit Gambit's tail-risk model strictly through this fit interval."""
+        if not isinstance(model, TailRiskModel):
+            raise TypeError("walk-forward tail-risk model must be TailRiskModel")
+        return model.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            symbols=symbols,
+            as_of=self.as_of,
+        )
+
+    def fit_forecast_scalars(
+        self,
+        estimator: ForecastScalarEstimator,
+        *,
+        rule_columns: Sequence[str],
+    ) -> FittedForecastScalars:
+        """Fit forecast scalars strictly through this fit interval."""
+        if not isinstance(estimator, ForecastScalarEstimator):
+            raise TypeError("walk-forward forecast scalar estimator must be ForecastScalarEstimator")
+        return estimator.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            rule_columns=rule_columns,
+            as_of=self.as_of,
+        )
+
+    def fit_forecast_combination(
+        self,
+        estimator: ForecastCombinationEstimator,
+        *,
+        rule_columns: Sequence[str],
+    ) -> FittedForecastCombination:
+        """Fit forecast weights and diversification strictly through this fit interval."""
+        if not isinstance(estimator, ForecastCombinationEstimator):
+            raise TypeError("walk-forward forecast combination estimator must be ForecastCombinationEstimator")
+        return estimator.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            rule_columns=rule_columns,
+            as_of=self.as_of,
+        )
+
+
+WalkForwardFitFunction: TypeAlias = Callable[[WalkForwardFold, pl.DataFrame, pl.DataFrame], Any]
+WalkForwardScoreFunction: TypeAlias = Callable[[WalkForwardFold, Any, pl.DataFrame], Mapping[str, float]]
+WalkForwardParameterSource: TypeAlias = Callable[[WalkForwardFold, int], Iterable[dict[str, Any]]]
+WalkForwardCandidateFitFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], WalkForwardTrainingSet, int], Any
+]
+WalkForwardCandidateValidationFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], tuple[float, Mapping[str, float]]
+]
+WalkForwardCandidateHeldoutFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, pl.DataFrame, int], "WalkForwardHeldoutEvaluation"
+]
+WalkForwardModelFingerprintFunction: TypeAlias = Callable[
+    [WalkForwardFold, Mapping[str, Any], Any, int], str
+]
+
+
+def _walk_forward_metrics(values: Mapping[str, float], *, stage: str, fold: int) -> Mapping[str, float]:
+    if not isinstance(values, Mapping):
+        raise TypeError(f"walk-forward {stage} metrics for fold {fold} must be a mapping")
+    normalized: dict[str, float] = {}
+    for name, value in values.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"walk-forward {stage} metric names for fold {fold} must be non-empty strings")
+        if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
+            raise TypeError(f"walk-forward {stage} metric {name!r} for fold {fold} must be numeric")
+        number = float(value)
+        if not np.isfinite(number):
+            raise ValueError(f"walk-forward {stage} metric {name!r} for fold {fold} must be finite")
+        normalized[name] = number
+    return MappingProxyType(normalized)
+
+
+def _walk_forward_parameters(values: Mapping[str, Any], *, fold: int) -> Mapping[str, Any]:
+    if not isinstance(values, Mapping):
+        raise TypeError(f"walk-forward parameters for fold {fold} must be a mapping")
+    normalized: dict[str, Any] = {}
+    for name, value in values.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError(f"walk-forward parameter names for fold {fold} must be non-empty strings")
+        if value is None or isinstance(value, (str, bool)):
+            normalized[name] = value
+        elif isinstance(value, (int, np.integer)):
+            normalized[name] = int(value)
+        elif isinstance(value, (float, np.floating)):
+            number = float(value)
+            if not np.isfinite(number):
+                raise ValueError(f"walk-forward parameter {name!r} for fold {fold} must be finite")
+            normalized[name] = number
+        else:
+            raise TypeError(
+                f"walk-forward parameter {name!r} for fold {fold} must be a scalar string, boolean, number, or None"
+            )
+    return MappingProxyType(normalized)
+
+
+def _walk_forward_cost(value: Any, *, fold: int) -> float:
+    if type(value) is bool or not isinstance(value, (int, float, np.integer, np.floating)):
+        raise TypeError(f"walk-forward validation cost for fold {fold} must be numeric")
+    cost = float(value)
+    if not np.isfinite(cost):
+        raise ValueError(f"walk-forward validation cost for fold {fold} must be finite")
+    return cost
+
+
+def _parameter_identity(parameters: Mapping[str, Any]) -> str:
+    return json.dumps(dict(parameters), sort_keys=True, separators=(",", ":"))
+
+
+def _walk_forward_sha256(value: str, *, name: str, fold: int) -> str:
+    if not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(f"walk-forward {name} for fold {fold} must be a lowercase SHA-256 digest")
+    return value
+
+
+@dataclass(frozen=True, init=False)
+class WalkForwardHeldoutEvaluation:
+    """Detached held-out metrics and the corresponding equity observations."""
+
+    metrics: Mapping[str, float]
+    _equity: pl.DataFrame
+
+    def __init__(self, metrics: Mapping[str, float], equity: pl.DataFrame) -> None:
+        if not isinstance(equity, pl.DataFrame):
+            raise TypeError("walk-forward held-out equity must be a Polars DataFrame")
+        object.__setattr__(self, "metrics", MappingProxyType(dict(metrics)))
+        object.__setattr__(self, "_equity", equity.clone())
+
+    @property
+    def equity(self) -> pl.DataFrame:
+        return self._equity.clone()
+
+
+def _walk_forward_heldout_evaluation(
+    value: WalkForwardHeldoutEvaluation,
+    *,
+    expected: pl.DataFrame,
+    timestamp_column: str,
+    fold: int,
+) -> tuple[Mapping[str, float], pl.DataFrame]:
+    if not isinstance(value, WalkForwardHeldoutEvaluation):
+        raise TypeError(f"walk-forward held-out evaluation for fold {fold} must be WalkForwardHeldoutEvaluation")
+    metrics = _walk_forward_metrics(value.metrics, stage="held-out", fold=fold)
+    equity = value.equity
+    if equity.columns != [timestamp_column, "equity"]:
+        raise ValueError(
+            f"walk-forward held-out equity for fold {fold} must contain exactly "
+            f"[{timestamp_column!r}, 'equity']"
+        )
+    timestamp_dtype = equity.schema[timestamp_column]
+    if timestamp_dtype != pl.Date and not isinstance(timestamp_dtype, pl.Datetime):
+        raise TypeError(f"walk-forward held-out equity timestamps for fold {fold} must be Date or Datetime")
+    if isinstance(timestamp_dtype, pl.Datetime) and timestamp_dtype.time_zone is not None:
+        raise ValueError(f"walk-forward held-out equity timestamps for fold {fold} must be timezone-naive")
+    if not equity.schema["equity"].is_numeric():
+        raise TypeError(f"walk-forward held-out equity values for fold {fold} must be numeric")
+    normalized = equity.with_columns(
+        pl.col(timestamp_column).cast(pl.Datetime("ns")),
+        pl.col("equity").cast(pl.Float64),
+    )
+    if normalized.height != expected.height or not normalized[timestamp_column].equals(expected[timestamp_column]):
+        raise ValueError(f"walk-forward held-out equity timestamps for fold {fold} must exactly match held-out rows")
+    if normalized.null_count().sum_horizontal().item() or not bool(np.isfinite(normalized["equity"].to_numpy()).all()):
+        raise ValueError(f"walk-forward held-out equity for fold {fold} cannot contain null or non-finite values")
+    return metrics, normalized
+
+
+@dataclass(frozen=True)
+class WalkForwardTrialResult:
+    """One detached candidate result scored only on a validation interval."""
+
+    parameters: Mapping[str, Any]
+    validation_cost: float
+    validation_metrics: Mapping[str, float]
+
+    def __post_init__(self) -> None:
+        parameters = _walk_forward_parameters(self.parameters, fold=-1)
+        metrics = _walk_forward_metrics(self.validation_metrics, stage="validation", fold=-1)
+        object.__setattr__(self, "parameters", parameters)
+        object.__setattr__(self, "validation_cost", _walk_forward_cost(self.validation_cost, fold=-1))
+        object.__setattr__(self, "validation_metrics", metrics)
+
+
+@dataclass(frozen=True)
+class WalkForwardTrialFailure:
+    """One candidate that failed before producing finite validation evidence."""
+
+    parameters: Mapping[str, Any]
+    error_type: str
+    message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "parameters", _walk_forward_parameters(self.parameters, fold=-1))
+        if not isinstance(self.error_type, str) or not self.error_type:
+            raise ValueError("walk-forward failure error_type must be a non-empty string")
+        if not isinstance(self.message, str):
+            raise TypeError("walk-forward failure message must be a string")
+
+
+@dataclass(frozen=True)
+class WalkForwardOptimizationFoldResult:
+    """Selected parameters, trials, and separated metrics for one fold."""
+
+    fold: WalkForwardFold
+    seed: int
+    selected_parameters: Mapping[str, Any]
+    validation_cost: float
+    validation_metrics: Mapping[str, float]
+    heldout_metrics: Mapping[str, float]
+    trials: tuple[WalkForwardTrialResult, ...]
+    failures: tuple[WalkForwardTrialFailure, ...]
+    input_sha256: str
+    model_sha256: str
+    _heldout_equity: pl.DataFrame = field(compare=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.fold, WalkForwardFold):
+            raise TypeError("walk-forward optimization result fold must be WalkForwardFold")
+        if type(self.seed) is not int or self.seed < 0 or self.seed > np.iinfo(np.uint64).max:
+            raise ValueError("walk-forward fold seed must be an integer in the uint64 range")
+        object.__setattr__(self, "selected_parameters", _walk_forward_parameters(
+            self.selected_parameters, fold=self.fold.index
+        ))
+        object.__setattr__(self, "validation_cost", _walk_forward_cost(
+            self.validation_cost, fold=self.fold.index
+        ))
+        object.__setattr__(self, "validation_metrics", _walk_forward_metrics(
+            self.validation_metrics, stage="validation", fold=self.fold.index
+        ))
+        object.__setattr__(self, "heldout_metrics", _walk_forward_metrics(
+            self.heldout_metrics, stage="held-out", fold=self.fold.index
+        ))
+        trials = tuple(self.trials)
+        failures = tuple(self.failures)
+        if any(not isinstance(trial, WalkForwardTrialResult) for trial in trials):
+            raise TypeError("walk-forward trials must be WalkForwardTrialResult values")
+        if any(not isinstance(failure, WalkForwardTrialFailure) for failure in failures):
+            raise TypeError("walk-forward failures must be WalkForwardTrialFailure values")
+        if not isinstance(self._heldout_equity, pl.DataFrame):
+            raise TypeError("walk-forward held-out equity must be a Polars DataFrame")
+        object.__setattr__(self, "trials", trials)
+        object.__setattr__(self, "failures", failures)
+        object.__setattr__(self, "input_sha256", _walk_forward_sha256(
+            self.input_sha256, name="input fingerprint", fold=self.fold.index
+        ))
+        object.__setattr__(self, "model_sha256", _walk_forward_sha256(
+            self.model_sha256, name="model fingerprint", fold=self.fold.index
+        ))
+        equity = self._heldout_equity.clone()
+        if equity.width != 2 or equity.columns[1] != "equity" or equity.height != self.fold.heldout.size:
+            raise ValueError("walk-forward held-out equity shape must match the held-out interval")
+        object.__setattr__(self, "_heldout_equity", equity)
+
+    @property
+    def heldout_equity(self) -> pl.DataFrame:
+        return self._heldout_equity.clone()
+
+
+@dataclass(frozen=True, init=False)
+class WalkForwardExperimentResult(Sequence[WalkForwardOptimizationFoldResult]):
+    """Immutable fold evidence with one chronological out-of-sample equity series."""
+
+    input_sha256: str
+    folds: tuple[WalkForwardOptimizationFoldResult, ...]
+    _out_of_sample_equity: pl.DataFrame
+
+    def __init__(self, input_sha256: str, folds: Iterable[WalkForwardOptimizationFoldResult]) -> None:
+        normalized = tuple(folds)
+        _walk_forward_sha256(input_sha256, name="input fingerprint", fold=-1)
+        if not normalized:
+            raise ValueError("walk-forward experiment must contain at least one fold")
+        if any(result.input_sha256 != input_sha256 for result in normalized):
+            raise ValueError("walk-forward fold input fingerprints must match the experiment")
+        if any(result.fold.index != index for index, result in enumerate(normalized)):
+            raise ValueError("walk-forward experiment folds must be complete and ordered")
+        equity = pl.concat([result.heldout_equity for result in normalized], how="vertical")
+        timestamps = equity[equity.columns[0]].to_numpy().astype("datetime64[ns]")
+        if len(timestamps) > 1 and not bool(np.all(np.diff(timestamps.astype(np.int64)) > 0)):
+            raise ValueError("walk-forward out-of-sample equity timestamps must be strictly increasing")
+        object.__setattr__(self, "input_sha256", input_sha256)
+        object.__setattr__(self, "folds", normalized)
+        object.__setattr__(self, "_out_of_sample_equity", equity)
+
+    def __len__(self) -> int:
+        return len(self.folds)
+
+    @overload
+    def __getitem__(self, index: int) -> WalkForwardOptimizationFoldResult: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[WalkForwardOptimizationFoldResult, ...]: ...
+
+    def __getitem__(self, index: int | slice) -> WalkForwardOptimizationFoldResult | tuple[WalkForwardOptimizationFoldResult, ...]:
+        return self.folds[index]
+
+    @property
+    def out_of_sample_equity(self) -> pl.DataFrame:
+        return self._out_of_sample_equity.clone()
+
+    def save(self, destination: str | Path) -> Path:
+        """Atomically publish this experiment in its separate versioned format."""
+        from gambit.walk_forward_io import save_walk_forward_result
+
+        return save_walk_forward_result(self, destination)
+
+    @classmethod
+    def load(cls, source: str | Path) -> WalkForwardExperimentResult:
+        """Load and validate a persisted walk-forward experiment."""
+        from gambit.walk_forward_io import load_walk_forward_result
+
+        return load_walk_forward_result(source)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, WalkForwardExperimentResult):
+            return NotImplemented
+        if self.input_sha256 != other.input_sha256 or len(self) != len(other):
+            return False
+        return all(
+            left == right and left.heldout_equity.equals(right.heldout_equity)
+            for left, right in zip(self.folds, other.folds, strict=True)
+        )
+
+
+@dataclass(frozen=True)
+class _WalkForwardCandidateCost:
+    fold: WalkForwardFold
+    seed: int
+    training: WalkForwardTrainingSet
+    validation: pl.DataFrame
+    fit: WalkForwardCandidateFitFunction
+    validate: WalkForwardCandidateValidationFunction
+
+    def __call__(self, suggestion: dict[str, Any]) -> tuple[float, dict[str, float]]:
+        parameters = _walk_forward_parameters(suggestion, fold=self.fold.index)
+        model = self.fit(
+            self.fold,
+            parameters,
+            self.training,
+            self.seed,
+        )
+        cost, metrics = self.validate(
+            self.fold,
+            parameters,
+            model,
+            self.validation.clone(),
+            self.seed,
+        )
+        return (
+            _walk_forward_cost(cost, fold=self.fold.index),
+            dict(_walk_forward_metrics(metrics, stage="validation", fold=self.fold.index)),
+        )
+
+
+class WalkForwardRunner:
+    """Run sequential fits and separate validation/held-out scoring on owned data."""
+
+    def __init__(
+        self,
+        data: pl.DataFrame,
+        *,
+        timestamp_column: str,
+        config: WalkForwardConfig,
+    ) -> None:
+        if not isinstance(data, pl.DataFrame):
+            raise TypeError("walk-forward data must be a Polars DataFrame")
+        if not isinstance(timestamp_column, str) or not timestamp_column:
+            raise ValueError("walk-forward timestamp_column must be a non-empty string")
+        if timestamp_column not in data.columns:
+            raise ValueError(f"walk-forward timestamp column is missing: {timestamp_column}")
+        dtype = data.schema[timestamp_column]
+        if dtype != pl.Date and not isinstance(dtype, pl.Datetime):
+            raise TypeError("walk-forward timestamp column must be Polars Date or Datetime")
+        if isinstance(dtype, pl.Datetime) and dtype.time_zone is not None:
+            raise ValueError("walk-forward timestamps must use a timezone-naive normalized time basis")
+        normalized = data.with_columns(pl.col(timestamp_column).cast(pl.Datetime("ns")))
+        timestamps = normalized[timestamp_column].to_numpy()
+        self.schedule = WalkForwardSchedule(timestamps, config)
+        self.timestamp_column = timestamp_column
+        self._data = normalized
+        self.input_sha256 = fingerprint_polars_frame(normalized)
+
+    def _select(self, interval: WalkForwardInterval) -> pl.DataFrame:
+        return self._data.slice(interval.start, interval.size).clone()
+
+    @staticmethod
+    def _metrics(values: Mapping[str, float], *, stage: str, fold: int) -> Mapping[str, float]:
+        return _walk_forward_metrics(values, stage=stage, fold=fold)
+
+    def _fit_columns(self, columns: Sequence[str]) -> tuple[str, ...]:
+        if isinstance(columns, (str, bytes)) or not isinstance(columns, Sequence):
+            raise TypeError("walk-forward fit_columns must be a sequence of column names")
+        normalized = tuple(columns)
+        if not normalized:
+            raise ValueError("walk-forward fit_columns cannot be empty")
+        if any(not isinstance(name, str) or not name for name in normalized):
+            raise ValueError("walk-forward fit_columns must contain non-empty strings")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("walk-forward fit_columns cannot contain duplicates")
+        missing = [name for name in normalized if name not in self._data.columns]
+        if missing:
+            raise ValueError(f"walk-forward fit columns are missing: {missing}")
+        if self.timestamp_column not in normalized:
+            raise ValueError("walk-forward fit_columns must include the timestamp column")
+        return normalized
+
+    @staticmethod
+    def _fold_seed(seed: int, fold: WalkForwardFold) -> int:
+        digest = hashlib.sha256(f"{seed}:{fold.split_id}".encode()).digest()
+        return int.from_bytes(digest[:8], "big")
+
+    def run(
+        self,
+        fit: WalkForwardFitFunction,
+        validate: WalkForwardScoreFunction,
+        evaluate_heldout: WalkForwardScoreFunction,
+    ) -> tuple[WalkForwardFoldResult, ...]:
+        """Fit and score every fold sequentially without exposing the owned full frame."""
+        for name, callback in (("fit", fit), ("validate", validate), ("evaluate_heldout", evaluate_heldout)):
+            if not callable(callback):
+                raise TypeError(f"walk-forward {name} callback must be callable")
+        results: list[WalkForwardFoldResult] = []
+        for fold in self.schedule.folds:
+            model = fit(fold, self._select(fold.warmup), self._select(fold.fit))
+            validation_metrics = self._metrics(
+                validate(fold, model, self._select(fold.validation)),
+                stage="validation",
+                fold=fold.index,
+            )
+            heldout_metrics = self._metrics(
+                evaluate_heldout(fold, model, self._select(fold.heldout)),
+                stage="held-out",
+                fold=fold.index,
+            )
+            results.append(WalkForwardFoldResult(fold, validation_metrics, heldout_metrics))
+        return tuple(results)
+
+    def optimize(
+        self,
+        parameter_source: WalkForwardParameterSource,
+        fit: WalkForwardCandidateFitFunction,
+        validate: WalkForwardCandidateValidationFunction,
+        evaluate_heldout: WalkForwardCandidateHeldoutFunction,
+        model_fingerprint: WalkForwardModelFingerprintFunction,
+        *,
+        fit_columns: Sequence[str],
+        seed: int = 0,
+        max_processes: int | None = 1,
+        process_start_method: str = "spawn",
+        max_pending_tasks: int | None = None,
+    ) -> WalkForwardExperimentResult:
+        """Select on validation data, refit, then evaluate held-out rows."""
+        for name, callback in (
+            ("parameter_source", parameter_source),
+            ("fit", fit),
+            ("validate", validate),
+            ("evaluate_heldout", evaluate_heldout),
+            ("model_fingerprint", model_fingerprint),
+        ):
+            if not callable(callback):
+                raise TypeError(f"walk-forward {name} callback must be callable")
+        if type(seed) is not int or seed < 0 or seed > np.iinfo(np.uint64).max:
+            raise ValueError("walk-forward seed must be an integer in the uint64 range")
+        training_columns = self._fit_columns(fit_columns)
+        results: list[WalkForwardOptimizationFoldResult] = []
+        for fold in self.schedule.folds:
+            fold_seed = self._fold_seed(seed, fold)
+            warmup = self._select(fold.warmup).select(training_columns)
+            training = self._select(fold.fit).select(training_columns)
+            training_set = WalkForwardTrainingSet(
+                fold=fold,
+                timestamp_column=self.timestamp_column,
+                _warmup=warmup,
+                _fit=training,
+            )
+            validation = self._select(fold.validation)
+            candidate_cost = _WalkForwardCandidateCost(
+                fold=fold,
+                seed=fold_seed,
+                training=training_set,
+                validation=validation,
+                fit=fit,
+                validate=validate,
+            )
+            optimizer = Optimizer(
+                f"walk-forward-{fold.split_id[:12]}",
+                iter(parameter_source(fold, fold_seed)),
+                candidate_cost,
+                max_processes=max_processes,
+                process_start_method=process_start_method,
+                max_pending_tasks=max_pending_tasks,
+            )
+            optimizer.run(raise_on_error=False)
+            if not optimizer.experiments:
+                raise ValueError(
+                    f"walk-forward parameter source produced no successful trials for fold {fold.index}; "
+                    f"{len(optimizer.failures)} failed"
+                )
+            trials = tuple(
+                sorted(
+                    (
+                        WalkForwardTrialResult(
+                            parameters=_walk_forward_parameters(experiment.suggestion, fold=fold.index),
+                            validation_cost=experiment.cost,
+                            validation_metrics=experiment.other_costs,
+                        )
+                        for experiment in optimizer.experiments
+                    ),
+                    key=lambda trial: (_parameter_identity(trial.parameters), trial.validation_cost),
+                )
+            )
+            selected = min(trials, key=lambda trial: (trial.validation_cost, _parameter_identity(trial.parameters)))
+            failures = tuple(
+                sorted(
+                    (
+                        WalkForwardTrialFailure(
+                            parameters=failure.suggestion,
+                            error_type=failure.error_type,
+                            message=failure.message,
+                        )
+                        for failure in optimizer.failures
+                    ),
+                    key=lambda failure: (
+                        _parameter_identity(failure.parameters),
+                        failure.error_type,
+                        failure.message,
+                    ),
+                )
+            )
+            model = fit(
+                fold,
+                selected.parameters,
+                training_set,
+                fold_seed,
+            )
+            model_sha256 = _walk_forward_sha256(
+                model_fingerprint(fold, selected.parameters, model, fold_seed),
+                name="model fingerprint",
+                fold=fold.index,
+            )
+            heldout = self._select(fold.heldout)
+            heldout_metrics, heldout_equity = _walk_forward_heldout_evaluation(
+                evaluate_heldout(
+                    fold,
+                    selected.parameters,
+                    model,
+                    heldout.clone(),
+                    fold_seed,
+                ),
+                expected=heldout,
+                timestamp_column=self.timestamp_column,
+                fold=fold.index,
+            )
+            results.append(
+                WalkForwardOptimizationFoldResult(
+                    fold=fold,
+                    seed=fold_seed,
+                    selected_parameters=selected.parameters,
+                    validation_cost=selected.validation_cost,
+                    validation_metrics=selected.validation_metrics,
+                    heldout_metrics=heldout_metrics,
+                    trials=trials,
+                    failures=failures,
+                    input_sha256=self.input_sha256,
+                    model_sha256=model_sha256,
+                    _heldout_equity=heldout_equity,
+                )
+            )
+        return WalkForwardExperimentResult(self.input_sha256, results)
 
 
 def _plotting_modules():
@@ -78,6 +924,18 @@ class OptimizerWorkerError(RuntimeError):
     """A cost function failed in a worker process."""
 
 
+@dataclass(frozen=True)
+class OptimizerFailure:
+    """Detached identity and exception summary for one failed suggestion."""
+
+    suggestion: Mapping[str, Any]
+    error_type: str
+    message: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "suggestion", MappingProxyType(dict(self.suggestion)))
+
+
 class Optimizer:
     """Optimizer is used to optimize parameters for a strategy."""
 
@@ -113,8 +971,9 @@ class Optimizer:
             raise ValueError("max_pending_tasks must be positive")
         self.max_pending_tasks = max_pending_tasks if max_pending_tasks is not None else worker_count * 2
         self.experiments: list[Experiment] = []
+        self.failures: list[OptimizerFailure] = []
 
-    def _run_single_process(self) -> None:
+    def _run_single_process(self, raise_on_error: bool) -> None:
         suggestions = iter(self.generator)
         send_feedback = getattr(suggestions, "send", None)
         try:
@@ -123,7 +982,14 @@ class Optimizer:
                 if suggestion is None:
                     suggestion = next(suggestions)
                     continue
-                cost, other_costs = self.cost_func(suggestion)
+                try:
+                    cost, other_costs = self.cost_func(suggestion)
+                except Exception as error:
+                    self.failures.append(OptimizerFailure(suggestion, type(error).__name__, str(error)))
+                    if raise_on_error:
+                        raise
+                    suggestion = next(suggestions)
+                    continue
                 self.experiments.append(Experiment(suggestion, cost, other_costs))
                 if send_feedback is not None:
                     suggestion = send_feedback((cost, other_costs))
@@ -161,6 +1027,7 @@ class Optimizer:
                         try:
                             cost, other_costs = future.result()
                         except Exception as error:
+                            self.failures.append(OptimizerFailure(suggestion, type(error).__name__, str(error)))
                             worker_error = OptimizerWorkerError(f"cost function failed for suggestion {suggestion!r}")
                             if raise_on_error:
                                 raise worker_error from error
@@ -177,11 +1044,13 @@ class Optimizer:
         """Run the optimizer.
 
         Args:
-            raise_on_error: If set to True, even if we are running a multiprocess optimization, any Exceptions will bubble up and stop the Optimizer.
-              This can be useful for debugging to see stack traces for Exceptions.
+            raise_on_error: If true, the first cost exception stops execution.
+              Otherwise, sequential and multiprocess runs retain a detached
+              ``OptimizerFailure`` and continue to the next suggestion. Failed
+              adaptive suggestions receive no cost feedback.
         """
         if self.max_processes == 1:
-            self._run_single_process()
+            self._run_single_process(raise_on_error)
         else:
             self._run_multi_process(raise_on_error)
 

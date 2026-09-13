@@ -1,0 +1,25 @@
+# Gambit feature status
+
+This is the canonical release-posture matrix for Gambit 1.1.0. API stability
+describes compatibility; it does not imply production qualification. Until all
+P0 gates in [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md) are
+accepted, the distribution remains **Beta** and must not be described as
+production/stable.
+
+| Capability | Current posture | Production-stable gate |
+|---|---|---|
+| General `Strategy`, accounting, execution, risk, and result bundles | Release candidate; public API compatibility applies, but production qualification is pending | P0 correctness, reproducibility, governance, and release-drill evidence |
+| Point-in-time market-data access and revision identity | Experimental; owned scalar/window reads plus built-in price and indicator adapters enforce observation/publication cutoffs | P1.5 representative owner-data qualification and data/core-owner approval |
+| Walk-forward experiment evaluation | Experimental; owned chronological splits, training-only generic/covariance/tail-risk/forecast-scalar/forecast-combination adapters, and an existing-optimizer adapter isolate fitting, validation selection, purge gaps, held-out scoring, and durable evidence/OOS equity | P1.6 quant/research-owner approval |
+| Forecast scaling and combination | Experimental; Polars stages retain raw/scaled/capped values, weights, rule availability, and contributions; historical scalars plus inverse-volatility weights, empirical correlation, and bounded diversification fit only through a declared cutoff; versioned checksummed artifacts persist and reconcile combined forecasts with their contribution ledger | P2.3 quant/research-owner approval |
+| Executable portfolio targets | Experimental implementation complete and P1.7 quant/execution-owner approved 2026-09-13; base-currency exposures convert through owned price timestamps, contract multipliers, FX, explicit whole-lot rounding, and no-trade bands; required reductions override buffering but still pass shared admission, and the supported Strategy rule adapter reserves live pending orders before final re-admission | Continue to honor the documented experimental API and live-routing boundary |
+| Cost and turnover diagnostics | Experimental; immutable fill diagnostics and reconciled reports retain cost/turnover attribution without double counting; deterministic sensitivity cases record canonical assumptions, seeds, input/strategy/case fingerprints, finite comparable outcomes, and observed paired differences | P2.4 representative cost/participation and executable-buffer comparison evidence, and quant/analytics-owner approval |
+| Native CSV/ZIP and HDF5 ingestion | Release candidate only for documented formats, limits, and caller-owned inputs | Native boundary qualification for the declared input trust model |
+| Option pricing, implied volatility, expiry, and settlement | Experimental; core accounting enforces a causal expiry cutoff but does not settle positions | P1.4 settlement-model approval plus independent numerical qualification |
+| Native factor cache, tick ring, and top-of-book/FIFO replay | Experimental | Separate correctness, recovery, capacity, and performance acceptance contract |
+| Factor-cache CLI | In-environment maintenance utility; not an independently operated service | New deployment decision and operational acceptance if its role changes |
+| Live trading, brokerage connectivity, and production order routing | Out of scope | Separate product boundary and approval |
+
+“Release candidate” means the capability is being hardened against the stated
+gate. It is not a production-readiness claim. Experimental APIs may change and
+must not be included in stable product claims merely because they are importable.

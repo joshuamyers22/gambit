@@ -43,6 +43,15 @@ Execution and risk
 .. automodule:: gambit.execution_costs
    :members:
 
+.. automodule:: gambit.cost_diagnostics
+   :members:
+
+.. automodule:: gambit.cost_sensitivity
+   :members:
+
+.. automodule:: gambit.target_positions
+   :members:
+
 .. automodule:: gambit.risk
    :members:
 

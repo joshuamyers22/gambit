@@ -8,6 +8,14 @@ backtesting. Install the ``gambit-markets`` distribution and import the
 ``gambit`` package. Polars provides the labelled dataframe boundary; NumPy,
 Cython, and C++ support performance-sensitive paths.
 
+Gambit 1.1.0 is a beta release candidate, not a production/stable release.
+General backtesting is undergoing production qualification; option lifecycle
+behavior and native factor/tick/replay capabilities remain experimental, and
+live trading is out of scope. See the canonical `feature-status matrix
+<https://github.com/joshuamyers22/gambit/blob/main/FEATURE_STATUS.md>`_ and
+`project brief
+<https://github.com/joshuamyers22/gambit/blob/main/PROJECT_BRIEF.md>`_.
+
 The goals are:
 
 * Speed - Performance sensitive components are written at the numpy level, or in cython or C++, which can lead to performance gains of a couple of orders of magnitude over Python code.
@@ -108,8 +116,9 @@ Bundles contain uncompressed Polars IPC tables and a canonical JSON manifest.
 The loader verifies each table's SHA-256 digest, row count, schema, and the run
 provenance fingerprint before returning data. Saving refuses to overwrite an
 existing bundle.
-New bundles use format version 3 for execution provenance. Version 2 bundles
-remain readable without inventing an execution manifest for historical runs.
+New bundles use format version 4 for immutable risk-decision snapshots. Version
+2 and 3 bundles remain readable without inventing execution manifests or
+decision-time facts that were not historically recorded.
 
 Risk and validation artifacts are opt-in. Named risk requests run after trading
 and accounting, while precomputed market-data validation reports can be recorded
@@ -135,6 +144,8 @@ API stability
 The supported root namespace is declared by ``gambit.__all__``. Compatibility,
 deprecation, experimental-native, and persisted-format guarantees are documented
 in ``API_STABILITY.md``; release-facing changes are recorded in ``CHANGELOG.md``.
+Public API compatibility is distinct from production qualification. The
+canonical capability posture is maintained in ``FEATURE_STATUS.md``.
 
 Execution costs and liquidity
 -----------------------------

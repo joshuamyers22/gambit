@@ -6,6 +6,11 @@ next published release. The supported root API is exactly the names listed in
 reference. Other imported names, native implementation symbols, underscored
 modules, and undocumented attributes are internal.
 
+Compatibility is not a production-readiness claim. The canonical posture of
+general, experimental, utility, and out-of-scope capabilities is defined in
+[FEATURE_STATUS.md](FEATURE_STATUS.md). The distribution remains Beta until the
+production-readiness plan's P0 gates are accepted.
+
 ## Compatibility
 
 - Patch releases may fix defects and add optional parameters, but do not remove
@@ -22,6 +27,9 @@ modules, and undocumented attributes are internal.
   Writers now emit version 4; readers explicitly support versions 2 and 3 as
   well. Missing historical execution manifests and decision snapshots remain
   absent, not reconstructed from current registrations or terminal orders.
+  The [data lifecycle and recovery contract](documentation/source/data_lifecycle.rst)
+  defines schema ownership, migration, verified backup/restore, and corruption
+  handling without expanding the supported format set.
 
 ## Experimental native APIs
 
@@ -34,6 +42,115 @@ gates in `ADVERSARIAL_REVIEW_PLAN.md`.
 
 `gambit.tick_backtest.TopOfBookBacktester`, its market/FIFO execution models and
 book/queue record layouts are also experimental, not general Strategy backends.
+
+## Experimental point-in-time data APIs
+
+`PointInTimeMarketData`, `PointInTimeObservation`, `PointInTimePriceFunction`,
+and `PointInTimeIndicator` are the P1.5 causal-data interfaces. They enforce
+observation/publication cutoffs only for reads routed through those objects;
+arbitrary callbacks and retained external arrays remain outside that boundary.
+Production promotion requires representative owner-data qualification and
+data/core-owner approval under `PRODUCTION_READINESS_PLAN.md`.
+
+## Experimental walk-forward APIs
+
+`WalkForwardConfig`, `WalkForwardInterval`, `WalkForwardFold`,
+`WalkForwardSchedule`, `WalkForwardRunner`, `WalkForwardFoldResult`, and
+`WalkForwardWindow` are the initial P1.6 experiment-evaluation boundary.
+`WalkForwardTrialResult`, `WalkForwardTrialFailure`,
+`WalkForwardOptimizationFoldResult`, and `WalkForwardExperimentResult` expose
+detached in-memory optimization outcomes, including model/input SHA-256
+identities and chronological out-of-sample equity.
+`WalkForwardHeldoutEvaluation` binds held-out metrics to exact held-out equity
+timestamps. `WalkForwardResultError` reports invalid separate-format artifacts.
+`WalkForwardTrainingSet` provides cloned
+warm-up/fit frames and training-only generic, covariance, and tail-risk fit
+adapters. The runner owns a chronological frame and exposes only each callback's
+permitted interval; optimized fitting additionally uses an exact column
+allowlist and the existing `Optimizer` process scheduler. It does not inspect
+the semantics of allowed precomputed columns or callback closures, freeze
+arbitrary fitted objects against mutation, or serialize fitted model objects.
+The versioned experiment manifest persists their caller-supplied identities,
+not executable models. These APIs remain experimental until the remaining P1.6
+acceptance work and quant/research-owner approval are complete.
+
+## Experimental forecast APIs
+
+`ForecastScaleCap`, `ForecastScalarEstimator`, `FittedForecastScalars`,
+`ForecastCombinationEstimator`, `FittedForecastCombination`,
+`FixedForecastCombiner`, `ForecastCombinationResult`, and
+`ForecastCombinationResultError`, and `MissingForecastPolicy` are the P2.3
+rule-forecast boundary. They accept
+long-form Polars rows keyed by timestamp, symbol, and rule; retain detached
+raw/scaled/capped/contribution evidence; and emit combined `raw_forecast` rows
+compatible with the existing risk sizers. Scalars may be fixed inputs or fitted
+from wide historical rule columns through a declared cutoff and minimum-history
+requirement. Inverse-volatility weights, empirical correlation, and a bounded
+diversification multiplier can likewise be fitted from complete historical rule
+rows. ``WalkForwardTrainingSet.fit_forecast_scalars`` and
+``fit_forecast_combination`` confine both fits to the permitted training
+interval. Missing rules use an explicit fail, zero, or renormalize policy.
+``ForecastCombinationResult.save`` atomically persists combined forecasts and
+their full contribution ledger in a separate versioned manifest plus two
+checksummed Arrow tables; ``load`` verifies schemas and reconciliation before
+returning detached evidence. Quant/research-owner approval remains outside this
+experimental boundary.
+
+## Experimental cost-diagnostic APIs
+
+``CostTurnoverAnalyzer``, ``CostTurnoverReport``, and ``CostPeriod`` are the
+initial P2.4 reporting boundary. They aggregate explicitly attributed,
+incremental gross/net P&L and executed trades by calendar period, instrument,
+and rule. The analyzer reconciles ledger cost drag to signed fee and commission
+fields and treats slippage already embedded in execution prices as part of gross
+P&L, not a second charge. ``ExecutionPriceDiagnostic`` is the immutable fill
+boundary for raw reference, modeled slippage/impact, rounding, execution price,
+and model identity. Built-in simple simulation produces it; account and callback
+ingestion revalidate it, and reports expose model-separated monetary effects plus
+missing-evidence counts. These reporting APIs do not infer rule ownership for
+shared positions.
+
+``CostSensitivityCase``, ``CostSensitivityRunner``,
+``CostSensitivityResult``, and ``CostSensitivityVariant`` are the experimental
+repeatability boundary for P2.4 sweeps. Each independently evaluated case keeps
+canonical immutable assumptions, a seed, input/strategy/case SHA-256 identities,
+and a buffered/unbuffered label. Results require the same finite metric names and
+retain long-form rows in declared case order. Paired comparisons report observed
+differences only. The runner does not implement the P1.7 target buffer or prove
+that a callback applied its declared assumptions; representative evidence is
+still required.
+
+## Experimental executable-target APIs
+
+``ExecutableTargetBuilder``, ``ExecutableTargetResult``,
+``ExecutableTargetInputs``, ``ExecutableTargetRule``, ``TradableUnitRule``, and
+``TargetRounding`` form the P1.7 conversion and Strategy-adapter boundary. They
+translate base-currency exposure targets through point-in-time
+positive local prices, contract multipliers, and explicit FX into deterministic
+whole-lot targets. Each unit rule may declare an inclusive symmetric
+base-currency no-trade band around its rounded target. Diagnostics retain the
+unbuffered quantity, buffer decision, achieved exposure, and actual tracking
+error; incremental proposals account for current holdings and all still-open
+orders. The result exposes a detached standard exposure table for the
+post-rounding/post-buffer state and can calculate the existing point-in-time risk
+measures over that achieved state. Optional risk policies admit each nonzero
+proposal through the same ``decide_order`` boundary used by ``Strategy`` while
+including caller-supplied pending orders and earlier accepted target orders.
+Detached decisions preserve rejected proposals; returned orders and achieved
+risk include accepted quantities only. A rule returning these orders to
+``Strategy`` still receives admission against then-current engine state. The
+long-only and maximum-position policies may identify a buffered proposal as a
+required reduction; that proposal bypasses the band but still must pass ordinary
+admission. Custom policies can opt into the same behavior with a non-mutating
+``requires_reduction(order, context) -> bool`` method. The builder does not
+submit orders.
+
+An ``ExecutableTargetRule`` input provider receives the current timestamp,
+account, and strategy context and returns explicitly timestamped inputs. The
+adapter automatically supplies Strategy's open orders to the builder and retains
+the latest detached result. Returned orders still pass Strategy validation and
+final policy admission. Applications must register equivalent policies on the
+adapter and Strategy; the adapter cannot mutate Strategy configuration.
 
 ## Internal scheduling and debugging storage
 
@@ -64,6 +181,9 @@ Source hashes and dataclass parameters do not capture arbitrary callback state,
 closures, globals, external data or transitive dependencies. The manifest lists
 unresolved scope and must not be treated as a complete reproducibility certificate.
 Result provenance is detached from later registrations or parameter changes.
+Use [HISTORICAL_OUTPUT_DISPOSITION.md](HISTORICAL_OUTPUT_DISPOSITION.md) to
+classify pre-correction bundles and downstream reports. Missing provenance is
+not evidence that an older result is unaffected.
 
 Invalid option types and duplicate YAML keys now fail at the configuration
 boundary. Before-run changes to the existing runtime lag/log/final-calculation

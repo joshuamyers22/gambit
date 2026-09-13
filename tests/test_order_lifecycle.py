@@ -474,16 +474,17 @@ def test_multiplier_aware_trade_reversal_reconciles_realized_and_unrealized_pnl(
     assert np.isclose(account.equity(timestamps[-1]), 1_400.0)
 
 
-def test_expired_contract_pnl_is_frozen_after_first_post_expiry_mark() -> None:
+def test_expired_contract_pnl_freezes_at_expiry_without_post_expiry_mark() -> None:
     group = ContractGroup.get("expiry")
     timestamps = np.array(
         ["2024-01-02T09:30", "2024-01-02T10:30", "2024-01-02T11:30", "2024-01-02T12:30"],
         dtype="datetime64[ns]",
     )
     contract = Contract.create("EXPIRY", group, expiry=timestamps[1], multiplier=10.0)
-    context = SimpleNamespace(prices=np.array([100.0, 105.0, 110.0, 200.0]))
+    context = SimpleNamespace(prices=np.array([100.0, 105.0, 110.0, 200.0]), requested=[])
 
     def mark_price(_contract, _timestamps, index, strategy_context):
+        strategy_context.requested.append(index)
         return strategy_context.prices[index]
 
     account = Account([group], timestamps, mark_price, context, starting_equity=1_000.0)
@@ -502,5 +503,125 @@ def test_expired_contract_pnl_is_frozen_after_first_post_expiry_mark() -> None:
     first_post_expiry_equity = account.equity(timestamps[2])
     later_equity = account.equity(timestamps[3])
 
-    assert np.isclose(first_post_expiry_equity, 1_100.0)
+    assert np.isclose(first_post_expiry_equity, 1_050.0)
     assert np.isclose(later_equity, first_post_expiry_equity)
+    assert context.requested == [0, 1]
+
+
+def test_expiry_between_heartbeats_uses_preceding_mark() -> None:
+    group = ContractGroup.get("expiry-between-heartbeats")
+    timestamps = np.array(
+        ["2024-01-02T14:58", "2024-01-02T14:59", "2024-01-02T15:01"],
+        dtype="datetime64[ns]",
+    )
+    contract = Contract.create(
+        "EXPIRY-BETWEEN",
+        group,
+        expiry=np.datetime64("2024-01-02T15:00"),
+        multiplier=10.0,
+    )
+    context = SimpleNamespace(prices=np.array([100.0, 104.0, 999.0]), requested=[])
+
+    def mark_price(_contract, _timestamps, index, strategy_context):
+        strategy_context.requested.append(index)
+        return strategy_context.prices[index]
+
+    account = Account([group], timestamps, mark_price, context, starting_equity=1_000.0)
+    account.add_trades(
+        [
+            Trade(
+                contract,
+                MarketOrder(contract=contract, timestamp=timestamps[0], qty=1),
+                timestamps[0],
+                1,
+                100.0,
+            )
+        ]
+    )
+
+    assert np.isclose(account.equity(timestamps[2]), 1_040.0)
+    assert context.requested == [0, 1]
+
+
+def test_trade_at_expiry_recalculates_terminal_pnl_by_hand() -> None:
+    group = ContractGroup.get("expiry-recalculation")
+    timestamps = np.array(
+        ["2024-01-02T14:59", "2024-01-02T15:00", "2024-01-02T15:01"],
+        dtype="datetime64[ns]",
+    )
+    contract = Contract.create("EXPIRY-RECALC", group, expiry=timestamps[1], multiplier=10.0)
+    context = SimpleNamespace(prices=np.array([100.0, 105.0, 999.0]))
+
+    def mark_price(_contract, _timestamps, index, strategy_context):
+        return strategy_context.prices[index]
+
+    account = Account([group], timestamps, mark_price, context, starting_equity=1_000.0)
+    account.add_trades(
+        [
+            Trade(
+                contract,
+                MarketOrder(contract=contract, timestamp=timestamps[0], qty=1),
+                timestamps[0],
+                1,
+                100.0,
+            )
+        ]
+    )
+    assert np.isclose(account.equity(timestamps[2]), 1_050.0)
+
+    account.add_trades(
+        [
+            Trade(
+                contract,
+                MarketOrder(contract=contract, timestamp=timestamps[1], qty=-1),
+                timestamps[1],
+                -1,
+                107.0,
+            )
+        ]
+    )
+
+    assert account.position(group, timestamps[2]) == 0
+    assert np.isclose(account.equity(timestamps[2]), 1_070.0)
+
+
+def test_trade_after_expiry_is_rejected() -> None:
+    group = ContractGroup.get("expired-trade")
+    expiry = np.datetime64("2024-01-02T15:00")
+    contract = Contract.create("EXPIRED-TRADE", group, expiry=expiry)
+    order = MarketOrder(contract=contract, timestamp=expiry, qty=1)
+
+    with pytest.raises(ValueError, match="after contract expiry"):
+        Trade(contract, order, expiry + np.timedelta64(1, "m"), 1, 100.0)
+
+
+def test_mutated_post_expiry_trade_rejects_account_batch_atomically() -> None:
+    group = ContractGroup.get("expired-trade-batch")
+    timestamps = np.array(
+        ["2024-01-02T14:59", "2024-01-02T15:00", "2024-01-02T15:01"],
+        dtype="datetime64[ns]",
+    )
+    expiring = Contract.create("EXPIRING-BATCH", group, expiry=timestamps[1])
+    current = Contract.create("CURRENT-BATCH", group)
+    mutated = Trade(
+        expiring,
+        MarketOrder(contract=expiring, timestamp=timestamps[1], qty=1),
+        timestamps[1],
+        1,
+        100.0,
+    )
+    mutated.timestamp = timestamps[2]
+    valid = Trade(
+        current,
+        MarketOrder(contract=current, timestamp=timestamps[0], qty=1),
+        timestamps[0],
+        1,
+        50.0,
+    )
+    account = Account([group], timestamps, _constant_price, None)
+
+    with pytest.raises(ValueError, match="after contract expiry"):
+        account.add_trades([valid, mutated])
+
+    assert account.trade_count == 0
+    assert account.symbols() == []

@@ -1,0 +1,419 @@
+{
+  "schema_version": 5,
+  "currency_absolute_tolerance": 1e-9,
+  "accounting_cases": [
+    {
+      "name": "long_scale_out_with_multiplier_and_costs",
+      "starting_equity": 10000.0,
+      "multiplier": 50.0,
+      "timestamps": [
+        "2024-01-02T09:30",
+        "2024-01-02T10:30",
+        "2024-01-02T15:00"
+      ],
+      "marks": [100.0, 110.0, 90.0],
+      "trades": [
+        {"qty": 2, "price": 100.0, "fee": 1.0, "commission": 2.0},
+        {"qty": -1, "price": 110.0, "fee": 0.5, "commission": 1.0},
+        {"qty": -1, "price": 90.0, "fee": 0.5, "commission": 1.0}
+      ],
+      "expected": {
+        "position": [2, 1, 0],
+        "realized": [0.0, 500.0, 0.0],
+        "unrealized": [0.0, 500.0, 0.0],
+        "fee": [1.0, 1.5, 2.0],
+        "commission": [2.0, 3.0, 4.0],
+        "net_pnl": [-3.0, 995.5, -6.0],
+        "equity": [9997.0, 10995.5, 9994.0]
+      }
+    },
+    {
+      "name": "short_cross_zero_and_close_long",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-02-05T09:30",
+        "2024-02-05T10:30",
+        "2024-02-05T15:00"
+      ],
+      "marks": [50.0, 45.0, 55.0],
+      "trades": [
+        {"qty": -3, "price": 50.0, "fee": 1.0, "commission": 0.5},
+        {"qty": 5, "price": 45.0, "fee": 2.0, "commission": 1.0},
+        {"qty": -2, "price": 55.0, "fee": 0.5, "commission": 0.5}
+      ],
+      "expected": {
+        "position": [-3, 2, 0],
+        "realized": [0.0, 150.0, 350.0],
+        "unrealized": [0.0, 0.0, 0.0],
+        "fee": [1.0, 3.0, 3.5],
+        "commission": [0.5, 1.5, 2.0],
+        "net_pnl": [-1.5, 145.5, 344.5],
+        "equity": [998.5, 1145.5, 1344.5]
+      }
+    }
+  ],
+  "expiry_cases": [
+    {
+      "name": "exact_expiry_uses_expiry_mark",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-01-02T14:59",
+        "2024-01-02T15:00",
+        "2024-01-02T15:01"
+      ],
+      "expiry": "2024-01-02T15:00",
+      "marks": [100.0, 105.0, 999.0],
+      "entry_price": 100.0,
+      "expected_cutoff_index": 1,
+      "expected_final_net_pnl": 50.0,
+      "expected_final_equity": 1050.0
+    },
+    {
+      "name": "between_heartbeats_uses_preceding_mark",
+      "starting_equity": 1000.0,
+      "multiplier": 10.0,
+      "timestamps": [
+        "2024-01-02T14:58",
+        "2024-01-02T14:59",
+        "2024-01-02T15:01"
+      ],
+      "expiry": "2024-01-02T15:00",
+      "marks": [100.0, 104.0, 999.0],
+      "entry_price": 100.0,
+      "expected_cutoff_index": 1,
+      "expected_final_net_pnl": 40.0,
+      "expected_final_equity": 1040.0
+    }
+  ],
+  "integrated_strategy_case": {
+    "name": "lagged_cross_zero_with_risk_rejection_and_persistence",
+    "starting_equity": 1000.0,
+    "multiplier": 10.0,
+    "trade_lag": 1,
+    "commission_per_unit": 1.0,
+    "maximum_position": 2.0,
+    "timestamps": [
+      "2024-03-04T09:30",
+      "2024-03-04T09:31",
+      "2024-03-04T09:32",
+      "2024-03-04T09:33",
+      "2024-03-04T09:34",
+      "2024-03-04T15:00"
+    ],
+    "prices": [100.0, 102.0, 99.0, 110.0, 106.0, 105.0],
+    "proposals": [2, 0, -3, 0, 4, 0],
+    "expected": {
+      "submitted_at": ["2024-03-04T09:30", "2024-03-04T09:32"],
+      "filled_at": ["2024-03-04T09:31", "2024-03-04T09:33"],
+      "trade_qty": [2, -3],
+      "trade_price": [102.0, 110.0],
+      "trade_commission": [2.0, 3.0],
+      "order_status": ["filled", "filled", "cancelled"],
+      "decision_status": ["accepted", "accepted", "rejected"],
+      "decision_code": ["accepted", "accepted", "position_quantity_exceeded"],
+      "final_position": -1,
+      "final_realized": 160.0,
+      "final_unrealized": 50.0,
+      "final_fee": 0.0,
+      "final_commission": 5.0,
+      "final_net_pnl": 205.0,
+      "final_equity": 1205.0
+    }
+  },
+  "partial_fill_case": {
+    "name": "three_heartbeat_partial_fill",
+    "starting_equity": 1000.0,
+    "multiplier": 5.0,
+    "timestamps": [
+      "2024-04-01T09:30",
+      "2024-04-01T09:31",
+      "2024-04-01T09:32",
+      "2024-04-01T15:00"
+    ],
+    "marks": [100.0, 102.0, 104.0, 110.0],
+    "order_qty": 3,
+    "fill_qty": [1, 1, 1],
+    "fill_price": [100.0, 102.0, 104.0],
+    "fill_commission": [0.25, 0.25, 0.25],
+    "expected": {
+      "fill_status": ["partially_filled", "partially_filled", "filled"],
+      "remaining_qty": [2, 1, 0],
+      "final_position": 3,
+      "final_realized": 0.0,
+      "final_unrealized": 120.0,
+      "final_commission": 0.75,
+      "final_net_pnl": 119.25,
+      "final_equity": 1119.25
+    }
+  },
+  "roll_case": {
+    "name": "long_future_roll_with_unequal_multipliers",
+    "starting_equity": 10000.0,
+    "commission_per_unit": 1.0,
+    "timestamps": [
+      "2024-06-17T09:30",
+      "2024-06-18T09:30",
+      "2024-06-18T15:00"
+    ],
+    "outgoing": {
+      "symbol": "ACCEPT-ROLL-JUN",
+      "multiplier": 50.0,
+      "prices": [100.0, 105.0, 105.0]
+    },
+    "incoming": {
+      "symbol": "ACCEPT-ROLL-SEP",
+      "multiplier": 25.0,
+      "prices": [80.0, 80.0, 82.0]
+    },
+    "initial_qty": 2,
+    "reopen_qty": 3,
+    "expected": {
+      "trade_symbol": ["ACCEPT-ROLL-JUN", "ACCEPT-ROLL-JUN", "ACCEPT-ROLL-SEP"],
+      "trade_qty": [2, -2, 3],
+      "trade_price": [100.0, 105.0, 80.0],
+      "order_status": ["filled", "filled", "filled"],
+      "decision_status": ["accepted", "accepted", "accepted"],
+      "outgoing_position": 0,
+      "outgoing_realized": 500.0,
+      "outgoing_commission": 4.0,
+      "outgoing_net_pnl": 496.0,
+      "incoming_position": 3,
+      "incoming_unrealized": 150.0,
+      "incoming_commission": 3.0,
+      "incoming_net_pnl": 147.0,
+      "aggregate_net_pnl": 643.0,
+      "aggregate_equity": 10643.0
+    }
+  },
+  "vwap_causality_case": {
+    "name": "day_boundary_ignores_future_liquidity",
+    "timestamps": [
+      "2024-06-30T23:57",
+      "2024-06-30T23:58",
+      "2024-06-30T23:59",
+      "2024-07-01T00:00",
+      "2024-07-01T00:01"
+    ],
+    "submitted_index": 1,
+    "evaluated_index": 2,
+    "end_index": 4,
+    "order_qty": 8,
+    "known_prices": [9999.0, 100.0, 104.0],
+    "known_volumes": [1000.0, 1.0, 3.0],
+    "future_variants": [
+      {"prices": [1.0, 1.0], "volumes": [1.0, 1.0]},
+      {"prices": [1000.0, 1000.0], "volumes": [10000.0, 10000.0]}
+    ],
+    "expected": {
+      "fill_price": 103.0,
+      "fill_index": 2,
+      "terminal_status": "filled"
+    }
+  },
+  "invalid_numeric_cases": [
+    {
+      "name": "order_nan_quantity",
+      "boundary": "order_qty",
+      "value": "nan",
+      "error": "order qty must be finite and nonzero, in whole shares or contracts"
+    },
+    {
+      "name": "order_positive_infinity_quantity",
+      "boundary": "order_qty",
+      "value": "positive_infinity",
+      "error": "order qty must be finite and nonzero, in whole shares or contracts"
+    },
+    {
+      "name": "trade_negative_infinity_price",
+      "boundary": "trade_price",
+      "value": "negative_infinity",
+      "error": "trade price must be a finite real number"
+    },
+    {
+      "name": "trade_nan_fee",
+      "boundary": "trade_fee",
+      "value": "nan",
+      "error": "trade fee must be a finite real number"
+    },
+    {
+      "name": "trade_positive_infinity_commission",
+      "boundary": "trade_commission",
+      "value": "positive_infinity",
+      "error": "trade commission must be a finite real number"
+    },
+    {
+      "name": "mark_negative_infinity",
+      "boundary": "account_mark",
+      "value": "negative_infinity",
+      "error": "account price callback returned a non-finite price"
+    }
+  ],
+  "missing_mark_case": {
+    "name": "nan_mark_carries_prior_unrealized_pnl",
+    "starting_equity": 1000.0,
+    "multiplier": 10.0,
+    "timestamps": ["2024-07-08T09:30", "2024-07-08T15:00"],
+    "execution_price": 100.0,
+    "marks": [105.0, "nan"],
+    "expected_unrealized": [50.0, 50.0],
+    "expected_equity": [1050.0, 1050.0]
+  },
+  "finite_overflow_cases": [
+    {
+      "name": "unrealized_price_difference",
+      "operation": "unrealized",
+      "entry_price": 1e308,
+      "mark_price": -1e308,
+      "multiplier": 1.0,
+      "error": "unrealized P&L"
+    },
+    {
+      "name": "realized_price_difference",
+      "operation": "realized",
+      "entry_price": 1e308,
+      "exit_price": -1e308,
+      "multiplier": 1.0,
+      "error": "realized P&L"
+    },
+    {
+      "name": "cumulative_fees",
+      "operation": "cost",
+      "fee_per_trade": 1e308,
+      "error": "cumulative fee"
+    },
+    {
+      "name": "aggregate_contract_pnl",
+      "operation": "aggregate",
+      "rebate_per_contract": -1e308,
+      "error": "aggregate net P&L",
+      "table_error": "aggregate fee"
+    },
+    {
+      "name": "starting_equity_plus_pnl",
+      "operation": "equity",
+      "starting_equity": 1e308,
+      "rebate": -1e308,
+      "error": "account equity"
+    },
+    {
+      "name": "quantity_outside_native_range",
+      "operation": "quantity",
+      "error": "signed platform integer range"
+    }
+  ],
+  "calendar_cases": [
+    {
+      "name": "independence_day_2024",
+      "calendar": "NYSE",
+      "basis": "Independence Day was Thursday 2024-07-04; adjacent weekdays were full trading days.",
+      "observations": [
+        {"date": "2024-07-03", "is_trading_day": true},
+        {"date": "2024-07-04", "is_trading_day": false},
+        {"date": "2024-07-05", "is_trading_day": true},
+        {"date": "2024-07-06", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-07-02",
+        "end": "2024-07-08",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-07-02", "2024-07-03", "2024-07-05", "2024-07-08"]
+      },
+      "offsets": [
+        {"start": "2024-07-03", "days": 1, "roll": "raise", "expected": "2024-07-05"},
+        {"start": "2024-07-04", "days": 0, "roll": "following", "expected": "2024-07-05"}
+      ]
+    },
+    {
+      "name": "good_friday_2024",
+      "calendar": "NYSE",
+      "basis": "Good Friday was an exchange closure on Friday 2024-03-29, between trading weekdays.",
+      "observations": [
+        {"date": "2024-03-28", "is_trading_day": true},
+        {"date": "2024-03-29", "is_trading_day": false},
+        {"date": "2024-03-30", "is_trading_day": false},
+        {"date": "2024-04-01", "is_trading_day": true}
+      ],
+      "range": {
+        "start": "2024-03-27",
+        "end": "2024-04-02",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-03-27", "2024-03-28", "2024-04-01", "2024-04-02"]
+      },
+      "offsets": [
+        {"start": "2024-03-28", "days": 1, "roll": "raise", "expected": "2024-04-01"},
+        {"start": "2024-03-29", "days": 0, "roll": "following", "expected": "2024-04-01"},
+        {"start": "2024-03-29", "days": 0, "roll": "preceding", "expected": "2024-03-28"}
+      ]
+    },
+    {
+      "name": "christmas_weekend_observance_2021",
+      "calendar": "NYSE",
+      "basis": "Christmas fell on Saturday 2021-12-25 and the exchange observed the closure on Friday 2021-12-24.",
+      "observations": [
+        {"date": "2021-12-23", "is_trading_day": true},
+        {"date": "2021-12-24", "is_trading_day": false},
+        {"date": "2021-12-25", "is_trading_day": false},
+        {"date": "2021-12-27", "is_trading_day": true}
+      ],
+      "range": {
+        "start": "2021-12-22",
+        "end": "2021-12-28",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2021-12-22", "2021-12-23", "2021-12-27", "2021-12-28"]
+      },
+      "offsets": [
+        {"start": "2021-12-23", "days": 1, "roll": "raise", "expected": "2021-12-27"},
+        {"start": "2021-12-24", "days": 0, "roll": "following", "expected": "2021-12-27"}
+      ]
+    },
+    {
+      "name": "thanksgiving_and_early_close_2024",
+      "calendar": "NYSE",
+      "basis": "Thanksgiving was closed Thursday 2024-11-28; the early-close session on Friday remained a trading day.",
+      "observations": [
+        {"date": "2024-11-27", "is_trading_day": true},
+        {"date": "2024-11-28", "is_trading_day": false},
+        {"date": "2024-11-29", "is_trading_day": true},
+        {"date": "2024-11-30", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-11-26",
+        "end": "2024-12-02",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-11-26", "2024-11-27", "2024-11-29", "2024-12-02"]
+      },
+      "offsets": [
+        {"start": "2024-11-27", "days": 1, "roll": "raise", "expected": "2024-11-29"},
+        {"start": "2024-11-28", "days": 0, "roll": "following", "expected": "2024-11-29"}
+      ]
+    },
+    {
+      "name": "new_year_boundary_2025",
+      "calendar": "NYSE",
+      "basis": "New Year's Day was closed Wednesday 2025-01-01, with trading weekdays on both sides.",
+      "observations": [
+        {"date": "2024-12-31", "is_trading_day": true},
+        {"date": "2025-01-01", "is_trading_day": false},
+        {"date": "2025-01-02", "is_trading_day": true},
+        {"date": "2025-01-04", "is_trading_day": false}
+      ],
+      "range": {
+        "start": "2024-12-30",
+        "end": "2025-01-03",
+        "include_first": true,
+        "include_last": true,
+        "expected": ["2024-12-30", "2024-12-31", "2025-01-02", "2025-01-03"]
+      },
+      "offsets": [
+        {"start": "2024-12-31", "days": 1, "roll": "raise", "expected": "2025-01-02"},
+        {"start": "2025-01-01", "days": 0, "roll": "following", "expected": "2025-01-02"}
+      ]
+    }
+  ]
+}

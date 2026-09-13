@@ -6,7 +6,8 @@ import pytest
 from gambit.account import Account
 from gambit.boundaries import BacktestCallbackError
 from gambit.callback_contracts import validate_market_trades, validate_rule_orders
-from gambit.pq_types import Contract, ContractGroup, MarketOrder, OrderStatus, Trade
+from gambit.execution_costs import BidAskSpreadSlippage
+from gambit.pq_types import Contract, ContractGroup, ExecutionPriceDiagnostic, MarketOrder, OrderStatus, Trade
 from gambit.strategy import Strategy
 from gambit.strategy_components import SimpleMarketSimulator
 from gambit.strategy_inputs import PriceFuncArrayDict, PriceFuncDict, VectorIndicator, VectorSignal
@@ -557,6 +558,60 @@ def test_account_owns_and_returns_detached_trade_snapshots() -> None:
     assert stable_trade.properties.source == "original"
     assert account.trade_count == 1
     assert account.position(group, timestamp) == 1
+
+
+def test_account_revalidates_and_exposes_execution_price_diagnostics() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    group = ContractGroup.get("account-execution-diagnostic")
+    contract = Contract.create("ACCOUNT-EXECUTION-DIAGNOSTIC", group, multiplier=10)
+    account = Account([group], np.array([timestamp]), _price, SimpleNamespace())
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=2)
+    trade = SimpleMarketSimulator(
+        lambda *_args: 100.0,
+        slippage_model=BidAskSpreadSlippage(0.2),
+    )([order], 0, np.array([timestamp]), {}, {}, SimpleNamespace())[0]
+
+    account.add_trades([trade])
+
+    stored = account.trades()[0]
+    assert stored.execution_diagnostic is trade.execution_diagnostic
+    diagnostic_row = account.df_trades().select(
+        "reference_price",
+        "modeled_price_adjustment",
+        "rounding_price_adjustment",
+        "price_effect",
+        "price_effect_model",
+    ).row(0)
+    assert diagnostic_row[:4] == pytest.approx((100.0, 0.1, 0.0, 2.0))
+    assert diagnostic_row[4] == "BidAskSpreadSlippage"
+
+    trade.price = 101.0
+    with pytest.raises(ValueError, match="does not match its execution diagnostic"):
+        account.add_trades([trade])
+
+
+def test_market_callback_revalidates_execution_price_diagnostic() -> None:
+    timestamp = np.datetime64("2026-01-01")
+    contract = Contract.create("CALLBACK-EXECUTION-DIAGNOSTIC")
+    order = MarketOrder(contract=contract, timestamp=timestamp, qty=1)
+    diagnostic = ExecutionPriceDiagnostic(100.0, 0.1, 0.0, 100.1, "test-slippage")
+    trade = Trade(contract, order, timestamp, 1, 100.1, execution_diagnostic=diagnostic)
+    trade.price = 101.0
+
+    with pytest.raises(ValueError, match="does not match its execution diagnostic"):
+        validate_market_trades(
+            [trade],
+            [order],
+            timestamp,
+            {id(order): (1, OrderStatus.OPEN)},
+        )
+
+
+def test_execution_price_diagnostic_requires_reconciled_finite_values() -> None:
+    with pytest.raises(ValueError, match="do not reconcile"):
+        ExecutionPriceDiagnostic(100.0, 0.1, 0.0, 100.2, "test-slippage")
+    with pytest.raises(ValueError, match="finite real number"):
+        ExecutionPriceDiagnostic(100.0, np.inf, 0.0, 100.0, "test-slippage")
 
 
 def test_strategy_returns_detached_order_snapshots() -> None:

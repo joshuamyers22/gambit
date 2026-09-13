@@ -4,6 +4,8 @@ Result: **PASS** for the native C++ `TickRing` / `TickFactorProcessor` against a
 stateful pure-Python version of the existing tick-factor reference. This tests
 tick-factor arithmetic and ring accounting, not all Gambit C++ code, an exchange
 order book, FIFO P&L, or a complete trading strategy.
+The candidate [`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md) therefore classifies
+this as factor-only correctness characterization, not order-to-P&L acceptance.
 
 ## Workload and method
 

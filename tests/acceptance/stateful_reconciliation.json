@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "runs": [
+    {"seed": 20260912, "trade_lag": 0},
+    {"seed": 7, "trade_lag": 1},
+    {"seed": 31337, "trade_lag": 2},
+    {"seed": 8675309, "trade_lag": 1}
+  ],
+  "steps_per_run": 48,
+  "contract_multipliers": [1.0, 50.0],
+  "maximum_orders_per_step": 2,
+  "maximum_order_quantity": 7,
+  "fill_percent": 72,
+  "cancel_percent": 9,
+  "commission_per_unit": 0.25,
+  "fee_per_unit": 0.05,
+  "starting_equity": 1000000.0,
+  "currency_absolute_tolerance": 1e-9
+}

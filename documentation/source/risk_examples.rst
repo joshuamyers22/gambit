@@ -78,6 +78,23 @@ The proposed 250-share order is below the 500-share order limit and below the
 limit. The resulting ``OrderDecision`` retains the rejecting policy, stable
 machine-readable code, human-readable message, timestamp, and proposed size.
 
+Executable targets in Strategy
+------------------------------
+
+``ExecutableTargetRule`` adapts point-in-time target inputs to the ordinary
+Strategy callback contract. It reserves all still-open orders while constructing
+the target and returns only admitted orders. Strategy then validates and admits
+those fresh orders again against live state. Register the same policy set on the
+rule and Strategy so construction evidence and final admission do not drift.
+
+.. literalinclude:: ../../examples/risk/executable_target_strategy.py
+   :language: python
+   :linenos:
+
+The two-bar execution lag deliberately leaves the first three-unit order open at
+the next target evaluation. The adapter sees that remaining quantity and emits
+no duplicate; the original order fills at the third timestamp.
+
 Covariance risk overlay
 -----------------------
 
@@ -114,6 +131,160 @@ and source. This makes the conversion reversible for audit purposes. FX labels
 without an actual rate are rejected, as are snapshots newer than the market-data
 cutoff. The example uses a fixed synthetic rate; applications should obtain a
 point-in-time rate from a controlled data source.
+
+Forecast scaling and combination
+--------------------------------
+
+Scale and symmetrically cap long-form rule forecasts before combining them with
+fixed weights. The contribution table retains the raw, scaled, capped, weight,
+availability, and contribution value for every configured rule:
+
+.. literalinclude:: ../../examples/risk/forecast_combination.py
+   :language: python
+   :linenos:
+
+Fixed weights must sum to one. ``FixedForecastCombiner.equal`` constructs equal
+weights without granting extra scale to duplicated correlated rules. By default,
+any unavailable rule stops combination. ``MissingForecastPolicy.ZERO`` retains
+the unavailable audit row with zero effective weight and contribution; it does
+not silently renormalize the remaining rules. Combined output uses the
+``raw_forecast`` column accepted by the existing volatility and VaR sizers.
+Historical scalars, estimated weights, and diversification multipliers require
+an explicit fit. ``ForecastScalarEstimator`` estimates each rule's scalar as the
+configured target mean absolute forecast divided by its observed historical mean
+absolute value. It enforces a minimum number of finite observations and rejects
+all-zero history instead of inventing a scale. The resulting
+``FittedForecastScalars.scale_cap`` creates the same row-level transform.
+
+``ForecastCombinationEstimator`` uses complete historical rows to estimate
+inverse-volatility weights and an empirical rule-correlation matrix. It derives
+the diversification multiplier as ``1 / sqrt(w' C w)`` and clips that value to
+an explicit configured maximum. Constant rules, non-finite observations, and
+insufficient complete history fail instead of receiving invented estimates.
+Perfectly duplicated rules therefore receive a multiplier of one. The fitted
+object returns detached correlation data and builds a fixed combiner, so later
+observations cannot revise an earlier result.
+
+Missing rules fail by default. ``ZERO`` preserves fitted weights while assigning
+the missing rule zero effective weight. ``RENORMALIZE`` is the explicit opt-in
+policy that rescales available positive weights to one; contribution rows retain
+both base and effective weights plus the fitted diversification multiplier.
+
+Persist a completed result with ``result.save(path)`` and restore it with
+``ForecastCombinationResult.load(path)``. This publishes a canonical versioned
+manifest plus separate uncompressed Arrow tables for the combined forecasts and
+complete contribution ledger. Both tables are checksummed. Loading validates
+their exact schemas, row counts, ordering, finite values, contribution formulas,
+and aggregate reconciliation. Existing destinations are never overwritten.
+
+Inside optimization, fit this estimator only through the owned training set:
+
+.. code-block:: python
+
+   scalars = training.fit_forecast_scalars(
+       gambit.ForecastScalarEstimator(min_observations=252),
+       rule_columns=["carry_forecast", "momentum_forecast"],
+   )
+   combination = training.fit_forecast_combination(
+       gambit.ForecastCombinationEstimator(
+           min_observations=252,
+           max_diversification_multiplier=2.5,
+       ),
+       rule_columns=["carry_forecast", "momentum_forecast"],
+   )
+
+Both adapters supply only fit rows and fix ``as_of`` to the last fit timestamp.
+Rule columns supplied to the combination estimator should contain the historical
+scaled/capped forecasts whose joint behavior is being estimated.
+
+Executable exposure targets
+---------------------------
+
+Convert base-currency exposure targets from the volatility or VaR sizing stage
+into whole-contract incremental order proposals:
+
+.. literalinclude:: ../../examples/risk/executable_targets.py
+   :language: python
+   :linenos:
+
+``ExecutableTargetBuilder`` requires one explicit ``TradableUnitRule`` per
+target symbol. Currency-labelled local point-in-time prices, contract
+multipliers, and an ``FxRateSnapshot`` determine each base-currency unit
+notional. ``NEAREST`` uses half-away-from-zero rounding in lot units;
+``TOWARD_ZERO`` is the conservative alternative. Zero and negative prices are
+unsupported and fail explicitly.
+
+``no_trade_band`` is an inclusive symmetric absolute exposure amount in the
+calculation base currency around the rounded target. When projected holdings are
+inside it, the builder emits no order and retains the resulting tracking error;
+outside it, the proposal trades to the rounded target. A zero band reproduces
+the unbuffered reference path.
+
+The result retains raw and rounded targets, projected exposure, the unbuffered
+quantity, the buffer decision, achieved exposure and tracking error, current
+holdings, still-open order quantity, and the final incremental quantity.
+``result.exposures`` is the detached standard exposure table for the achieved
+post-rounding/post-buffer state; its prices and monetary values are in the
+calculation base currency. Pass existing point-in-time ``risk_measures`` to
+``build`` to populate ``result.risk`` from that achieved table. Model cutoffs are
+checked against the calculation context, just as they are for direct
+``calculate_risk`` calls.
+
+Cancellation-requested orders remain reserved until their cancellation is
+acknowledged, so repeating an unchanged target does not create duplicate
+exposure. Returned orders are proposals only: this P1.7 boundary does not submit
+or risk-admit them, override buffering for required risk reductions, or bypass
+existing risk admission. Constraint-aware rechecks and submission remain
+pending.
+
+Cost and turnover diagnostics
+-----------------------------
+
+Aggregate explicitly attributed incremental P&L and executed trades by calendar
+period, instrument, and rule:
+
+.. literalinclude:: ../../examples/risk/cost_turnover_diagnostics.py
+   :language: python
+   :linenos:
+
+``CostTurnoverAnalyzer`` reports gross and net P&L/returns, signed fees and
+commission, explicit cost drag, absolute traded notional, capital-normalized
+turnover, and trade count. Capital and the daily, weekly, or monthly bucket are
+retained on every output row. Gross P&L means mark-to-market P&L after the actual
+execution price, including any slippage already present in that fill, but before
+the trade's explicit fee and commission fields. Reconciliation therefore
+requires ``gross_pnl - net_pnl == fee + commission`` and never adds slippage as
+a second charge.
+
+When all five optional execution columns from ``Account.df_trades()`` are
+supplied, ``report.data`` also counts attributed and unattributed fills and
+reports their aggregate execution-price effect. ``report.price_effects`` keeps
+the modeled slippage/impact and rounding effects separate by model. These are
+P&L decompositions only: neither value enters fee/commission reconciliation.
+Partial or internally inconsistent diagnostic rows fail explicitly.
+
+Inputs must already carry a non-empty rule identity and incremental P&L
+attribution. Gambit does not infer rule ownership for positions shared by
+multiple rules. Use a separate virtual ledger if rule-level P&L is required;
+misattributed or unreconciled inputs fail rather than being allocated
+heuristically.
+
+Cost and participation sensitivity
+----------------------------------
+
+Use ``CostSensitivityCase`` and ``CostSensitivityRunner`` to define a
+deterministic experiment surface. Cases contain immutable JSON-scalar
+assumptions, a non-negative seed, and a buffered or unbuffered label. The runner
+adds input, strategy, assumption, and case fingerprints to long-form finite
+metrics and rejects incomparable metric sets. Evaluator failures name the exact
+case and preserve the original exception as their cause.
+
+``CostSensitivityResult.compare_buffering(metric)`` pairs only matching
+comparison identities and returns ``buffered - unbuffered``. It does not assert
+that added costs reduce P&L: changed fills, participation limits, risk decisions,
+and strategy state can produce a different path. The current controlled example
+demonstrates the experiment boundary; representative strategy and
+risk-admitted executable-buffer comparison evidence remain pending.
 
 Volatility-targeted sizing
 --------------------------

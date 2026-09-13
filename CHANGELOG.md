@@ -7,6 +7,99 @@ have not yet been released are collected below.
 
 ### Added
 
+- Experimental executable exposure targets convert base-currency sizing output
+  through point-in-time positive local prices, contract multipliers, FX, and
+  explicit whole-lot rounding. An inclusive per-instrument base-currency
+  no-trade band suppresses immaterial proposals against projected holdings.
+  Detached diagnostics retain raw/rounded targets, unbuffered and final order
+  quantities, the buffer decision, achieved exposure, tracking error, and
+  current/pending quantities while reserving cancellation-requested exposure.
+  Results expose the achieved standard exposure table and optionally calculate
+  existing point-in-time risk measures after rounding and buffering. Optional
+  policies use shared pre-trade admission; detached decisions retain rejected
+  proposals while returned orders and achieved risk include accepted quantities
+  only. A reusable long-only policy rejects independently reachable shorts.
+  Long-only and maximum-position policies override buffering for proposals that
+  reduce an existing breach, without bypassing ordinary admission.
+  A typed executable-target rule adapter obtains point-in-time inputs, reserves
+  Strategy's live pending orders, retains its latest diagnostic result, and
+  returns accepted orders through Strategy validation and final re-admission.
+- Experimental cost and turnover diagnostics for explicitly attributed
+  incremental P&L and trade rows. Daily, weekly, or monthly output preserves
+  instrument/rule identity, capital assumptions, gross/net P&L and returns,
+  signed fees/commission, explicit cost drag, traded notional, turnover, and
+  trade count while requiring ledger reconciliation and avoiding a second
+  slippage charge. Built-in simple-simulator fills now carry an immutable
+  pre-cost price reference plus modeled and rounding adjustments. Callback and
+  account boundaries revalidate the decomposition; trade exports and cost
+  reports expose signed monetary price effects, missing-attribution counts, and
+  model-separated effects without treating them as an additional charge.
+- Experimental deterministic cost-sensitivity cases and runners record canonical
+  JSON-scalar assumptions, seeds, input/strategy/case fingerprints, and uniform
+  finite long-form metrics. Buffered and unbuffered labels support observed
+  paired differences without assuming higher modeled costs monotonically reduce
+  P&L when execution or strategy paths change.
+- Experimental Polars forecast scaling, symmetric capping, and fixed/equal
+  combination stages. Long-form contribution output retains each rule's raw,
+  scaled, capped, weighted, and availability values, while combined
+  ``raw_forecast`` rows feed the existing portfolio volatility and VaR sizers.
+  Missing rules either fail explicitly or contribute zero without silently
+  renormalizing weights. A historical mean-absolute-forecast estimator enforces
+  minimum history and explicit zero-history rejection; its fitted scalar set can
+  be created directly through the walk-forward training-only boundary. A second
+  training-only estimator derives inverse-volatility weights, empirical rule
+  correlation, and a bounded diversification multiplier from complete rows.
+  Perfectly duplicated rules receive no diversification credit; zero-variance
+  history fails, and missing-rule renormalization requires an explicit policy.
+  Combined results can be atomically persisted as a versioned canonical manifest
+  plus separately checksummed Arrow forecast and contribution tables; loading
+  validates table schemas and reconciles every aggregate to its contribution
+  ledger.
+- An experimental owned walk-forward runner with deterministic rolling or
+  expanding split identities, separate warm-up/fit/validation/held-out frames,
+  two purge boundaries, a non-overlapping refit schedule, detached finite
+  metrics, explicit short/ambiguous-timeline rejection, and parameter selection
+  through the existing optimizer. Optimized fits use an exact column allowlist,
+  fold-derived seeds, deterministic tie-breaking, selected-parameter refitting,
+  and isolated held-out scoring. An owned training-set callback boundary returns
+  detached warm-up/fit frames and fits generic estimators plus Gambit's
+  covariance and tail-risk models only through the final fit timestamp.
+  Optimized experiment results also retain deterministic full-input and
+  caller-supplied selected-model SHA-256 identities, successful and failed
+  trials, and a detached chronological equity observation for every held-out
+  timestamp; sequential and process-pool failures share the same record shape.
+  The complete evidence record can be atomically saved and loaded through a
+  separate versioned manifest plus checksummed Arrow equity table.
+- Experimental immutable point-in-time market data with separate observation,
+  availability, row-revision, and dataset-revision identity; causal scalar and
+  window reads; explicit missing/stale policies; bounded last-known-value age;
+  strategy price and indicator-stage adapters; and automatic source fingerprint
+  provenance with conflicting identity rejection.
+- A versioned, human-reviewable financial acceptance corpus with manually
+  calculated FIFO/multiplier/cost ledgers, lagged end-to-end execution, partial
+  fills, unequal-multiplier rolls, causal VWAP, expiry cutoffs, position rejection, result
+  persistence, explicit NaN/Inf and finite-overflow boundaries, and
+  five NYSE holiday, observance, and year-transition calendar boundaries. Four
+  fixed state-machine seeds reconcile orders, partial fills, cancellations,
+  trades, two-contract FIFO ledgers, decision snapshots, group equity, and
+  telemetry across execution lags 0–2.
+- A deterministic financial mutation gate covering ten high-consequence risk
+  and P&L changes. It runs each mutant in an isolated package, rejects invalid
+  runner outcomes, and is required by the reusable CI workflow.
+- A machine-readable historical-output correction ledger and owner register
+  template covering risk admission, execution lag, sizing, VWAP causality and
+  inputs, callback/fill integrity, and numeric failures. The accompanying policy
+  defines conservative retain, rerun, and invalidate decisions.
+- A persisted-research lifecycle and recovery contract covering authority,
+  schema ownership, retention/deletion, result-bundle migration, verified
+  backup/restore, corruption and interrupted publication, and disposable factor
+  cache rebuilds. Cross-process and storage-failure acceptance exercises retain
+  the last complete artifact, reject repair-in-place, and cover injected
+  ``ENOSPC``/``EACCES`` failures.
+- Coverage-guided Python IPC preflight fuzzing with synthetic seeds, bounded
+  subprocess execution and a hash-pinned test-only engine. Native Arrow decoding
+  is excluded from this target; an explicit seed-replay mode supports other hosts.
+
 - Bounded weekly/manual CSV and ZIP fuzz campaigns with changing recorded seeds,
   compiler/run metadata and seven-day synthetic corpus/diagnostic retention.
   Per-change CI fuzz checks remain in place.
@@ -29,6 +122,10 @@ have not yet been released are collected below.
 - Opt-in conservative FIFO exchange-queue simulation for the native experimental
   backtester: resting best-price limits, trade-only volume-ahead depletion,
   explicit arrival audit, independent Python trace tests, and synthetic benchmarks.
+- A candidate native-replay latency and capacity budget separates the proposed
+  five-second FIFO objective from accepted performance, records stage/resource/
+  failure boundaries, links raw characterization evidence, and enumerates the
+  owner approvals and controlled measurements required before promotion.
 - Experimental native top-of-book backtest prototype with a deterministic
   long-only alternating-target strategy, shared cash, displayed-size partial
   fills, fees, latency and stale-feed checks, and exact integer accounting.
@@ -39,6 +136,24 @@ have not yet been released are collected below.
 
 ### Changed
 
+- Expiring contracts now reject executions after their inclusive expiry
+  timestamp and freeze P&L at the last account-grid mark at or before expiry,
+  without reading post-expiry prices. The core account still does not exercise,
+  assign, deliver, cash-settle, or liquidate the remaining position.
+- The distribution maturity classifier is now Beta while production-readiness
+  gates remain open. A canonical feature-status matrix and draft project brief
+  separate release-candidate, experimental, utility, and out-of-scope behavior;
+  delivery-policy tests keep package and release claims aligned.
+- Whole-unit order and trade quantities now fail admission when they exceed the
+  signed platform integer range required by the native FIFO kernel. Accounting
+  uses overflow-checked binary64 arithmetic for weighted prices, realized and
+  unrealized P&L, cumulative costs, contract aggregation, and equity; finite
+  inputs that would publish infinity raise ``OverflowError``, with account trade
+  batches rolled back atomically.
+- HDF5 array readers now require scalar text metadata, normalize malformed JSON
+  and excessive nesting to `ValueError`, and apply a combined 1 MiB manifest
+  parsing budget (`max_manifest_bytes`). Trusted larger manifests require an
+  explicit override; this does not bound h5py's initial attribute allocation.
 - Native leak-stress checks now release their final result arrays before invoking
   LeakSanitizer and require its runtime in CI. The independent NumPy leak check
   runs after a successful native build even if the preceding stress probe fails.

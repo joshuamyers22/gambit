@@ -1,3 +1,4 @@
+from dataclasses import FrozenInstanceError
 from types import SimpleNamespace
 
 import numpy as np
@@ -26,6 +27,34 @@ def test_spread_slippage_crosses_half_spread(qty, expected) -> None:
     trade = simulator([order], 0, TIMESTAMPS, {}, {}, SimpleNamespace())[0]
 
     assert trade.price == expected
+    diagnostic = trade.execution_diagnostic
+    assert diagnostic is not None
+    assert diagnostic.reference_price == 100.0
+    assert diagnostic.modeled_price_adjustment == pytest.approx(expected - 100.0)
+    assert diagnostic.rounding_price_adjustment == pytest.approx(0.0)
+    assert diagnostic.execution_price == expected
+    assert diagnostic.model_name == "BidAskSpreadSlippage"
+    with pytest.raises(FrozenInstanceError):
+        diagnostic.reference_price = 99.0  # type: ignore[misc]
+
+
+def test_execution_diagnostic_separates_rounding_from_modeled_slippage() -> None:
+    contract = Contract.create("ROUNDING-DIAGNOSTIC")
+    order = MarketOrder(contract=contract, timestamp=TIMESTAMP, qty=2)
+    simulator = SimpleMarketSimulator(
+        lambda *_args: 100.0046,
+        slippage_model=BidAskSpreadSlippage(0.2),
+        price_rounding=3,
+    )
+
+    trade = simulator([order], 0, TIMESTAMPS, {}, {}, SimpleNamespace())[0]
+    diagnostic = trade.execution_diagnostic
+
+    assert trade.price == 100.105
+    assert diagnostic is not None
+    assert diagnostic.reference_price == 100.0046
+    assert diagnostic.modeled_price_adjustment == 0.1
+    assert diagnostic.rounding_price_adjustment == pytest.approx(0.0004)
 
 
 def test_execution_supports_separate_commission_and_fee_models() -> None:
