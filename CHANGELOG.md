@@ -17,6 +17,11 @@ have not yet been released are collected below.
   account boundaries revalidate the decomposition; trade exports and cost
   reports expose signed monetary price effects, missing-attribution counts, and
   model-separated effects without treating them as an additional charge.
+- Experimental deterministic cost-sensitivity cases and runners record canonical
+  JSON-scalar assumptions, seeds, input/strategy/case fingerprints, and uniform
+  finite long-form metrics. Buffered and unbuffered labels support observed
+  paired differences without assuming higher modeled costs monotonically reduce
+  P&L when execution or strategy paths change.
 - Experimental Polars forecast scaling, symmetric capping, and fixed/equal
   combination stages. Long-form contribution output retains each rule's raw,
   scaled, capped, weighted, and availability values, while combined

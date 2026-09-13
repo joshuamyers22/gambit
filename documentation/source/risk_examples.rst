@@ -212,6 +212,23 @@ multiple rules. Use a separate virtual ledger if rule-level P&L is required;
 misattributed or unreconciled inputs fail rather than being allocated
 heuristically.
 
+Cost and participation sensitivity
+----------------------------------
+
+Use ``CostSensitivityCase`` and ``CostSensitivityRunner`` to define a
+deterministic experiment surface. Cases contain immutable JSON-scalar
+assumptions, a non-negative seed, and a buffered or unbuffered label. The runner
+adds input, strategy, assumption, and case fingerprints to long-form finite
+metrics and rejects incomparable metric sets. Evaluator failures name the exact
+case and preserve the original exception as their cause.
+
+``CostSensitivityResult.compare_buffering(metric)`` pairs only matching
+comparison identities and returns ``buffered - unbuffered``. It does not assert
+that added costs reduce P&L: changed fills, participation limits, risk decisions,
+and strategy state can produce a different path. The current controlled example
+demonstrates the experiment boundary; representative strategy evidence and the
+P1.7 executable no-trade buffer remain pending.
+
 Volatility-targeted sizing
 --------------------------
 

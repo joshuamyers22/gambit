@@ -119,6 +119,8 @@ files = [
   "src/gambit/configuration.py",
   "src/gambit/control_plane.py",
   "src/gambit/contract_pnl.py",
+  "src/gambit/cost_diagnostics.py",
+  "src/gambit/cost_sensitivity.py",
   "src/gambit/covariance_risk.py",
   "src/gambit/currency.py",
   "src/gambit/factor_admission.py",

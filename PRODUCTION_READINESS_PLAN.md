@@ -371,7 +371,7 @@ due triggers are not calendar commitments.
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
-| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; explicitly attributed period/instrument/rule gross/net P&L, charges, turnover, immutable built-in pre-cost references, separate modeled/rounding price effects, missing-evidence counts, and offline example implemented locally 2026-09-12; sensitivity sweeps, buffered comparisons, representative evidence, and owner approval pending |
+| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; P1.7 executable buffering, representative cost/participation and buffered comparison evidence, and owner approval pending |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
 | P2.7 | Reusable schedule/risk triggers and composed conditions | P0.7, P0.8, P1.5 | Core/strategy owner | Repeated schedule/condition logic in user strategies | Not started |
@@ -518,7 +518,9 @@ comparison of strategy variants, rather than duplicating those charge models.
 - [x] Capture pre-cost reference prices through immutable execution diagnostics;
   show slippage attribution as a decomposition of realized P&L, not a second fee.
 - [ ] Add repeatable cost/participation sensitivity sweeps and buffered versus
-  unbuffered comparisons, recording assumptions with each experiment.
+  unbuffered comparisons, recording assumptions with each experiment. The
+  deterministic case/result boundary and controlled paired fixture are complete;
+  representative buffering evidence waits on P1.7's executable target layer.
 
 Acceptance: costs reconcile to the ledger with no double counting; a zero-cost
 fixture has matching gross/net results; a controlled high-turnover strategy shows
@@ -1773,6 +1775,33 @@ release merely because another library offers them.
   sweeps, buffered comparisons, representative evidence, and
   quant/analytics-owner approval keep P2.4 open. This work remains local and
   will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-seventh slice (repeatable cost-sensitivity boundary)
+
+- Added immutable cost-sensitivity cases with canonical JSON-scalar assumptions,
+  unsigned seeds, buffered/unbuffered labels, and deterministic case SHA-256
+  identities. A runner binds the surface to explicit input and strategy
+  fingerprints, executes cases once in declared order, and requires the same
+  finite named metrics from every independent path.
+- Added detached long-form results that repeat the complete assumptions and all
+  fingerprints on every metric row. Exact case failures retain their identity
+  and original cause; malformed result schemas, fingerprints, ordering,
+  metadata, assumptions, and incomparable metric sets fail explicitly.
+- Added paired buffering comparisons keyed by a caller-declared comparison
+  identity. They report only the observed ``buffered - unbuffered`` difference
+  and deliberately impose no monotonic-cost or performance assertion when
+  execution, risk, or strategy paths change.
+- Added a controlled executable cost/participation/buffering surface and manual
+  coverage for deterministic replay, path-dependent non-monotonic outcomes,
+  immutable ownership, complete-pair selection, malformed cases, evaluator
+  failures, and fingerprint reconciliation. Mypy now explicitly covers both
+  P2.4 modules instead of reaching them only through a skipped import.
+- Focused local evidence passed **33 cost-sensitivity, cost-diagnostic,
+  public-API, and executable risk-example tests**, plus Ruff, mypy over 57 source
+  files, the standalone example, and strict Sphinx. Representative strategy
+  evidence and a real buffered/unbuffered comparison wait on P1.7's executable
+  target layer; quant/analytics-owner approval also remains pending. This work
+  remains local and will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

@@ -107,9 +107,18 @@ P&L, not a second charge. ``ExecutionPriceDiagnostic`` is the immutable fill
 boundary for raw reference, modeled slippage/impact, rounding, execution price,
 and model identity. Built-in simple simulation produces it; account and callback
 ingestion revalidate it, and reports expose model-separated monetary effects plus
-missing-evidence counts. These APIs do not infer rule ownership for shared
-positions or run cost/participation sensitivity experiments. Those remain P2.4
-work.
+missing-evidence counts. These reporting APIs do not infer rule ownership for
+shared positions.
+
+``CostSensitivityCase``, ``CostSensitivityRunner``,
+``CostSensitivityResult``, and ``CostSensitivityVariant`` are the experimental
+repeatability boundary for P2.4 sweeps. Each independently evaluated case keeps
+canonical immutable assumptions, a seed, input/strategy/case SHA-256 identities,
+and a buffered/unbuffered label. Results require the same finite metric names and
+retain long-form rows in declared case order. Paired comparisons report observed
+differences only. The runner does not implement the P1.7 target buffer or prove
+that a callback applied its declared assumptions; representative evidence is
+still required.
 
 ## Internal scheduling and debugging storage
 

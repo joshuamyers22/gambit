@@ -31,6 +31,13 @@ from gambit.control_plane import (
     TradingOverridePolicy,
 )
 from gambit.cost_diagnostics import CostPeriod, CostTurnoverAnalyzer, CostTurnoverReport
+from gambit.cost_sensitivity import (
+    CostSensitivityCase,
+    CostSensitivityEvaluationError,
+    CostSensitivityResult,
+    CostSensitivityRunner,
+    CostSensitivityVariant,
+)
 from gambit.covariance_risk import (
     ComponentVolatilityMeasure,
     CovarianceEstimate,
@@ -256,6 +263,11 @@ __all__ = [
     "ContractUniverse",
     "ControlLevel",
     "CostPeriod",
+    "CostSensitivityCase",
+    "CostSensitivityEvaluationError",
+    "CostSensitivityResult",
+    "CostSensitivityRunner",
+    "CostSensitivityVariant",
     "CostTurnoverAnalyzer",
     "CostTurnoverReport",
     "ComponentVolatilityMeasure",
