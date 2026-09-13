@@ -181,14 +181,19 @@ validation or held-out data. Use its detached frames or built-in adapters:
            gambit.ForecastScalarEstimator(min_observations=60),
            rule_columns=["carry_forecast", "momentum_forecast"],
        )
-       return fitted_transform, covariance, tail_risk, forecast_scalars
+       forecast_combination = training.fit_forecast_combination(
+           gambit.ForecastCombinationEstimator(min_observations=60),
+           rule_columns=["carry_forecast", "momentum_forecast"],
+       )
+       return fitted_transform, covariance, tail_risk, forecast_scalars, forecast_combination
 
 ``fit_frame()`` and ``warmup_frame()`` return clones. Warm-up rows are available
 for causal feature initialization but are deliberately excluded by
 ``fit_estimator``, ``fit_covariance``, ``fit_tail_risk``, and
-``fit_forecast_scalars``. The built-in risk and scalar adapters force ``as_of``
-to the final fit timestamp. ``fit_columns`` must include the timestamp column and
-every forecast column needed to establish that boundary.
+``fit_forecast_scalars``, and ``fit_forecast_combination``. The built-in risk,
+scalar, and combination adapters force ``as_of`` to the final fit timestamp.
+``fit_columns`` must include the timestamp column and every forecast column
+needed to establish that boundary.
 
 ``candidate_parameters(fold, seed)`` returns that fold's finite scalar
 parameter mappings. Candidate models are fitted only on the allowed warm-up and

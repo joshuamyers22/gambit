@@ -21,7 +21,12 @@ import polars as pl
 
 from gambit.configuration import fingerprint_polars_frame
 from gambit.covariance_risk import CovarianceEstimate, CovarianceRiskModel
-from gambit.forecasting import FittedForecastScalars, ForecastScalarEstimator
+from gambit.forecasting import (
+    FittedForecastCombination,
+    FittedForecastScalars,
+    ForecastCombinationEstimator,
+    ForecastScalarEstimator,
+)
 from gambit.pq_utils import get_child_logger, has_display
 from gambit.var_risk import FittedTailRiskModel, TailRiskModel
 
@@ -308,6 +313,22 @@ class WalkForwardTrainingSet:
         """Fit forecast scalars strictly through this fit interval."""
         if not isinstance(estimator, ForecastScalarEstimator):
             raise TypeError("walk-forward forecast scalar estimator must be ForecastScalarEstimator")
+        return estimator.fit(
+            self.fit_frame(),
+            timestamp_column=self.timestamp_column,
+            rule_columns=rule_columns,
+            as_of=self.as_of,
+        )
+
+    def fit_forecast_combination(
+        self,
+        estimator: ForecastCombinationEstimator,
+        *,
+        rule_columns: Sequence[str],
+    ) -> FittedForecastCombination:
+        """Fit forecast weights and diversification strictly through this fit interval."""
+        if not isinstance(estimator, ForecastCombinationEstimator):
+            raise TypeError("walk-forward forecast combination estimator must be ForecastCombinationEstimator")
         return estimator.fit(
             self.fit_frame(),
             timestamp_column=self.timestamp_column,

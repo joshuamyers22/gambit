@@ -11,7 +11,7 @@ import polars as pl
 import pytest
 
 from gambit.covariance_risk import CovarianceRiskModel
-from gambit.forecasting import ForecastScalarEstimator
+from gambit.forecasting import ForecastCombinationEstimator, ForecastScalarEstimator
 from gambit.optimize import (
     WalkForwardConfig,
     WalkForwardExperimentResult,
@@ -554,7 +554,7 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
 
 def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
     runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
-    observed: list[tuple[np.datetime64, np.datetime64, np.datetime64, float, float]] = []
+    observed: list[tuple[np.datetime64, np.datetime64, np.datetime64, np.datetime64, float, float, float]] = []
 
     def fit_risk_models(
         fold: WalkForwardFold,
@@ -574,6 +574,10 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
             ForecastScalarEstimator(min_observations=2),
             rule_columns=["target"],
         )
+        forecast_combination = training.fit_forecast_combination(
+            ForecastCombinationEstimator(min_observations=2),
+            rule_columns=["target"],
+        )
         fitted_mean = training.fit_estimator(lambda frame: float(frame["target"].mean()))
         detached = training.fit_frame()
         detached[0, "target"] = 999.0
@@ -583,7 +587,9 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
                 covariance.as_of,
                 tail_risk.as_of,
                 forecast_scalars.as_of,
+                forecast_combination.as_of,
                 forecast_scalars.scalars["target"],
+                forecast_combination.weights["target"],
                 fitted_mean,
             )
         )
@@ -601,4 +607,4 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
     )
 
     expected_as_of = np.datetime64("2024-01-05", "ns")
-    assert observed == [(expected_as_of, expected_as_of, expected_as_of, 2.0, 5.0)] * 4
+    assert observed == [(expected_as_of, expected_as_of, expected_as_of, expected_as_of, 2.0, 1.0, 5.0)] * 4

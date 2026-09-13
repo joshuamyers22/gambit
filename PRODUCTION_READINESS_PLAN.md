@@ -370,7 +370,7 @@ due triggers are not calendar commitments.
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
-| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | In progress; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar estimates, and sizer handoff implemented locally 2026-09-12; estimated weights/correlation, diversification scaling, durable contribution evidence, and owner approval pending |
+| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | In progress; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, and sizer handoff implemented locally 2026-09-12; durable contribution evidence and owner approval pending |
 | P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | Not started |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
@@ -494,7 +494,7 @@ reusable stage for normalizing multiple rule forecasts and combining them.
 
 - [ ] Add Polars stages for scaling, capping, and combining forecasts with
   fixed/equal weights first; persist each rule's contribution and availability.
-- [ ] Add historical estimates of weights/correlation and bounded diversification
+- [x] Add historical estimates of weights/correlation and bounded diversification
   scaling only through P1.6. Define missing-rule renormalization, warm-up,
   minimum history, and zero-variance behavior.
 
@@ -1655,6 +1655,28 @@ release merely because another library offers them.
   diversification scaling, durable contribution evidence, and owner approval
   keep P2.3 open. This work remains local and will not be pushed unless
   explicitly requested.
+
+### 2026-09-12 — Thirty-third slice (training-only forecast combination estimates)
+
+- Added a historical combination estimator for wide scaled/capped rule columns.
+  It uses complete rows through a declared cutoff, requires a configurable
+  minimum history, derives normalized inverse-volatility weights and empirical
+  correlation, and fails explicitly for constant or non-finite rule history.
+- Added bounded diversification scaling from ``1 / sqrt(w' C w)``. The fitted
+  artifact retains detached weights, correlation, observation count, cutoff,
+  realized multiplier, and configured maximum. Perfectly duplicated rules have
+  a multiplier of one and therefore receive no unwarranted diversification
+  credit.
+- Added explicit missing-rule renormalization alongside the existing fail and
+  zero policies. Contribution rows retain base weight, effective weight, and
+  diversification multiplier, and an entirely unavailable group fails instead
+  of producing an invented forecast.
+- Added ``WalkForwardTrainingSet.fit_forecast_combination`` so the estimator sees
+  only owned fit rows and uses the final fit timestamp as its cutoff. Public API,
+  feature posture, strategy/risk guidance, changelog, and the executable offline
+  example describe the boundary. Focused/full local evidence is pending. Durable
+  contribution persistence and quant/research-owner approval keep P2.3 open.
+  This work remains local and will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

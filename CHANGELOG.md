@@ -14,7 +14,11 @@ have not yet been released are collected below.
   Missing rules either fail explicitly or contribute zero without silently
   renormalizing weights. A historical mean-absolute-forecast estimator enforces
   minimum history and explicit zero-history rejection; its fitted scalar set can
-  be created directly through the walk-forward training-only boundary.
+  be created directly through the walk-forward training-only boundary. A second
+  training-only estimator derives inverse-volatility weights, empirical rule
+  correlation, and a bounded diversification multiplier from complete rows.
+  Perfectly duplicated rules receive no diversification credit; zero-variance
+  history fails, and missing-rule renormalization requires an explicit policy.
 - An experimental owned walk-forward runner with deterministic rolling or
   expanding split identities, separate warm-up/fit/validation/held-out frames,
   two purge boundaries, a non-overlapping refit schedule, detached finite

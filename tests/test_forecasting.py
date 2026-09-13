@@ -9,6 +9,7 @@ import pytest
 from gambit.covariance_risk import CovarianceEstimate
 from gambit.forecasting import (
     FixedForecastCombiner,
+    ForecastCombinationEstimator,
     ForecastScalarEstimator,
     ForecastScaleCap,
     MissingForecastPolicy,
@@ -84,9 +85,7 @@ def test_missing_rules_are_explicit_and_never_silently_renormalized() -> None:
     with pytest.raises(ValueError, match="requires every configured rule"):
         FixedForecastCombiner.equal(["carry", "momentum"]).combine(scaled)
 
-    result = FixedForecastCombiner.equal(
-        ["carry", "momentum"], missing=MissingForecastPolicy.ZERO
-    ).combine(scaled)
+    result = FixedForecastCombiner.equal(["carry", "momentum"], missing=MissingForecastPolicy.ZERO).combine(scaled)
     missing = result.contributions.filter(pl.col("timestamp") == np.datetime64("2026-01-02"))
     assert missing.select("rule", "available", "effective_weight", "contribution").rows() == [
         ("carry", True, 0.5, 1.5),
@@ -99,6 +98,44 @@ def test_missing_rules_are_explicit_and_never_silently_renormalized() -> None:
         "raw_forecast": 1.5,
         "available_rule_count": 1,
     }
+
+
+def test_missing_rule_renormalization_is_explicit_and_auditable() -> None:
+    raw = _raw_forecasts().filter(
+        ~((pl.col("timestamp") == np.datetime64("2026-01-02")) & (pl.col("rule") == "momentum"))
+    )
+
+    result = FixedForecastCombiner(
+        {"carry": 0.75, "momentum": 0.25},
+        missing=MissingForecastPolicy.RENORMALIZE,
+    ).combine(_scaled(raw))
+    final = result.contributions.filter(pl.col("timestamp") == np.datetime64("2026-01-02"))
+
+    assert final.select("rule", "available", "weight", "effective_weight", "contribution").rows() == [
+        ("carry", True, 0.75, 1.0, 3.0),
+        ("momentum", False, 0.25, 0.0, 0.0),
+    ]
+    assert result.forecasts[-1, "raw_forecast"] == 3.0
+
+
+def test_renormalization_rejects_groups_without_positive_available_weight() -> None:
+    scaled = (
+        _scaled()
+        .with_columns(
+            pl.when(pl.col("timestamp") == np.datetime64("2026-01-02"))
+            .then(None)
+            .otherwise(pl.col("raw_forecast"))
+            .alias("raw_forecast")
+        )
+        .with_columns(
+            pl.col("raw_forecast").is_not_null().alias("available"),
+            (pl.col("raw_forecast") * pl.col("scalar")).alias("scaled_forecast"),
+        )
+        .with_columns(pl.col("scaled_forecast").clip(-3.0, 3.0).alias("capped_forecast"))
+    )
+
+    with pytest.raises(ValueError, match="at least one positive-weight available rule"):
+        FixedForecastCombiner.equal(["carry", "momentum"], missing=MissingForecastPolicy.RENORMALIZE).combine(scaled)
 
 
 def test_fixed_pipeline_is_row_local_and_feeds_existing_volatility_sizer() -> None:
@@ -119,9 +156,7 @@ def test_fixed_pipeline_is_row_local_and_feeds_existing_volatility_sizer() -> No
         100,
         252.0,
     )
-    sized = VolatilityTargetSizer(0.10).size(
-        early, estimate, np.datetime64("2026-01-01", "ns"), capital=1_000_000
-    )
+    sized = VolatilityTargetSizer(0.10).size(early, estimate, np.datetime64("2026-01-01", "ns"), capital=1_000_000)
 
     assert sized.positions["raw_forecast"].to_list() == [0.0, 1.25]
     assert sized.achieved_volatility == pytest.approx(0.10)
@@ -216,12 +251,101 @@ def test_fitted_scalars_feed_scale_cap_and_reject_insufficient_or_zero_history()
 
     assert fitted.scale_cap(cap=20.0).transform(raw)[0, "capped_forecast"] == 20.0
     with pytest.raises(ValueError, match="requires 3"):
-        ForecastScalarEstimator(min_observations=3).fit(
-            frame, timestamp_column="timestamp", rule_columns=["carry"]
-        )
+        ForecastScalarEstimator(min_observations=3).fit(frame, timestamp_column="timestamp", rule_columns=["carry"])
     with pytest.raises(ValueError, match="zero mean absolute"):
         estimator.fit(
             frame.with_columns(pl.lit(0.0).alias("carry")),
             timestamp_column="timestamp",
             rule_columns=["carry"],
+        )
+
+
+def test_combination_estimator_fits_uncorrelated_rules_and_bounded_multiplier() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": np.arange(
+                np.datetime64("2026-01-01"), np.datetime64("2026-01-06"), dtype="datetime64[D]"
+            ).astype("datetime64[ns]"),
+            "first": [1.0, -1.0, 1.0, -1.0, 999.0],
+            "second": [1.0, 1.0, -1.0, -1.0, 999.0],
+        }
+    )
+    cutoff = np.datetime64("2026-01-04", "ns")
+    estimator = ForecastCombinationEstimator(min_observations=4, max_diversification_multiplier=1.25)
+
+    fitted = estimator.fit(
+        frame,
+        timestamp_column="timestamp",
+        rule_columns=["second", "first"],
+        as_of=cutoff,
+    )
+    changed = estimator.fit(
+        frame.with_columns(
+            pl.when(pl.col("timestamp") > cutoff).then(-999.0).otherwise(pl.col("first")).alias("first")
+        ),
+        timestamp_column="timestamp",
+        rule_columns=["first", "second"],
+        as_of=cutoff,
+    )
+
+    assert fitted.weights == changed.weights == {"first": 0.5, "second": 0.5}
+    np.testing.assert_allclose(fitted.correlation, np.eye(2), atol=1e-12)
+    np.testing.assert_allclose(changed.correlation, fitted.correlation)
+    assert fitted.as_of == cutoff
+    assert fitted.observations == 4
+    assert fitted.diversification_multiplier == 1.25
+
+    correlation = fitted.correlation
+    correlation[0, 0] = 0.0
+    assert fitted.correlation[0, 0] == 1.0
+
+
+def test_duplicate_rules_receive_no_diversification_credit() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": np.arange(
+                np.datetime64("2026-01-01"), np.datetime64("2026-01-05"), dtype="datetime64[D]"
+            ).astype("datetime64[ns]"),
+            "first": [1.0, -1.0, 2.0, -2.0],
+            "duplicate": [1.0, -1.0, 2.0, -2.0],
+        }
+    )
+
+    fitted = ForecastCombinationEstimator(min_observations=4).fit(
+        frame,
+        timestamp_column="timestamp",
+        rule_columns=["first", "duplicate"],
+    )
+    raw = pl.DataFrame(
+        {
+            "timestamp": np.array(["2026-01-05", "2026-01-05"], dtype="datetime64[ns]"),
+            "symbol": ["A", "A"],
+            "rule": ["first", "duplicate"],
+            "raw_forecast": [4.0, 4.0],
+        }
+    )
+    scaled = ForecastScaleCap({"first": 1.0, "duplicate": 1.0}).transform(raw)
+    result = fitted.combiner().combine(scaled)
+
+    assert fitted.diversification_multiplier == pytest.approx(1.0)
+    assert result.forecasts[0, "raw_forecast"] == pytest.approx(4.0)
+    assert result.contributions["diversification_multiplier"].to_list() == pytest.approx([1.0, 1.0])
+
+
+def test_combination_estimator_uses_complete_rows_and_rejects_zero_variance() -> None:
+    frame = pl.DataFrame(
+        {
+            "timestamp": np.array(["2026-01-01", "2026-01-02", "2026-01-03"], dtype="datetime64[ns]"),
+            "first": [1.0, 2.0, 3.0],
+            "second": [1.0, None, 1.0],
+        }
+    )
+
+    with pytest.raises(ValueError, match="1 complete observations; requires 2"):
+        ForecastCombinationEstimator(min_observations=2).fit(
+            frame.head(2), timestamp_column="timestamp", rule_columns=["first", "second"]
+        )
+    with pytest.raises(ValueError, match="zero variance: second"):
+        ForecastCombinationEstimator(min_observations=2).fit(
+            frame, timestamp_column="timestamp", rule_columns=["first", "second"]
         )

@@ -115,8 +115,8 @@ without an actual rate are rejected, as are snapshots newer than the market-data
 cutoff. The example uses a fixed synthetic rate; applications should obtain a
 point-in-time rate from a controlled data source.
 
-Forecast scaling and fixed combination
---------------------------------------
+Forecast scaling and combination
+--------------------------------
 
 Scale and symmetrically cap long-form rule forecasts before combining them with
 fixed weights. The contribution table retains the raw, scaled, capped, weight,
@@ -139,6 +139,20 @@ absolute value. It enforces a minimum number of finite observations and rejects
 all-zero history instead of inventing a scale. The resulting
 ``FittedForecastScalars.scale_cap`` creates the same row-level transform.
 
+``ForecastCombinationEstimator`` uses complete historical rows to estimate
+inverse-volatility weights and an empirical rule-correlation matrix. It derives
+the diversification multiplier as ``1 / sqrt(w' C w)`` and clips that value to
+an explicit configured maximum. Constant rules, non-finite observations, and
+insufficient complete history fail instead of receiving invented estimates.
+Perfectly duplicated rules therefore receive a multiplier of one. The fitted
+object returns detached correlation data and builds a fixed combiner, so later
+observations cannot revise an earlier result.
+
+Missing rules fail by default. ``ZERO`` preserves fitted weights while assigning
+the missing rule zero effective weight. ``RENORMALIZE`` is the explicit opt-in
+policy that rescales available positive weights to one; contribution rows retain
+both base and effective weights plus the fitted diversification multiplier.
+
 Inside optimization, fit this estimator only through the owned training set:
 
 .. code-block:: python
@@ -147,10 +161,17 @@ Inside optimization, fit this estimator only through the owned training set:
        gambit.ForecastScalarEstimator(min_observations=252),
        rule_columns=["carry_forecast", "momentum_forecast"],
    )
+   combination = training.fit_forecast_combination(
+       gambit.ForecastCombinationEstimator(
+           min_observations=252,
+           max_diversification_multiplier=2.5,
+       ),
+       rule_columns=["carry_forecast", "momentum_forecast"],
+   )
 
-The adapter supplies only fit rows and fixes ``as_of`` to the last fit timestamp.
-Estimated weights and diversification multipliers remain outside this initial
-boundary.
+Both adapters supply only fit rows and fix ``as_of`` to the last fit timestamp.
+Rule columns supplied to the combination estimator should contain the historical
+scaled/capped forecasts whose joint behavior is being estimated.
 
 Volatility-targeted sizing
 --------------------------

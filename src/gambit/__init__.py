@@ -79,8 +79,10 @@ from gambit.factor_operations import (
     inspect_factor_cache,
 )
 from gambit.forecasting import (
+    FittedForecastCombination,
     FittedForecastScalars,
     FixedForecastCombiner,
+    ForecastCombinationEstimator,
     ForecastCombinationResult,
     ForecastScalarEstimator,
     ForecastScaleCap,
@@ -265,7 +267,9 @@ __all__ = [
     "ExposureLimitResult",
     "FixedPercentageSlippage",
     "FixedForecastCombiner",
+    "FittedForecastCombination",
     "FittedForecastScalars",
+    "ForecastCombinationEstimator",
     "FittedTailRiskModel",
     "ForecastCombinationResult",
     "ForecastScalarEstimator",
