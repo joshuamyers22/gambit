@@ -1922,7 +1922,15 @@ release merely because another library offers them.
 - The builder remains non-submitting. Orders returned through a Strategy rule
   are admitted again against then-current engine state. Buffer overrides for
   mandatory reductions and representative adapter evidence remain pending, as
-  does quant/execution-owner approval. This work remains local and will not be
+  does quant/execution-owner approval.
+- Focused local evidence passed **74 executable-target, pre-trade-risk,
+  fill-sequence, control-plane, and public-API tests**, plus Ruff, mypy over 58
+  source files, the executable example, and strict Sphinx. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,091 tests** at **86% aggregate
+  coverage**, with **86%** executable-target-module coverage, all six enforced
+  module floors, **10/10** financial mutation checks, frozen-lock, Ruff, mypy,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. This work remains local and will not be
   pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
