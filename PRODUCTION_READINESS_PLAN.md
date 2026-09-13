@@ -1732,10 +1732,19 @@ release merely because another library offers them.
   malformed-input, and detached-result acceptance coverage plus an executable
   offline example. Public API, feature posture, risk guidance, and changelog
   describe that caller-supplied rule attribution is required; shared-position
-  ownership is not guessed. Focused/full local evidence is pending. Immutable
-  pre-cost references, slippage/impact decomposition, sensitivity sweeps,
-  buffered comparisons, and quant/analytics-owner approval keep P2.4 open. This
-  work remains local and will not be pushed unless explicitly requested.
+  ownership is not guessed.
+- Focused local evidence passed **19 cost-diagnostic, public-API, and executable
+  risk-example tests**, plus Ruff, mypy, the standalone example, and strict
+  Sphinx. Full local evidence on macOS / CPython 3.10.20 passed **2,048 tests**
+  at **86% aggregate coverage**, with **86%** cost-diagnostics-module coverage,
+  all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The isolated build initially lacked sandbox DNS and
+  passed unchanged with approved network access. Immutable pre-cost references,
+  slippage/impact decomposition, sensitivity sweeps, buffered comparisons, and
+  quant/analytics-owner approval keep P2.4 open. This work remains local and
+  will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
