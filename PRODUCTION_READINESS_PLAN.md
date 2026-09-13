@@ -1644,9 +1644,18 @@ release merely because another library offers them.
   ``ForecastCombinationResultError``. Round-trip coverage preserves both
   detached tables and rejects overwrite, corruption, unsupported versions, and
   unreconciled output. API stability, feature posture, risk guidance, and the
-  changelog describe this durable evidence boundary. Focused/full local evidence
-  is pending; quant/research-owner approval is the remaining P2.3 gate. This work
-  remains local and will not be pushed unless explicitly requested.
+  changelog describe this durable evidence boundary.
+- Focused local evidence passed **32 forecast, public-API, and executable-example
+  tests**, plus Ruff, mypy, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,042 tests** at **86% aggregate coverage**, with
+  **81%** forecasting-module, **78%** forecast-persistence-module, and **83.36%**
+  optimizer coverage, all six enforced module floors, **10/10** financial
+  mutation checks, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. The isolated build initially lacked
+  sandbox DNS and passed unchanged with approved network access.
+  Quant/research-owner approval is the remaining P2.3 gate. This work remains
+  local and will not be pushed unless explicitly requested.
 
 ### 2026-09-12 — Thirty-second slice (training-only forecast scalars)
 
