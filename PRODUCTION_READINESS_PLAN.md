@@ -1763,9 +1763,16 @@ release merely because another library offers them.
   reconciliation, preventing a second slippage charge.
 - Focused local evidence passed **117 execution-cost, boundary, cost-diagnostic,
   public-API, and executable risk-example tests**, plus Ruff, mypy, the standalone
-  example, and strict Sphinx. Sensitivity sweeps, buffered comparisons,
-  representative evidence, and quant/analytics-owner approval keep P2.4 open.
-  This work remains local and will not be pushed unless explicitly requested.
+  example, and strict Sphinx. Full local evidence on macOS / CPython 3.10.20
+  passed **2,054 tests** at **86% aggregate coverage**, with **85%**
+  cost-diagnostics-module coverage, all six enforced module floors, **10/10**
+  financial mutation checks, frozen-lock, Ruff, mypy over 55 source files,
+  native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and
+  release-artifact verification gates. The isolated build initially lacked
+  sandbox DNS and passed unchanged with approved network access. Sensitivity
+  sweeps, buffered comparisons, representative evidence, and
+  quant/analytics-owner approval keep P2.4 open. This work remains local and
+  will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
