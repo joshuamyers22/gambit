@@ -19,6 +19,7 @@ from gambit.execution_costs import ChargeModel, FixedPercentageSlippage, PerUnit
 from gambit.pq_types import (
     Contract,
     ContractGroup,
+    ExecutionPriceDiagnostic,
     LimitOrder,
     MarketOrder,
     Order,
@@ -172,14 +173,14 @@ class SimpleMarketSimulator:
             if np.isnan(raw_price):
                 continue
             slippage = self.slippage_model.adjustment(order, raw_price)
-            price = validate_price_value(
+            unrounded_price = validate_price_value(
                 raw_price + slippage,
                 symbol=contract.symbol,
                 timestamp=timestamp,
                 source="slippage model",
                 allow_missing=False,
             )
-            price = round(price, self.price_rounding)
+            price = round(unrounded_price, self.price_rounding)
             if isinstance(order, LimitOrder):
                 limit_price = _finite_real(order.limit_price, field_name="limit price")
                 is_marketable = (order.qty > 0 and price <= limit_price) or (
@@ -197,6 +198,13 @@ class SimpleMarketSimulator:
                 price=price,
                 fee=fee,
                 commission=commission,
+                execution_diagnostic=ExecutionPriceDiagnostic(
+                    reference_price=raw_price,
+                    modeled_price_adjustment=slippage,
+                    rounding_price_adjustment=price - unrounded_price,
+                    execution_price=price,
+                    model_name=type(self.slippage_model).__name__,
+                ),
             )
             candidate_trades.append(trade)
 

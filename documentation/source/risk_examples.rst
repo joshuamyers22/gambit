@@ -199,6 +199,13 @@ the trade's explicit fee and commission fields. Reconciliation therefore
 requires ``gross_pnl - net_pnl == fee + commission`` and never adds slippage as
 a second charge.
 
+When all five optional execution columns from ``Account.df_trades()`` are
+supplied, ``report.data`` also counts attributed and unattributed fills and
+reports their aggregate execution-price effect. ``report.price_effects`` keeps
+the modeled slippage/impact and rounding effects separate by model. These are
+P&L decompositions only: neither value enters fee/commission reconciliation.
+Partial or internally inconsistent diagnostic rows fail explicitly.
+
 Inputs must already carry a non-empty rule identity and incremental P&L
 attribution. Gambit does not infer rule ownership for positions shared by
 multiple rules. Use a separate virtual ledger if rule-level P&L is required;

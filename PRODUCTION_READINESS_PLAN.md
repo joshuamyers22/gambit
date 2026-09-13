@@ -371,7 +371,7 @@ due triggers are not calendar commitments.
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
-| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; explicitly attributed period/instrument/rule gross/net P&L, fee/commission reconciliation, traded notional, turnover, and offline example implemented locally 2026-09-12; immutable pre-cost references, separate slippage/impact attribution, sensitivity sweeps, buffered comparisons, evidence, and owner approval pending |
+| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; explicitly attributed period/instrument/rule gross/net P&L, charges, turnover, immutable built-in pre-cost references, separate modeled/rounding price effects, missing-evidence counts, and offline example implemented locally 2026-09-12; sensitivity sweeps, buffered comparisons, representative evidence, and owner approval pending |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
 | P2.7 | Reusable schedule/risk triggers and composed conditions | P0.7, P0.8, P1.5 | Core/strategy owner | Repeated schedule/condition logic in user strategies | Not started |
@@ -513,9 +513,9 @@ Gambit gap: [execution-cost models](src/gambit/execution_costs.py) and accountin
 already charge trades. Add diagnostics that explain cost drag and support
 comparison of strategy variants, rather than duplicating those charge models.
 
-- [ ] Report gross/net returns, turnover, fees/commission, and separately
+- [x] Report gross/net returns, turnover, fees/commission, and separately
   identified slippage/impact estimates by instrument, rule, and period.
-- [ ] Capture pre-cost reference prices through immutable execution diagnostics;
+- [x] Capture pre-cost reference prices through immutable execution diagnostics;
   show slippage attribution as a decomposition of realized P&L, not a second fee.
 - [ ] Add repeatable cost/participation sensitivity sweeps and buffered versus
   unbuffered comparisons, recording assumptions with each experiment.
@@ -1745,6 +1745,27 @@ release merely because another library offers them.
   slippage/impact decomposition, sensitivity sweeps, buffered comparisons, and
   quant/analytics-owner approval keep P2.4 open. This work remains local and
   will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-sixth slice (immutable execution-price attribution)
+
+- Added an immutable execution-price diagnostic to built-in simple-simulator
+  fills. It preserves the pre-cost reference price, the slippage/impact model
+  name and adjustment, a separate rounding adjustment, and the final fill price;
+  construction, callback admission, and account ingestion require the
+  decomposition to reconcile after mutable trade callbacks.
+- Account trade exports retain nullable diagnostic columns and a signed monetary
+  price effect, where positive is adverse and negative is price improvement.
+  Custom simulator fills remain supported, but their missing evidence is
+  explicit rather than reconstructed from an unknowable reference price.
+- Extended cost reports with attributed/missing fill counts and a detached
+  model-level price-effects table separating modeled and rounding contributions.
+  These values decompose gross P&L and never enter the existing fee/commission
+  reconciliation, preventing a second slippage charge.
+- Focused local evidence passed **117 execution-cost, boundary, cost-diagnostic,
+  public-API, and executable risk-example tests**, plus Ruff, mypy, the standalone
+  example, and strict Sphinx. Sensitivity sweeps, buffered comparisons,
+  representative evidence, and quant/analytics-owner approval keep P2.4 open.
+  This work remains local and will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

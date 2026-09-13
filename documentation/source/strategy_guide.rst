@@ -81,6 +81,14 @@ Costs should be explicit and directionally correct::
 Calibrate costs from venue and broker data. A strategy whose result disappears
 under a small, defensible cost perturbation is not robust.
 
+Every fill created by ``SimpleMarketSimulator`` carries an immutable
+``ExecutionPriceDiagnostic``. It records the raw reference price, the selected
+slippage/impact model and adjustment, the separate rounding adjustment, and the
+final execution price. ``Account.df_trades()`` exposes those values plus a
+signed ``price_effect``; positive values are adverse and negative values are
+price improvement. Custom simulators that do not provide this evidence retain
+null diagnostic fields rather than receiving an inferred reference price.
+
 Custom rules
 ------------
 

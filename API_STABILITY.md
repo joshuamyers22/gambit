@@ -103,9 +103,13 @@ initial P2.4 reporting boundary. They aggregate explicitly attributed,
 incremental gross/net P&L and executed trades by calendar period, instrument,
 and rule. The analyzer reconciles ledger cost drag to signed fee and commission
 fields and treats slippage already embedded in execution prices as part of gross
-P&L, not a second charge. It does not infer rule ownership for shared positions,
-capture immutable pre-cost reference prices, or run cost/participation
-sensitivity experiments. Those remain P2.4 work.
+P&L, not a second charge. ``ExecutionPriceDiagnostic`` is the immutable fill
+boundary for raw reference, modeled slippage/impact, rounding, execution price,
+and model identity. Built-in simple simulation produces it; account and callback
+ingestion revalidate it, and reports expose model-separated monetary effects plus
+missing-evidence counts. These APIs do not infer rule ownership for shared
+positions or run cost/participation sensitivity experiments. Those remain P2.4
+work.
 
 ## Internal scheduling and debugging storage
 

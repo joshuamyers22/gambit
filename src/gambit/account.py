@@ -29,6 +29,7 @@ from gambit.pq_types import (
     ContractGroup,
     RoundTripTrade,
     Trade,
+    _validate_execution_diagnostic,
     _validate_trade_references,
     _validated_trade_numbers,
 )
@@ -212,7 +213,8 @@ class Account:
             if not isinstance(trade, Trade):
                 raise TypeError(f"account trades must be Trade objects: {trade!r}")
             _validate_trade_references(trade.contract, trade.order, trade.timestamp)
-            _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
+            _, price, _, _ = _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
+            _validate_execution_diagnostic(trade.execution_diagnostic, price)
             timestamp_index(self.timestamps, trade.timestamp, owner="account")
             contract = trade.contract
             if not any(contract.contract_group is group for group in self.contract_groups):
@@ -514,6 +516,7 @@ class Account:
             end_date: Include trades with date less than or equal to this timestamp.
         """
         trades = self.trades(contract_group, start_date, end_date)
+        diagnostics = [trade.execution_diagnostic for trade in trades]
         df = pl.DataFrame(
             {
                 "symbol": [trade.contract.symbol for trade in trades],
@@ -522,6 +525,27 @@ class Account:
                 "price": np.asarray([trade.price for trade in trades], dtype=float),
                 "fee": np.asarray([trade.fee for trade in trades], dtype=float),
                 "commission": np.asarray([trade.commission for trade in trades], dtype=float),
+                "reference_price": [
+                    diagnostic.reference_price if diagnostic is not None else None
+                    for diagnostic in diagnostics
+                ],
+                "modeled_price_adjustment": [
+                    diagnostic.modeled_price_adjustment if diagnostic is not None else None
+                    for diagnostic in diagnostics
+                ],
+                "rounding_price_adjustment": [
+                    diagnostic.rounding_price_adjustment if diagnostic is not None else None
+                    for diagnostic in diagnostics
+                ],
+                "price_effect": [
+                    trade.qty * (diagnostic.execution_price - diagnostic.reference_price) * trade.contract.multiplier
+                    if diagnostic is not None
+                    else None
+                    for trade, diagnostic in zip(trades, diagnostics, strict=True)
+                ],
+                "price_effect_model": [
+                    diagnostic.model_name if diagnostic is not None else None for diagnostic in diagnostics
+                ],
                 "order_date": np.asarray([trade.order.timestamp for trade in trades], dtype="datetime64[ns]"),
                 "order_qty": np.asarray([trade.order.qty for trade in trades], dtype=float),
                 "reason_code": [trade.order.reason_code for trade in trades],
@@ -538,6 +562,11 @@ class Account:
                 "timestamp": pl.Datetime("ns"),
                 "order_date": pl.Datetime("ns"),
                 "reason_code": pl.String,
+                "reference_price": pl.Float64,
+                "modeled_price_adjustment": pl.Float64,
+                "rounding_price_adjustment": pl.Float64,
+                "price_effect": pl.Float64,
+                "price_effect_model": pl.String,
                 "order_props": pl.String,
                 "contract_props": pl.String,
             },

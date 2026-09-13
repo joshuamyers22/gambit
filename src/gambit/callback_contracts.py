@@ -16,6 +16,7 @@ from gambit.pq_types import (
     Trade,
     VWAPOrder,
     _finite_real,
+    _validate_execution_diagnostic,
     _validate_order_references,
     _validate_trade_references,
     _validated_trade_numbers,
@@ -120,7 +121,8 @@ def validate_market_trades(
             raise ValueError("market simulator trade timestamp does not match the current strategy timestamp")
         # Trade fields and order state are mutable. Validate against the quantity
         # captured before the callback, never its possibly modified remainder.
-        quantity, _, _, _ = _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
+        quantity, price, _, _ = _validated_trade_numbers(trade.qty, trade.price, trade.fee, trade.commission)
+        _validate_execution_diagnostic(trade.execution_diagnostic, price)
         order_id = id(trade.order)
         original_quantity, _ = original_states[order_id]
         if (quantity > 0) != (original_quantity > 0):

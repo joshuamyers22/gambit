@@ -74,6 +74,14 @@ Slippage is represented in the simulated fill price, while commissions and fees
 are separate trade fields. Do not also embed the same cost in the fill price or
 it will be counted twice.
 
+``SimpleMarketSimulator`` attaches an immutable execution diagnostic before a
+trade crosses the callback and account boundaries. The diagnostic reconciles
+the raw reference price plus modeled and rounding adjustments to the fill price;
+both boundaries recheck that relationship. Its signed monetary price effect is
+reported for attribution but is already embedded in gross P&L and is never
+charged again. Custom simulator fills may omit the diagnostic, which remains
+visible as missing evidence in cost reports.
+
 Timing assumptions
 ------------------
 

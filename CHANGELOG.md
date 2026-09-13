@@ -12,7 +12,11 @@ have not yet been released are collected below.
   instrument/rule identity, capital assumptions, gross/net P&L and returns,
   signed fees/commission, explicit cost drag, traded notional, turnover, and
   trade count while requiring ledger reconciliation and avoiding a second
-  slippage charge.
+  slippage charge. Built-in simple-simulator fills now carry an immutable
+  pre-cost price reference plus modeled and rounding adjustments. Callback and
+  account boundaries revalidate the decomposition; trade exports and cost
+  reports expose signed monetary price effects, missing-attribution counts, and
+  model-separated effects without treating them as an additional charge.
 - Experimental Polars forecast scaling, symmetric capping, and fixed/equal
   combination stages. Long-form contribution output retains each rule's raw,
   scaled, capped, weighted, and availability values, while combined

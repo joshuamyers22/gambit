@@ -133,6 +133,7 @@ from gambit.pq_io import df_to_hdf5, hdf5_to_df, hdf5_to_np_arrays, np_arrays_to
 from gambit.pq_types import (
     Contract,
     ContractGroup,
+    ExecutionPriceDiagnostic,
     LimitOrder,
     MarketOrder,
     Order,
@@ -267,6 +268,7 @@ __all__ = [
     "EminiOption",
     "Evaluator",
     "ExecutionStage",
+    "ExecutionPriceDiagnostic",
     "Experiment",
     "ExposureLimit",
     "ExposureLimitResult",

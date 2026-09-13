@@ -48,6 +48,10 @@ def test_zero_cost_fixture_has_matching_gross_and_net_results() -> None:
     ]
     assert report[0, "traded_notional"] == 4_200.0
     assert report[0, "turnover"] == pytest.approx(0.42)
+    assert report.select("diagnostic_trade_count", "missing_diagnostic_trade_count").rows() == [
+        (0, 2),
+        (0, 1),
+    ]
     assert report.select("period", "capital").unique().row(0) == ("monthly", 10_000.0)
 
 
@@ -129,3 +133,48 @@ def test_report_data_is_detached() -> None:
     data[0, "gross_pnl"] = 999.0
 
     assert result.data[0, "gross_pnl"] != 999.0
+
+
+def test_execution_price_effects_are_separate_and_do_not_double_count_explicit_costs() -> None:
+    trades = _trades(fee=(0.5, 0.5, 0.5), commission=(1.0, 1.0, 1.0)).with_columns(
+        pl.Series("reference_price", [99.9, 110.1, 119.8]),
+        pl.Series("modeled_price_adjustment", [0.09, -0.08, 0.15]),
+        pl.Series("rounding_price_adjustment", [0.01, -0.02, 0.05]),
+        pl.Series("price_effect", [2.0, 2.0, 2.0]),
+        pl.lit("BidAskSpreadSlippage").alias("price_effect_model"),
+    )
+
+    result = CostTurnoverAnalyzer(10_000.0).analyze(_pnl(net=(8.5, -5.5, 3.5)), trades)
+
+    assert result.data.select(
+        "explicit_cost", "execution_price_effect", "diagnostic_trade_count", "missing_diagnostic_trade_count"
+    ).rows() == [(3.0, 4.0, 2, 0), (1.5, 2.0, 1, 0)]
+    price_effect_rows = result.price_effects.select(
+        "modeled_price_effect", "rounding_price_effect", "total_price_effect", "trade_count"
+    ).rows()
+    assert price_effect_rows[0] == pytest.approx((3.4, 0.6, 4.0, 2))
+    assert price_effect_rows[1] == pytest.approx((1.5, 0.5, 2.0, 1))
+
+    mutated = result.price_effects
+    mutated[0, "total_price_effect"] = 999.0
+    assert result.price_effects[0, "total_price_effect"] != 999.0
+
+
+def test_execution_price_diagnostics_reject_partial_or_unreconciled_rows() -> None:
+    analyzer = CostTurnoverAnalyzer(10_000.0)
+    base = _trades(fee=(0.0, 0.0, 0.0), commission=(0.0, 0.0, 0.0))
+    with pytest.raises(ValueError, match="execution columns are missing"):
+        analyzer.analyze(
+            _pnl(net=(10.0, -4.0, 5.0)),
+            base.with_columns(pl.lit(100.0).alias("reference_price")),
+        )
+
+    diagnostics = base.with_columns(
+        pl.col("price").alias("reference_price"),
+        pl.lit(0.0).alias("modeled_price_adjustment"),
+        pl.lit(0.0).alias("rounding_price_adjustment"),
+        pl.lit(1.0).alias("price_effect"),
+        pl.lit("FixedPercentageSlippage").alias("price_effect_model"),
+    )
+    with pytest.raises(ValueError, match="price_effect does not reconcile"):
+        analyzer.analyze(_pnl(net=(10.0, -4.0, 5.0)), diagnostics)

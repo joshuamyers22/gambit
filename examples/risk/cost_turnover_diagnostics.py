@@ -25,6 +25,12 @@ trades = pl.DataFrame(
         "multiplier": [50.0, 50.0],
         "fee": [1.0, 1.0],
         "commission": [2.0, 2.0],
+        # Optional immutable fill diagnostics keep price effects separate from charges.
+        "reference_price": [4_999.75, 5_010.25],
+        "modeled_price_adjustment": [0.20, -0.20],
+        "rounding_price_adjustment": [0.05, -0.05],
+        "price_effect": [25.0, 25.0],
+        "price_effect_model": ["BidAskSpreadSlippage", "BidAskSpreadSlippage"],
     }
 )
 
@@ -34,6 +40,7 @@ report = CostTurnoverAnalyzer(
 ).analyze(pnl, trades)
 
 assert report.data.select(
-    "gross_pnl", "net_pnl", "explicit_cost", "traded_notional", "turnover"
-).row(0) == (150.0, 144.0, 6.0, 1_001_000.0, 1.001)
+    "gross_pnl", "net_pnl", "explicit_cost", "traded_notional", "turnover", "execution_price_effect"
+).row(0) == (150.0, 144.0, 6.0, 1_001_000.0, 1.001, 50.0)
 print(report.data)
+print(report.price_effects)
