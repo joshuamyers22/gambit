@@ -1978,8 +1978,17 @@ release merely because another library offers them.
   impossible-price, partial-fill/pending lifecycle, breach-reduction, buffering,
   achieved-risk, and Strategy-adapter cases now covered, P1.7 implementation and
   its engineering acceptance checklist are complete. Quant/execution-owner
-  approval remains an external production signoff. This work remains local and
-  will not be pushed unless explicitly requested.
+  approval remains an external production signoff.
+- Focused local evidence passed **42 executable-target, public-API, and
+  executable risk-example tests**, plus the standalone adapter example, Ruff,
+  mypy over 58 source files, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,094 tests** at **86% aggregate coverage**, with
+  **86%** executable-target-module and **94%** risk-module coverage, all six
+  enforced module floors, **10/10** financial mutation checks, frozen-lock,
+  Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. The sandbox run reached the
+  isolated build before DNS resolution failed; the unchanged gate passed with
+  approved network access.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
