@@ -1947,8 +1947,18 @@ release merely because another library offers them.
   executable while ordinary in-band changes stay suppressed. Custom policy
   hooks are mutation-checked at the shared risk boundary. Supported Strategy
   adapter evidence, representative evidence, and quant/execution-owner approval
-  keep P1.7 open. This work remains local and will not be pushed unless
-  explicitly requested.
+  keep P1.7 open.
+- Focused local evidence passed **75 executable-target, pre-trade-risk,
+  fill-sequence, control-plane, and public-API tests**, plus Ruff, mypy over 58
+  source files, the executable example, and strict Sphinx. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,092 tests** at **86% aggregate
+  coverage**, with **86%** executable-target-module and **94%** risk-module
+  coverage, all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy, native-warning, notebook-cleanliness, strict Sphinx,
+  wheel/sdist, Twine, and release-artifact verification gates. The sandbox run
+  reached the isolated build before DNS resolution failed; the unchanged gate
+  passed with approved network access. This work remains local and will not be
+  pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
