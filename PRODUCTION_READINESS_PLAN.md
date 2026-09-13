@@ -1798,10 +1798,17 @@ release merely because another library offers them.
   P2.4 modules instead of reaching them only through a skipped import.
 - Focused local evidence passed **33 cost-sensitivity, cost-diagnostic,
   public-API, and executable risk-example tests**, plus Ruff, mypy over 57 source
-  files, the standalone example, and strict Sphinx. Representative strategy
-  evidence and a real buffered/unbuffered comparison wait on P1.7's executable
-  target layer; quant/analytics-owner approval also remains pending. This work
-  remains local and will not be pushed unless explicitly requested.
+  files, the standalone example, and strict Sphinx. Full local evidence on macOS
+  / CPython 3.10.20 passed **2,066 tests** at **86% aggregate coverage**, with
+  **83%** cost-sensitivity-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 57 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine,
+  and release-artifact verification gates. Initial sandbox dependency resolution
+  lacked DNS; the complete gate passed unchanged with approved network access.
+  Representative strategy evidence and a real buffered/unbuffered comparison
+  wait on P1.7's executable target layer; quant/analytics-owner approval also
+  remains pending. This work remains local and will not be pushed unless
+  explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
