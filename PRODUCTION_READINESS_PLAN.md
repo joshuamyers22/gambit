@@ -1674,9 +1674,18 @@ release merely because another library offers them.
 - Added ``WalkForwardTrainingSet.fit_forecast_combination`` so the estimator sees
   only owned fit rows and uses the final fit timestamp as its cutoff. Public API,
   feature posture, strategy/risk guidance, changelog, and the executable offline
-  example describe the boundary. Focused/full local evidence is pending. Durable
-  contribution persistence and quant/research-owner approval keep P2.3 open.
-  This work remains local and will not be pushed unless explicitly requested.
+  example describe the boundary.
+- Focused local evidence passed **48 forecast, walk-forward, and public-API
+  tests**, Ruff, mypy, and the documented offline example. Full local evidence
+  on macOS / CPython 3.10.20 passed **2,040 tests** at **86% aggregate
+  coverage**, with **80%** forecasting-module and **83.36%** optimizer coverage,
+  all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 55 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The isolated build initially lacked sandbox DNS and passed
+  unchanged with approved network access. Durable contribution persistence and
+  quant/research-owner approval keep P2.3 open. This work remains local and will
+  not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
