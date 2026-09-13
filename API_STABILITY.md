@@ -96,6 +96,17 @@ checksummed Arrow tables; ``load`` verifies schemas and reconciliation before
 returning detached evidence. Quant/research-owner approval remains outside this
 experimental boundary.
 
+## Experimental cost-diagnostic APIs
+
+``CostTurnoverAnalyzer``, ``CostTurnoverReport``, and ``CostPeriod`` are the
+initial P2.4 reporting boundary. They aggregate explicitly attributed,
+incremental gross/net P&L and executed trades by calendar period, instrument,
+and rule. The analyzer reconciles ledger cost drag to signed fee and commission
+fields and treats slippage already embedded in execution prices as part of gross
+P&L, not a second charge. It does not infer rule ownership for shared positions,
+capture immutable pre-cost reference prices, or run cost/participation
+sensitivity experiments. Those remain P2.4 work.
+
 ## Internal scheduling and debugging storage
 
 Simulator-result order membership and engine-applied fill aggregation use

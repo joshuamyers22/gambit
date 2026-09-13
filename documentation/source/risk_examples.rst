@@ -180,6 +180,31 @@ Both adapters supply only fit rows and fix ``as_of`` to the last fit timestamp.
 Rule columns supplied to the combination estimator should contain the historical
 scaled/capped forecasts whose joint behavior is being estimated.
 
+Cost and turnover diagnostics
+-----------------------------
+
+Aggregate explicitly attributed incremental P&L and executed trades by calendar
+period, instrument, and rule:
+
+.. literalinclude:: ../../examples/risk/cost_turnover_diagnostics.py
+   :language: python
+   :linenos:
+
+``CostTurnoverAnalyzer`` reports gross and net P&L/returns, signed fees and
+commission, explicit cost drag, absolute traded notional, capital-normalized
+turnover, and trade count. Capital and the daily, weekly, or monthly bucket are
+retained on every output row. Gross P&L means mark-to-market P&L after the actual
+execution price, including any slippage already present in that fill, but before
+the trade's explicit fee and commission fields. Reconciliation therefore
+requires ``gross_pnl - net_pnl == fee + commission`` and never adds slippage as
+a second charge.
+
+Inputs must already carry a non-empty rule identity and incremental P&L
+attribution. Gambit does not infer rule ownership for positions shared by
+multiple rules. Use a separate virtual ledger if rule-level P&L is required;
+misattributed or unreconciled inputs fail rather than being allocated
+heuristically.
+
 Volatility-targeted sizing
 --------------------------
 

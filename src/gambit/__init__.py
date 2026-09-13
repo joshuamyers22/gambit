@@ -30,6 +30,7 @@ from gambit.control_plane import (
     TradingOverrideBook,
     TradingOverridePolicy,
 )
+from gambit.cost_diagnostics import CostPeriod, CostTurnoverAnalyzer, CostTurnoverReport
 from gambit.covariance_risk import (
     ComponentVolatilityMeasure,
     CovarianceEstimate,
@@ -253,6 +254,9 @@ __all__ = [
     "ContractSpec",
     "ContractUniverse",
     "ControlLevel",
+    "CostPeriod",
+    "CostTurnoverAnalyzer",
+    "CostTurnoverReport",
     "ComponentVolatilityMeasure",
     "CovarianceEstimate",
     "CovarianceRiskModel",

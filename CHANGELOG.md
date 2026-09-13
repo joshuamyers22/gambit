@@ -7,6 +7,12 @@ have not yet been released are collected below.
 
 ### Added
 
+- Experimental cost and turnover diagnostics for explicitly attributed
+  incremental P&L and trade rows. Daily, weekly, or monthly output preserves
+  instrument/rule identity, capital assumptions, gross/net P&L and returns,
+  signed fees/commission, explicit cost drag, traded notional, turnover, and
+  trade count while requiring ledger reconciliation and avoiding a second
+  slippage charge.
 - Experimental Polars forecast scaling, symmetric capping, and fixed/equal
   combination stages. Long-form contribution output retains each rule's raw,
   scaled, capped, weighted, and availability values, while combined

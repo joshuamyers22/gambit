@@ -19,6 +19,7 @@ RISK_EXAMPLES = (
     "volatility_target_sizing.py",
     "control_plane.py",
     "var_and_expected_shortfall.py",
+    "cost_turnover_diagnostics.py",
 )
 
 
