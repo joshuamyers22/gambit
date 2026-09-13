@@ -1622,8 +1622,9 @@ release merely because another library offers them.
 - Acceptance coverage matches manual scale/cap/weight calculations, proves
   future rows cannot change earlier fixed output, confirms returned audit frames
   are detached, and feeds the combined output directly into the existing
-  volatility-target sizer. Focused/full local evidence is pending. Historical
-  training-only scalars/weights, durable contribution evidence, and
+  volatility-target sizer. The documented offline example and consolidated local
+  gates recorded in the next slice passed. Historical weights/correlation,
+  durable contribution evidence, diversification scaling, and
   quant/research-owner approval keep P2.3 open. This work remains local and will
   not be pushed unless explicitly requested.
 
@@ -1641,8 +1642,16 @@ release merely because another library offers them.
   ``WalkForwardTrainingSet.fit_forecast_scalars``. The adapter passes only the
   fit frame and forces the cutoff to the final fit timestamp alongside the
   existing covariance and tail-risk adapters, completing the remaining P1.6
-  implementation checklist item. Focused/full local evidence is pending;
-  quant/research-owner approval still gates P1.6. Estimated weights/correlation,
+  implementation checklist item.
+- Focused local evidence passed **43 forecast, walk-forward, and public-API
+  tests**, plus the documented offline example. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,035 tests** at **86% aggregate coverage**, with
+  **81%** forecasting-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 55 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist,
+  Twine, and release-artifact verification gates. The isolated build initially
+  lacked sandbox DNS and passed unchanged with approved network access.
+  Quant/research-owner approval still gates P1.6. Estimated weights/correlation,
   diversification scaling, durable contribution evidence, and owner approval
   keep P2.3 open. This work remains local and will not be pushed unless
   explicitly requested.
