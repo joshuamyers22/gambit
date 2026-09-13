@@ -1828,11 +1828,16 @@ release merely because another library offers them.
   bypass supported risk admission.
 - Focused local evidence passed **41 executable-target, sizing, currency,
   public-API, and executable risk-example tests**, plus Ruff, mypy over 58 source
-  files, the standalone example, and strict Sphinx. Full-gate evidence will be
-  recorded after the implementation commit. No-trade buffering, post-rounding
-  risk/constraint rechecks, supported admission, representative evidence, and
-  quant/execution-owner approval keep P1.7 open. This work remains local and will
-  not be pushed unless explicitly requested.
+  files, the standalone example, and strict Sphinx. Full local evidence on macOS /
+  CPython 3.10.20 passed **2,079 tests** at **86% aggregate coverage**, with
+  **84%** executable-target-module coverage, all six enforced module floors,
+  **10/10** financial mutation checks, frozen-lock, Ruff, mypy over 58 source
+  files, native-warning, notebook-cleanliness, strict Sphinx, wheel/sdist, Twine,
+  and release-artifact verification gates. Initial sandbox dependency resolution
+  lacked DNS; the complete gate passed unchanged with approved network access.
+  No-trade buffering, post-rounding risk/constraint rechecks, supported admission,
+  representative evidence, and quant/execution-owner approval keep P1.7 open.
+  This work remains local and will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
