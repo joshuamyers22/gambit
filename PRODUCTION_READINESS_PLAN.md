@@ -367,10 +367,10 @@ due triggers are not calendar commitments.
 | ID | Improvement | Depends on | Proposed owner | Due/trigger | Status |
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
-| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | In progress; owned schedule/runner, training-only generic/covariance/tail-risk fitting, allowlisted optimizer selection, seeded process parity, durable experiment identities/failures, and chronological OOS equity implemented 2026-09-12; forecast-scalar integration and owner approval pending |
+| P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
 | P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | Not started |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
-| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Not started |
+| P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | In progress; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar estimates, and sizer handoff implemented locally 2026-09-12; estimated weights/correlation, diversification scaling, durable contribution evidence, and owner approval pending |
 | P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | Not started |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
@@ -420,7 +420,7 @@ costs; the caller currently owns the train/test split and leakage controls.
 
 - [x] Add a walk-forward runner with explicit fit, validation, and held-out
   intervals, rolling/expanding windows, warm-up policy, and refit schedule.
-- [ ] Fit transforms, forecast scalars, covariance estimates, and parameter
+- [x] Fit transforms, forecast scalars, covariance estimates, and parameter
   selection only on permitted training data. Support a gap/purge policy when
   labels or holding periods overlap evaluation boundaries.
 - [x] Persist split identities, seeds, selected parameters, failed trials,
@@ -1607,6 +1607,45 @@ release merely because another library offers them.
   verification gates. Forecast-scalar integration, hosted evidence, and
   quant/research-owner approval keep P1.6 open. This work remains local and
   will not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-first slice (fixed forecast scale/cap/combine)
+
+- Added long-form Polars forecast stages keyed by normalized timestamp, symbol,
+  and rule. Fixed positive per-rule scalars feed a symmetric cap while preserving
+  detached raw, scaled, capped, and availability columns.
+- Added fixed and equal-weight combination with a complete rule contribution
+  table and one combined ``raw_forecast`` per timestamp/symbol. Fixed weights
+  sum to one, so duplicated identical rules receive no implicit diversification
+  multiplier. Missing configured rules fail by default; the explicit zero policy
+  retains an unavailable row with zero contribution and does not silently
+  renormalize remaining rules.
+- Acceptance coverage matches manual scale/cap/weight calculations, proves
+  future rows cannot change earlier fixed output, confirms returned audit frames
+  are detached, and feeds the combined output directly into the existing
+  volatility-target sizer. Focused/full local evidence is pending. Historical
+  training-only scalars/weights, durable contribution evidence, and
+  quant/research-owner approval keep P2.3 open. This work remains local and will
+  not be pushed unless explicitly requested.
+
+### 2026-09-12 — Thirty-second slice (training-only forecast scalars)
+
+- Added a historical scalar estimator for wide rule-forecast columns. Each
+  positive scalar targets a configured mean absolute forecast using only finite
+  observations at or before a declared cutoff; insufficient history, duplicate
+  rule columns, non-chronological timestamps, and all-zero history fail
+  explicitly.
+- Added immutable fitted scalar evidence with per-rule observation counts and an
+  ``as_of`` timestamp. The fitted result constructs the fixed scale/cap stage
+  without discarding its estimated values.
+- Integrated the estimator through
+  ``WalkForwardTrainingSet.fit_forecast_scalars``. The adapter passes only the
+  fit frame and forces the cutoff to the final fit timestamp alongside the
+  existing covariance and tail-risk adapters, completing the remaining P1.6
+  implementation checklist item. Focused/full local evidence is pending;
+  quant/research-owner approval still gates P1.6. Estimated weights/correlation,
+  diversification scaling, durable contribution evidence, and owner approval
+  keep P2.3 open. This work remains local and will not be pushed unless
+  explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

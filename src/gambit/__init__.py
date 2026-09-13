@@ -78,6 +78,14 @@ from gambit.factor_operations import (
     calibrate_factor_cache,
     inspect_factor_cache,
 )
+from gambit.forecasting import (
+    FittedForecastScalars,
+    FixedForecastCombiner,
+    ForecastCombinationResult,
+    ForecastScalarEstimator,
+    ForecastScaleCap,
+    MissingForecastPolicy,
+)
 from gambit.holiday_calendars import Calendar, get_date_from_weekday
 from gambit.instruments import AssetClass, InstrumentSpec, Tradability
 from gambit.market_data import (
@@ -256,7 +264,12 @@ __all__ = [
     "ExposureLimit",
     "ExposureLimitResult",
     "FixedPercentageSlippage",
+    "FixedForecastCombiner",
+    "FittedForecastScalars",
     "FittedTailRiskModel",
+    "ForecastCombinationResult",
+    "ForecastScalarEstimator",
+    "ForecastScaleCap",
     "FxRateSnapshot",
     "FactorColumnSchema",
     "FactorCacheAdmissionPolicy",
@@ -292,6 +305,7 @@ __all__ = [
     "MaxPositionQuantity",
     "MaxVolumeParticipation",
     "MissingDataPolicy",
+    "MissingForecastPolicy",
     "NetExposureMeasure",
     "NotionalCharge",
     "Optimizer",

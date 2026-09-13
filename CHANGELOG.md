@@ -7,6 +7,14 @@ have not yet been released are collected below.
 
 ### Added
 
+- Experimental Polars forecast scaling, symmetric capping, and fixed/equal
+  combination stages. Long-form contribution output retains each rule's raw,
+  scaled, capped, weighted, and availability values, while combined
+  ``raw_forecast`` rows feed the existing portfolio volatility and VaR sizers.
+  Missing rules either fail explicitly or contribute zero without silently
+  renormalizing weights. A historical mean-absolute-forecast estimator enforces
+  minimum history and explicit zero-history rejection; its fitted scalar set can
+  be created directly through the walk-forward training-only boundary.
 - An experimental owned walk-forward runner with deterministic rolling or
   expanding split identities, separate warm-up/fit/validation/held-out frames,
   two purge boundaries, a non-overlapping refit schedule, detached finite

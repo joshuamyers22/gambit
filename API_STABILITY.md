@@ -74,6 +74,20 @@ The versioned experiment manifest persists their caller-supplied identities,
 not executable models. These APIs remain experimental until the remaining P1.6
 acceptance work and quant/research-owner approval are complete.
 
+## Experimental forecast APIs
+
+`ForecastScaleCap`, `ForecastScalarEstimator`, `FittedForecastScalars`,
+`FixedForecastCombiner`, `ForecastCombinationResult`, and
+`MissingForecastPolicy` are the initial P2.3 rule-forecast boundary. They accept
+long-form Polars rows keyed by timestamp, symbol, and rule; retain detached
+raw/scaled/capped/contribution evidence; and emit combined `raw_forecast` rows
+compatible with the existing risk sizers. Scalars may be fixed inputs or fitted
+from wide historical rule columns through a declared cutoff and minimum-history
+requirement; ``WalkForwardTrainingSet.fit_forecast_scalars`` confines that fit
+to the permitted training interval. Historical weight/correlation estimation,
+missing-rule renormalization, diversification scaling, and durable contribution
+persistence remain outside it.
+
 ## Internal scheduling and debugging storage
 
 Simulator-result order membership and engine-applied fill aggregation use

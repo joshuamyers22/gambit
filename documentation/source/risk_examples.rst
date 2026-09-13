@@ -115,6 +115,43 @@ without an actual rate are rejected, as are snapshots newer than the market-data
 cutoff. The example uses a fixed synthetic rate; applications should obtain a
 point-in-time rate from a controlled data source.
 
+Forecast scaling and fixed combination
+--------------------------------------
+
+Scale and symmetrically cap long-form rule forecasts before combining them with
+fixed weights. The contribution table retains the raw, scaled, capped, weight,
+availability, and contribution value for every configured rule:
+
+.. literalinclude:: ../../examples/risk/forecast_combination.py
+   :language: python
+   :linenos:
+
+Fixed weights must sum to one. ``FixedForecastCombiner.equal`` constructs equal
+weights without granting extra scale to duplicated correlated rules. By default,
+any unavailable rule stops combination. ``MissingForecastPolicy.ZERO`` retains
+the unavailable audit row with zero effective weight and contribution; it does
+not silently renormalize the remaining rules. Combined output uses the
+``raw_forecast`` column accepted by the existing volatility and VaR sizers.
+Historical scalars, estimated weights, and diversification multipliers require
+an explicit fit. ``ForecastScalarEstimator`` estimates each rule's scalar as the
+configured target mean absolute forecast divided by its observed historical mean
+absolute value. It enforces a minimum number of finite observations and rejects
+all-zero history instead of inventing a scale. The resulting
+``FittedForecastScalars.scale_cap`` creates the same row-level transform.
+
+Inside optimization, fit this estimator only through the owned training set:
+
+.. code-block:: python
+
+   scalars = training.fit_forecast_scalars(
+       gambit.ForecastScalarEstimator(min_observations=252),
+       rule_columns=["carry_forecast", "momentum_forecast"],
+   )
+
+The adapter supplies only fit rows and fixes ``as_of`` to the last fit timestamp.
+Estimated weights and diversification multipliers remain outside this initial
+boundary.
+
 Volatility-targeted sizing
 --------------------------
 

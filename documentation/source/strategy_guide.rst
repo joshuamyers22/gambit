@@ -177,13 +177,18 @@ validation or held-out data. Use its detached frames or built-in adapters:
            symbols=["asset_a", "asset_b"],
        )
        fitted_transform = training.fit_estimator(fit_transform)
-       return fitted_transform, covariance, tail_risk
+       forecast_scalars = training.fit_forecast_scalars(
+           gambit.ForecastScalarEstimator(min_observations=60),
+           rule_columns=["carry_forecast", "momentum_forecast"],
+       )
+       return fitted_transform, covariance, tail_risk, forecast_scalars
 
 ``fit_frame()`` and ``warmup_frame()`` return clones. Warm-up rows are available
 for causal feature initialization but are deliberately excluded by
-``fit_estimator``, ``fit_covariance``, and ``fit_tail_risk``. The built-in risk
-adapters force ``as_of`` to the final fit timestamp. ``fit_columns`` must include
-the timestamp column used to establish that boundary.
+``fit_estimator``, ``fit_covariance``, ``fit_tail_risk``, and
+``fit_forecast_scalars``. The built-in risk and scalar adapters force ``as_of``
+to the final fit timestamp. ``fit_columns`` must include the timestamp column and
+every forecast column needed to establish that boundary.
 
 ``candidate_parameters(fold, seed)`` returns that fold's finite scalar
 parameter mappings. Candidate models are fitted only on the allowed warm-up and
@@ -249,5 +254,5 @@ timestamp grid and schedule, and detaches finite validation and held-out metric
 mappings. ``fit_columns`` prevents undeclared columns from entering optimized
 fits, but it cannot detect whether an allowed column was itself computed using
 future information. Callback closures, external data, and arbitrary fitted-
-object mutation remain caller responsibilities. P1.6 still requires forecast-
-scalar integration once that P2.3 capability exists.
+object mutation remain caller responsibilities. P1.6 remains experimental until
+quant/research-owner approval is recorded.

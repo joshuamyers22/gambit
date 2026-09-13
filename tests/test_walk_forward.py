@@ -11,6 +11,7 @@ import polars as pl
 import pytest
 
 from gambit.covariance_risk import CovarianceRiskModel
+from gambit.forecasting import ForecastScalarEstimator
 from gambit.optimize import (
     WalkForwardConfig,
     WalkForwardExperimentResult,
@@ -553,7 +554,7 @@ def test_optimized_runner_rejects_empty_sources_and_invalid_fit_columns() -> Non
 
 def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
     runner = WalkForwardRunner(_optimization_frame(11), timestamp_column="timestamp", config=_config())
-    observed: list[tuple[np.datetime64, np.datetime64, float]] = []
+    observed: list[tuple[np.datetime64, np.datetime64, np.datetime64, float, float]] = []
 
     def fit_risk_models(
         fold: WalkForwardFold,
@@ -569,11 +570,23 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
             TailRiskModel(lookback=4, min_observations=2),
             symbols=["target"],
         )
+        forecast_scalars = training.fit_forecast_scalars(
+            ForecastScalarEstimator(min_observations=2),
+            rule_columns=["target"],
+        )
         fitted_mean = training.fit_estimator(lambda frame: float(frame["target"].mean()))
         detached = training.fit_frame()
         detached[0, "target"] = 999.0
         assert training.fit_frame()[0, "target"] == 2.0
-        observed.append((covariance.as_of, tail_risk.as_of, fitted_mean))
+        observed.append(
+            (
+                covariance.as_of,
+                tail_risk.as_of,
+                forecast_scalars.as_of,
+                forecast_scalars.scalars["target"],
+                fitted_mean,
+            )
+        )
         return _fit_optimization_candidate(fold, parameters, training, seed)
 
     runner.optimize(
@@ -588,4 +601,4 @@ def test_training_set_fits_builtin_risk_models_only_on_fit_interval() -> None:
     )
 
     expected_as_of = np.datetime64("2024-01-05", "ns")
-    assert observed == [(expected_as_of, expected_as_of, 5.0)] * 4
+    assert observed == [(expected_as_of, expected_as_of, expected_as_of, 2.0, 5.0)] * 4
