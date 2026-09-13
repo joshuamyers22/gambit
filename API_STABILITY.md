@@ -130,8 +130,10 @@ whole-lot targets. Each unit rule may declare an inclusive symmetric
 base-currency no-trade band around its rounded target. Diagnostics retain the
 unbuffered quantity, buffer decision, achieved exposure, and actual tracking
 error; incremental proposals account for current holdings and all still-open
-orders. The builder returns detached market-order proposals but does not submit
-them, re-evaluate portfolio risk after rounding, override a buffer for required
+orders. The result exposes a detached standard exposure table for the
+post-rounding/post-buffer state and can calculate the existing point-in-time risk
+measures over that achieved state. The builder returns detached market-order
+proposals but does not submit or risk-admit them, override a buffer for required
 risk reduction, or replace existing risk admission.
 
 ## Internal scheduling and debugging storage

@@ -38,9 +38,13 @@ result = gambit.ExecutableTargetBuilder(
     gambit.CalculationContext(VALUATION_TIME, base_currency="USD"),
     account,
     pending_orders=[pending],
+    risk_measures=[gambit.NetExposureMeasure()],
 )
 
 assert result.positions["target_quantity"].to_list() == [1_000, -3]
 assert result.positions["buffer_applied"].to_list() == [True, False]
 assert [(order.contract.symbol, order.qty) for order in result.orders] == [("INDEX-FUT", -1)]
+assert result.risk is not None
+assert result.risk.aggregate()[0, "value"] == -637_500.0
 print(result.positions)
+print(result.risk.data)

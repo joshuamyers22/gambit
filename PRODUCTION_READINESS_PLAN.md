@@ -368,7 +368,7 @@ due triggers are not calendar commitments.
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
-| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time price/multiplier/FX conversion, explicit whole-lot rounding, base-currency no-trade bands, tracking diagnostics, and current/pending-aware incremental proposals implemented locally through 2026-09-13; risk/constraint rechecks, buffer overrides for required reductions, supported admission, representative evidence, and owner approval pending |
+| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time price/multiplier/FX conversion, explicit whole-lot rounding, base-currency no-trade bands, achieved-risk recomputation, tracking diagnostics, and current/pending-aware incremental proposals implemented locally through 2026-09-13; constraint rechecks, buffer overrides for required reductions, supported admission, representative evidence, and owner approval pending |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
 | P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; representative cost/participation and executable-buffer comparison evidence plus owner approval pending |
@@ -449,9 +449,11 @@ quantities and incremental orders that accounts for existing and pending positio
   reject unsupported conversions instead of silently dividing by zero.
 - [x] Start with deterministic rounding and a configurable no-trade band.
   Add cost-versus-tracking-error optimization only behind that reference path.
-- [ ] Recompute risk after rounding; enforce long-only/reduce-only/no-trade and
-  position constraints. Account for pending orders so repeated target evaluation
-  cannot duplicate outstanding exposure. Submit through existing risk admission.
+- [ ] Recompute risk after rounding; the achieved exposure table and optional
+  point-in-time measure evaluation are complete. Enforce long-only/reduce-only/
+  no-trade and position constraints, override buffering for required reductions,
+  and submit through existing risk admission. Account for pending orders so
+  repeated target evaluation cannot duplicate outstanding exposure.
 
 Acceptance: hand-calculated FX/multiplier cases reconcile to whole-contract
 targets; small-capital, impossible-target, partial-fill, pending-cancel, and
@@ -1872,6 +1874,31 @@ release merely because another library offers them.
   reductions, supported admission, representative evidence, and
   quant/execution-owner approval keep P1.7 open. This work remains local and
   will not be pushed unless explicitly requested.
+
+### 2026-09-13 — Fortieth slice (achieved target risk evidence)
+
+- Added a detached standard exposure table for the actual post-rounding and
+  post-buffer portfolio. Each row identifies its symbol, contract group, asset
+  class, base currency, base-currency price, whole quantity, multiplier, net
+  exposure, and gross exposure, so existing risk measures consume the same
+  achieved state represented by the order diagnostics.
+- Added optional point-in-time risk-measure evaluation directly to executable
+  target construction. Covariance, tail-risk, scenario, and ordinary exposure
+  measures retain their existing calculation context and lookahead checks; an
+  omitted measure set leaves risk explicitly absent rather than inventing a
+  portfolio metric.
+- Result accessors return owned exposure frames and risk data. Coverage proves
+  that rounding and an applied no-trade band flow into achieved volatility and
+  net exposure, local EUR prices translate into USD before risk evaluation,
+  caller mutation cannot rewrite retained evidence, and future-dated models fail.
+- Focused local evidence passed **69 executable-target, sizing, currency,
+  covariance, tail-risk, generic-risk, public-API, and executable risk-example
+  tests**, plus Ruff, mypy over 58 source files, the standalone example, and
+  strict Sphinx. Full-gate evidence will be recorded after the implementation
+  commit. Constraint rechecks, buffer overrides for required reductions,
+  supported admission, representative evidence, and quant/execution-owner
+  approval keep P1.7 open. This work remains local and will not be pushed unless
+  explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

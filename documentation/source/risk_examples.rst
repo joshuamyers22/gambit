@@ -206,12 +206,19 @@ the unbuffered reference path.
 The result retains raw and rounded targets, projected exposure, the unbuffered
 quantity, the buffer decision, achieved exposure and tracking error, current
 holdings, still-open order quantity, and the final incremental quantity.
+``result.exposures`` is the detached standard exposure table for the achieved
+post-rounding/post-buffer state; its prices and monetary values are in the
+calculation base currency. Pass existing point-in-time ``risk_measures`` to
+``build`` to populate ``result.risk`` from that achieved table. Model cutoffs are
+checked against the calculation context, just as they are for direct
+``calculate_risk`` calls.
+
 Cancellation-requested orders remain reserved until their cancellation is
 acknowledged, so repeating an unchanged target does not create duplicate
 exposure. Returned orders are proposals only: this P1.7 boundary does not submit
-them, override buffering for required risk reductions, or bypass existing risk
-admission. Post-rounding portfolio-risk rechecks and constraint-aware submission
-remain pending.
+or risk-admit them, override buffering for required risk reductions, or bypass
+existing risk admission. Constraint-aware rechecks and submission remain
+pending.
 
 Cost and turnover diagnostics
 -----------------------------

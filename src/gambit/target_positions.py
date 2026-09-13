@@ -18,6 +18,7 @@ from gambit.calculation import CalculationContext
 from gambit.currency import FxRateSnapshot
 from gambit.execution_snapshots import snapshot_order
 from gambit.pq_types import Contract, MarketOrder, Order, _validate_order_references, _whole_quantity
+from gambit.risk_measures import RiskMeasure, RiskResult, calculate_risk
 
 
 class TargetRounding(str, Enum):
@@ -85,14 +86,28 @@ def _rules(values: Mapping[str, TradableUnitRule]) -> Mapping[str, TradableUnitR
 
 @dataclass(frozen=True, init=False)
 class ExecutableTargetResult:
-    """Detached target diagnostics and incremental order proposals."""
+    """Detached target diagnostics, achieved exposures, risk, and order proposals."""
 
     _positions: pl.DataFrame
     _orders: tuple[MarketOrder, ...]
+    _exposures: pl.DataFrame
+    _risk: RiskResult | None
 
-    def __init__(self, positions: pl.DataFrame, orders: Sequence[MarketOrder]) -> None:
+    def __init__(
+        self,
+        positions: pl.DataFrame,
+        orders: Sequence[MarketOrder],
+        exposures: pl.DataFrame,
+        risk: RiskResult | None,
+    ) -> None:
         object.__setattr__(self, "_positions", positions.clone())
         object.__setattr__(self, "_orders", tuple(snapshot_order(order) for order in orders))
+        object.__setattr__(self, "_exposures", exposures.clone())
+        object.__setattr__(
+            self,
+            "_risk",
+            None if risk is None else RiskResult(risk.data.clone()),
+        )
 
     @property
     def positions(self) -> pl.DataFrame:
@@ -101,6 +116,16 @@ class ExecutableTargetResult:
     @property
     def orders(self) -> tuple[MarketOrder, ...]:
         return tuple(snapshot_order(order) for order in self._orders)
+
+    @property
+    def exposures(self) -> pl.DataFrame:
+        """Post-order base-currency exposure rows used by risk measures."""
+        return self._exposures.clone()
+
+    @property
+    def risk(self) -> RiskResult | None:
+        """Post-rounding and post-buffer risk, when measures were requested."""
+        return None if self._risk is None else RiskResult(self._risk.data.clone())
 
 
 @dataclass(frozen=True)
@@ -125,11 +150,15 @@ class ExecutableTargetBuilder:
         account: Account,
         *,
         pending_orders: Sequence[Order] = (),
+        risk_measures: Sequence[RiskMeasure] = (),
     ) -> ExecutableTargetResult:
-        """Return detached diagnostics and nonzero orders without submitting them."""
+        """Return detached diagnostics, optional achieved risk, and unsubmitted orders."""
         calculation = CalculationContext.coerce(context)
         if not isinstance(account, Account):
             raise TypeError("target account must be an Account")
+        if not isinstance(risk_measures, Sequence) or isinstance(risk_measures, (str, bytes)):
+            raise TypeError("target risk_measures must be a sequence")
+        measures = tuple(risk_measures)
         timestamp_index(account.timestamps, calculation.valuation_time, owner="target builder")
         exposure_values = self._exposures(exposures, calculation)
         contract_by_symbol = self._contracts(contracts, set(exposure_values["symbol"].to_list()))
@@ -178,6 +207,8 @@ class ExecutableTargetBuilder:
             rows.append(
                 {
                     "symbol": symbol,
+                    "contract_group": contract.contract_group.name,
+                    "asset_class": contract.instrument_spec.asset_class.value,
                     "currency": calculation.base_currency,
                     "target_net_exposure": target_exposure,
                     "local_currency": local_currency,
@@ -219,6 +250,8 @@ class ExecutableTargetBuilder:
             rows,
             schema_overrides={
                 "symbol": pl.String,
+                "contract_group": pl.String,
+                "asset_class": pl.String,
                 "currency": pl.String,
                 "target_net_exposure": pl.Float64,
                 "local_currency": pl.String,
@@ -247,7 +280,19 @@ class ExecutableTargetBuilder:
                 "tracking_error": pl.Float64,
             },
         )
-        return ExecutableTargetResult(positions, orders)
+        achieved_exposures = positions.select(
+            "symbol",
+            "contract_group",
+            "asset_class",
+            "currency",
+            (pl.col("price") * pl.col("fx_rate")).alias("price"),
+            pl.col("post_order_quantity").alias("quantity"),
+            "multiplier",
+            pl.col("achieved_net_exposure").alias("net_exposure"),
+            pl.col("achieved_net_exposure").abs().alias("gross_exposure"),
+        )
+        risk = calculate_risk(achieved_exposures, measures, calculation) if measures else None
+        return ExecutableTargetResult(positions, orders, achieved_exposures, risk)
 
     def _exposures(self, exposures: pl.DataFrame, context: CalculationContext) -> pl.DataFrame:
         if not isinstance(exposures, pl.DataFrame):

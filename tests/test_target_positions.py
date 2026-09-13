@@ -8,9 +8,11 @@ import pytest
 
 from gambit.account import Account
 from gambit.calculation import CalculationContext
+from gambit.covariance_risk import CovarianceEstimate, PortfolioVolatilityMeasure
 from gambit.currency import FxRateSnapshot
 from gambit.instruments import InstrumentSpec
 from gambit.pq_types import Contract, ContractGroup, MarketOrder, Trade
+from gambit.risk_measures import NetExposureMeasure
 from gambit.target_positions import ExecutableTargetBuilder, TargetRounding, TradableUnitRule
 
 pytestmark = pytest.mark.acceptance
@@ -211,6 +213,104 @@ def test_no_trade_band_uses_pending_projection_but_allows_material_reduction() -
     assert [(order.contract.symbol, order.qty) for order in reduction.orders] == [
         (contracts[0].symbol, -3)
     ]
+
+
+def test_achieved_exposures_and_risk_follow_rounding_and_buffering() -> None:
+    _builder, exposures, contracts, prices, fx, context, account = _fixture("achieved-risk")
+    estimate = CovarianceEstimate(
+        tuple(contract.symbol for contract in contracts),
+        np.diag([0.04, 0.01]),
+        TIMESTAMP,
+        observations=60,
+        annualization_factor=252.0,
+    )
+    builder = ExecutableTargetBuilder(
+        {
+            contracts[0].symbol: TradableUnitRule(no_trade_band=100.0),
+            contracts[1].symbol: TradableUnitRule(lot_size=2),
+        }
+    )
+    buffered_targets = exposures.with_columns(
+        pl.Series("net_exposure", [249.0, 1_200.0], dtype=pl.Float64)
+    )
+
+    result = builder.build(
+        buffered_targets,
+        contracts,
+        prices,
+        fx,
+        context,
+        account,
+        risk_measures=[NetExposureMeasure(), PortfolioVolatilityMeasure(estimate)],
+    )
+
+    assert result.exposures.select(
+        "symbol", "currency", "price", "quantity", "net_exposure", "gross_exposure"
+    ).rows() == [
+        (contracts[0].symbol, "USD", 100.0, 3, 300.0, 300.0),
+        (contracts[1].symbol, "USD", 60.0, 2, 1_200.0, 1_200.0),
+    ]
+    assert result.risk is not None
+    assert result.risk.filter(measure="net_exposure").aggregate()[0, "value"] == 1_500.0
+    assert result.risk.filter(measure="portfolio_volatility").data[0, "value"] == pytest.approx(
+        np.hypot(300.0 * 0.2, 1_200.0 * 0.1)
+    )
+
+
+def test_achieved_exposure_and_risk_results_are_detached() -> None:
+    builder, exposures, contracts, prices, fx, context, account = _fixture("risk-ownership")
+    result = builder.build(
+        exposures,
+        contracts,
+        prices,
+        fx,
+        context,
+        account,
+        risk_measures=[NetExposureMeasure()],
+    )
+
+    achieved = result.exposures
+    achieved[0, "net_exposure"] = -1.0
+    assert result.risk is not None
+    risk = result.risk
+    risk.data[0, "value"] = -1.0
+
+    assert result.exposures[0, "net_exposure"] == 1_100.0
+    assert result.risk is not None
+    assert result.risk.data[0, "value"] == 1_100.0
+
+
+def test_achieved_risk_rejects_future_models_and_invalid_measure_collections() -> None:
+    builder, exposures, contracts, prices, fx, context, account = _fixture("risk-cutoff")
+    future = TIMESTAMP + np.timedelta64(1, "m")
+    estimate = CovarianceEstimate(
+        tuple(contract.symbol for contract in contracts),
+        np.eye(2),
+        future,
+        observations=60,
+        annualization_factor=252.0,
+    )
+
+    with pytest.raises(ValueError, match="risk measure.*after the calculation cutoff"):
+        builder.build(
+            exposures,
+            contracts,
+            prices,
+            fx,
+            context,
+            account,
+            risk_measures=[PortfolioVolatilityMeasure(estimate)],
+        )
+    with pytest.raises(TypeError, match="risk_measures must be a sequence"):
+        builder.build(
+            exposures,
+            contracts,
+            prices,
+            fx,
+            context,
+            account,
+            risk_measures="net_exposure",  # type: ignore[arg-type]
+        )
 
 
 @pytest.mark.parametrize("band", [True, "1", -1.0, np.nan, np.inf])
