@@ -1894,11 +1894,17 @@ release merely because another library offers them.
 - Focused local evidence passed **69 executable-target, sizing, currency,
   covariance, tail-risk, generic-risk, public-API, and executable risk-example
   tests**, plus Ruff, mypy over 58 source files, the standalone example, and
-  strict Sphinx. Full-gate evidence will be recorded after the implementation
-  commit. Constraint rechecks, buffer overrides for required reductions,
-  supported admission, representative evidence, and quant/execution-owner
-  approval keep P1.7 open. This work remains local and will not be pushed unless
-  explicitly requested.
+  strict Sphinx. Full local evidence on macOS / CPython 3.10.20 passed **2,089
+  tests** at **86% aggregate coverage**, with **85%** executable-target-module
+  coverage, all six enforced module floors, **10/10** financial mutation checks,
+  frozen-lock, Ruff, mypy over 58 source files, native-warning,
+  notebook-cleanliness, strict Sphinx, wheel/sdist, Twine, and release-artifact
+  verification gates. The sandbox run reached the isolated release build before
+  dependency resolution lacked DNS; the complete gate passed unchanged with
+  approved network access. Constraint rechecks, buffer overrides for required
+  reductions, supported admission, representative evidence, and
+  quant/execution-owner approval keep P1.7 open. This work remains local and
+  will not be pushed unless explicitly requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after
