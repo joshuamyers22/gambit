@@ -2,9 +2,9 @@
 
 import numpy as np
 import polars as pl
+from common import VALUATION_TIME, build_demo_account
 
 import gambit
-from common import VALUATION_TIME, build_demo_account
 
 account, contracts = build_demo_account()
 contract_list = [contracts["ACME"], contracts["INDEX-FUT"]]
@@ -27,7 +27,7 @@ pending = gambit.MarketOrder(contract=contracts["ACME"], timestamp=VALUATION_TIM
 
 result = gambit.ExecutableTargetBuilder(
     {
-        "ACME": gambit.TradableUnitRule(),
+        "ACME": gambit.TradableUnitRule(no_trade_band=15_000.0),
         "INDEX-FUT": gambit.TradableUnitRule(),
     }
 ).build(
@@ -41,5 +41,6 @@ result = gambit.ExecutableTargetBuilder(
 )
 
 assert result.positions["target_quantity"].to_list() == [1_000, -3]
-assert [(order.contract.symbol, order.qty) for order in result.orders] == [("ACME", 100), ("INDEX-FUT", -1)]
+assert result.positions["buffer_applied"].to_list() == [True, False]
+assert [(order.contract.symbol, order.qty) for order in result.orders] == [("INDEX-FUT", -1)]
 print(result.positions)

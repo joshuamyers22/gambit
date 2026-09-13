@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from numbers import Integral
+from numbers import Integral, Real
 from types import MappingProxyType
 
 import numpy as np
@@ -29,10 +29,11 @@ class TargetRounding(str, Enum):
 
 @dataclass(frozen=True)
 class TradableUnitRule:
-    """Whole-contract lot size and rounding rule for one instrument."""
+    """Whole-contract rounding and base-currency no-trade band for one instrument."""
 
     lot_size: int = 1
     rounding: TargetRounding = TargetRounding.NEAREST
+    no_trade_band: float = 0.0
 
     def __post_init__(self) -> None:
         if isinstance(self.lot_size, bool) or not isinstance(self.lot_size, Integral):
@@ -42,7 +43,13 @@ class TradableUnitRule:
             raise ValueError("tradable lot_size must be a positive platform integer")
         if not isinstance(self.rounding, TargetRounding):
             raise TypeError("tradable rounding must be TargetRounding")
+        if isinstance(self.no_trade_band, bool) or not isinstance(self.no_trade_band, Real):
+            raise TypeError("tradable no_trade_band must be a real number")
+        no_trade_band = float(self.no_trade_band)
+        if not math.isfinite(no_trade_band) or no_trade_band < 0:
+            raise ValueError("tradable no_trade_band must be finite and non-negative")
         object.__setattr__(self, "lot_size", lot_size)
+        object.__setattr__(self, "no_trade_band", no_trade_band)
 
     def round(self, raw_quantity: float) -> int:
         """Round in lot units; nearest ties move away from zero."""
@@ -146,11 +153,28 @@ class ExecutableTargetBuilder:
             current_quantity = self._position(account, contract, calculation.valuation_time)
             pending_quantity = pending_by_symbol.get(symbol, 0)
             projected_quantity = current_quantity + pending_quantity
-            order_quantity = target_quantity - projected_quantity
             bounds = np.iinfo(np.int_)
-            if not bounds.min <= order_quantity <= bounds.max:
+            if not bounds.min <= projected_quantity <= bounds.max:
+                raise ValueError(
+                    f"projected target quantity is outside the platform integer range for {symbol}"
+                )
+            unbuffered_order_quantity = target_quantity - projected_quantity
+            if not bounds.min <= unbuffered_order_quantity <= bounds.max:
                 raise ValueError(f"target order quantity is outside the platform integer range for {symbol}")
-            achieved_exposure = target_quantity * unit_notional
+            rounded_target_exposure = target_quantity * unit_notional
+            projected_exposure = projected_quantity * unit_notional
+            if not math.isfinite(rounded_target_exposure) or not math.isfinite(projected_exposure):
+                raise ValueError(f"target exposure arithmetic must remain finite for {symbol}")
+            inside_no_trade_band = (
+                abs(rounded_target_exposure - projected_exposure) <= rule.no_trade_band
+            )
+            buffer_applied = bool(unbuffered_order_quantity and inside_no_trade_band)
+            order_quantity = 0 if buffer_applied else unbuffered_order_quantity
+            post_order_quantity = projected_quantity + order_quantity
+            achieved_exposure = post_order_quantity * unit_notional
+            tracking_error = achieved_exposure - target_exposure
+            if not math.isfinite(achieved_exposure) or not math.isfinite(tracking_error):
+                raise ValueError(f"target exposure arithmetic must remain finite for {symbol}")
             rows.append(
                 {
                     "symbol": symbol,
@@ -165,14 +189,21 @@ class ExecutableTargetBuilder:
                     "base_unit_notional": unit_notional,
                     "lot_size": rule.lot_size,
                     "rounding": rule.rounding.value,
+                    "no_trade_band": rule.no_trade_band,
                     "raw_target_quantity": raw_target,
                     "target_quantity": target_quantity,
+                    "rounded_target_exposure": rounded_target_exposure,
                     "current_quantity": current_quantity,
                     "pending_quantity": pending_quantity,
                     "projected_quantity": projected_quantity,
+                    "projected_net_exposure": projected_exposure,
+                    "unbuffered_order_quantity": unbuffered_order_quantity,
+                    "inside_no_trade_band": inside_no_trade_band,
+                    "buffer_applied": buffer_applied,
                     "order_quantity": order_quantity,
+                    "post_order_quantity": post_order_quantity,
                     "achieved_net_exposure": achieved_exposure,
-                    "tracking_error": achieved_exposure - target_exposure,
+                    "tracking_error": tracking_error,
                 }
             )
             if order_quantity:
@@ -199,12 +230,19 @@ class ExecutableTargetBuilder:
                 "base_unit_notional": pl.Float64,
                 "lot_size": pl.Int64,
                 "rounding": pl.String,
+                "no_trade_band": pl.Float64,
                 "raw_target_quantity": pl.Float64,
                 "target_quantity": pl.Int64,
+                "rounded_target_exposure": pl.Float64,
                 "current_quantity": pl.Int64,
                 "pending_quantity": pl.Int64,
                 "projected_quantity": pl.Int64,
+                "projected_net_exposure": pl.Float64,
+                "unbuffered_order_quantity": pl.Int64,
+                "inside_no_trade_band": pl.Boolean,
+                "buffer_applied": pl.Boolean,
                 "order_quantity": pl.Int64,
+                "post_order_quantity": pl.Int64,
                 "achieved_net_exposure": pl.Float64,
                 "tracking_error": pl.Float64,
             },

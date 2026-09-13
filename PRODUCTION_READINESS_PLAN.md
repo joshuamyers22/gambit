@@ -368,10 +368,10 @@ due triggers are not calendar commitments.
 |---|---|---|---|---|---|
 | P1.5 | Enforced point-in-time data access and revision identity | P0.2, P0.3 | Data/core owner | Before claiming causal access to revised or externally published data | Implementation complete 2026-09-12; representative owner-data qualification and data/core-owner approval pending |
 | P1.6 | Walk-forward fitting and out-of-sample experiment evaluation | P1.5, existing `Optimizer` | Quant/research owner | Before treating optimized research as validated out of sample | Implementation complete 2026-09-12; owned schedule/runner, training-only generic/covariance/tail-risk/forecast-scalar fitting, purge gaps, allowlisted optimizer selection, seeded process parity, durable experiment evidence, and chronological OOS equity implemented; quant/research-owner approval pending |
-| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time price/multiplier/FX conversion, explicit whole-lot rounding, tracking diagnostics, and current/pending-aware incremental proposals implemented locally 2026-09-12; buffering, risk/constraint rechecks, supported admission, evidence, and owner approval pending |
+| P1.7 | Whole-contract target construction, buffering, and risk rechecks | P0.7, P0.8, existing sizing/FX/covariance APIs | Quant/execution owner | Before executing portfolio-level risk targets through a supported adapter | In progress; point-in-time price/multiplier/FX conversion, explicit whole-lot rounding, base-currency no-trade bands, tracking diagnostics, and current/pending-aware incremental proposals implemented locally through 2026-09-13; risk/constraint rechecks, buffer overrides for required reductions, supported admission, representative evidence, and owner approval pending |
 | P1.8 | Futures roll-calendar, raw/adjusted price, and carry pipeline | P1.5, existing roll-order contracts | Futures/data owner | Before supporting continuous-futures research as a built-in workflow | Not started |
 | P2.3 | Forecast normalization, caps, and combination | P1.5; P1.6 for estimated weights | Quant/research owner | Multi-rule strategy workflow | Implementation complete 2026-09-12; fixed scaling/capping, fixed/equal combination, contribution/availability evidence, historical training-only scalar/weight/correlation estimates, bounded diversification, explicit missing policies, durable reconciled artifacts, and sizer handoff implemented locally; quant/research-owner approval pending |
-| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; P1.7 executable buffering, representative cost/participation and buffered comparison evidence, and owner approval pending |
+| P2.4 | Turnover, execution-cost attribution, and sensitivity reports | P0.8, existing costs/accounting; P1.7 for buffering comparisons | Quant/analytics owner | Cost-aware strategy selection | In progress; reconciled attribution, immutable built-in price diagnostics, and a deterministic fingerprinted sensitivity runner with paired variant comparisons implemented locally 2026-09-12; representative cost/participation and executable-buffer comparison evidence plus owner approval pending |
 | P2.5 | Batched historical/scenario risk with reusable calculations | P0.8, P0.9, P1.5 | Risk/core owner | Repeated portfolio risk across dates and scenarios | Not started |
 | P2.6 | Full-revaluation scenarios and sensitivity measures | P1.4, P1.5; P2.5 for batch execution | Quant/pricing owner | Before nonlinear derivative stress is represented as supported | Not started |
 | P2.7 | Reusable schedule/risk triggers and composed conditions | P0.7, P0.8, P1.5 | Core/strategy owner | Repeated schedule/condition logic in user strategies | Not started |
@@ -447,7 +447,7 @@ quantities and incremental orders that accounts for existing and pending positio
 - [x] Convert exposure targets using current price, contract multiplier, FX,
   and explicit tradable-unit rules. Define zero/negative-price handling and
   reject unsupported conversions instead of silently dividing by zero.
-- [ ] Start with deterministic rounding and a configurable no-trade band.
+- [x] Start with deterministic rounding and a configurable no-trade band.
   Add cost-versus-tracking-error optimization only behind that reference path.
 - [ ] Recompute risk after rounding; enforce long-only/reduce-only/no-trade and
   position constraints. Account for pending orders so repeated target evaluation
@@ -520,7 +520,7 @@ comparison of strategy variants, rather than duplicating those charge models.
 - [ ] Add repeatable cost/participation sensitivity sweeps and buffered versus
   unbuffered comparisons, recording assumptions with each experiment. The
   deterministic case/result boundary and controlled paired fixture are complete;
-  representative buffering evidence waits on P1.7's executable target layer.
+  representative buffering evidence waits on P1.7's risk-admitted executable path.
 
 Acceptance: costs reconcile to the ledger with no double counting; a zero-cost
 fixture has matching gross/net results; a controlled high-turnover strategy shows
@@ -1838,6 +1838,34 @@ release merely because another library offers them.
   No-trade buffering, post-rounding risk/constraint rechecks, supported admission,
   representative evidence, and quant/execution-owner approval keep P1.7 open.
   This work remains local and will not be pushed unless explicitly requested.
+
+### 2026-09-13 — Thirty-ninth slice (deterministic no-trade buffering)
+
+- Added an optional finite non-negative ``no_trade_band`` to each tradable-unit
+  rule. Its units are an absolute amount in the calculation base currency, and
+  its inclusive symmetric boundary is centered on the rounded executable target
+  rather than an untradable fractional quantity. A zero band preserves the
+  unbuffered reference path.
+- Buffer decisions compare the rounded target exposure with projected exposure,
+  including current holdings and every still-open order. A position inside the
+  band emits no proposal; a position outside trades to the deterministic rounded
+  target. Quantity and exposure arithmetic must remain within explicit platform
+  and finite-value bounds.
+- Extended detached diagnostics with rounded-target and projected exposures,
+  the unbuffered quantity, inclusive-band decision, applied-buffer flag,
+  post-order quantity, achieved exposure, and actual residual tracking error.
+  The documented example now demonstrates one buffered and one executable
+  adjustment without implying submission or risk admission.
+- Focused local evidence passed **48 executable-target, sizing, currency,
+  public-API, and executable risk-example tests**, including a controlled
+  oscillating-target comparison, pending-order projection, inclusive boundaries,
+  invalid band values, and an outside-band flattening move. Ruff, mypy over 58
+  source files, the standalone example, and strict Sphinx also passed. Full-gate
+  evidence will be recorded after the implementation commit. Post-rounding
+  risk/constraint rechecks, buffer overrides for required reductions, supported
+  admission, representative evidence, and quant/execution-owner approval keep
+  P1.7 open. This work remains local and will not be pushed unless explicitly
+  requested.
 
 For each slice: add or identify the safety net, reproduce the gap, make the
 smallest coherent change, run focused and full gates, attach before/after

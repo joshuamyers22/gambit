@@ -191,19 +191,27 @@ into whole-contract incremental order proposals:
    :linenos:
 
 ``ExecutableTargetBuilder`` requires one explicit ``TradableUnitRule`` per
-target symbol. Currency-labelled local point-in-time prices, contract multipliers, and an
-``FxRateSnapshot`` determine each base-currency unit notional. ``NEAREST`` uses
-half-away-from-zero rounding in lot units; ``TOWARD_ZERO`` is the conservative
-alternative. Zero and negative prices are unsupported and fail explicitly.
+target symbol. Currency-labelled local point-in-time prices, contract
+multipliers, and an ``FxRateSnapshot`` determine each base-currency unit
+notional. ``NEAREST`` uses half-away-from-zero rounding in lot units;
+``TOWARD_ZERO`` is the conservative alternative. Zero and negative prices are
+unsupported and fail explicitly.
 
-The result retains raw and rounded targets, achieved exposure and tracking
-error, current holdings, still-open order quantity, projected holdings, and the
-new incremental quantity. Cancellation-requested orders remain reserved until
-their cancellation is acknowledged, so repeating an unchanged target does not
-create duplicate exposure. Returned orders are proposals only: this first P1.7
-boundary does not submit them or bypass existing risk admission. No-trade bands,
-post-rounding portfolio-risk rechecks, and constraint-aware submission remain
-pending.
+``no_trade_band`` is an inclusive symmetric absolute exposure amount in the
+calculation base currency around the rounded target. When projected holdings are
+inside it, the builder emits no order and retains the resulting tracking error;
+outside it, the proposal trades to the rounded target. A zero band reproduces
+the unbuffered reference path.
+
+The result retains raw and rounded targets, projected exposure, the unbuffered
+quantity, the buffer decision, achieved exposure and tracking error, current
+holdings, still-open order quantity, and the final incremental quantity.
+Cancellation-requested orders remain reserved until their cancellation is
+acknowledged, so repeating an unchanged target does not create duplicate
+exposure. Returned orders are proposals only: this P1.7 boundary does not submit
+them, override buffering for required risk reductions, or bypass existing risk
+admission. Post-rounding portfolio-risk rechecks and constraint-aware submission
+remain pending.
 
 Cost and turnover diagnostics
 -----------------------------
@@ -251,8 +259,8 @@ case and preserve the original exception as their cause.
 comparison identities and returns ``buffered - unbuffered``. It does not assert
 that added costs reduce P&L: changed fills, participation limits, risk decisions,
 and strategy state can produce a different path. The current controlled example
-demonstrates the experiment boundary; representative strategy evidence and the
-P1.7 executable no-trade buffer remain pending.
+demonstrates the experiment boundary; representative strategy and
+risk-admitted executable-buffer comparison evidence remain pending.
 
 Volatility-targeted sizing
 --------------------------

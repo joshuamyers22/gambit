@@ -126,11 +126,13 @@ still required.
 ``TradableUnitRule``, and ``TargetRounding`` form the first P1.7 conversion
 boundary. They translate base-currency exposure targets through point-in-time
 positive local prices, contract multipliers, and explicit FX into deterministic
-whole-lot targets. Diagnostics retain achieved exposure and tracking error;
-incremental proposals account for current holdings and all still-open orders.
-The builder returns detached market-order proposals but does not submit them,
-apply a no-trade band, re-evaluate portfolio risk after rounding, or replace
-existing risk admission.
+whole-lot targets. Each unit rule may declare an inclusive symmetric
+base-currency no-trade band around its rounded target. Diagnostics retain the
+unbuffered quantity, buffer decision, achieved exposure, and actual tracking
+error; incremental proposals account for current holdings and all still-open
+orders. The builder returns detached market-order proposals but does not submit
+them, re-evaluate portfolio risk after rounding, override a buffer for required
+risk reduction, or replace existing risk admission.
 
 ## Internal scheduling and debugging storage
 

@@ -130,6 +130,95 @@ def test_rounding_is_deterministic_for_sign_ties_and_lots() -> None:
         nearest.round(np.finfo(float).max)
 
 
+def test_no_trade_band_reduces_controlled_target_oscillation() -> None:
+    builder, exposures, contracts, prices, fx, context, account = _fixture("buffer")
+    buffered = ExecutableTargetBuilder(
+        {
+            contracts[0].symbol: TradableUnitRule(no_trade_band=100.0),
+            contracts[1].symbol: TradableUnitRule(lot_size=2),
+        }
+    )
+    low = exposures.with_columns(
+        pl.Series("net_exposure", [249.0, -1_200.0], dtype=pl.Float64)
+    )
+    high = exposures.with_columns(
+        pl.Series("net_exposure", [351.0, -1_200.0], dtype=pl.Float64)
+    )
+
+    unbuffered_orders = sum(
+        len(builder.build(target, contracts, prices, fx, context, account).orders)
+        for target in (low, high)
+    )
+    buffered_results = [
+        buffered.build(target, contracts, prices, fx, context, account)
+        for target in (low, high)
+    ]
+
+    assert unbuffered_orders == 2
+    assert sum(len(result.orders) for result in buffered_results) == 0
+    assert buffered_results[0].positions.select(
+        "no_trade_band",
+        "rounded_target_exposure",
+        "projected_net_exposure",
+        "unbuffered_order_quantity",
+        "inside_no_trade_band",
+        "buffer_applied",
+        "order_quantity",
+        "post_order_quantity",
+        "achieved_net_exposure",
+        "tracking_error",
+    ).row(0) == (100.0, 200.0, 300.0, -1, True, True, 0, 3, 300.0, 51.0)
+    assert buffered_results[1].positions[0, "tracking_error"] == -51.0
+
+
+def test_no_trade_band_uses_pending_projection_but_allows_material_reduction() -> None:
+    _builder, exposures, contracts, prices, fx, context, account = _fixture("buffer-pending")
+    builder = ExecutableTargetBuilder(
+        {
+            contracts[0].symbol: TradableUnitRule(no_trade_band=100.0),
+            contracts[1].symbol: TradableUnitRule(lot_size=2),
+        }
+    )
+    target = exposures.with_columns(
+        pl.Series("net_exposure", [451.0, -1_200.0], dtype=pl.Float64)
+    )
+    pending = MarketOrder(contract=contracts[0], timestamp=TIMESTAMP, qty=1)
+
+    buffered = builder.build(
+        target, contracts, prices, fx, context, account, pending_orders=[pending]
+    )
+    reduction = builder.build(
+        target.with_columns(
+            pl.when(pl.col("symbol") == contracts[0].symbol)
+            .then(0.0)
+            .otherwise(pl.col("net_exposure"))
+            .alias("net_exposure")
+        ),
+        contracts,
+        prices,
+        fx,
+        context,
+        account,
+    )
+
+    assert buffered.positions.select(
+        "pending_quantity",
+        "projected_quantity",
+        "unbuffered_order_quantity",
+        "buffer_applied",
+        "order_quantity",
+    ).row(0) == (1, 4, 1, True, 0)
+    assert [(order.contract.symbol, order.qty) for order in reduction.orders] == [
+        (contracts[0].symbol, -3)
+    ]
+
+
+@pytest.mark.parametrize("band", [True, "1", -1.0, np.nan, np.inf])
+def test_no_trade_band_rejects_ambiguous_values(band: object) -> None:
+    with pytest.raises((TypeError, ValueError), match="no_trade_band"):
+        TradableUnitRule(no_trade_band=band)  # type: ignore[arg-type]
+
+
 def test_small_target_rounds_to_zero_with_visible_tracking_error() -> None:
     builder, exposures, contracts, prices, fx, context, _account = _fixture("small")
     account = Account([contracts[0].contract_group], np.array([TIMESTAMP]), _price, SimpleNamespace())
