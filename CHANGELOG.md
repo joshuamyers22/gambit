@@ -5,6 +5,8 @@ have not yet been released are collected below.
 
 ## Unreleased
 
+## 1.1.0 — 2026-09-13
+
 ### Added
 
 - Bounded weekly/manual CSV and ZIP fuzz campaigns with changing recorded seeds,
