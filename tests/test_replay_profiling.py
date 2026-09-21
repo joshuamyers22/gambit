@@ -32,7 +32,7 @@ def test_probe_modes_and_python_profile_preserve_prefix_results(modules, tmp_pat
     for mode in ("full", "timers_only"):
         trial = runner.run_trial(tmp_path / mode, spec, session_id="diagnostic-test",
                                  diagnostic=dict(instrumentation=mode, prefix_ticks=10003))
-        assert trial["status"] == "ok", trial
+        assert trial["status"] == "ok", (trial["failure_reason"], (tmp_path / mode / "stderr.txt").read_text())
         trials.append(trial)
     assert trials[0]["measurement"]["controls"] == trials[1]["measurement"]["controls"]
     report = json.loads((tmp_path / "timers_only/worker-result.json").read_text())
@@ -58,7 +58,7 @@ def test_fifo_batch_metrics_preserve_hashes_and_stay_ineligible(modules, tmp_pat
         path = tmp_path / str(enabled)
         trial = runner.run_trial(path, spec, session_id="batch-metrics",
                                  diagnostic=dict(batch_metrics=enabled))
-        assert trial["status"] == "ok", trial
+        assert trial["status"] == "ok", (trial["failure_reason"], (path / "stderr.txt").read_text())
         report = json.loads((path / "worker-result.json").read_text())
         if enabled:
             assert report["batch_metrics"]["records"] == spec["ticks"]
