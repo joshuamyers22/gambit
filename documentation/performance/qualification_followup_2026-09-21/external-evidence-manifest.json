@@ -1,0 +1,300 @@
+{
+  "files": [
+    {
+      "path": "collect_evidence.py",
+      "sha256": "003ff6853891e4026dd9991a97eab87e55a9470c16a856c4be7b2ff15ec17b48",
+      "size_bytes": 8641
+    },
+    {
+      "path": "diagnostic-ci-progress.json",
+      "sha256": "62c189af952b5c0dc8709fa85c3c0eafcbb5c90d3c40351ffb081b59ded7dc25",
+      "size_bytes": 44833
+    },
+    {
+      "path": "diagnostic-linux312.log",
+      "sha256": "841bc326d419b6b83e55cd22f22010504fb5d61dff055ce7c73ab4381d6dddc5",
+      "size_bytes": 73332
+    },
+    {
+      "path": "docs.log",
+      "sha256": "a94ee387e5f3c381b20ca7edb04d0dc80305346f4d9a7dd66873b7c3b9128d6c",
+      "size_bytes": 4983
+    },
+    {
+      "path": "document-contract-tests.log",
+      "sha256": "e0a6ea218ea5d725ce7272da8d68d45a029e489423e03af6960c7bff0f7fe414",
+      "size_bytes": 98
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/False/request.json",
+      "sha256": "787c87aeef4e333ca7d865ec0b2b2093bf6e0c79b3b34abf8433a30e910b09e2",
+      "size_bytes": 631
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/False/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/False/test-controller.json",
+      "sha256": "2969a6f55fbc3cb43872d09214529903e0ef7d9eb984b0a97a773477c9ff071a",
+      "size_bytes": 7379
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/False/trial.json",
+      "sha256": "fbaecbc465f67affcb6a35cccd733e814b5495e7f50ace64ced078e45bf9971b",
+      "size_bytes": 6959
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/False/worker-result.json",
+      "sha256": "345d7718fb99e19fb617e8c93e72bba00cf3426d44fffcd49ed5bdc1c9f51241",
+      "size_bytes": 3764
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/True/request.json",
+      "sha256": "f69f175c4eb8f05e6b025ac7a8245b4b2d76a2528e4ef57241cd4c517d1a0da3",
+      "size_bytes": 630
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/True/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/True/test-controller.json",
+      "sha256": "8047fb3fa0d4921796c27a2737f4993182e11976b737ed6bb1ae058faabd05bf",
+      "size_bytes": 7376
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/True/trial.json",
+      "sha256": "7ac1f11ab6fdc5572b35cc4734a6462b63dfb5d1f2af94527be0c09a052efe39",
+      "size_bytes": 6956
+    },
+    {
+      "path": "focused-tests/test_fifo_batch_metrics_preser0/True/worker-result.json",
+      "sha256": "5bd82480bbd5976684192b97ecc0d20f7121a89f637d464061748641a4eba4dc",
+      "size_bytes": 4567
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/full/request.json",
+      "sha256": "21d810e747c63308ec8056af37f5f53fd781842edecc72407ea6b1a179dfb13a",
+      "size_bytes": 661
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/full/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/full/test-controller.json",
+      "sha256": "6397f9aa747fa2ed4b3999a9cd8d77ac75c85e842f69d9546c45fd28b749ba37",
+      "size_bytes": 7410
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/full/trial.json",
+      "sha256": "9ef1ad6e24a7c71e1ccb51b0a37d0fc38c28e1512166c6603861d5649fbd7af3",
+      "size_bytes": 6988
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/full/worker-result.json",
+      "sha256": "23e325625c0f96f18692a8ff9495064ede94515400d858ab54f2b8ffb5d3f3f2",
+      "size_bytes": 3784
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/python-profile.pstats",
+      "sha256": "f3bc13ea14976d7f5659c6642e69c9ced2b8d755d8080154cb7e2cfd37f57849",
+      "size_bytes": 3551
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/request.json",
+      "sha256": "6c3ccef758484415095e5f2dde1d4048e68c94bfc0c64b11287a779f6500add7",
+      "size_bytes": 652
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/test-controller.json",
+      "sha256": "2e227180a00b3cc5f059edebe0f72dda18053a2938495cee193e920436b1d043",
+      "size_bytes": 7404
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/trial.json",
+      "sha256": "3d9d408480f7b0eff9280c6cb85dea29b20330e8ec0c0d93d8f65c72313ddfe0",
+      "size_bytes": 6982
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/python/worker-result.json",
+      "sha256": "7ebed848d79b77a115bf02ff558b1f9670f5d7cb723b9ac5492edbe12f81a71f",
+      "size_bytes": 3774
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/timers_only/request.json",
+      "sha256": "da3e9b7a9ec598a43947efec68e206a0d07aff0e446f5cb4fb11b74b9e04ac8b",
+      "size_bytes": 668
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/timers_only/stderr.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/timers_only/test-controller.json",
+      "sha256": "2532a052af5d8e86f47f01d7010df4be501a59cebedbac2fb4f7948849495681",
+      "size_bytes": 7427
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/timers_only/trial.json",
+      "sha256": "2d47cea6cd4bc3f935bb2aa94586a0c9268eed41f4845e160706d65d591842dd",
+      "size_bytes": 7005
+    },
+    {
+      "path": "focused-tests/test_probe_modes_and_python_pr0/timers_only/worker-result.json",
+      "sha256": "5bca1bcb7449054c98256f0f764ce08d39adde9b3e5fc3b0b168eb6b3fb1ac51",
+      "size_bytes": 3776
+    },
+    {
+      "path": "focused-tests.log",
+      "sha256": "e3f402d49f35f63845438d137f74fe8d93102ab426cd666561595d2ac569857d",
+      "size_bytes": 99
+    },
+    {
+      "path": "full-volume-overhead.log",
+      "sha256": "0af7de997ac6da9551d2a47e8be852b535755b2fc8dd968d399533ae5bd9daeb",
+      "size_bytes": 30913
+    },
+    {
+      "path": "initial-status.nul",
+      "sha256": "82caa015b23313f18c205ae5f54b1122954ff0c1d2e6d389f0f7860afe75b08d",
+      "size_bytes": 2539
+    },
+    {
+      "path": "linux311.log",
+      "sha256": "db7a8707b99ee65f52752a0f3dd12677582dd3c81f7eef79cd8a3d45ba1c3149",
+      "size_bytes": 69063
+    },
+    {
+      "path": "linux312.log",
+      "sha256": "6831d820c66c1cf9d78e91af7516b3bb1c4d1fa592a510a7d4ff6d96cf39ff74",
+      "size_bytes": 74086
+    },
+    {
+      "path": "make-check.log",
+      "sha256": "fad2253b40532cd6e1409631adaa87298702b1e209a3f0f313d4f88f8e9cf519",
+      "size_bytes": 67120
+    },
+    {
+      "path": "prepare_candidate.py",
+      "sha256": "e571ccec7ee4eae0d6063ccb4df93cb41099158e38a777b490d218a548e13bdd",
+      "size_bytes": 2200
+    },
+    {
+      "path": "prepare_qualification.py",
+      "sha256": "a0af533c9f205bc4b9fefe2952c46cb319372fba0e0d880af497307b24a6d206",
+      "size_bytes": 1598
+    },
+    {
+      "path": "preserved-worktree-status.nul",
+      "sha256": "82caa015b23313f18c205ae5f54b1122954ff0c1d2e6d389f0f7860afe75b08d",
+      "size_bytes": 2539
+    },
+    {
+      "path": "progress.py",
+      "sha256": "ab711c613e99f4cb9b20eed3d94b3a45ca53efbb94bd18c897e162c9173d84b9",
+      "size_bytes": 975
+    },
+    {
+      "path": "release-artifact-validation.log",
+      "sha256": "a7d4478bcc28fdfcb72a0dc8035f42e4dd67ef9fd15876c2a6003e084755fdcc",
+      "size_bytes": 52
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp310-cp310-macosx_15_0_arm64.whl",
+      "sha256": "cd4acf008e89c4499c952082b45022dac801280e723cc09e4e70e992eaa9599d",
+      "size_bytes": 1028911
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp310-cp310-macosx_15_0_x86_64.whl",
+      "sha256": "196b60b8fdffa8627d6c1380c009beafcadb328f6c33fe825e8f0d0181d955fb",
+      "size_bytes": 1105971
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "e080b28edcb913538b9f0f4d8c53df784f5efd6c69176d5942b5a6fe55e7955c",
+      "size_bytes": 9370229
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp311-cp311-macosx_15_0_arm64.whl",
+      "sha256": "be0026dc36a12d678b503444ac3acda823e1f7ef928f9afd02284a61e4b69f8c",
+      "size_bytes": 1030642
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp311-cp311-macosx_15_0_x86_64.whl",
+      "sha256": "f816c060baec16772b6e22e440f720f92a83ad8e7d00fcd7094920caa2f36ea2",
+      "size_bytes": 1106363
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "c899fa9a1d117d73bc2970bdf48ace155c6f4dde8cc3e98eb3be3e1e6b2ae41b",
+      "size_bytes": 9470262
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp312-cp312-macosx_15_0_arm64.whl",
+      "sha256": "1eab2bb28f2b3c88d4800c681e4014d36a76c59a3f3a8a7e90ef3df727b29520",
+      "size_bytes": 1033334
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp312-cp312-macosx_15_0_x86_64.whl",
+      "sha256": "2f956340b9d325427a12b16a2a4123c9226973abffc0fd1f242d46ff8514c359",
+      "size_bytes": 1112539
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "50d741535e78526166fd16655b3126234b323787bb8a92190f7c5d9b45e17d78",
+      "size_bytes": 9658619
+    },
+    {
+      "path": "release-artifacts/gambit_markets-1.1.0.tar.gz",
+      "sha256": "6a56a4044d4325c63a40defc7bc76391186af51b884a53d387d0fcaa65da1403",
+      "size_bytes": 460424
+    },
+    {
+      "path": "release-fixed.log",
+      "sha256": "de275fa28f141fad8fc0ecd01566b901263452af5cab25fd9feaf09088f6b297",
+      "size_bytes": 2871851
+    },
+    {
+      "path": "release-initial.json",
+      "sha256": "04c4835461c5006ee1314b4e7cf2cf0845f0675ee07b8616c9b9b2178fc700ed",
+      "size_bytes": 60612
+    },
+    {
+      "path": "release-test-fix.patch",
+      "sha256": "1aa486cdbc7973826ab8cda53e30e28fa2ffce8fd682a9f8c3aa3ad1e628e2eb",
+      "size_bytes": 4369
+    },
+    {
+      "path": "review-notes.md",
+      "sha256": "06a830eb002648faa5df10c414ca93f8f1d672fe24a029f2459fdfc55c0a9574",
+      "size_bytes": 4207
+    },
+    {
+      "path": "review_campaign.py",
+      "sha256": "da0010347529e429b3dad8211314cb9937a58bbd0c282495ef71a77b1acbb4fe",
+      "size_bytes": 2215
+    },
+    {
+      "path": "run_full_overhead.py",
+      "sha256": "182948bfd598c0209bd8b2380ae72cfed0eb34a1b7021fdfd114dc151f12c239",
+      "size_bytes": 2153
+    },
+    {
+      "path": "run_qualification.py",
+      "sha256": "14da7287b94091da6d46040240cfbe204be87b7f53fd987c0542ca8abfcc3919",
+      "size_bytes": 6771
+    }
+  ],
+  "root": "/Users/jkm0607/Projects/gambit-evidence/lat09-promotion-2026-09-21"
+}

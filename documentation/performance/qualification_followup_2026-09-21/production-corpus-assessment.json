@@ -1,0 +1,15 @@
+{
+  "reviewer": "Joshua Myers",
+  "review_status": "pending",
+  "user_disposition": "Production-data validation deferred for now per workspace reply; gate remains open and is not waived for promotion.",
+  "selection_authority": "User delegated corpus and strategy selection in workspace session",
+  "selected_strategy_scope": "Single-owner passive FIFO long/flat replay with integer price/quantity units, matching the native supported execution policy",
+  "required_corpus": "Event-level best bid/ask prices and displayed sizes, individual trades with price/size/aggressor, stable event ordering and documented timestamp/receive-time semantics",
+  "local_candidate": "/Volumes/HBK_ARCHIVE/heartbreakkid/ivolatility/equity_intraday_options_5m/symbol=SPX/year=2026/month=08/date=2026-08-03/options_5m.parquet",
+  "schema_source": "/Users/jkm0607/Projects/heartbreakkid/src/ivol_wh/intraday_options_parquet.py",
+  "schema_assessment": "The documented source is MINUTE_5 option snapshots. It has bid/ask sizes and interval/cumulative volume, but no ordered individual trade stream or trade aggressor field. Snapshot volume cannot establish queue depletion between snapshots.",
+  "fifo_suitability": "rejected",
+  "load_decode_suitability": "Potential bounded production-format storage benchmark, subject to metadata/data validation; does not close FIFO semantic acceptance",
+  "promotion_blocker": "No suitable event-level production FIFO corpus has been identified. Snapshot intervals must not be expanded into fabricated trades or receive timestamps.",
+  "calibration_status": "No empirical production latency, queue-position or fee calibration supplied; synthetic v1 values remain engineering assumptions."
+}

@@ -5,6 +5,14 @@ The [LAT-09 review](../performance/qualification_decision_2026-09-20.md) records
 statistical performance and production gates have not passed. LAT-09 closes the
 disposition review, not those outstanding qualification requirements.
 
+The [2026-09-21 follow-up](../performance/qualification_followup_2026-09-21.md)
+provides a clean committed candidate and passing supported-platform release
+validation, including nine repaired wheels and isolated installation checks.
+Full-volume probe overhead is +0.719% (95% interval +0.407% to +1.025%): the
+≤1% target remains inconclusive. The 200-trial campaign has not started.
+Production-data validation is deferred at the user's request. Joshua Myers is
+the named reviewer; review and promotion approval remain pending.
+
 ## Retained configuration
 
 - Keep the original concurrent ring selected by the user in LAT-06.

@@ -1,0 +1,30 @@
+{
+  "candidate": "/Users/jkm0607/Projects/gambit-lat09-release-fixes",
+  "candidate_commit": "126451bfc3c16b2a2bca2ce810fbdd9f3accad6d",
+  "candidate_tree": "1e4945489db77a6b4aac4e689f2b3aeda2ead9de",
+  "runtime_changes_since_probe_candidate": [],
+  "test_changes": [
+    "tests/test_replay_profiling.py"
+  ],
+  "artifacts": [
+    {
+      "path": "src/gambit/_io.cpython-310-darwin.so",
+      "sha256": "10dbdbabd744bfe97aa4ae2570cef37872be82a920e8f12dd45777f23fd52676"
+    },
+    {
+      "path": "src/gambit/_factor_cache.cpython-310-darwin.so",
+      "sha256": "9bb6074a0149a302edd4a1f8ab3063f3ae830b15418342738dcacfde450ffb39"
+    },
+    {
+      "path": "src/gambit/_options.cpython-310-darwin.so",
+      "sha256": "1bba08d80852719ac330448311bc557789cef4a842efbb858ce63ebf96a85b0f"
+    },
+    {
+      "path": "src/gambit/compute_pnl.cpython-310-darwin.so",
+      "sha256": "7d6f22a06cff3f633744bc21db55837bd8450ec8c35ce4a71db236d94722b51b"
+    }
+  ],
+  "release_validation": "https://github.com/joshuamyers22/gambit/actions/runs/35605565645",
+  "reviewer": "Joshua Myers",
+  "review_status": "pending"
+}

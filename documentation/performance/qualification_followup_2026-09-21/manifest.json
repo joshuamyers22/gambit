@@ -1,0 +1,70 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "2e2bf49f696b17426842f141f55850b8daa7cba6fe7d4f53774597c1dff6d426",
+      "size_bytes": 1393
+    },
+    {
+      "path": "candidate.json",
+      "sha256": "b109bb3221c7e00f6110c72a4ef2014c2316f7cd7d3a9a3e70ca4e2d476ffa6c",
+      "size_bytes": 23435
+    },
+    {
+      "path": "decision.json",
+      "sha256": "705aa61fc2c4cec7080863c3c2ac204f4e7fb43672688c32048b66798efd4b97",
+      "size_bytes": 4799
+    },
+    {
+      "path": "external-evidence-manifest.json",
+      "sha256": "b97e28c33cc1bf28ee771adbfcfda602b12970fc58e59f6d0e8e47be8bb2b32b",
+      "size_bytes": 11343
+    },
+    {
+      "path": "full-volume-probe-trials.tar.gz",
+      "sha256": "b4baebc0374b6aaaebfa05bd5679334fa5491f8d8207d9383167890feb5fb058",
+      "size_bytes": 42986
+    },
+    {
+      "path": "probe-experiment.json",
+      "sha256": "21259fc5beeed600dca1bce8f4d337209a1285f090fe4fb31e495b3392d332da",
+      "size_bytes": 3084
+    },
+    {
+      "path": "probe-summary.json",
+      "sha256": "b75124cfb57962443a516d1d401442178a158ddd00490a4c97e85f7e74e9354f",
+      "size_bytes": 4591
+    },
+    {
+      "path": "production-corpus-assessment.json",
+      "sha256": "0782d5dd9f39fed1a3ce04c884b2fd06f35a075ec0ff3d6a1bf15aa2ebea4395",
+      "size_bytes": 1708
+    },
+    {
+      "path": "qualification-candidate.json",
+      "sha256": "2a57f92a92c9bc29cf8c1b4d72f4d17e597925dc13cb2887f7e4499f71a447e6",
+      "size_bytes": 1107
+    },
+    {
+      "path": "release-artifacts.json",
+      "sha256": "27ae92a45a7a2eeb1a09bc56b9ce645ffeac47236866365115858c26b38e3279",
+      "size_bytes": 2321
+    },
+    {
+      "path": "release-ci-logs.tar.gz",
+      "sha256": "cf881499352b44be188de73ae15e5e5971709f9c8b3c4ff12e6b30d59a549903",
+      "size_bytes": 444457
+    },
+    {
+      "path": "release-fixed-complete.json",
+      "sha256": "0a735552c261b1d65e5c57bacfb4b44a888dcc6d75893017e459ba325c36c807",
+      "size_bytes": 64328
+    },
+    {
+      "path": "validation-and-reproduction.tar.gz",
+      "sha256": "e00365c123ab6a591769ea8036fcc7628072c36e15488bba448ad0154d8d4e55",
+      "size_bytes": 37743
+    }
+  ],
+  "schema": "gambit-lat09-followup-evidence-v1"
+}

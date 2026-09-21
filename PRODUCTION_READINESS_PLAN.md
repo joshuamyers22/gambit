@@ -375,7 +375,19 @@ execution 3.982–4.068 seconds; these are not qualified p95 observations. A rev
 committed candidate, Linux x86-64 release evidence, full-volume probe review,
 four attested sessions of 50 trials, representative production data/semantics and
 independent review remain required. The [runbook](documentation/operations/replay_qualification.md)
-records rollback and reopening steps. P1.2 promotion remains open.
+records rollback and reopening steps. Those were the outstanding requirements
+at the 2026-09-20 review.
+
+The [2026-09-21 promotion follow-up](documentation/performance/qualification_followup_2026-09-21.md)
+committed candidate `126451b` and completed release validation: Linux x86-64 and
+both macOS architectures, Python 3.10–3.12, nine repaired wheels, source
+distribution, isolated installations and the quality/sanitizer jobs passed.
+A demonstrated Linux test-controller memory issue was fixed without changing
+the native implementation, benchmark runner or 512 MiB ceiling. Thirty complete
+full-volume probe pairs gave +0.719% execution overhead, with a 95% interval of
++0.407% to +1.025%; the ≤1% target remains inconclusive. The four-session campaign
+has not started. Production-corpus validation is deferred per the user; Joshua
+Myers is the named reviewer, with signoff pending. P1.2 promotion remains open.
 
 Evidence: the [FIFO benchmark](documentation/performance/fifo_backtest_2026-09-04.md)
 records three-year native execution of 9.08–9.15 seconds against the proposed

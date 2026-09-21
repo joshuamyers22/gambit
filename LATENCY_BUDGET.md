@@ -264,6 +264,13 @@ replay decisions. Production clock-quality policy is outside synthetic v1.
 | LAT-05 optimization | [Measured FIFO specialization](documentation/performance/fifo_optimization_2026-09-20.md): 30 full primary pairs, p50 9.663 → 4.138 s, 57.19% median paired reduction (95% interval 57.06–57.38%); four control screens and renewed six-case parity passed | Retain as experimental; isolated dense maximum-RSS outlier investigated with retained replication/allocation evidence; probe-overhead, multi-session and production qualification remain open |
 | LAT-09 disposition | [Qualification review](documentation/performance/qualification_decision_2026-09-20.md): preserved trace evidence rechecked, fresh source-matched correctness/sanitizer/static-analysis/macOS package checks, eight controlled development trials | Remain experimental; primary 3.982–4.068 s is unqualified. Four-session/200-trial, full-volume probe, Linux x86-64, committed-candidate and representative production/reviewer requirements remain open |
 
+The [2026-09-21 LAT-09 follow-up](documentation/performance/qualification_followup_2026-09-21.md)
+adds committed candidate `126451b`, successful supported-platform release CI
+and 30 full-volume probe pairs. Median execution overhead is +0.719%, with a
+95% interval of +0.407% to +1.025%: the ≤1% target remains inconclusive and has
+not been relaxed or rounded into a pass. The 200-trial campaign remains unstarted;
+production-data validation is deferred and Joshua Myers's review is pending.
+
 The three historical runs do not establish p95, p99 or worst-case behavior.
 Historical artifacts retain their original candidate/unapproved language as
 provenance; this version supersedes their proposed engineering contract only.
