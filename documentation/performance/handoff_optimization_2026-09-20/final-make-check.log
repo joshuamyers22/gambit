@@ -1,0 +1,687 @@
+uv lock --check
+Resolved 174 packages in 3ms
+uv run --frozen --all-extras ruff check src tests tools benchmarks/controlled_replay.py benchmarks/replay_contract.py benchmarks/profile_replay.py benchmarks/fifo_parity.py benchmarks/controlled_handoff.py benchmarks/build_handoff_variant.py
+All checks passed!
+uv run --frozen --all-extras mypy
+Success: no issues found in 58 source files
+uv run --frozen --all-extras pytest --cov=gambit --cov-report=term-missing
+============================= test session starts ==============================
+platform darwin -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/jkm0607/Projects/gambit
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-7.1.0
+collected 2208 items
+
+tests/test_accounting_oracle.py ..                                       [  0%]
+tests/test_architecture.py .........                                     [  0%]
+tests/test_backtest_result.py ....................                       [  1%]
+tests/test_boundaries.py ............................................... [  3%]
+...........................................                              [  5%]
+tests/test_boundary_fuzz.py .                                            [  5%]
+tests/test_bundle_limits.py ............................................ [  7%]
+...............                                                          [  8%]
+tests/test_calculation.py .....                                          [  8%]
+tests/test_configuration.py ............................................ [ 10%]
+..............                                                           [ 11%]
+tests/test_control_plane.py .........                                    [ 11%]
+tests/test_controlled_handoff.py .......                                 [ 11%]
+tests/test_controlled_replay.py .........................                [ 12%]
+tests/test_cost_diagnostics.py .......                                   [ 13%]
+tests/test_cost_sensitivity.py ...........                               [ 13%]
+tests/test_covariance_risk.py .......                                    [ 14%]
+tests/test_crypto_tick_parity_benchmark.py ...........                   [ 14%]
+tests/test_currency.py ...                                               [ 14%]
+tests/test_data_lifecycle.py .....                                       [ 14%]
+tests/test_delivery_policy.py ...............                            [ 15%]
+tests/test_entry_rules.py ......................................         [ 17%]
+tests/test_evaluator_contracts.py ........                               [ 17%]
+tests/test_execution_costs.py ......                                     [ 17%]
+tests/test_execution_identity.py ....                                    [ 18%]
+tests/test_execution_lag.py .................                            [ 18%]
+tests/test_factor_admission.py ...                                       [ 19%]
+tests/test_factor_cache.py .........                                     [ 19%]
+tests/test_factor_cache_benchmark.py .                                   [ 19%]
+tests/test_factor_cli.py .........                                       [ 19%]
+tests/test_factor_dag.py ...........                                     [ 20%]
+tests/test_factor_device.py ..                                           [ 20%]
+tests/test_factor_identity.py ....................                       [ 21%]
+tests/test_factor_metrics.py ......                                      [ 21%]
+tests/test_factor_metrics_benchmark.py .                                 [ 21%]
+tests/test_factor_migration_benchmark.py .                               [ 21%]
+tests/test_factor_operations.py ....                                     [ 21%]
+tests/test_factor_store.py ....................................          [ 23%]
+tests/test_fifo_backtest.py ............................................ [ 25%]
+........                                                                 [ 25%]
+tests/test_fifo_parity.py .............................................. [ 27%]
+..............                                                           [ 28%]
+tests/test_fill_reconciliation_scaling.py ...........                    [ 29%]
+tests/test_financial_acceptance.py ..........................            [ 30%]
+tests/test_financial_mutation_runner.py .....                            [ 30%]
+tests/test_forecasting.py ...................                            [ 31%]
+tests/test_hdf5_hardening.py ........................................... [ 33%]
+..........................................                               [ 35%]
+tests/test_historical_output_disposition.py .......                      [ 35%]
+tests/test_instruments.py .............................                  [ 36%]
+tests/test_interactive_plot_contracts.py ............................... [ 38%]
+......                                                                   [ 38%]
+tests/test_ipc_fuzz_target.py ...................                        [ 39%]
+tests/test_ipc_validation.py ........................................... [ 41%]
+..........                                                               [ 41%]
+tests/test_latency_budget_contract.py ...                                [ 41%]
+tests/test_limit_execution_validation.py ............................... [ 43%]
+.....................                                                    [ 44%]
+tests/test_market_data.py .......                                        [ 44%]
+tests/test_markets.py .....................                              [ 45%]
+tests/test_moving_average_crossover.py .                                 [ 45%]
+tests/test_native_fuzz_runner.py .......                                 [ 45%]
+tests/test_native_io_hardening.py ...................................... [ 47%]
+......................................                                   [ 49%]
+tests/test_native_memory_probe.py .....                                  [ 49%]
+tests/test_native_reference.py ........                                  [ 49%]
+tests/test_numpy_leak_runner.py .................                        [ 50%]
+tests/test_optional_dependencies.py ........                             [ 51%]
+tests/test_order_callback_state.py ..................................... [ 52%]
+........                                                                 [ 53%]
+tests/test_order_decision_snapshot.py ............                       [ 53%]
+tests/test_order_lifecycle.py .......................................... [ 55%]
+.............                                                            [ 56%]
+tests/test_order_numeric_admission.py .................................. [ 57%]
+...............................                                          [ 59%]
+tests/test_order_reference_admission.py ................................ [ 60%]
+............................................                             [ 62%]
+tests/test_order_submission_identity.py ................................ [ 63%]
+..                                                                       [ 64%]
+tests/test_point_in_time_data.py ......................                  [ 65%]
+tests/test_polars_integration.py .....                                   [ 65%]
+tests/test_portfolio.py ........                                         [ 65%]
+tests/test_position_fill_sequences.py ...........................        [ 66%]
+tests/test_position_sizing.py ......                                     [ 67%]
+tests/test_public_api.py ....                                            [ 67%]
+tests/test_regressions.py .............................................. [ 69%]
+........................................................................ [ 72%]
+..................                                                       [ 73%]
+tests/test_replay_profiling.py ..............                            [ 74%]
+tests/test_risk.py ...........                                           [ 74%]
+tests/test_risk_examples.py .............                                [ 75%]
+tests/test_risk_measures.py ....                                         [ 75%]
+tests/test_risk_quantity_boundary.py ................................... [ 76%]
+..................................                                       [ 78%]
+tests/test_risk_reporting.py ....                                        [ 78%]
+tests/test_roll_expansion_boundary.py .................................. [ 80%]
+................                                                         [ 80%]
+tests/test_roll_identity.py .........                                    [ 81%]
+tests/test_simple_market_simulator.py ........                           [ 81%]
+tests/test_simulator_fill_quantities.py ................................ [ 83%]
+...............                                                          [ 83%]
+tests/test_sparse_iterations.py ........                                 [ 84%]
+tests/test_sparse_strategy.py .............                              [ 84%]
+tests/test_stages.py .......                                             [ 85%]
+tests/test_stateful_reconciliation.py ....                               [ 85%]
+tests/test_strategy.py ..                                                [ 85%]
+tests/test_strategy_golden.py .                                          [ 85%]
+tests/test_strategy_reporting.py ...                                     [ 85%]
+tests/test_target_positions.py .........................                 [ 86%]
+tests/test_tick_ring.py ................                                 [ 87%]
+tests/test_tick_ring_benchmark.py ....                                   [ 87%]
+tests/test_top_of_book_backtest.py .............................         [ 88%]
+tests/test_top_of_book_benchmark.py ....                                 [ 89%]
+tests/test_trade_numeric_boundary.py ................................    [ 90%]
+tests/test_trade_reference_boundary.py ............                      [ 91%]
+tests/test_universe.py .....                                             [ 91%]
+tests/test_var_position_sizing.py ....                                   [ 91%]
+tests/test_var_risk.py .......                                           [ 91%]
+tests/test_vwap_causality.py ............................                [ 93%]
+tests/test_vwap_stop_validation.py ..................................... [ 94%]
+...........................                                              [ 96%]
+tests/test_vwap_window_validation.py ................................... [ 97%]
+..........................                                               [ 98%]
+tests/test_walk_forward.py ...........................                   [100%]
+
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.10.20-final-0 _______________
+
+Name                                 Stmts   Miss  Cover   Missing
+------------------------------------------------------------------
+src/gambit/__init__.py                  57     10    82%   504-508, 516-520
+src/gambit/account.py                  306     47    85%   127, 169, 214, 225, 334, 370, 372, 395, 398-402, 591, 595-669, 677-680
+src/gambit/backtest_result.py          294     18    94%   124-125, 128-129, 145, 147, 176, 179, 187, 192-193, 353, 375, 391, 401, 403, 407, 437
+src/gambit/boundaries.py                68      7    90%   20-21, 46-47, 62, 69, 114
+src/gambit/bundle_limits.py             19      0   100%
+src/gambit/calculation.py               62      5    92%   55, 62, 69, 71, 77
+src/gambit/callback_contracts.py        89      7    92%   30, 32, 52, 79, 88, 109, 121
+src/gambit/configuration.py            154     11    93%   58, 60, 115, 117, 135-136, 142, 148, 151, 154, 190
+src/gambit/contract_pnl.py             178      7    96%   46-47, 107, 143, 159, 254, 267
+src/gambit/control_plane.py            216     29    87%   45, 48, 50, 72, 81, 83, 88, 91, 164, 166, 168, 171, 173, 211, 213, 241-243, 251, 253, 299, 305, 307-308, 310-311, 313, 339, 341
+src/gambit/cost_diagnostics.py         117     18    85%   31, 34, 37, 39, 46, 50, 56, 61, 86, 94, 98, 100, 102, 109, 130, 177, 204, 317
+src/gambit/cost_sensitivity.py         228     38    83%   26-27, 29, 43, 55, 59-60, 109, 111, 117, 156, 158, 160, 163, 165, 167, 169, 178, 180, 182, 184, 189, 193, 197, 200, 204, 208-209, 211, 214, 234, 292, 297, 306, 318, 324, 331-332
+src/gambit/covariance_risk.py          241     34    86%   40, 42, 44, 46, 48, 50, 52, 55, 83, 95, 111, 128, 153, 155, 157, 159, 170, 173, 175, 180, 183, 195, 200, 217, 268, 322, 335, 337, 340, 343, 362, 365, 368, 370
+src/gambit/currency.py                  64      5    92%   19, 36, 44, 76, 78
+src/gambit/evaluator.py                348    107    69%   38, 46-47, 65, 82, 100, 118, 135, 156, 223, 232, 243, 256, 275, 285, 294, 334, 354, 415, 424, 472-473, 514, 516, 518, 522, 524, 614-680, 696-755, 759-776, 780-783
+src/gambit/execution_costs.py           65      7    89%   26, 40, 58, 60, 74, 87, 100
+src/gambit/execution_identity.py        52      3    94%   25-26, 60
+src/gambit/execution_snapshots.py       13      0   100%
+src/gambit/factor_admission.py          61      5    92%   35, 37, 87, 89, 118
+src/gambit/factor_cache.py              53      4    92%   80, 83, 85, 88
+src/gambit/factor_cli.py               120      3    98%   48, 144, 154
+src/gambit/factor_dag.py               185     13    93%   59, 61, 63, 110, 155, 158, 192, 205, 225-227, 296, 298
+src/gambit/factor_device.py             52     10    81%   49, 71-79
+src/gambit/factor_identity.py          126     19    85%   31, 53, 55, 77, 79, 84, 88, 92, 97, 149, 157, 159, 161, 163, 165, 169, 175, 178, 180
+src/gambit/factor_metrics.py           109      6    94%   75, 78, 93, 108, 156-157
+src/gambit/factor_operations.py        273     47    83%   144-146, 148, 156, 164, 169, 175-177, 184-185, 196, 198-200, 216-218, 221-224, 290, 294, 296, 301, 308, 310, 316-322, 324, 359-366, 377, 389, 401, 421, 426
+src/gambit/factor_store.py             711     95    87%   91, 158, 164, 172, 175, 217, 284, 294, 301, 310, 321-323, 327, 351, 359, 371-372, 391, 394, 396, 399, 404, 413-414, 464, 553, 556, 563-564, 566, 573, 587, 609-610, 629-630, 636, 647, 650-651, 658, 692, 701-702, 716, 747, 750-751, 758, 761, 767-768, 772, 775, 780, 793, 817-818, 831, 845-846, 848, 856, 860-864, 866, 871, 889, 899-901, 926, 940-941, 951, 988, 994, 1003-1004, 1006, 1010, 1016, 1018, 1023, 1026-1027, 1029, 1036, 1154, 1156, 1158
+src/gambit/forecast_io.py              172     37    78%   55, 61, 66, 74, 86, 88, 90, 92, 94, 96, 98, 117, 119, 132, 136, 138, 140, 147, 156, 163, 188, 190, 193, 195, 204, 209, 277-282, 289, 295, 312, 321, 343
+src/gambit/forecasting.py              360     70    81%   27, 31, 33, 44, 47, 49, 52, 54, 62, 66, 84, 110, 135, 137, 140, 165, 167, 180, 182, 184, 187, 190, 193, 195, 204, 207, 210, 216, 226, 278, 286, 299, 302, 311, 323, 334, 336, 338, 343, 351, 354, 356, 413, 439, 443, 445, 447, 449, 451, 453, 456, 467, 469, 473, 479, 496, 520, 528, 541, 543, 545, 550, 554, 557, 559, 568, 571, 574, 578, 599
+src/gambit/holiday_calendars.py        155      5    97%   50, 146, 259, 391-393
+src/gambit/instruments.py               40      3    92%   43, 46, 50
+src/gambit/interactive_plot.py         345     52    85%   79, 82, 97, 106, 116-120, 133, 143-145, 157, 197, 239-244, 336, 344, 439, 454-460, 571, 583, 589, 597-620, 623-624, 628-630
+src/gambit/ipc_validation.py           242      1    99%   75
+src/gambit/market_data.py              313     39    88%   89-97, 107, 152, 169, 253, 255, 263, 265, 268, 277, 323, 325, 327, 335, 339, 345, 356, 359, 421, 423, 425, 481, 483, 485, 492, 494, 497, 518, 520, 522, 526, 528, 578, 580, 582, 584, 588, 590
+src/gambit/markets.py                  119     25    79%   44-47, 66, 76, 82, 90, 92, 120-128, 184-187, 212, 219, 224-226
+src/gambit/optimize.py                 739    123    83%   72, 87, 89, 109, 114, 120, 129, 132, 236, 238, 240, 242, 244, 246, 258, 272, 283, 299, 315, 331, 359, 363, 365, 375, 379, 383, 387, 390, 398, 401, 424, 441, 445, 451, 453, 455, 463, 494, 496, 517, 519, 535, 537, 539, 550, 570, 572, 574, 578, 614, 616, 664, 666, 668, 671, 673, 690, 693, 695, 700, 719, 759, 761, 914, 916, 920, 964, 967, 983-984, 990, 992, 1023, 1068-1071, 1123-1124, 1129, 1131-1132, 1141, 1157-1163, 1198-1201, 1230, 1254-1255, 1271-1274, 1294, 1300-1301, 1305-1308, 1312-1314, 1318-1321, 1325-1335, 1339-1342
+src/gambit/order_callback_state.py      40      0   100%
+src/gambit/pnl_calculation.py            9      0   100%
+src/gambit/portfolio.py                115     29    75%   40, 44, 53, 55, 57, 60, 114, 191-199, 218-225, 234-237, 240, 244-246
+src/gambit/position_sizing.py          150     20    87%   49, 51, 67, 70, 74, 105, 164, 166, 182, 185, 187, 189, 191, 193-197, 205, 227
+src/gambit/pq_io.py                    313     91    71%   37, 45, 52, 59, 61, 68, 81, 96, 130, 141, 143-145, 158-159, 167, 169, 181, 202, 266-267, 269, 275, 287, 295, 308, 311, 354-357, 364-368, 377-385, 416-433, 437-468, 472-475
+src/gambit/pq_types.py                 480     53    89%   124, 170, 174, 176, 182, 184, 238, 243, 245, 253-261, 263-266, 269, 330, 335, 347-349, 352-354, 357-359, 362-371, 430, 433, 537-539, 614-616, 650-652, 738, 753, 878-880
+src/gambit/pq_utils.py                 447    173    61%   30, 46, 48, 55, 61, 65, 72-73, 78-81, 100-106, 111-115, 121-123, 143-153, 192-197, 208, 210, 213-215, 231, 260-272, 288-295, 312-316, 330-334, 352-354, 369, 403-406, 442, 447, 458, 467, 488, 500-502, 507-509, 522, 569-570, 576, 588-589, 593, 620, 659-661, 682-684, 694-705, 709-712, 734-736, 769, 817-821, 826, 843-845, 855-868, 871-878, 882-884, 894-909, 924-926
+src/gambit/return_reporting.py          13      2    85%   30, 33
+src/gambit/risk.py                     203     13    94%   167, 193, 248, 253, 261, 276, 302, 304, 310-313, 315
+src/gambit/risk_measures.py             72      3    96%   76, 82, 103
+src/gambit/risk_reporting.py           121      7    94%   55, 68, 130, 134, 170, 173, 175
+src/gambit/sparse_iterations.py         73      1    99%   119
+src/gambit/stages.py                    53      1    98%   94
+src/gambit/strategy.py                 630     50    92%   225, 278, 284, 291, 303, 315, 317, 330, 332, 373, 417, 419, 452, 456, 458, 473, 481, 551, 571, 575, 619, 634, 638-640, 643, 647-648, 735, 814-817, 857, 897, 1030, 1032, 1185, 1193, 1201, 1205, 1255, 1386, 1394, 1397, 1414, 1418-1424
+src/gambit/strategy_builder.py         133     22    83%   110-111, 115, 121, 127, 133, 136-144, 178, 188, 191, 194, 230, 260, 265-266
+src/gambit/strategy_components.py      422     82    81%   62, 64, 68, 71, 147, 152, 162-172, 231, 279, 292-301, 350, 352, 380-381, 388, 397, 435-436, 449-467, 569, 673, 700-714, 727, 734, 736-740, 748-749, 769, 821-834, 863-885, 889-891
+src/gambit/strategy_contracts.py        10      0   100%
+src/gambit/strategy_inputs.py          135     21    84%   31, 33, 35, 38, 45-46, 105, 112, 129, 133, 169-170, 215-216, 251, 255, 257, 261, 263, 272-273
+src/gambit/strategy_validation.py       42      5    88%   20, 23, 25, 42, 44
+src/gambit/target_positions.py         339     48    86%   50, 53, 55, 67, 83, 87, 89, 92, 180, 198, 221, 230, 235, 239, 288, 389, 391, 396, 399, 401, 403, 410, 414, 423, 427, 429, 431, 446, 449, 452, 454, 456, 464, 466, 486, 488, 497, 501, 504, 506, 536, 538, 541, 543, 545, 569, 572, 574
+src/gambit/tick_backtest.py              5      0   100%
+src/gambit/trade_reconciliation.py      53      0   100%
+src/gambit/universe.py                  93     13    86%   64, 70, 80, 82, 87, 89, 96, 98, 101, 103, 105, 107, 110
+src/gambit/var_risk.py                 175     25    86%   39, 41, 43, 45, 47, 50, 53, 74, 76, 78, 80, 82, 85, 88, 132, 140, 156, 163, 165, 179, 182, 184, 188, 191, 213
+src/gambit/walk_forward_io.py          145     24    83%   45, 51, 56, 62, 70, 77, 123, 168-173, 215, 222, 224, 226, 228, 237, 240, 243, 253, 272, 277
+------------------------------------------------------------------
+TOTAL                                11017   1593    86%
+============================ 2208 passed in 28.96s =============================
+uv run --frozen --all-extras python tools/check_coverage_policy.py
+src/gambit/strategy_components.py: 80.57% (minimum 75.00%)
+src/gambit/markets.py: 78.99% (minimum 75.00%)
+src/gambit/holiday_calendars.py: 96.77% (minimum 50.00%)
+src/gambit/optimize.py: 83.36% (minimum 70.00%)
+src/gambit/pq_utils.py: 61.30% (minimum 50.00%)
+src/gambit/interactive_plot.py: 84.93% (minimum 80.00%)
+uv run --frozen --all-extras python tools/run_financial_mutations.py
+KILLED   max-order-exact-boundary-rejected: 2 failed, 131 passed in 0.43s
+KILLED   positive-position-exact-boundary-rejected: 9 failed, 124 passed in 0.42s
+KILLED   negative-position-exact-boundary-rejected: 2 failed, 131 passed in 0.55s
+KILLED   pending-position-exposure-ignored: 15 failed, 118 passed in 0.45s
+KILLED   accepted-policy-result-treated-as-rejection: 45 failed, 88 passed in 0.50s
+KILLED   realized-pnl-contract-multiplier-removed: 8 failed, 24 passed in 0.46s
+KILLED   unrealized-pnl-contract-multiplier-removed: 11 failed, 21 passed in 0.46s
+KILLED   commission-added-instead-of-deducted: 10 failed, 22 passed in 0.46s
+KILLED   fee-added-instead-of-deducted: 8 failed, 24 passed in 0.46s
+KILLED   missing-mark-resets-unrealized-pnl: 1 failed, 31 passed in 0.44s
+financial mutation score: 10/10 killed
+uv run --frozen --all-extras python tools/check_native_warnings.py
+uv run --frozen --all-extras python -m sphinx -W --keep-going -b html documentation/source documentation/generated
+Running Sphinx v8.1.3
+loading translations [en]... done
+Converting `source_suffix = '.rst'` to `source_suffix = {'.rst': 'restructuredtext'}`.
+loading pickled environment... The configuration has changed (3 options: 'html_permalinks_icon', 'html_theme_options', 'templates_path')
+done
+[autosummary] generating autosummary for: accounting_assumptions.rst, api_reference.rst, architecture.rst, contract_universes.rst, core_concepts.rst, data_lifecycle.rst, examples.rst, factor_research.rst, getting_started.rst, index.rst, installation.rst, market_data_guide.rst, native_io.rst, pitfalls.rst, platform_support.rst, risk_examples.rst, risk_guide.rst, strategy_guide.rst, testing.rst, user_guide.rst
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [html]: targets for 0 source files that are out of date
+updating environment: 0 added, 0 changed, 0 removed
+reading sources... 
+looking for now-outdated files... none found
+no targets are out of date.
+build succeeded.
+
+The HTML pages are in documentation/generated.
+uv run --frozen --all-extras python tools/check_clean_paths.py documentation/source
+uv run --frozen --all-extras python tools/check_notebook_cleanliness.py
+uv build
+Building source distribution...
+[1/1] Cythonizing src/gambit/compute_pnl.pyx
+running egg_info
+writing src/gambit_markets.egg-info/PKG-INFO
+writing dependency_links to src/gambit_markets.egg-info/dependency_links.txt
+writing entry points to src/gambit_markets.egg-info/entry_points.txt
+writing requirements to src/gambit_markets.egg-info/requires.txt
+writing top-level names to src/gambit_markets.egg-info/top_level.txt
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+reading manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '*.py[cod]' found anywhere in distribution
+warning: no previously-included files matching '.DS_Store' found anywhere in distribution
+no previously-included directories found matching 'documentation/generated'
+no previously-included directories found matching 'examples'
+adding license file 'LICENSE.txt'
+adding license file 'THIRD_PARTY_NOTICES.md'
+writing manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+[1/1] Cythonizing src/gambit/compute_pnl.pyx
+running sdist
+running egg_info
+writing src/gambit_markets.egg-info/PKG-INFO
+writing dependency_links to src/gambit_markets.egg-info/dependency_links.txt
+writing entry points to src/gambit_markets.egg-info/entry_points.txt
+writing requirements to src/gambit_markets.egg-info/requires.txt
+writing top-level names to src/gambit_markets.egg-info/top_level.txt
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpv6JkEN/lib/python3.10/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+reading manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '*.py[cod]' found anywhere in distribution
+warning: no previously-included files matching '.DS_Store' found anywhere in distribution
+no previously-included directories found matching 'documentation/generated'
+no previously-included directories found matching 'examples'
+adding license file 'LICENSE.txt'
+adding license file 'THIRD_PARTY_NOTICES.md'
+writing manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+running check
+creating gambit_markets-1.1.0
+creating gambit_markets-1.1.0/src/gambit
+creating gambit_markets-1.1.0/src/gambit/cpp/factor_cache
+creating gambit_markets-1.1.0/src/gambit/cpp/io
+creating gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+creating gambit_markets-1.1.0/src/gambit/cpp/options
+creating gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying files to gambit_markets-1.1.0...
+copying LICENSE.txt -> gambit_markets-1.1.0
+copying MANIFEST.in -> gambit_markets-1.1.0
+copying README.rst -> gambit_markets-1.1.0
+copying THIRD_PARTY_NOTICES.md -> gambit_markets-1.1.0
+copying pyproject.toml -> gambit_markets-1.1.0
+copying setup.py -> gambit_markets-1.1.0
+copying src/gambit/__init__.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/account.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/backtest_result.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/boundaries.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/bundle_limits.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/calculation.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/callback_contracts.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/compute_pnl.cpp -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/compute_pnl.pyx -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/configuration.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/contract_pnl.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/control_plane.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/cost_diagnostics.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/cost_sensitivity.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/covariance_risk.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/currency.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/evaluator.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/execution_costs.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/execution_identity.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/execution_snapshots.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_admission.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_cache.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_cli.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_dag.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_device.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_identity.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_metrics.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_operations.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/factor_store.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/forecast_io.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/forecasting.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/holiday_calendars.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/instruments.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/interactive_plot.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/ipc_validation.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/market_data.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/markets.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/optimize.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/order_callback_state.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/pnl_calculation.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/portfolio.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/position_sizing.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/pq_io.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/pq_types.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/pq_utils.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/return_reporting.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/risk.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/risk_measures.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/risk_reporting.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/sparse_iterations.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/stages.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy_builder.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy_components.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy_contracts.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy_inputs.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/strategy_validation.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/target_positions.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/tick_backtest.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/trade_reconciliation.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/universe.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/var_risk.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/walk_forward_io.py -> gambit_markets-1.1.0/src/gambit
+copying src/gambit/cpp/factor_cache/mapped_column.cpp -> gambit_markets-1.1.0/src/gambit/cpp/factor_cache
+copying src/gambit/cpp/factor_cache/spsc_ring.hpp -> gambit_markets-1.1.0/src/gambit/cpp/factor_cache
+copying src/gambit/cpp/factor_cache/tick_ring.cpp -> gambit_markets-1.1.0/src/gambit/cpp/factor_cache
+copying src/gambit/cpp/factor_cache/top_of_book_backtest.cpp -> gambit_markets-1.1.0/src/gambit/cpp/factor_cache
+copying src/gambit/cpp/io/csv_reader.cpp -> gambit_markets-1.1.0/src/gambit/cpp/io
+copying src/gambit/cpp/io/csv_reader.hpp -> gambit_markets-1.1.0/src/gambit/cpp/io
+copying src/gambit/cpp/io/main.cpp -> gambit_markets-1.1.0/src/gambit/cpp/io
+copying src/gambit/cpp/io/read_file.cpp -> gambit_markets-1.1.0/src/gambit/cpp/io
+copying src/gambit/cpp/io/utils.hpp -> gambit_markets-1.1.0/src/gambit/cpp/io
+copying src/gambit/cpp/lets_be_rational/erf_cody.cpp -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/importexport.h -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/lets_be_rational.cpp -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/normaldistribution.cpp -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/normaldistribution.h -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/rationalcubic.cpp -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/lets_be_rational/rationalcubic.h -> gambit_markets-1.1.0/src/gambit/cpp/lets_be_rational
+copying src/gambit/cpp/options/options.cpp -> gambit_markets-1.1.0/src/gambit/cpp/options
+copying src/gambit/cpp/options/options.hpp -> gambit_markets-1.1.0/src/gambit/cpp/options
+copying src/gambit/cpp/options/pybind.cpp -> gambit_markets-1.1.0/src/gambit/cpp/options
+copying src/gambit/cpp/options/pybind_options.cpp -> gambit_markets-1.1.0/src/gambit/cpp/options
+copying src/gambit_markets.egg-info/PKG-INFO -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying src/gambit_markets.egg-info/SOURCES.txt -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying src/gambit_markets.egg-info/dependency_links.txt -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying src/gambit_markets.egg-info/entry_points.txt -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying src/gambit_markets.egg-info/requires.txt -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+copying src/gambit_markets.egg-info/top_level.txt -> gambit_markets-1.1.0/src/gambit_markets.egg-info
+Writing gambit_markets-1.1.0/setup.cfg
+Creating tar archive
+removing 'gambit_markets-1.1.0' (and everything under it)
+Building wheel from source distribution...
+[1/1] Cythonizing src/gambit/compute_pnl.pyx
+running egg_info
+writing src/gambit_markets.egg-info/PKG-INFO
+writing dependency_links to src/gambit_markets.egg-info/dependency_links.txt
+writing entry points to src/gambit_markets.egg-info/entry_points.txt
+writing requirements to src/gambit_markets.egg-info/requires.txt
+writing top-level names to src/gambit_markets.egg-info/top_level.txt
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+reading manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '*.py[cod]' found anywhere in distribution
+warning: no previously-included files matching '.DS_Store' found anywhere in distribution
+no previously-included directories found matching 'documentation/generated'
+no previously-included directories found matching 'examples'
+no previously-included directories found matching 'tests'
+adding license file 'LICENSE.txt'
+adding license file 'THIRD_PARTY_NOTICES.md'
+writing manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+[1/1] Cythonizing src/gambit/compute_pnl.pyx
+running bdist_wheel
+running build
+running build_py
+creating build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/optimize.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/interactive_plot.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_store.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/configuration.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/trade_reconciliation.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_operations.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/target_positions.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_cli.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/order_callback_state.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/pq_types.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/pq_io.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/boundaries.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/return_reporting.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_admission.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/bundle_limits.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/forecast_io.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/position_sizing.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/risk_measures.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/sparse_iterations.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy_contracts.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/risk_reporting.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/execution_snapshots.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/calculation.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_cache.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/__init__.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/control_plane.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/backtest_result.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy_inputs.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/stages.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy_validation.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/instruments.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/markets.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/universe.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/cost_sensitivity.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/holiday_calendars.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/callback_contracts.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_metrics.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/cost_diagnostics.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/walk_forward_io.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/market_data.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/pnl_calculation.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy_builder.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/strategy_components.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/tick_backtest.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/risk.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/pq_utils.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/currency.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_device.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_identity.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/execution_costs.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/execution_identity.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/portfolio.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/var_risk.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/evaluator.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/covariance_risk.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/factor_dag.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/ipc_validation.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/account.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/contract_pnl.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+copying src/gambit/forecasting.py -> build/lib.macosx-11.0-arm64-cpython-310/gambit
+running build_ext
+building 'gambit._io' extension
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/opt/homebrew/opt/libzip/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/io/csv_reader.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/io/csv_reader.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/opt/homebrew/opt/libzip/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/io/read_file.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/io/read_file.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -bundle -undefined dynamic_lookup build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/io/csv_reader.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/io/read_file.o -L/opt/homebrew/opt/libzip/lib -L/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/lib -lzip -o build/lib.macosx-11.0-arm64-cpython-310/gambit/_io.cpython-310-darwin.so
+building 'gambit._options' extension
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/lets_be_rational/erf_cody.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/erf_cody.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/lets_be_rational/lets_be_rational.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/lets_be_rational.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/lets_be_rational/normaldistribution.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/normaldistribution.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/lets_be_rational/rationalcubic.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/rationalcubic.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/options/options.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/options.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/options/pybind.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/pybind.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/options/pybind_options.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/pybind_options.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -bundle -undefined dynamic_lookup build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/erf_cody.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/lets_be_rational.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/normaldistribution.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/lets_be_rational/rationalcubic.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/options.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/pybind.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/options/pybind_options.o -L/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/lib -o build/lib.macosx-11.0-arm64-cpython-310/gambit/_options.cpython-310-darwin.so
+building 'gambit._factor_cache' extension
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/factor_cache/mapped_column.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/mapped_column.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/factor_cache/tick_ring.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/tick_ring.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/pybind11/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/cpp/factor_cache/top_of_book_backtest.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/top_of_book_backtest.o -std=c++11 -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -bundle -undefined dynamic_lookup build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/mapped_column.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/tick_ring.o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/cpp/factor_cache/top_of_book_backtest.o -L/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/lib -o build/lib.macosx-11.0-arm64-cpython-310/gambit/_factor_cache.cpython-310-darwin.so
+building 'gambit.compute_pnl' extension
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include -I/Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/include -I/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/include/python3.10 -c src/gambit/compute_pnl.cpp -o build/temp.macosx-11.0-arm64-cpython-310/src/gambit/compute_pnl.o -Wno-parentheses-equality -Wno-unreachable-code-fallthrough -O3
+c++ -Wno-unused-result -Wsign-compare -Wunreachable-code -DNDEBUG -g -fwrapv -O3 -Wall -O3 -arch arm64 -mmacosx-version-min=11.0 -Wno-nullability-completeness -Wno-expansion-to-defined -Wno-undef-prefix -fPIC -bundle -undefined dynamic_lookup build/temp.macosx-11.0-arm64-cpython-310/src/gambit/compute_pnl.o -L/Users/jkm0607/.local/share/uv/python/cpython-3.10.20-macos-aarch64-none/lib -o build/lib.macosx-11.0-arm64-cpython-310/gambit/compute_pnl.cpython-310-darwin.so
+installing to build/bdist.macosx-11.0-arm64/wheel
+running install
+running install_lib
+creating build/bdist.macosx-11.0-arm64/wheel
+creating build/bdist.macosx-11.0-arm64/wheel/gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/optimize.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/interactive_plot.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_store.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/configuration.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/trade_reconciliation.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_operations.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/target_positions.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_cli.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/order_callback_state.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/_io.cpython-310-darwin.so -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/pq_types.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/pq_io.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/boundaries.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/return_reporting.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_admission.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/bundle_limits.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/forecast_io.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/position_sizing.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/_factor_cache.cpython-310-darwin.so -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/risk_measures.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/sparse_iterations.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy_contracts.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/risk_reporting.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/execution_snapshots.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/calculation.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/_options.cpython-310-darwin.so -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_cache.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/__init__.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/control_plane.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/backtest_result.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy_inputs.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/stages.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy_validation.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/instruments.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/markets.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/universe.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/cost_sensitivity.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/holiday_calendars.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/callback_contracts.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_metrics.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/compute_pnl.cpython-310-darwin.so -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/cost_diagnostics.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/walk_forward_io.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/market_data.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/pnl_calculation.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy_builder.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/strategy_components.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/tick_backtest.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/risk.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/pq_utils.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/currency.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_device.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_identity.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/execution_costs.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/execution_identity.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/portfolio.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/var_risk.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/evaluator.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/covariance_risk.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/factor_dag.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/ipc_validation.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/account.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/contract_pnl.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+copying build/lib.macosx-11.0-arm64-cpython-310/gambit/forecasting.py -> build/bdist.macosx-11.0-arm64/wheel/./gambit
+running install_egg_info
+running egg_info
+writing src/gambit_markets.egg-info/PKG-INFO
+writing dependency_links to src/gambit_markets.egg-info/dependency_links.txt
+writing entry points to src/gambit_markets.egg-info/entry_points.txt
+writing requirements to src/gambit_markets.egg-info/requires.txt
+writing top-level names to src/gambit_markets.egg-info/top_level.txt
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/arrayscalars.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarrayobject.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ndarraytypes.h won't be automatically included in the manifest: the path must be relative
+dependency /Users/jkm0607/.cache/uv/builds-v0/.tmpEgagVi/lib/python3.10/site-packages/numpy/_core/include/numpy/ufuncobject.h won't be automatically included in the manifest: the path must be relative
+reading manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+reading manifest template 'MANIFEST.in'
+warning: no previously-included files matching '*.py[cod]' found anywhere in distribution
+warning: no previously-included files matching '.DS_Store' found anywhere in distribution
+no previously-included directories found matching 'documentation/generated'
+no previously-included directories found matching 'examples'
+no previously-included directories found matching 'tests'
+adding license file 'LICENSE.txt'
+adding license file 'THIRD_PARTY_NOTICES.md'
+writing manifest file 'src/gambit_markets.egg-info/SOURCES.txt'
+Copying src/gambit_markets.egg-info to build/bdist.macosx-11.0-arm64/wheel/./gambit_markets-1.1.0-py3.10.egg-info
+running install_scripts
+creating build/bdist.macosx-11.0-arm64/wheel/gambit_markets-1.1.0.dist-info/WHEEL
+creating '/Users/jkm0607/Projects/gambit/dist/.tmp-hhjpqlpq/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl' and adding 'build/bdist.macosx-11.0-arm64/wheel' to it
+adding 'gambit/__init__.py'
+adding 'gambit/_factor_cache.cpython-310-darwin.so'
+adding 'gambit/_io.cpython-310-darwin.so'
+adding 'gambit/_options.cpython-310-darwin.so'
+adding 'gambit/account.py'
+adding 'gambit/backtest_result.py'
+adding 'gambit/boundaries.py'
+adding 'gambit/bundle_limits.py'
+adding 'gambit/calculation.py'
+adding 'gambit/callback_contracts.py'
+adding 'gambit/compute_pnl.cpython-310-darwin.so'
+adding 'gambit/configuration.py'
+adding 'gambit/contract_pnl.py'
+adding 'gambit/control_plane.py'
+adding 'gambit/cost_diagnostics.py'
+adding 'gambit/cost_sensitivity.py'
+adding 'gambit/covariance_risk.py'
+adding 'gambit/currency.py'
+adding 'gambit/evaluator.py'
+adding 'gambit/execution_costs.py'
+adding 'gambit/execution_identity.py'
+adding 'gambit/execution_snapshots.py'
+adding 'gambit/factor_admission.py'
+adding 'gambit/factor_cache.py'
+adding 'gambit/factor_cli.py'
+adding 'gambit/factor_dag.py'
+adding 'gambit/factor_device.py'
+adding 'gambit/factor_identity.py'
+adding 'gambit/factor_metrics.py'
+adding 'gambit/factor_operations.py'
+adding 'gambit/factor_store.py'
+adding 'gambit/forecast_io.py'
+adding 'gambit/forecasting.py'
+adding 'gambit/holiday_calendars.py'
+adding 'gambit/instruments.py'
+adding 'gambit/interactive_plot.py'
+adding 'gambit/ipc_validation.py'
+adding 'gambit/market_data.py'
+adding 'gambit/markets.py'
+adding 'gambit/optimize.py'
+adding 'gambit/order_callback_state.py'
+adding 'gambit/pnl_calculation.py'
+adding 'gambit/portfolio.py'
+adding 'gambit/position_sizing.py'
+adding 'gambit/pq_io.py'
+adding 'gambit/pq_types.py'
+adding 'gambit/pq_utils.py'
+adding 'gambit/return_reporting.py'
+adding 'gambit/risk.py'
+adding 'gambit/risk_measures.py'
+adding 'gambit/risk_reporting.py'
+adding 'gambit/sparse_iterations.py'
+adding 'gambit/stages.py'
+adding 'gambit/strategy.py'
+adding 'gambit/strategy_builder.py'
+adding 'gambit/strategy_components.py'
+adding 'gambit/strategy_contracts.py'
+adding 'gambit/strategy_inputs.py'
+adding 'gambit/strategy_validation.py'
+adding 'gambit/target_positions.py'
+adding 'gambit/tick_backtest.py'
+adding 'gambit/trade_reconciliation.py'
+adding 'gambit/universe.py'
+adding 'gambit/var_risk.py'
+adding 'gambit/walk_forward_io.py'
+adding 'gambit_markets-1.1.0.dist-info/licenses/LICENSE.txt'
+adding 'gambit_markets-1.1.0.dist-info/licenses/THIRD_PARTY_NOTICES.md'
+adding 'gambit_markets-1.1.0.dist-info/METADATA'
+adding 'gambit_markets-1.1.0.dist-info/WHEEL'
+adding 'gambit_markets-1.1.0.dist-info/entry_points.txt'
+adding 'gambit_markets-1.1.0.dist-info/top_level.txt'
+adding 'gambit_markets-1.1.0.dist-info/RECORD'
+removing build/bdist.macosx-11.0-arm64/wheel
+Successfully built dist/gambit_markets-1.1.0.tar.gz
+Successfully built dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl
+uv run --frozen --all-extras python -m twine check dist/*
+Checking dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl: PASSED
+Checking dist/gambit_markets-1.1.0.tar.gz: PASSED
+uv run --frozen --all-extras python tools/verify_release_artifacts.py dist
+verified 1 wheel(s) and gambit_markets-1.1.0.tar.gz

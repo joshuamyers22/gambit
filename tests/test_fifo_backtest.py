@@ -166,6 +166,39 @@ def test_bad_trade_records_fail_closed(field, value):
         engine.process_queue_batch(events[:0])
 
 
+@pytest.mark.parametrize("chunk", [1, 2, 8])
+def test_traversal_preserves_first_failing_event(chunk):
+    # Capacity fails at event 2, before a malformed later record. Batch-wide
+    # prevalidation would change the observed failure and must not replace traversal.
+    events = make_events(8)
+    events["reserved"][3] = 1
+    engine = TopOfBookBacktester(1, 1000, 3, 1, audit_capacity=1, execution_model="fifo")
+    with pytest.raises(RuntimeError, match="order audit capacity exhausted"):
+        for offset in range(0, len(events), chunk):
+            engine.process_queue_batch(events[offset:offset + chunk])
+    with pytest.raises(RuntimeError, match="failed"):
+        engine.result()
+    with pytest.raises(RuntimeError, match="failed"):
+        engine.process_queue_batch(events[:0])
+
+
+@pytest.mark.parametrize("chunk", [1, 2, 8])
+def test_trade_validation_still_precedes_book_validation_and_rebalance(chunk):
+    events = make_events(8)
+    # The same event could fail trade validation, book validation, or order
+    # capacity. Preserve the original trade-first failure priority and poisoning.
+    events["reserved"][2] = 1
+    events["book"]["flags"][2] = 1
+    engine = TopOfBookBacktester(1, 1000, 3, 1, audit_capacity=1, execution_model="fifo")
+    with pytest.raises(ValueError, match="invalid queue trade event"):
+        for offset in range(0, len(events), chunk):
+            engine.process_queue_batch(events[offset:offset + chunk])
+    with pytest.raises(RuntimeError, match="failed"):
+        engine.result()
+    with pytest.raises(RuntimeError, match="failed"):
+        engine.process_queue_batch(events[:0])
+
+
 def test_api_mode_layout_and_snapshot_isolation():
     with pytest.raises(ValueError):
         TopOfBookBacktester(1, 1000, 3, 2, execution_model="unknown")

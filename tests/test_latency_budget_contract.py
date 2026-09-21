@@ -6,7 +6,7 @@ ROOT = Path(__file__).parents[1]
 BUDGET = ROOT / "LATENCY_BUDGET.md"
 
 
-def test_latency_budget_keeps_proposal_and_acceptance_separate() -> None:
+def test_latency_budget_keeps_contract_approval_and_attainment_separate() -> None:
     policy = BUDGET.read_text()
     prose = " ".join(policy.split())
     for heading in (
@@ -19,12 +19,15 @@ def test_latency_budget_keeps_proposal_and_acceptance_separate() -> None:
         "## Change control",
     ):
         assert heading in policy
-    assert "candidate; not approved for production acceptance" in prose
-    assert "misses the proposed five-second objective" in prose
+    assert "v1 approved for experimental engineering acceptance; production qualification pending" in prose
+    assert "gambit-fifo-latency-v1" in prose
+    assert "attainment **unmeasured for this contract**" in prose
+    assert "misses the approved five-second engineering objective" in prose
     assert "A missed target keeps the capability experimental" in prose
     assert "three historical runs do not establish p95" in prose
     assert "zero dropped/reordered records" in prose
-    assert "full-volume independent trace parity absent" in prose
+    assert "full-volume independent trace parity complete for v1" in prose
+    assert "repeat for changed native builds/workloads" in prose
     assert "explicit promote, retarget, or remain-experimental decision" in prose
 
 

@@ -27,3 +27,14 @@ jobs:
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
       - name: Run non-blocking benchmark smoke suite
         run: python -m pytest -m performance -vv
+      - name: Exercise controlled replay reports without timing qualification
+        run: |
+          python benchmarks/controlled_replay.py run --scenario fifo-smoke-v1 \
+            --trials 3 --session-id shared-ci --output-dir "$RUNNER_TEMP/fifo-smoke"
+      - name: Retain controlled replay smoke evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: controlled-fifo-smoke
+          path: ${{ runner.temp }}/fifo-smoke
+          if-no-files-found: warn

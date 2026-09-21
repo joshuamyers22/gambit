@@ -1,0 +1,19 @@
+{
+  "python": "3.10.20 (main, Aug  7 2026, 02:15:13) [Clang 22.1.3 ]",
+  "platform": "macOS-15.5-arm64-arm-64bit",
+  "source": "/Users/jkm0607/Projects/gambit",
+  "compiler": "Apple clang version 17.0.0 (clang-1700.0.13.5)\nTarget: arm64-apple-darwin24.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "compile_args": [
+    "-std=c++11",
+    "-O3"
+  ],
+  "sanitized": false,
+  "rigtorp_commit": null,
+  "native_sha256": "12c420806b9d10b563013626687eb6e52dd3498941c17e22809f0944902f357f",
+  "sources": {
+    "src/gambit/cpp/factor_cache/mapped_column.cpp": "8c079133383304c233d19e0fd98a651365c30312d1ccc9ba1a988c2708834ab6",
+    "src/gambit/cpp/factor_cache/tick_ring.cpp": "8b78b2d47c42f8afe75bd6eb047f93548c6bdc6928302f37c27250260e19cc4d",
+    "src/gambit/cpp/factor_cache/spsc_ring.hpp": "f04af52da4d143685acfa96f7428a9738b0d2b9ed574db1bd1df09e60a1cfd6e",
+    "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "f105edf624b52419ce35d1951f3554842b9f0168eb83cbb0c857812f1eeaca37"
+  }
+}

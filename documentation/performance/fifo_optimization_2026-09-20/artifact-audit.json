@@ -1,0 +1,17 @@
+{
+  "status": "verified",
+  "external_files": 1995,
+  "repository_payloads": 22,
+  "full_trace_pairs_reloaded": [
+    "01-fifo-3y-sparse-v1-65521",
+    "02-fifo-3y-sparse-v1-65536",
+    "03-fifo-3y-sparse-v1-1048576",
+    "04-fifo-2y-sparse-v1-65521",
+    "05-fifo-1m-dense-v1-65521",
+    "06-fifo-2m-dense-v1-65521"
+  ],
+  "source_and_imported_native_match": true,
+  "all_original_screening_controls_and_reference_hosts_match": true,
+  "report_links_exist": true,
+  "performance_qualification": false
+}

@@ -1,0 +1,20 @@
+{
+  "machine": "aarch64",
+  "platform": "Linux-7.0.12-linuxkit-aarch64-with-glibc2.36",
+  "python": "3.12.14 (main, Aug 31 2026, 23:48:05) [GCC 12.2.0]",
+  "tools": {
+    "c++": null,
+    "g++": null,
+    "clang++": null,
+    "uv": null,
+    "gcc": null
+  },
+  "packages": {
+    "gambit-markets": null,
+    "numpy": null,
+    "pybind11": null,
+    "setuptools": null,
+    "pytest": null,
+    "psutil": null
+  }
+}

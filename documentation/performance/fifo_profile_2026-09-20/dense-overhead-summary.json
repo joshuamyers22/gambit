@@ -1,0 +1,143 @@
+{
+  "bootstrap_resamples": 10000,
+  "conditions_after": {
+    "load_average": [
+      2.63134765625,
+      1.779296875,
+      1.5576171875
+    ],
+    "observed_at": "2026-09-20T19:40:50.167636+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "diagnostic_only": true,
+  "input_result_parity": true,
+  "limitations": [
+    "compulsory native-call clocks retained in both modes",
+    "parent RSS polling and outer watchdogs retained",
+    "single development session, correlated noise possible",
+    "prefix results do not establish full-volume overhead or production tails"
+  ],
+  "metrics": {
+    "execution_seconds": {
+      "conclusion": "within_1_percent",
+      "full": {
+        "count": 30,
+        "jitter": 0.003426124000000006,
+        "maximum": 0.027475040000000003,
+        "p50": 0.024048915999999997,
+        "p95": 0.027052375,
+        "p99": 0.027475040000000003,
+        "p99_9": null
+      },
+      "median_relative_overhead": -0.001963570835781858,
+      "pair_relative_overheads": [
+        0.04170775671717597,
+        0.022071581016137154,
+        -0.043727487353529715,
+        -0.0013199838898516614,
+        0.0035919555450478757,
+        -0.026533404384190162,
+        -0.0027332567036528754,
+        0.005285615624109674,
+        0.015408562402982273,
+        -0.0031872574452632696,
+        0.02070311030687977,
+        -0.04618531644416235,
+        -0.2452539397166409,
+        0.0029504042943402364,
+        0.004166569577597645,
+        -0.1081353577755445,
+        -0.023796252943286467,
+        -0.022118120658524365,
+        -0.050689388553771364,
+        -0.016764453820291236,
+        0.0022535848312370543,
+        -0.02536538191195925,
+        -0.002607157781712055,
+        0.0027523038715597803,
+        0.077458309011333,
+        -0.015203481026539567,
+        -0.0004886751892112517,
+        0.009191528295614537,
+        0.0039863142695713005,
+        -0.011643230822403594
+      ],
+      "paired_bootstrap_95_interval": [
+        -0.0159839674234154,
+        0.003271179919694056
+      ],
+      "timers_only": {
+        "count": 30,
+        "jitter": 0.007685835000000002,
+        "maximum": 0.031863586,
+        "p50": 0.024177750999999997,
+        "p95": 0.027748417,
+        "p99": 0.031863586,
+        "p99_9": null
+      }
+    },
+    "harness_seconds": {
+      "conclusion": "within_1_percent",
+      "full": {
+        "count": 30,
+        "jitter": 0.07688687399999994,
+        "maximum": 0.647020333,
+        "p50": 0.570133459,
+        "p95": 0.620497333,
+        "p99": 0.647020333,
+        "p99_9": null
+      },
+      "median_relative_overhead": -0.030210197794245774,
+      "pair_relative_overheads": [
+        0.02245326010553983,
+        -0.008820813845376918,
+        -0.061938449540205665,
+        -0.010801847998385128,
+        -0.035878373222300586,
+        -0.11614742473224282,
+        -0.03622311776681608,
+        -0.032623178747314574,
+        -0.01341762235857824,
+        -0.024246088580999636,
+        -0.033872088263499855,
+        -0.044041164696395296,
+        -0.1108399327571784,
+        0.0002573087218746828,
+        -0.05534079602679898,
+        -0.03773792782492491,
+        0.004059098679949136,
+        -0.050278057472143645,
+        -0.073144622480249,
+        -0.05041251809399494,
+        -0.01516720828299456,
+        0.003452397883420666,
+        -0.08150098506369019,
+        0.04283769848597885,
+        0.0832558651146067,
+        -0.027797216841176975,
+        -0.043985314258127683,
+        0.03255691526024007,
+        -0.022318516417523027,
+        -0.01818399771122614
+      ],
+      "paired_bootstrap_95_interval": [
+        -0.0408616210415263,
+        -0.0142924153207864
+      ],
+      "timers_only": {
+        "count": 30,
+        "jitter": 0.07123258300000002,
+        "maximum": 0.658311333,
+        "p50": 0.58707875,
+        "p95": 0.644599958,
+        "p99": 0.658311333,
+        "p99_9": null
+      }
+    }
+  },
+  "pairs": 30,
+  "schema": "gambit-replay-diagnosis-v1",
+  "seed": 20260920
+}

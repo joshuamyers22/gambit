@@ -1,0 +1,60 @@
+{
+  "campaign_complete": true,
+  "schema": "gambit-controlled-replay-v1",
+  "variants": {
+    "candidate": {
+      "contract": "gambit-fifo-latency-v1",
+      "execution_seconds": {
+        "count": 1,
+        "jitter": 0.0,
+        "maximum": 0.023978957,
+        "p50": 0.023978957,
+        "p95": 0.023978957,
+        "p99": 0.023978957,
+        "p99_9": null
+      },
+      "failed_trials": 0,
+      "harness_seconds": {
+        "count": 1,
+        "jitter": 0.0,
+        "maximum": 0.563112125,
+        "p50": 0.563112125,
+        "p95": 0.563112125,
+        "p99": 0.563112125,
+        "p99_9": null
+      },
+      "ineligibility_reasons": [
+        "requires exactly four distinct sessions of 50 trials",
+        "not the primary synthetic/default-chunk workload",
+        "reference host/runtime does not match or could not be observed",
+        "exact native build commands not attested",
+        "session conditions not supplied"
+      ],
+      "p99_9_qualified": false,
+      "p99_descriptive_only": true,
+      "peak_rss_bytes": {
+        "count": 1,
+        "jitter": 0,
+        "maximum": 145686528,
+        "p50": 145686528,
+        "p95": 145686528,
+        "p99": 145686528,
+        "p99_9": null
+      },
+      "qualification": "pending_independent_evidence",
+      "remaining_evidence": [
+        "independent full-volume trace parity",
+        "same-commit platform/sanitizer gates",
+        "instrumentation overhead and session independence review",
+        "owner disposition"
+      ],
+      "schema": "gambit-controlled-replay-v1",
+      "sessions": {
+        "lat02-dense-validation": 1
+      },
+      "successful_trials": 1,
+      "timing_gate": "ineligible",
+      "trials": 1
+    }
+  }
+}

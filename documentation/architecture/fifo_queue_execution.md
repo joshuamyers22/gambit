@@ -94,10 +94,22 @@ trades and displayed sizes. Targets are 100 lots and rebalances occur every
 cancel/replacement stress test; audit capacity bounds the supported horizon.
 This is not exchange-calibrated crypto data and not a general trading strategy.
 
-Full-volume ledger reconciliation and repeat hashes complement, but do not
-replace, smaller independent Python trace parity. Execution timing sums native
+LAT-04 completed [independent full-volume trace parity](../performance/fifo_parity_2026-09-20.md)
+for synthetic v1, including three primary chunk sizes and scaling/dense controls.
+The standalone policy reference is cross-checked with the Python oracle and
+hand-derived fixtures; every returned audit field and checkpoint portfolio value
+is compared directly. Ledger reconciliation and repeat hashes remain additional
+controls, not substitutes for these comparisons. Execution timing sums native
 calls, initialization and result copies; input generation, hashing, ledger
 checking, storage loading and most caller-loop overhead are outside that timer.
 Report the full harness wall time separately. Do not infer a production p95
 from a handful of local runs or claim the existing few-second objective met
 without the measured evidence.
+
+LAT-05 [specialized FIFO traversal](../performance/fifo_optimization_2026-09-20.md)
+uses a compile-time execution model and a separate private rebalance helper to let
+the compiler inline per-event processing into the batch loop. Per-event validation,
+checked accounting, audit layouts and failure poisoning are preserved. All six
+full-volume parity cases were repeated successfully for the changed binary. Thirty
+full primary pairs measured p50 9.663 → 4.138 seconds; the optimization is retained
+as experimental, with control/resource evidence and qualification limits in the report.

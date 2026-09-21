@@ -1,0 +1,230 @@
+{
+  "mmap": {
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "interpretation": "full-harness screening only; review correctness, CPU and tails separately",
+    "metrics": {
+      "cpu_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.039645999999999904,
+          "maximum": 0.29585599999999995,
+          "p50": 0.25621000000000005,
+          "p95": 0.2903720000000001,
+          "p99": 0.29585599999999995,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          0.0016236597057264213,
+          0.017703861028885493
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.04676999999999992,
+          "maximum": 0.2994429999999999,
+          "p50": 0.252673,
+          "p95": 0.290811,
+          "p99": 0.2994429999999999,
+          "p99_9": null
+        },
+        "median_paired_reduction": 0.012454488279655562,
+        "p95_ratio": 1.001511853760004
+      },
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.0015908689999999982,
+          "maximum": 0.010970413999999998,
+          "p50": 0.009379545,
+          "p95": 0.009844166,
+          "p99": 0.010970413999999998,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.03872534674993655,
+          -0.003374846263719311
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.0020427469999999993,
+          "maximum": 0.011635290999999999,
+          "p50": 0.009592544,
+          "p95": 0.011552583,
+          "p99": 0.011635290999999999,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.027877927072616715,
+        "p95_ratio": 1.1735461389009492
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.04569854099999998,
+          "maximum": 0.322094375,
+          "p50": 0.276395834,
+          "p95": 0.315161292,
+          "p99": 0.322094375,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.026192254257865165,
+          -0.00031124742253751947
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.04685149900000002,
+          "maximum": 0.327913041,
+          "p50": 0.281061542,
+          "p95": 0.320134917,
+          "p99": 0.327913041,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.0175808213210924,
+        "p95_ratio": 1.0157812051360673
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 14401536,
+          "maximum": 112705536,
+          "p50": 98304000,
+          "p95": 111771648,
+          "p99": 112705536,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.08115484630050429,
+          -0.055868825082181495
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 17645568,
+          "maximum": 121815040,
+          "p50": 104169472,
+          "p95": 121143296,
+          "p99": 121815040,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.059721495195501295,
+        "p95_ratio": 1.0838463793608912
+      }
+    },
+    "pairs": 30,
+    "performance_qualification": false,
+    "retention_signal": false
+  },
+  "readinto": {
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "interpretation": "full-harness screening only; review correctness, CPU and tails separately",
+    "metrics": {
+      "cpu_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.039645999999999904,
+          "maximum": 0.29585599999999995,
+          "p50": 0.25621000000000005,
+          "p95": 0.2903720000000001,
+          "p99": 0.29585599999999995,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          0.005759081226635598,
+          0.0230876163397305
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.036456000000000044,
+          "maximum": 0.28959,
+          "p50": 0.25313399999999997,
+          "p95": 0.26044,
+          "p99": 0.28959,
+          "p99_9": null
+        },
+        "median_paired_reduction": 0.01815541741326976,
+        "p95_ratio": 0.8969184356618405
+      },
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.0015908689999999982,
+          "maximum": 0.010970413999999998,
+          "p50": 0.009379545,
+          "p95": 0.009844166,
+          "p99": 0.010970413999999998,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.03566412289822718,
+          0.006472440920748668
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.0006663780000000005,
+          "maximum": 0.010213544,
+          "p50": 0.009547166,
+          "p95": 0.010085123000000001,
+          "p99": 0.010213544,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.006021325377842057,
+        "p95_ratio": 1.0244771370169907
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.04569854099999998,
+          "maximum": 0.322094375,
+          "p50": 0.276395834,
+          "p95": 0.315161292,
+          "p99": 0.322094375,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          0.0025881389984288017,
+          0.01933303376177764
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.04035150100000001,
+          "maximum": 0.315337917,
+          "p50": 0.274986416,
+          "p95": 0.284832334,
+          "p99": 0.315337917,
+          "p99_9": null
+        },
+        "median_paired_reduction": 0.014253836859982494,
+        "p95_ratio": 0.9037668686800536
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 14401536,
+          "maximum": 112705536,
+          "p50": 98304000,
+          "p95": 111771648,
+          "p99": 112705536,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.06937060898473679,
+          -0.050999999999999934
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 28180480,
+          "maximum": 131760128,
+          "p50": 103579648,
+          "p95": 120324096,
+          "p99": 131760128,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.054056273307258595,
+        "p95_ratio": 1.0765171503957784
+      }
+    },
+    "pairs": 30,
+    "performance_qualification": false,
+    "retention_signal": false
+  }
+}

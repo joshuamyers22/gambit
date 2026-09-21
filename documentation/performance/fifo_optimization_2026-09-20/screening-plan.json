@@ -1,0 +1,96 @@
+{
+  "started_at": "2026-09-20T20:59:40.346577+00:00",
+  "commands": [
+    [
+      "3y-sparse",
+      [
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+        "run",
+        "--scenario",
+        "fifo-3y-sparse-v1",
+        "--trials",
+        "30",
+        "--session-id",
+        "lat05-3y-sparse",
+        "--baseline-python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/baseline-python",
+        "--build-manifest",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/candidate-build/build.json",
+        "--output-dir",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/3y-sparse"
+      ]
+    ],
+    [
+      "1m-dense",
+      [
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+        "run",
+        "--scenario",
+        "fifo-1m-dense-v1",
+        "--trials",
+        "30",
+        "--session-id",
+        "lat05-1m-dense",
+        "--baseline-python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/baseline-python",
+        "--build-manifest",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/candidate-build/build.json",
+        "--output-dir",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/1m-dense"
+      ]
+    ],
+    [
+      "2m-dense",
+      [
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+        "run",
+        "--scenario",
+        "fifo-2m-dense-v1",
+        "--trials",
+        "30",
+        "--session-id",
+        "lat05-2m-dense",
+        "--baseline-python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/baseline-python",
+        "--build-manifest",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/candidate-build/build.json",
+        "--output-dir",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/2m-dense"
+      ]
+    ],
+    [
+      "chunk-65536-prefix",
+      [
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/screen.py",
+        "--pairs",
+        "30",
+        "--chunk",
+        "65536",
+        "--output",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/chunk-65536-prefix"
+      ]
+    ],
+    [
+      "chunk-1048576-prefix",
+      [
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/screen.py",
+        "--pairs",
+        "30",
+        "--chunk",
+        "1048576",
+        "--output",
+        "/Users/jkm0607/Projects/gambit-evidence/lat05-2026-09-20/chunk-1048576-prefix"
+      ]
+    ]
+  ],
+  "source_sha256": "f105edf624b52419ce35d1951f3554842b9f0168eb83cbb0c857812f1eeaca37",
+  "candidate_sha256": "9bb6074a0149a302edd4a1f8ab3063f3ae830b15418342738dcacfde450ffb39",
+  "baseline_sha256": "593537a814f3364f384df5cb1a33df86aa8b8870edd88c020756026111d5b7d2",
+  "qualification": false,
+  "control_scope": "Full primary and both full dense workloads. Alternative chunks use 100m-event prefixes for timing; full chunks covered by independent parity."
+}

@@ -1,0 +1,421 @@
+{
+  "files": {
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/asan_bootstrap.py": {
+      "bytes": 538,
+      "sha256": "62df6593dc6c9fd25c33618fcf5813214f8b9853834b188de97ec0dcf46701a4"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/audit_prior_evidence.py": {
+      "bytes": 3082,
+      "sha256": "ff0c5489d318f2fb37853a1c6e6becc1a7bcc33fb75f8fa50467721fa64d5f4b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/collect_evidence.py": {
+      "bytes": 10407,
+      "sha256": "69fc7fcb64bccfa17a98f47aa0b8a662bb68e017b02bdac8506d135e6096a124"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/contract-tests.log": {
+      "bytes": 98,
+      "sha256": "e0a6ea218ea5d725ce7272da8d68d45a029e489423e03af6960c7bff0f7fe414"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks-index.json": {
+      "bytes": 1395,
+      "sha256": "7b318911c6be7f82d8ebf81b1db8071285bff5063c12996628a06e4edc78b5b6"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks.log": {
+      "bytes": 3388,
+      "sha256": "99916794426def1c9b810c8f7c881ffd6834f60d836ea5a8821f7af8d8d3b629"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-1/request.json": {
+      "bytes": 5619,
+      "sha256": "2c4fe98388baecb073f239a374ac321b0c4f3ea60c983204a1ac0fce366a7882"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-1/trial.json": {
+      "bytes": 16863,
+      "sha256": "3d97d060dcfaebbbf18e2122126becb025d5b6de34f08705223d4902663d4727"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-1/worker-result.json": {
+      "bytes": 6228,
+      "sha256": "f2f46fa839ae2cb8350b1c81de394dd78d5e17664f8b07871029e54b4bce09ce"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-2/request.json": {
+      "bytes": 5619,
+      "sha256": "2c4fe98388baecb073f239a374ac321b0c4f3ea60c983204a1ac0fce366a7882"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-2/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-2/trial.json": {
+      "bytes": 16860,
+      "sha256": "aa0f8c1d20ac88f29539fcd60b2ea7a97c7c292502bb318e97eb151109178d0b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-1m-dense-v1-2/worker-result.json": {
+      "bytes": 6213,
+      "sha256": "3318dd3b7a835e141e310e154f1de3c95e7911ac69c44c139df150b550740046"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-1/request.json": {
+      "bytes": 5619,
+      "sha256": "70c48aaccb84aa138d26fcf87597edc39c590ee6d4bdd938347d0d5aeb7299e2"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-1/trial.json": {
+      "bytes": 16868,
+      "sha256": "bd817b785a5f024f9e252440f0475c76978309a40fb987f1bc640d6082233508"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-1/worker-result.json": {
+      "bytes": 6227,
+      "sha256": "cb871b63ee14f805749bf754c5c2459e55844b7a2258e67b1a55eb043851a71b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-2/request.json": {
+      "bytes": 5619,
+      "sha256": "70c48aaccb84aa138d26fcf87597edc39c590ee6d4bdd938347d0d5aeb7299e2"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-2/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-2/trial.json": {
+      "bytes": 16856,
+      "sha256": "707aaa2b4b1790a0631607ce8aa48363a768faae9d4ca99bce9d9e4b51569bf3"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2m-dense-v1-2/worker-result.json": {
+      "bytes": 6215,
+      "sha256": "3c8c4f30574f7751d2135435e74c333824f259639b7e9d38138d189bc71501e7"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2y-sparse-v1-1/request.json": {
+      "bytes": 5625,
+      "sha256": "413a72c2e19302421b5bfc4caa1d03537fed839021eece9fe7b7d643bc13f603"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2y-sparse-v1-1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2y-sparse-v1-1/trial.json": {
+      "bytes": 16865,
+      "sha256": "074010eabd20d290b632fbbe49571df1d49c6661a5cda913397f3bd359d6308e"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-2y-sparse-v1-1/worker-result.json": {
+      "bytes": 6224,
+      "sha256": "aea51d2a5c975838fe12d210647593af62ff0a85a16038dd42825e863e47a069"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-1/request.json": {
+      "bytes": 5625,
+      "sha256": "b1f0d031129edc63e0dc2f8e1b48f857a1f937eccd21f7a86981555692d344e7"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-1/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-1/trial.json": {
+      "bytes": 16755,
+      "sha256": "e74c46bf4e3c2f6e90456da9d6745bf91049e2847de587286a7046a7f04dc7dd"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-1/worker-result.json": {
+      "bytes": 6171,
+      "sha256": "5a1d33131f0b549766d6cef3b08ea00eee55b96ff9e8c11d562cfa6ec9c796cb"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-2/request.json": {
+      "bytes": 5625,
+      "sha256": "b1f0d031129edc63e0dc2f8e1b48f857a1f937eccd21f7a86981555692d344e7"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-2/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-2/trial.json": {
+      "bytes": 16756,
+      "sha256": "a94865c912c54fa9c816914a0072fb195c6955009e625fc1753c6ebfbd480c4d"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-2/worker-result.json": {
+      "bytes": 6169,
+      "sha256": "9c1bbde20caac1fd187856c43b5c584bc2eb51023f23974acd2fb5d0ea0af34c"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-3/request.json": {
+      "bytes": 5625,
+      "sha256": "b1f0d031129edc63e0dc2f8e1b48f857a1f937eccd21f7a86981555692d344e7"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-3/stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-3/trial.json": {
+      "bytes": 16775,
+      "sha256": "028f9931e73040b1db6ea58a9e43ee16ac47eca86945ac237bbf985942e2596b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/controlled-checks/fifo-3y-sparse-v1-3/worker-result.json": {
+      "bytes": 6183,
+      "sha256": "37a3aaecd60e2380bfa1fe56312e9943f2930ac15cd9b9917650746d59638f35"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/decision.json": {
+      "bytes": 24457,
+      "sha256": "b1237cd79e624521b30868c9439aa5a6112f46136ce2af65dcafe0231ebd7df8"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/docs.log": {
+      "bytes": 1249,
+      "sha256": "a740ad01f55217ce0afcca910a612e36af9357e163709e1665f784e88afcad17"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/initial-status.txt": {
+      "bytes": 2357,
+      "sha256": "e5d08c4909b11f1ee3eadfcdc54a47d57d7a8600120eb686ad91fbc42e4cfd6a"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/linux-probe.json": {
+      "bytes": 413,
+      "sha256": "372e7b7812c059d6cb12c29539032ce17a7fb4864ab2b3a588733a64d6e16fc2"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/linux_probe.py": {
+      "bytes": 485,
+      "sha256": "715aa6348e5bf0a785941128594392a3d1237e042812da343ddf39f7518570a2"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/make-check.log": {
+      "bytes": 67120,
+      "sha256": "c668017a3c4fa666fd6c3505a99f9aebda7689a9a506057aeb34c43fcf592639"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/mapped_column-analyzer.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_factor_cache.cpython-310-darwin.so": {
+      "bytes": 579568,
+      "sha256": "38ec1efb75c004a70ccd898397214578f6508e54429fb805674c7e80a80e3a0b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_io.cpython-310-darwin.so": {
+      "bytes": 110616,
+      "sha256": "f11db9eaa3749e616a8195e2e0cf38e6d8877b417f1bb595d69a7bafc616c9d4"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_options.cpython-310-darwin.so": {
+      "bytes": 330560,
+      "sha256": "b9b99f9c63e4ad793e4dbaf715322804a84b12a45ac6e3c612557be563308683"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/compute_pnl.cpython-310-darwin.so": {
+      "bytes": 309824,
+      "sha256": "393cb1411948301b18d2f6739bdc174a0be114a70d3cdd472d6fc4902c4e526f"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/validation.log": {
+      "bytes": 3449,
+      "sha256": "d10789edc1f7d8a6cfe3a65ca9154f0181fbafdeb648a3cd4f3193717f6b95c4"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/dist/gambit_markets-1.1.0-cp311-cp311-macosx_11_0_arm64.whl": {
+      "bytes": 657817,
+      "sha256": "ee58a2311a61b98c03e0272835fb20e0204a60611256b3dd7c1d25a487fe9f1a"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_factor_cache.cpython-311-darwin.so": {
+      "bytes": 579264,
+      "sha256": "f2cce93fb5796a9029df04fea4a9cbb32eda0d60c427d60d6867c6c0239cef4b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_io.cpython-311-darwin.so": {
+      "bytes": 110472,
+      "sha256": "5055f972b5db7b38cc584f57653c7fb45cc4c704fcc778bde8005bb0510e9b1e"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_options.cpython-311-darwin.so": {
+      "bytes": 346512,
+      "sha256": "6a39c3cc7aa66c2d1205650791dcfc1227223edb1ff1658be71eb20641f50b9c"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/compute_pnl.cpython-311-darwin.so": {
+      "bytes": 309536,
+      "sha256": "f60c82bb8787b03f04d6f39b7ca7baad14e60071bbc34876d064203d3bf00a78"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/validation.log": {
+      "bytes": 34476,
+      "sha256": "afaa15c691ff8e6c3ff45b6d1caf6ea952154049f51ad3425e874e02eb0d5947"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist/gambit_markets-1.1.0-cp312-cp312-macosx_11_0_arm64.whl": {
+      "bytes": 660874,
+      "sha256": "084cc83d83713bbeb79afa417357a426da4bde0a5150da8beeda96eb5f0f02a4"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_factor_cache.cpython-312-darwin.so": {
+      "bytes": 584016,
+      "sha256": "ea6cd60932947dc862f860a1566ad64d60adbba57fe5aa90f4599ec8feb63a93"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_io.cpython-312-darwin.so": {
+      "bytes": 110472,
+      "sha256": "6370bd0fa3a9f5a146ebf6e3ba18b81aae10c8d9b751c09ae5a6f192bde93c53"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_options.cpython-312-darwin.so": {
+      "bytes": 349664,
+      "sha256": "b6f7153d328533b4a361894266eabf0f02332e9ebe805a4b90f70306c0e52a3b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/compute_pnl.cpython-312-darwin.so": {
+      "bytes": 309360,
+      "sha256": "8e0ca432e69bc504631f9ee8076a35b0502965eccd6f29324524172134cdd882"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/followup.log": {
+      "bytes": 2316,
+      "sha256": "61a63b7536d42728456234c57190e1f973226c466527b819c3be9d07e7c07e05"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/installed-dependencies.txt": {
+      "bytes": 364,
+      "sha256": "076ad2c3bc9ff7bb7809390cf8bfd32e3deb454108a17bc03ef56558e1f6cd0e"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/validation.log": {
+      "bytes": 34108,
+      "sha256": "1529048f2656ad64d8db739d74a2f2256711dae3f3c89bf608ac5749170caa53"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-followup.log": {
+      "bytes": 242,
+      "sha256": "f1929cda10c27689798510da298f1c25a36971b2b5570ca49f39e79bdd426b93"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-identities.json": {
+      "bytes": 8332,
+      "sha256": "ef8aa30b7ca2ba7fee8fcfae36f4389b26bdb7da6ea648aaab25f9528d5e6fa5"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-matrix.json": {
+      "bytes": 8268,
+      "sha256": "68874c7ba8f7ab68a695b1ba7dedabb57cd7879dff01f858e7f2f637b83da0d0"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-matrix.log": {
+      "bytes": 33,
+      "sha256": "7da375e5a72364cbc3786318b0c483a56a4d50a88d866267e828fff158e7d5c0"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_factor_cache.cpython-310-darwin.so": {
+      "bytes": 579632,
+      "sha256": "ba4944e7d7784ed033c88a75a423128e9948b6a356d6650cbc6d5590c4e51134"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_io.cpython-310-darwin.so": {
+      "bytes": 110664,
+      "sha256": "5d93cccc14d5caff0c0ac8bb9bbd7f859a71c33fc99186013c9c6d3aebe8e242"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_options.cpython-310-darwin.so": {
+      "bytes": 330704,
+      "sha256": "d9a630463b1beeac14ab1ac40cae8f2e915aa9ae4703894e0c6e6bb5e05cc9aa"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/compute_pnl.cpython-310-darwin.so": {
+      "bytes": 309856,
+      "sha256": "130e4a837002e9e02aac6ebadd01dc3021500ddf7d4eec9303acf44b554a5683"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/followup.log": {
+      "bytes": 3614,
+      "sha256": "7a5ee15a4ddb3e3413216ffab801676da279c1f98239ab5cac2681be2c63acc7"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/installed-dependencies.txt": {
+      "bytes": 360,
+      "sha256": "c65387b6f351fec84633fcffb4e3b3142b48091e264cc3fd9be7d7222c69120b"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package_followup.py": {
+      "bytes": 1857,
+      "sha256": "77d423bf3d45873ad48f4027d5ef77cbc3496d02aaf71af6e024c97fbdc78886"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package_identities.py": {
+      "bytes": 1316,
+      "sha256": "a5e1bbbbfe2e9ac8e8995d91beb7ec076021dd280ededf617826f5d35d26b183"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package_matrix.py": {
+      "bytes": 1918,
+      "sha256": "826cec0cf14b5cf87054b8fee9ca28ab181a82735fbc7f1260bcfccdfa78a029"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/primary-disposition.json": {
+      "bytes": 1348,
+      "sha256": "cf3b6a5694d7352fe5c126a8ebec7510053a739ef9a77ae648f651b4a2bd268f"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/prior-evidence-audit.json": {
+      "bytes": 19838,
+      "sha256": "ce8fe700e24eb8b00b2b6529b50e07a5b3e4657d67eaf9195f20e820df00639e"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/prior-evidence-audit.log": {
+      "bytes": 230,
+      "sha256": "a21b3ec6135f1812a340cb87825946e43da47c55ad6ce195031be4943ea5817d"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/retained-native-build.json": {
+      "bytes": 4757,
+      "sha256": "69e173bf114bb10f705dd40aba4f537fdc6b4adc20b320f2331fef10a248a436"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/run_controlled_checks.py": {
+      "bytes": 1540,
+      "sha256": "6ce93925e98092f174defda518ee4958f82802c7fb54defe73ebb0af80d2b6f1"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/run_sanitizers.py": {
+      "bytes": 2475,
+      "sha256": "47fd589449123f05027c4f594dccba492162be6f32d528e2a6ce63baff677c19"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/runtime-source-identity.json": {
+      "bytes": 27146,
+      "sha256": "6f0c849d6fa9afc8dbe82793593a2866a81f3e276bfe4185446d2d7a20e3ce99"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized-build.log": {
+      "bytes": 74,
+      "sha256": "6a286f38f5cd5b5a40c3027b63a3541abc7e0c0588b186a7f2b89e72f11e3fd9"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized-input/build.json": {
+      "bytes": 767,
+      "sha256": "95c43443f437a13831774ddae4761cab29e5a86e1b0033038fa058ec62703e1d"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized-input/compiler.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized-input/queue_input.dylib": {
+      "bytes": 51264,
+      "sha256": "9149b362f346faa02074494e6f2d1bda3877d334accb74c35992b6e41ac1a24c"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized-tests.log": {
+      "bytes": 392,
+      "sha256": "50211a8da2f916ca91074b1e9a3d34a3821358de8b3701ed317a447930d65b83"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized/build.json": {
+      "bytes": 5944,
+      "sha256": "a57ca727b6bb9b5857c8d92bdfbce3cf4e5abcfe8de59dc6765e0a31e8f3b865"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitized/src/gambit/_factor_cache.cpython-310-darwin.so": {
+      "bytes": 4194656,
+      "sha256": "89f92b7cebc384e25c9cdf628e3f9e37108c5a803c47de44e70fc92f6eaec973"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/sanitizer-driver.log": {
+      "bytes": 41,
+      "sha256": "d1fbc1b654ff1d818e0268ffd87136f4bfc07dc4db7aff53756b371b94ddeda0"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/source-inventory.json": {
+      "bytes": 74309,
+      "sha256": "7661f1f5d01a7a169acf570d638bf9fdd1a3ada2b3a030ae1ace8c7722a691da"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/static-analysis.json": {
+      "bytes": 3150,
+      "sha256": "1442237625d7c99ba6466c79253a4e9452ca70f66c35202f84a34937380551bb"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/static-analysis.log": {
+      "bytes": 91,
+      "sha256": "36ff05820e16e823a167f607ed0809f741b756a0293831393dd4ffbe06eee125"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/static_analysis.py": {
+      "bytes": 955,
+      "sha256": "c48d317c20b4d5c928de9553c2f17a5502b49fdca19987f1d2ac1f069daad408"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tick-ring-tsan": {
+      "bytes": 39376,
+      "sha256": "28ae9bd932cdbaaa2ef4ec2eab02764d40812e64d33a3134e51b9daaf896e3f5"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tick_ring-analyzer.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/top_of_book_backtest-analyzer.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tsan-build.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tsan-result.json": {
+      "bytes": 565,
+      "sha256": "dc91c09a48b910fecf9c276fc211036da3a7bcf1fbf2e87d418b0154a24fe348"
+    },
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tsan-run.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl": {
+      "bytes": 656200,
+      "sha256": "62cd9e8e710b4f55c2525ab61668e166224aa197e36bf7e283c5b3b1589874c7"
+    },
+    "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0.tar.gz": {
+      "bytes": 460968,
+      "sha256": "4912f5e54dd72eb0511ad17d04f70d42730cd7ca5023a628a985073d8c51e1ef"
+    }
+  },
+  "scope": "Selected reproducibility records, installed native binaries and package artifacts; disposable environments/object files excluded"
+}

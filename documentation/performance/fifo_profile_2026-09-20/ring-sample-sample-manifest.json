@@ -1,0 +1,51 @@
+{
+  "child_command": [
+    "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+    "/Users/jkm0607/Projects/gambit/benchmarks/profile_replay.py",
+    "_ring",
+    "/private/tmp/gambit-lat03-ring-sample",
+    "23"
+  ],
+  "conditions_after": {
+    "load_average": [
+      3.72705078125,
+      2.72607421875,
+      2.40185546875
+    ],
+    "observed_at": "2026-09-20T18:18:56.651556+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "conditions_before": {
+    "load_average": [
+      2.0458984375,
+      2.36865234375,
+      2.271484375
+    ],
+    "observed_at": "2026-09-20T18:18:32.866628+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "diagnostic_only": true,
+  "path": "ring",
+  "profiler": "/usr/bin/sample",
+  "runner_sha256": "934cf1b1b4041e5ae9bd8dd3fd46f931edfdffa9056577c507fb0882bc9571c8",
+  "sample_command": [
+    "/usr/bin/sample",
+    "28456",
+    "20",
+    "1",
+    "-mayDie",
+    "-fullPaths",
+    "-file",
+    "/private/tmp/gambit-lat03-ring-sample/sample.txt"
+  ],
+  "sample_returncode": 0,
+  "sample_stderr": "Sampling process 28456 for 20 seconds with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 28456 written to file /private/tmp/gambit-lat03-ring-sample/sample.txt\n",
+  "sample_stdout": "",
+  "sampled_pid": 28456,
+  "schema": "gambit-replay-diagnosis-v1",
+  "worker_returncode": 0
+}

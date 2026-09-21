@@ -1,0 +1,189 @@
+{
+  "campaign_complete": true,
+  "paired_comparison": {
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.005531914000000006,
+          "maximum": 0.031000915000000004,
+          "p50": 0.025469000999999998,
+          "p95": 0.030694373,
+          "p99": 0.031000915000000004,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.002970998999999995,
+          "maximum": 0.021314623999999997,
+          "p50": 0.018343625000000002,
+          "p95": 0.020293412,
+          "p99": 0.021314623999999997,
+          "p99_9": null
+        },
+        "p95_ratio": 0.6611443732699801
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.07113458399999995,
+          "maximum": 0.651601667,
+          "p50": 0.580467083,
+          "p95": 0.630613292,
+          "p99": 0.651601667,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.0540813750000001,
+          "maximum": 0.627145083,
+          "p50": 0.573063708,
+          "p95": 0.599618334,
+          "p99": 0.627145083,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9508495009648479
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 24920064,
+          "maximum": 144441344,
+          "p50": 119521280,
+          "p95": 138412032,
+          "p99": 144441344,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 35323904,
+          "maximum": 154533888,
+          "p50": 119209984,
+          "p95": 140017664,
+          "p99": 154533888,
+          "p99_9": null
+        },
+        "p95_ratio": 1.011600378787879
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "median_execution_reduction": 0.28301651372891845,
+    "paired_bootstrap_95_interval": [
+      0.2687525505393014,
+      0.2904150879671912
+    ],
+    "status": "retention_signal"
+  },
+  "schema": "gambit-controlled-replay-v1",
+  "variants": {
+    "baseline": {
+      "contract": "gambit-fifo-latency-v1",
+      "execution_seconds": {
+        "count": 30,
+        "jitter": 0.005531914000000006,
+        "maximum": 0.031000915000000004,
+        "p50": 0.025469000999999998,
+        "p95": 0.030694373,
+        "p99": 0.031000915000000004,
+        "p99_9": null
+      },
+      "failed_trials": 0,
+      "harness_seconds": {
+        "count": 30,
+        "jitter": 0.07113458399999995,
+        "maximum": 0.651601667,
+        "p50": 0.580467083,
+        "p95": 0.630613292,
+        "p99": 0.651601667,
+        "p99_9": null
+      },
+      "ineligibility_reasons": [
+        "requires exactly four distinct sessions of 50 trials",
+        "not the primary synthetic/default-chunk workload",
+        "exact native build commands not attested",
+        "session conditions not supplied",
+        "primary canonical controls not verified"
+      ],
+      "p99_9_qualified": false,
+      "p99_descriptive_only": true,
+      "peak_rss_bytes": {
+        "count": 30,
+        "jitter": 24920064,
+        "maximum": 144441344,
+        "p50": 119521280,
+        "p95": 138412032,
+        "p99": 144441344,
+        "p99_9": null
+      },
+      "qualification": "pending_independent_evidence",
+      "remaining_evidence": [
+        "independent full-volume trace parity",
+        "same-commit platform/sanitizer gates",
+        "instrumentation overhead and session independence review",
+        "owner disposition"
+      ],
+      "schema": "gambit-controlled-replay-v1",
+      "sessions": {
+        "lat05-2m-dense": 30
+      },
+      "successful_trials": 30,
+      "timing_gate": "ineligible",
+      "trials": 30
+    },
+    "candidate": {
+      "contract": "gambit-fifo-latency-v1",
+      "execution_seconds": {
+        "count": 30,
+        "jitter": 0.002970998999999995,
+        "maximum": 0.021314623999999997,
+        "p50": 0.018343625000000002,
+        "p95": 0.020293412,
+        "p99": 0.021314623999999997,
+        "p99_9": null
+      },
+      "failed_trials": 0,
+      "harness_seconds": {
+        "count": 30,
+        "jitter": 0.0540813750000001,
+        "maximum": 0.627145083,
+        "p50": 0.573063708,
+        "p95": 0.599618334,
+        "p99": 0.627145083,
+        "p99_9": null
+      },
+      "ineligibility_reasons": [
+        "requires exactly four distinct sessions of 50 trials",
+        "not the primary synthetic/default-chunk workload",
+        "session conditions not supplied",
+        "primary canonical controls not verified"
+      ],
+      "p99_9_qualified": false,
+      "p99_descriptive_only": true,
+      "peak_rss_bytes": {
+        "count": 30,
+        "jitter": 35323904,
+        "maximum": 154533888,
+        "p50": 119209984,
+        "p95": 140017664,
+        "p99": 154533888,
+        "p99_9": null
+      },
+      "qualification": "pending_independent_evidence",
+      "remaining_evidence": [
+        "independent full-volume trace parity",
+        "same-commit platform/sanitizer gates",
+        "instrumentation overhead and session independence review",
+        "owner disposition"
+      ],
+      "schema": "gambit-controlled-replay-v1",
+      "sessions": {
+        "lat05-2m-dense": 30
+      },
+      "successful_trials": 30,
+      "timing_gate": "ineligible",
+      "trials": 30
+    }
+  }
+}

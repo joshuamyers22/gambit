@@ -16,6 +16,9 @@ import pybind11
 ROOT = Path(__file__).resolve().parents[1]
 CPP_ROOT = ROOT / "src" / "gambit" / "cpp"
 SOURCES = (
+    ROOT / "benchmarks" / "fused_queue_input.cpp",
+    ROOT / "tests" / "cpp" / "tick_ring_tsan.cpp",
+    ROOT / "benchmarks" / "fifo_reference.cpp",
     CPP_ROOT / "factor_cache" / "mapped_column.cpp",
     CPP_ROOT / "factor_cache" / "tick_ring.cpp",
     CPP_ROOT / "factor_cache" / "top_of_book_backtest.cpp",
@@ -62,6 +65,7 @@ def main() -> None:
                 "-Wextra",
                 "-Wpedantic",
                 "-Werror",
+                "-I", str(CPP_ROOT / "factor_cache"),
                 *[argument for include in sorted(system_includes) for argument in ("-isystem", include)],
                 "-c",
                 str(source),

@@ -1,0 +1,305 @@
+{
+  "diagnostic_only": true,
+  "functions": [
+    {
+      "calls": 14458,
+      "cumulative_seconds": 25.143835744,
+      "file": "~",
+      "function": "<method 'update' of '_hashlib.HASH' objects>",
+      "line": 0,
+      "primitive_calls": 14458,
+      "self_seconds": 25.143835744
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 24.69518408,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/top_of_book_backtest.py",
+      "function": "make_queue_events",
+      "line": 34,
+      "primitive_calls": 14453,
+      "self_seconds": 20.878429189000002
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 2.916867287,
+      "file": "~",
+      "function": "<built-in method numpy.zeros>",
+      "line": 0,
+      "primitive_calls": 14453,
+      "self_seconds": 2.916867287
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 1.582935125,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/top_of_book_backtest.py",
+      "function": "reconcile",
+      "line": 62,
+      "primitive_calls": 1,
+      "self_seconds": 1.0673284920000001
+    },
+    {
+      "calls": 72265,
+      "cumulative_seconds": 0.6558957310000001,
+      "file": "~",
+      "function": "<method 'astype' of 'numpy.ndarray' objects>",
+      "line": 0,
+      "primitive_calls": 72265,
+      "self_seconds": 0.6558957310000001
+    },
+    {
+      "calls": 2979190,
+      "cumulative_seconds": 0.51560505,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/top_of_book_backtest.py",
+      "function": "<genexpr>",
+      "line": 67,
+      "primitive_calls": 2979190,
+      "self_seconds": 0.51560505
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 0.235776957,
+      "file": "~",
+      "function": "<built-in method numpy.arange>",
+      "line": 0,
+      "primitive_calls": 14453,
+      "self_seconds": 0.235776957
+    },
+    {
+      "calls": 28909,
+      "cumulative_seconds": 0.06471993100000001,
+      "file": "~",
+      "function": "<built-in method builtins.print>",
+      "line": 0,
+      "primitive_calls": 28909,
+      "self_seconds": 0.06471993100000001
+    },
+    {
+      "calls": 28910,
+      "cumulative_seconds": 0.034871569000000005,
+      "file": "/Users/jkm0607/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/json/encoder.py",
+      "function": "iterencode",
+      "line": 204,
+      "primitive_calls": 28910,
+      "self_seconds": 0.034871569000000005
+    },
+    {
+      "calls": 28909,
+      "cumulative_seconds": 0.16947477600000002,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+      "function": "emit",
+      "line": 181,
+      "primitive_calls": 28909,
+      "self_seconds": 0.023511565
+    },
+    {
+      "calls": 28910,
+      "cumulative_seconds": 0.08031640400000001,
+      "file": "/Users/jkm0607/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/json/__init__.py",
+      "function": "dumps",
+      "line": 183,
+      "primitive_calls": 28910,
+      "self_seconds": 0.020016034000000002
+    },
+    {
+      "calls": 28910,
+      "cumulative_seconds": 0.053416525000000006,
+      "file": "/Users/jkm0607/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/json/encoder.py",
+      "function": "encode",
+      "line": 182,
+      "primitive_calls": 28910,
+      "self_seconds": 0.014538759
+    },
+    {
+      "calls": 14457,
+      "cumulative_seconds": 0.010974075000000002,
+      "file": "~",
+      "function": "<built-in method resource.getrusage>",
+      "line": 0,
+      "primitive_calls": 14457,
+      "self_seconds": 0.010974075000000002
+    },
+    {
+      "calls": 14455,
+      "cumulative_seconds": 0.018353927000000003,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+      "function": "rss_bytes",
+      "line": 185,
+      "primitive_calls": 14455,
+      "self_seconds": 0.0073811860000000005
+    },
+    {
+      "calls": 28910,
+      "cumulative_seconds": 0.006883845,
+      "file": "/Users/jkm0607/.local/share/uv/python/cpython-3.10-macos-aarch64-none/lib/python3.10/json/encoder.py",
+      "function": "__init__",
+      "line": 104,
+      "primitive_calls": 28910,
+      "self_seconds": 0.006883845
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 0.006758788000000001,
+      "file": "~",
+      "function": "<built-in method numpy.array>",
+      "line": 0,
+      "primitive_calls": 14453,
+      "self_seconds": 0.006758788000000001
+    },
+    {
+      "calls": 115638,
+      "cumulative_seconds": 0.004326306,
+      "file": "~",
+      "function": "<built-in method time.monotonic_ns>",
+      "line": 0,
+      "primitive_calls": 115638,
+      "self_seconds": 0.004326306
+    },
+    {
+      "calls": 14455,
+      "cumulative_seconds": 0.022011700000000002,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+      "function": "checkpoint",
+      "line": 190,
+      "primitive_calls": 14455,
+      "self_seconds": 0.003657773
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 0.003494675,
+      "file": "~",
+      "function": "<method 'setflags' of 'numpy.ndarray' objects>",
+      "line": 0,
+      "primitive_calls": 14453,
+      "self_seconds": 0.003494675
+    },
+    {
+      "calls": 57820,
+      "cumulative_seconds": 0.003161676,
+      "file": "~",
+      "function": "<built-in method builtins.isinstance>",
+      "line": 0,
+      "primitive_calls": 57820,
+      "self_seconds": 0.003161676
+    },
+    {
+      "calls": 14453,
+      "cumulative_seconds": 0.001877685,
+      "file": "~",
+      "function": "<built-in method builtins.min>",
+      "line": 0,
+      "primitive_calls": 14453,
+      "self_seconds": 0.001877685
+    },
+    {
+      "calls": 28906,
+      "cumulative_seconds": 0.0014561280000000001,
+      "file": "/Users/jkm0607/Projects/gambit/.venv/lib/python3.10/site-packages/numpy/_core/multiarray.py",
+      "function": "where",
+      "line": 383,
+      "primitive_calls": 28906,
+      "self_seconds": 0.0014561280000000001
+    },
+    {
+      "calls": 14457,
+      "cumulative_seconds": 0.001127633,
+      "file": "~",
+      "function": "<method 'cast' of 'memoryview' objects>",
+      "line": 0,
+      "primitive_calls": 14457,
+      "self_seconds": 0.001127633
+    },
+    {
+      "calls": 28910,
+      "cumulative_seconds": 0.0008445210000000001,
+      "file": "~",
+      "function": "<method 'join' of 'str' objects>",
+      "line": 0,
+      "primitive_calls": 28910,
+      "self_seconds": 0.0008445210000000001
+    },
+    {
+      "calls": 14456,
+      "cumulative_seconds": 0.00060216,
+      "file": "~",
+      "function": "<built-in method builtins.len>",
+      "line": 0,
+      "primitive_calls": 14456,
+      "self_seconds": 0.00060216
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 1.6459e-05,
+      "file": "~",
+      "function": "<built-in method _hashlib.openssl_sha256>",
+      "line": 0,
+      "primitive_calls": 2,
+      "self_seconds": 1.6459e-05
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 2.7090000000000002e-06,
+      "file": "~",
+      "function": "<method 'hexdigest' of '_hashlib.HASH' objects>",
+      "line": 0,
+      "primitive_calls": 2,
+      "self_seconds": 2.7090000000000002e-06
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 1.2080000000000001e-06,
+      "file": "~",
+      "function": "<method 'tolist' of 'numpy.ndarray' objects>",
+      "line": 0,
+      "primitive_calls": 1,
+      "self_seconds": 1.2080000000000001e-06
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 9.58e-07,
+      "file": "/Users/jkm0607/Projects/gambit/benchmarks/controlled_replay.py",
+      "function": "<dictcomp>",
+      "line": 310,
+      "primitive_calls": 1,
+      "self_seconds": 9.58e-07
+    },
+    {
+      "calls": 2,
+      "cumulative_seconds": 6.67e-07,
+      "file": "~",
+      "function": "<method 'get' of 'dict' objects>",
+      "line": 0,
+      "primitive_calls": 2,
+      "self_seconds": 6.67e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 5.830000000000001e-07,
+      "file": "~",
+      "function": "<method 'encode' of 'str' objects>",
+      "line": 0,
+      "primitive_calls": 1,
+      "self_seconds": 5.830000000000001e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 4.16e-07,
+      "file": "~",
+      "function": "<method 'disable' of '_lsprof.Profiler' objects>",
+      "line": 0,
+      "primitive_calls": 1,
+      "self_seconds": 4.16e-07
+    },
+    {
+      "calls": 1,
+      "cumulative_seconds": 2.5000000000000004e-07,
+      "file": "~",
+      "function": "<method 'items' of 'dict' objects>",
+      "line": 0,
+      "primitive_calls": 1,
+      "self_seconds": 2.5000000000000004e-07
+    }
+  ],
+  "limitation": "Python deterministic profiler perturbs timings; native calls are opaque",
+  "schema": "gambit-replay-diagnosis-v1",
+  "total_seconds": 51.62396600900001
+}

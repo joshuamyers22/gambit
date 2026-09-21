@@ -1,0 +1,18 @@
+uv run --frozen --all-extras python -m sphinx -W --keep-going -b html documentation/source documentation/generated
+Running Sphinx v8.1.3
+loading translations [en]... done
+Converting `source_suffix = '.rst'` to `source_suffix = {'.rst': 'restructuredtext'}`.
+loading pickled environment... The configuration has changed (3 options: 'html_permalinks_icon', 'html_theme_options', 'templates_path')
+done
+[autosummary] generating autosummary for: accounting_assumptions.rst, api_reference.rst, architecture.rst, contract_universes.rst, core_concepts.rst, data_lifecycle.rst, examples.rst, factor_research.rst, getting_started.rst, index.rst, installation.rst, market_data_guide.rst, native_io.rst, pitfalls.rst, platform_support.rst, risk_examples.rst, risk_guide.rst, strategy_guide.rst, testing.rst, user_guide.rst
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [html]: targets for 0 source files that are out of date
+updating environment: 0 added, 0 changed, 0 removed
+reading sources... 
+looking for now-outdated files... none found
+no targets are out of date.
+build succeeded.
+
+The HTML pages are in documentation/generated.
+uv run --frozen --all-extras python tools/check_clean_paths.py documentation/source

@@ -10,7 +10,7 @@ audit:
 	uv export --frozen --all-extras --no-extra dev --no-extra docs --no-dev --no-emit-project | \
 		uv tool run pip-audit==2.10.1 --strict --disable-pip --no-deps -r /dev/stdin
 lint:
-	$(UV_RUN) ruff check src tests tools
+	$(UV_RUN) ruff check src tests tools benchmarks/controlled_replay.py benchmarks/replay_contract.py benchmarks/profile_replay.py benchmarks/fifo_parity.py benchmarks/controlled_handoff.py benchmarks/build_handoff_variant.py benchmarks/replay_input.py benchmarks/input_comparison.py benchmarks/batch_metrics.py benchmarks/batch_observability.py
 type:
 	$(UV_RUN) mypy
 test:

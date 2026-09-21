@@ -1,0 +1,21 @@
+{
+  "command": [
+    "c++",
+    "-std=c++11",
+    "-O2",
+    "-g",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-fsanitize=address,undefined",
+    "-fno-omit-frame-pointer",
+    "/Users/jkm0607/Projects/gambit/benchmarks/fifo_reference.cpp",
+    "-o",
+    "/private/tmp/gambit-lat04-reference-sanitized/fifo-reference"
+  ],
+  "compiler_version": "Apple clang version 17.0.0 (clang-1700.0.13.5)\nTarget: arm64-apple-darwin24.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "executable_sha256": "43875fc74483783e9bee1216d758a8546202366aa1a45c9376646a79276f0e00",
+  "sanitized": true,
+  "schema": "gambit-independent-fifo-parity-v1",
+  "source_sha256": "a10cf510ac588d4afdd90367498145f0807255a780ede686fee1629a7fe6c5ba"
+}

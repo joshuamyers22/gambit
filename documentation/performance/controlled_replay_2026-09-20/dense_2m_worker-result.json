@@ -1,0 +1,111 @@
+{
+  "contract": "gambit-fifo-latency-v1",
+  "controls": {
+    "fill_count": 190412,
+    "input_sha256": "4935e45d31409271c60b4bea27e2f8ac0026de83160caf54e02aede2745ea035",
+    "order_count": 110491,
+    "result_sha256": "2f27fc9c11e94c7dca71e819f8148fb4d33732cbf71facf3407e3e22853a1250"
+  },
+  "identity": {
+    "contract_code_sha256": "c6876b91a9a49e78747a8990c9d60be3a244502bd0ba0d479f0e26dcff8892e5",
+    "dirty_state": "M LATENCY_BUDGET.md\n M PRODUCTION_READINESS_PLAN.md\n M documentation/architecture/adr_native_tick_replay.md\n M documentation/architecture/native_tick_backtest.md\n M pyproject.toml\n M tests/test_latency_budget_contract.py\n M uv.lock\n?? GAMBIT_MCP_PROJECT_PLAN.md\n?? LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md\n?? benchmarks/controlled_replay.py\n?? benchmarks/replay_contract.py\n?? tests/test_controlled_replay.py",
+    "files": {
+      "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+      "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "015888396d9f0685c3fe6e0e58d805a2d5105790dd47d31dfedd76111dc2c702",
+      "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+      "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+    },
+    "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "host": {
+      "cpu": null,
+      "logical_cpus": 10,
+      "machine": "arm64",
+      "macos": "15.5",
+      "memory_bytes": 25769803776,
+      "numpy": "2.2.6",
+      "os_build": "24F74",
+      "python": "3.10.20",
+      "release": "24.5.0",
+      "system": "Darwin"
+    },
+    "native_extension_sha256": "d09e65786c943ce6f18b6f5f8beaebfd597aa95a8288c951287bbbd6c69b66a8",
+    "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+    "runner_sha256": "dd31ede8e350487e43c3187e872c61c818b97216389667d6d97dace280dd0574"
+  },
+  "order_status_counts": {
+    "0": 7,
+    "1": 22122,
+    "2": 81375,
+    "3": 0,
+    "4": 6987
+  },
+  "peak_rss_bytes": 145686528,
+  "portfolio": {
+    "cash": 9959240323517,
+    "equity": 9990007949147,
+    "net_pnl": -9992050853,
+    "processed": 2000000,
+    "total_fees": 9994536107
+  },
+  "positions": [
+    100,
+    31,
+    41,
+    0,
+    45,
+    22,
+    3,
+    0
+  ],
+  "resources": {
+    "allocation_count": null,
+    "cpu_seconds": 0.54038,
+    "hardware_counters": null,
+    "input_bytes": 176000000,
+    "involuntary_context_switches": 7,
+    "major_faults": 0,
+    "minor_faults": 1276,
+    "result_array_bytes": 20386344,
+    "voluntary_context_switches": 0
+  },
+  "schema": "gambit-controlled-replay-v1",
+  "status": "ledger_reconciled",
+  "timing": {
+    "execution_seconds": 0.023978957,
+    "generation_seconds": 0.05068162500000001,
+    "initialization_seconds": 1.3125e-05,
+    "input_hash_seconds": 0.052108125,
+    "ledger_verification_seconds": 0.406258416,
+    "load_decode_seconds": 0.0,
+    "manifest_verification_seconds": 5e-07,
+    "processing_seconds": 0.022757541,
+    "result_hash_seconds": 0.006010125,
+    "result_materialization_seconds": 0.001208291
+  },
+  "timing_boundary": "prepared-chunk execution sum",
+  "validation": {
+    "canonical_controls_checked": false,
+    "full_volume_independent_trace_parity": false,
+    "ledger_reconciled": true
+  },
+  "warmup_seconds": 0.04410175,
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 16,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-2m-dense-v1",
+    "seed": 20260904,
+    "ticks": 2000000
+  }
+}

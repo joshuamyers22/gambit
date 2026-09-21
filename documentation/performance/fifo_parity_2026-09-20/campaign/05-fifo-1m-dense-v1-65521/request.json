@@ -1,0 +1,28 @@
+{
+  "limits": {
+    "cpu_seconds": 86018.448261,
+    "progress_seconds": 120.0,
+    "rss_bytes": 4294967296,
+    "wall_seconds": 86036.66022437508
+  },
+  "reference_executable": "/private/tmp/gambit-lat04-reference/fifo-reference",
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 16,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-1m-dense-v1",
+    "seed": 20260904,
+    "ticks": 1000000
+  }
+}

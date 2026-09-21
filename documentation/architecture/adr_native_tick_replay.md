@@ -6,9 +6,12 @@
 - Extension: Josh Myers approved conservative FIFO queue-position testing on
   2026-09-04; the opt-in contract is in `fifo_queue_execution.md`.
 - Reference: production-project-template `e132c6e`, C++ guide and ADR template.
-- Measurement contract: candidate
-  [`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md); workload, host, boundary, and
-  thresholds remain unapproved.
+- Measurement contract: [`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md),
+  `gambit-fifo-latency-v1`, approved for synthetic engineering acceptance under
+  user delegation on 2026-09-20. Workload, host, boundaries and engineering
+  thresholds are fixed; achieved performance and production qualification remain open.
+
+- LAT-09 review, 2026-09-20: [remain experimental](../performance/qualification_decision_2026-09-20.md). Local checks and development timings do not close the statistical or production qualification gates.
 
 ## Context
 

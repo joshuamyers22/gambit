@@ -1,0 +1,52 @@
+{
+  "clock_calibration": {
+    "interpretation": "loop included; not a clock accuracy or hard worst-case guarantee",
+    "iterations": 1000000,
+    "ns_per_call_including_loop": {
+      "count": 9,
+      "jitter": 0.906917,
+      "maximum": 31.013042,
+      "p50": 30.106125,
+      "p95": 31.013042,
+      "p99": 31.013042,
+      "p99_9": null
+    },
+    "repeats": 9
+  },
+  "conditions_before": {
+    "load_average": [
+      2.15625,
+      1.544921875,
+      1.466796875
+    ],
+    "observed_at": "2026-09-20T19:39:59.726254+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "diagnostic_only": true,
+  "planned_pairs": 30,
+  "prefix_ticks": 2000000,
+  "purpose": "paired instrumentation overhead",
+  "runner_sha256": "bb1ba57644749de9304270b475a2a7b9ff36d3002b656ce88b7a9775d238b4ce",
+  "scenario": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 16,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-2m-dense-v1",
+    "seed": 20260904,
+    "ticks": 2000000
+  },
+  "schema": "gambit-replay-diagnosis-v1"
+}

@@ -1,0 +1,40 @@
+{
+  "detailed_diagnostics": "opt-in only",
+  "final_saturated_wall_overhead": {
+    "bootstrap_95_interval": [
+      0.09741417675483921,
+      0.23140020643298598
+    ],
+    "median_relative_overhead": 0.13896855426432664,
+    "off": {
+      "max": 467492416.0,
+      "p50": 190526375.0,
+      "p95": 458088250.0,
+      "p99": 467492416.0
+    },
+    "on": {
+      "max": 287218083.0,
+      "p50": 202945125.0,
+      "p95": 282901167.0,
+      "p99": 287218083.0
+    },
+    "one_percent_target": "exceeds"
+  },
+  "logger_dependency_added": false,
+  "measured_handoff_cleanup_max_seconds": 0.000170625,
+  "measured_records": 7957286400,
+  "native_sha256": "9bb6074a0149a302edd4a1f8ab3063f3ae830b15418342738dcacfde450ffb39",
+  "native_unchanged": true,
+  "next": "LAT-09 qualification and explicit promote/retarget/remain-experimental decision",
+  "performance_qualification": false,
+  "status": "complete for engineering acceptance",
+  "successful_cases": 960,
+  "task": "LAT-08",
+  "validation": {
+    "focused_tests": 82,
+    "make_check_passed": true,
+    "new_native_sanitizer_campaign": false,
+    "tests": 2283
+  },
+  "workers": 360
+}

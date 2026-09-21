@@ -1,0 +1,73 @@
+{
+  "artifacts": {
+    "README.md": {
+      "bytes": 1321,
+      "sha256": "b8b181d3178989516b20bcd64e81c9012f0181ed400f3e1b4afd251ee57771ac"
+    },
+    "decision.json": {
+      "bytes": 1139,
+      "sha256": "d40538d1be653e8c64e09b13b23e000ea893981c29f4be1f5b33ca07461a2691"
+    },
+    "external-evidence-manifest.json": {
+      "bytes": 189664,
+      "sha256": "9d0634d0bb05f3f00511aee58e28316028e682f4e22ff5e5231148759772637d"
+    },
+    "fifo-100m-prefix-summary.json": {
+      "bytes": 4696,
+      "sha256": "ce6b1ea776ed7cbc9815dd0c7cee4768ad53d9dcab133f66462f3d2b7393618a"
+    },
+    "fifo-dense-2m-summary.json": {
+      "bytes": 4685,
+      "sha256": "e2676157b813c728c39022f667d7ee834ec9b7899548c519b40b5a8bf343fbbc"
+    },
+    "fifo-final-10m-prefix-summary.json": {
+      "bytes": 4657,
+      "sha256": "e20168a09e7170df120de68f6f427bd267ded955220cf0662f4d53086b69c139"
+    },
+    "fifo-final-dense-2m-summary.json": {
+      "bytes": 4655,
+      "sha256": "12c6000bfa4f91ea83be78ecc89c82eb43285aa0282d695a4a897b4fee00f020"
+    },
+    "final-source-snapshot.tar.gz": {
+      "bytes": 109759,
+      "sha256": "ae0a62eba4b437b836ce494e085cba828a9465406ea45301c27ff13b4226c706"
+    },
+    "handoff-final-summary.json": {
+      "bytes": 10204,
+      "sha256": "576222194a455c371f33093c7e88c96247174119865d7b22dcccf56a0bdcaa2e"
+    },
+    "handoff-summary.json": {
+      "bytes": 10214,
+      "sha256": "162b8ab36d919cf06b2b4680e8d51f796007d657b1fe1ed9c410f3819e808962"
+    },
+    "raw-trials.tar.gz": {
+      "bytes": 303711,
+      "sha256": "8c6081dae98550fb0335270ffb43253e3569c402d5861e334e632f40907a463a"
+    },
+    "validation-reproduction-and-earlier-sources.tar.gz": {
+      "bytes": 47527,
+      "sha256": "0955f013c8f21a629377241f6376ac670b2c22c74c0ba5c44d9277a1891349b7"
+    }
+  },
+  "repository_sources": {
+    "LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md": "ed34cfa09a2d0c87427b8f60ad3d38532344187cd4d93da7a410546d4f3634c2",
+    "Makefile": "1a4c3a4972fa24b17203a95a8a4dac9a63d4f4d160c0ab2f96842736a81853b9",
+    "PRODUCTION_READINESS_PLAN.md": "5f8289ff8f2ed4bfe51fc2e4369804a7b6b2e07e9fa16c7a69659aef2912936e",
+    "benchmarks/batch_metrics.py": "0877452b103b53fd0aa903060140641241f0e6724cd796823b9e0b12087dda84",
+    "benchmarks/batch_observability.py": "a006acb2ad4114405b2e1f69e78f74c35aff4af01ebd4b6353d730d9e7828209",
+    "benchmarks/controlled_handoff.py": "d882505d910d7635af8371e20d1f4b6a1859fa580fdba3376959c5e9a137a1d4",
+    "benchmarks/controlled_replay.py": "78a1a6f4fed8cf97ede21c4c609cbb12359e593fc00421eeef1efdd0ed92f2fd",
+    "benchmarks/replay_contract.py": "008648954b623b1fea7e35d4d305b9947c229969f51a0f10ec2e577926492e40",
+    "benchmarks/tick_ring_benchmark.py": "88147565f3c123703df5a4113067c4edfa19406ff37fdf0afa5e19bc7203295a",
+    "documentation/operations/batch_diagnostics.md": "e9074b415f2293e05336841dd613e5b5582e78990a1ac9862d91d34566641526",
+    "documentation/operations/controlled_handoff.md": "ddfa1be5ee34dd9ae42b3969d19cbff0cd8f82de611f04c0addf35578b67c78b",
+    "documentation/operations/controlled_replay.md": "280b3ba53e617078204fd0218db49a7262132dcbaf667f19442007d16ae6fe58",
+    "documentation/performance/batch_diagnostics_2026-09-20.md": "c756433d7ca993630dbb372e69b0e0cec6fb2fb3f042437f8ecd907603be2ce3",
+    "tests/test_batch_metrics.py": "9bf87aa6ce5a88c45e1d82a11c24f1cad8fb2c1589b5e6a81396c8867d062050",
+    "tests/test_batch_observability.py": "8763f32b8d13a88ea2a73586efcd4eddb0d643c363961e58c7c0753f4ccb9d09",
+    "tests/test_controlled_handoff.py": "59b6619672b72cf7266d3e9f75bf6a9da4d001afb06deba68afda0eeadde8aeb",
+    "tests/test_controlled_replay.py": "32762c09a1f9cd3e9526ceecd15915bfce93b865685a480b9fdaa75caa2fc6fb",
+    "tests/test_replay_profiling.py": "a089e224fdd22d861fbce417673eca56d4be3e4506aefcbbcde318d5395de27f"
+  },
+  "schema": "gambit-lat08-evidence-v1"
+}

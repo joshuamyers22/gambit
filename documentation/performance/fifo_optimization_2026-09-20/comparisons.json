@@ -1,0 +1,402 @@
+{
+  "1m-dense": {
+    "all_reference_host_matches": true,
+    "all_trials_same_controls": true,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "candidate_build_attested": true,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.0007957899999999993,
+          "maximum": 0.013174041,
+          "p50": 0.012378251,
+          "p95": 0.013158499,
+          "p99": 0.013174041,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.002091329000000001,
+          "maximum": 0.011067372,
+          "p50": 0.008976043,
+          "p95": 0.011040415,
+          "p99": 0.011067372,
+          "p99_9": null
+        },
+        "p95_ratio": 0.8390330082481291
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.02881937499999998,
+          "maximum": 0.337482625,
+          "p50": 0.30866325,
+          "p95": 0.328085,
+          "p99": 0.337482625,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.05768320900000001,
+          "maximum": 0.35671675,
+          "p50": 0.299033541,
+          "p95": 0.340837834,
+          "p99": 0.35671675,
+          "p99_9": null
+        },
+        "p95_ratio": 1.0388705183108036
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 23166976,
+          "maximum": 121651200,
+          "p50": 98484224,
+          "p95": 119308288,
+          "p99": 121651200,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 23281664,
+          "maximum": 121667584,
+          "p50": 98385920,
+          "p95": 116965376,
+          "p99": 121667584,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9803625377643505
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "maximum_rss_ratio": 1.0001346801346802,
+    "median_execution_reduction": 0.2728903920827141,
+    "paired_bootstrap_95_interval": [
+      0.26804087427371276,
+      0.2779030595871489
+    ],
+    "status": "retention_signal"
+  },
+  "2m-dense": {
+    "all_reference_host_matches": true,
+    "all_trials_same_controls": true,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "candidate_build_attested": true,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.005531914000000006,
+          "maximum": 0.031000915000000004,
+          "p50": 0.025469000999999998,
+          "p95": 0.030694373,
+          "p99": 0.031000915000000004,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.002970998999999995,
+          "maximum": 0.021314623999999997,
+          "p50": 0.018343625000000002,
+          "p95": 0.020293412,
+          "p99": 0.021314623999999997,
+          "p99_9": null
+        },
+        "p95_ratio": 0.6611443732699801
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.07113458399999995,
+          "maximum": 0.651601667,
+          "p50": 0.580467083,
+          "p95": 0.630613292,
+          "p99": 0.651601667,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.0540813750000001,
+          "maximum": 0.627145083,
+          "p50": 0.573063708,
+          "p95": 0.599618334,
+          "p99": 0.627145083,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9508495009648479
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 24920064,
+          "maximum": 144441344,
+          "p50": 119521280,
+          "p95": 138412032,
+          "p99": 144441344,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 35323904,
+          "maximum": 154533888,
+          "p50": 119209984,
+          "p95": 140017664,
+          "p99": 154533888,
+          "p99_9": null
+        },
+        "p95_ratio": 1.011600378787879
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "maximum_rss_ratio": 1.0698729582577133,
+    "median_execution_reduction": 0.28301651372891845,
+    "paired_bootstrap_95_interval": [
+      0.2687525505393014,
+      0.2904150879671912
+    ],
+    "status": "retention_signal"
+  },
+  "3y-sparse": {
+    "all_reference_host_matches": true,
+    "all_trials_same_controls": true,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "candidate_build_attested": true,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.08897261200000095,
+          "maximum": 9.751966111000002,
+          "p50": 9.662993499,
+          "p95": 9.716606879,
+          "p99": 9.751966111000002,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.041931770999999785,
+          "maximum": 4.179432147999999,
+          "p50": 4.137500376999999,
+          "p95": 4.174928907,
+          "p99": 4.179432147999999,
+          "p99_9": null
+        },
+        "p95_ratio": 0.42966942668258584
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.4395674989999989,
+          "maximum": 62.796757416,
+          "p50": 62.357189917,
+          "p95": 62.580112,
+          "p99": 62.796757416,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.3387712920000041,
+          "maximum": 57.122013084,
+          "p50": 56.783241792,
+          "p95": 57.097380334,
+          "p99": 57.122013084,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9123885929446722
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 12189696,
+          "maximum": 233406464,
+          "p50": 221216768,
+          "p95": 232914944,
+          "p99": 233406464,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 23216128,
+          "maximum": 236470272,
+          "p50": 213254144,
+          "p95": 235520000,
+          "p99": 236470272,
+          "p99_9": null
+        },
+        "p95_ratio": 1.01118458075408
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "maximum_rss_ratio": 1.0131264916467781,
+    "median_execution_reduction": 0.5719422503172973,
+    "paired_bootstrap_95_interval": [
+      0.570614257624193,
+      0.573805977930958
+    ],
+    "status": "retention_signal"
+  },
+  "chunk-1048576-prefix": {
+    "all_reference_host_matches": true,
+    "all_trials_same_controls": true,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "candidate_build_attested": false,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.008471212999999977,
+          "maximum": 1.057695959,
+          "p50": 1.049224746,
+          "p95": 1.055551876,
+          "p99": 1.057695959,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.006540845999999989,
+          "maximum": 0.457624129,
+          "p50": 0.451083283,
+          "p95": 0.45561345799999997,
+          "p99": 0.457624129,
+          "p99_9": null
+        },
+        "p95_ratio": 0.4316353069510342
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.2298373749999989,
+          "maximum": 9.107484084,
+          "p50": 8.877646709,
+          "p95": 9.082795916,
+          "p99": 9.107484084,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.24913995899999897,
+          "maximum": 8.527541542,
+          "p50": 8.278401583,
+          "p95": 8.5031765,
+          "p99": 8.527541542,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9361849125136723
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 16596992,
+          "maximum": 486391808,
+          "p50": 469794816,
+          "p95": 479100928,
+          "p99": 486391808,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 25165824,
+          "maximum": 494895104,
+          "p50": 469729280,
+          "p95": 486588416,
+          "p99": 494895104,
+          "p99_9": null
+        },
+        "p95_ratio": 1.0156282060050612
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "maximum_rss_ratio": 1.017482399703574,
+    "median_execution_reduction": 0.5700953982417823,
+    "paired_bootstrap_95_interval": [
+      0.5684637522131926,
+      0.5736571446013501
+    ],
+    "status": "retention_signal"
+  },
+  "chunk-65536-prefix": {
+    "all_reference_host_matches": true,
+    "all_trials_same_controls": true,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "candidate_build_attested": false,
+    "comparisons": {
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.027252803999999964,
+          "maximum": 1.041406914,
+          "p50": 1.01415411,
+          "p95": 1.037252541,
+          "p99": 1.041406914,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.02067786599999999,
+          "maximum": 0.45082341,
+          "p50": 0.430145544,
+          "p95": 0.444542962,
+          "p99": 0.45082341,
+          "p99_9": null
+        },
+        "p95_ratio": 0.4285773660977708
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.26771087500000057,
+          "maximum": 6.80610125,
+          "p50": 6.538390375,
+          "p95": 6.778724542,
+          "p99": 6.80610125,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 0.29177412599999997,
+          "maximum": 6.184418667,
+          "p50": 5.892644541,
+          "p95": 6.120949458,
+          "p99": 6.184418667,
+          "p99_9": null
+        },
+        "p95_ratio": 0.9029647716285681
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 26001408,
+          "maximum": 147914752,
+          "p50": 121913344,
+          "p95": 130924544,
+          "p99": 147914752,
+          "p99_9": null
+        },
+        "candidate": {
+          "count": 30,
+          "jitter": 13877248,
+          "maximum": 135708672,
+          "p50": 121831424,
+          "p95": 131186688,
+          "p99": 135708672,
+          "p99_9": null
+        },
+        "p95_ratio": 1.0020022525341008
+      }
+    },
+    "interpretation": "screening only; requires session, instrumentation and correctness review",
+    "maximum_rss_ratio": 0.9174789543642002,
+    "median_execution_reduction": 0.5739610387155689,
+    "paired_bootstrap_95_interval": [
+      0.5669700421090064,
+      0.5784523129692042
+    ],
+    "status": "retention_signal"
+  }
+}

@@ -1,0 +1,717 @@
+{
+  "method": "macOS sample collapsed leaf table; counts >=5; blocked stacks included",
+  "thread_entries": 1406,
+  "thread_samples": 67431,
+  "largest_threads": [
+    {
+      "samples": 16965,
+      "name": "Thread_13696508   DispatchQueue_1: com.apple.main-thread  (serial)"
+    },
+    {
+      "samples": 16965,
+      "name": "Thread_13696526: polars-ooc-cleaner"
+    },
+    {
+      "samples": 65,
+      "name": "Thread_13697067"
+    },
+    {
+      "samples": 65,
+      "name": "Thread_13697068"
+    },
+    {
+      "samples": 64,
+      "name": "Thread_13697105"
+    }
+  ],
+  "leaf_counts": [
+    {
+      "symbol": "__psynch_cvwait  (in libsystem_kernel.dylib)",
+      "samples": 24115
+    },
+    {
+      "symbol": "semaphore_wait_trap  (in libsystem_kernel.dylib)",
+      "samples": 16965
+    },
+    {
+      "symbol": "TickRing::push_batch(pybind11::array_t<TickRecord, 1>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 12747
+    },
+    {
+      "symbol": "TickFactorProcessor::process(TickRecord const&)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 2566
+    },
+    {
+      "symbol": "std::__hash_table<std::__hash_value_type<unsigned int, double>>::__emplace_unique_key_args<unsigned int, std::piecewise_construct_t const&, std::tuple<unsigned int const&>, std::tuple<>>(unsigned int const&, std::piecewise_construct_t const&, std::tuple<unsigned int const&>&&, std::tuple<>&&)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 1448
+    },
+    {
+      "symbol": "swtch_pri  (in libsystem_kernel.dylib)",
+      "samples": 1425
+    },
+    {
+      "symbol": "__psynch_mutexwait  (in libsystem_kernel.dylib)",
+      "samples": 732
+    },
+    {
+      "symbol": "__psynch_cvsignal  (in libsystem_kernel.dylib)",
+      "samples": 424
+    },
+    {
+      "symbol": "_PyEval_EvalFrameDefault  (in python3.10)",
+      "samples": 407
+    },
+    {
+      "symbol": "PyUnicode_Compare  (in python3.10)",
+      "samples": 265
+    },
+    {
+      "symbol": "PyUnicode_FromString  (in python3.10)",
+      "samples": 256
+    },
+    {
+      "symbol": "pysiphash  (in python3.10)",
+      "samples": 244
+    },
+    {
+      "symbol": "TickRing::wait_for_data(unsigned long long, unsigned long long, double, double)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 231
+    },
+    {
+      "symbol": "_platform_memcmp  (in libsystem_platform.dylib)",
+      "samples": 221
+    },
+    {
+      "symbol": "TickRing::process_batch(TickFactorProcessor&, unsigned long long)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 217
+    },
+    {
+      "symbol": "pybind11::cpp_function::dispatcher(_object*, _object* const*, unsigned long, _object*)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 189
+    },
+    {
+      "symbol": "lookdict_unicode  (in python3.10)",
+      "samples": 185
+    },
+    {
+      "symbol": "__gettimeofday  (in libsystem_kernel.dylib)",
+      "samples": 179
+    },
+    {
+      "symbol": "_PyObject_Free  (in python3.10)",
+      "samples": 172
+    },
+    {
+      "symbol": "pthread_cond_signal  (in libsystem_pthread.dylib)",
+      "samples": 165
+    },
+    {
+      "symbol": "pthread_mutex_unlock  (in libsystem_pthread.dylib)",
+      "samples": 143
+    },
+    {
+      "symbol": "PyUnicode_InternFromString  (in python3.10)",
+      "samples": 142
+    },
+    {
+      "symbol": "lookdict_unicode_nodummy  (in python3.10)",
+      "samples": 141
+    },
+    {
+      "symbol": "__bzero  (in libsystem_platform.dylib)",
+      "samples": 127
+    },
+    {
+      "symbol": "_PyObject_Malloc  (in python3.10)",
+      "samples": 126
+    },
+    {
+      "symbol": "PyDict_SetDefault  (in python3.10)",
+      "samples": 120
+    },
+    {
+      "symbol": "pthread_mutex_lock  (in libsystem_pthread.dylib)",
+      "samples": 119
+    },
+    {
+      "symbol": "_buffer_format_string  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 117
+    },
+    {
+      "symbol": "pybind11::cpp_function::keyword_index(_object*, char const*)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 117
+    },
+    {
+      "symbol": "_nanov2_free  (in libsystem_malloc.dylib)",
+      "samples": 108
+    },
+    {
+      "symbol": "<deduplicated_symbol>  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 103
+    },
+    {
+      "symbol": "call_function  (in python3.10)",
+      "samples": 95
+    },
+    {
+      "symbol": "unicode_hash  (in python3.10)",
+      "samples": 86
+    },
+    {
+      "symbol": "take_gil  (in python3.10)",
+      "samples": 81
+    },
+    {
+      "symbol": "__psynch_mutexdrop  (in libsystem_kernel.dylib)",
+      "samples": 80
+    },
+    {
+      "symbol": "_PyArg_ParseTuple_SizeT  (in python3.10)",
+      "samples": 74
+    },
+    {
+      "symbol": "method_dealloc  (in python3.10)",
+      "samples": 69
+    },
+    {
+      "symbol": "nanov2_malloc_type  (in libsystem_malloc.dylib)",
+      "samples": 65
+    },
+    {
+      "symbol": "mach_absolute_time  (in libsystem_kernel.dylib)",
+      "samples": 60
+    },
+    {
+      "symbol": "unicode_dealloc  (in python3.10)",
+      "samples": 56
+    },
+    {
+      "symbol": "mach_continuous_time  (in libsystem_kernel.dylib)",
+      "samples": 52
+    },
+    {
+      "symbol": "_platform_strlen  (in libsystem_platform.dylib)",
+      "samples": 51
+    },
+    {
+      "symbol": "DYLD-STUB$$memcmp  (in python3.10)",
+      "samples": 43
+    },
+    {
+      "symbol": "PyObject_GenericGetAttr  (in python3.10)",
+      "samples": 42
+    },
+    {
+      "symbol": "void_to_void_resolve_descriptors  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 39
+    },
+    {
+      "symbol": "_free  (in libsystem_malloc.dylib)",
+      "samples": 38
+    },
+    {
+      "symbol": "pybind11::detail::type_caster_generic::load_impl<pybind11::detail::type_caster_generic>(pybind11::handle, bool)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 38
+    },
+    {
+      "symbol": "long_richcompare  (in python3.10)",
+      "samples": 37
+    },
+    {
+      "symbol": "madvise  (in libsystem_kernel.dylib)",
+      "samples": 37
+    },
+    {
+      "symbol": "pybind11::detail::get_type_info(std::type_info const&, bool)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 37
+    },
+    {
+      "symbol": "PyUnicode_RichCompare  (in python3.10)",
+      "samples": 36
+    },
+    {
+      "symbol": "PyDict_GetItem  (in python3.10)",
+      "samples": 34
+    },
+    {
+      "symbol": "PyObject_RichCompareBool  (in python3.10)",
+      "samples": 34
+    },
+    {
+      "symbol": "pybind11::detail::type_caster<unsigned long long, void>::load(pybind11::handle, bool)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 34
+    },
+    {
+      "symbol": "_get_cast_safety_from_castingimpl  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 33
+    },
+    {
+      "symbol": "PyType_IsSubtype  (in python3.10)",
+      "samples": 31
+    },
+    {
+      "symbol": "_platform_memmove  (in libsystem_platform.dylib)",
+      "samples": 31
+    },
+    {
+      "symbol": "PyBytes_FromStringAndSize  (in python3.10)",
+      "samples": 28
+    },
+    {
+      "symbol": "PyMethod_New  (in python3.10)",
+      "samples": 28
+    },
+    {
+      "symbol": "pybind11::detail::function_call::function_call(pybind11::detail::function_record const&, pybind11::handle)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 28
+    },
+    {
+      "symbol": "pybind11::detail::get_internals()  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 27
+    },
+    {
+      "symbol": "_PyErr_Restore  (in python3.10)",
+      "samples": 25
+    },
+    {
+      "symbol": "_pthread_cond_wait  (in libsystem_pthread.dylib)",
+      "samples": 25
+    },
+    {
+      "symbol": "long_add  (in python3.10)",
+      "samples": 25
+    },
+    {
+      "symbol": "pybind11::detail::get_local_internals()  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 25
+    },
+    {
+      "symbol": "PyLong_FromSize_t  (in python3.10)",
+      "samples": 23
+    },
+    {
+      "symbol": "PyObject_Free  (in python3.10)",
+      "samples": 23
+    },
+    {
+      "symbol": "method_vectorcall  (in python3.10)",
+      "samples": 23
+    },
+    {
+      "symbol": "PyArray_NewFromDescr_int  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 22
+    },
+    {
+      "symbol": "_platform_memset  (in libsystem_platform.dylib)",
+      "samples": 22
+    },
+    {
+      "symbol": "PyEval_SaveThread  (in python3.10)",
+      "samples": 21
+    },
+    {
+      "symbol": "builtin_len  (in python3.10)",
+      "samples": 21
+    },
+    {
+      "symbol": "pybind11::detail::internals_pp_manager<pybind11::detail::local_internals>::get_pp()  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 21
+    },
+    {
+      "symbol": "legacy_same_dtype_resolve_descriptors  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 20
+    },
+    {
+      "symbol": "pybind11::detail::get_local_internals_key()  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 20
+    },
+    {
+      "symbol": "PyArray_UpdateFlags  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 19
+    },
+    {
+      "symbol": "PyLong_AsSsize_t  (in python3.10)",
+      "samples": 19
+    },
+    {
+      "symbol": "builtin_min  (in python3.10)",
+      "samples": 19
+    },
+    {
+      "symbol": "cfunction_vectorcall_FASTCALL_KEYWORDS  (in python3.10)",
+      "samples": 19
+    },
+    {
+      "symbol": "get_zerofill_function  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 19
+    },
+    {
+      "symbol": "malloc_type_malloc  (in libsystem_malloc.dylib)",
+      "samples": 19
+    },
+    {
+      "symbol": "pybind11::detail::instance::get_value_and_holder(pybind11::detail::type_info const*, bool)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 19
+    },
+    {
+      "symbol": "PyLong_AsLong  (in python3.10)",
+      "samples": 18
+    },
+    {
+      "symbol": "PyLong_AsUnsignedLong  (in python3.10)",
+      "samples": 18
+    },
+    {
+      "symbol": "array_dealloc  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 17
+    },
+    {
+      "symbol": "pybind11::detail::is_function_record_PyObject(_object*)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 17
+    },
+    {
+      "symbol": "PyFloat_AsDouble  (in python3.10)",
+      "samples": 16
+    },
+    {
+      "symbol": "pybind11::detail::loader_life_support::~loader_life_support()  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 16
+    },
+    {
+      "symbol": "pybind11::detail::type_caster<double, void>::load(pybind11::handle, bool)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 16
+    },
+    {
+      "symbol": "DYLD-STUB$$PyUnicode_Compare  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 15
+    },
+    {
+      "symbol": "PyEval_RestoreThread  (in python3.10)",
+      "samples": 15
+    },
+    {
+      "symbol": "DYLD-STUB$$PyUnicode_InternFromString  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 14
+    },
+    {
+      "symbol": "PyDict_GetItemWithError  (in python3.10)",
+      "samples": 14
+    },
+    {
+      "symbol": "DYLD-STUB$$pthread_mutex_unlock  (in python3.10)",
+      "samples": 13
+    },
+    {
+      "symbol": "DYLD-STUB$$strlen  (in python3.10)",
+      "samples": 13
+    },
+    {
+      "symbol": "TickRing::wait_process_batch(TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 13
+    },
+    {
+      "symbol": "_PyObject_GetMethod  (in python3.10)",
+      "samples": 13
+    },
+    {
+      "symbol": "DYLD-STUB$$free  (in libc++abi.dylib)",
+      "samples": 12
+    },
+    {
+      "symbol": "DYLD-STUB$$pthread_mutex_lock  (in python3.10)",
+      "samples": 12
+    },
+    {
+      "symbol": "PyArray_GetCastingImpl  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 12
+    },
+    {
+      "symbol": "_tlv_get_addr  (in libdyld.dylib)",
+      "samples": 12
+    },
+    {
+      "symbol": "pthread_mutex_trylock  (in libsystem_pthread.dylib)",
+      "samples": 12
+    },
+    {
+      "symbol": "DYLD-STUB$$__error  (in python3.10)",
+      "samples": 11
+    },
+    {
+      "symbol": "_platform_strcmp$VARIANT$Base  (in libsystem_platform.dylib)",
+      "samples": 11
+    },
+    {
+      "symbol": "cfunction_vectorcall_O  (in python3.10)",
+      "samples": 11
+    },
+    {
+      "symbol": "get_view_from_index  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 11
+    },
+    {
+      "symbol": "pybind11::cpp_function::call_impl<unsigned long long, pybind11::detail::void_type, pybind11::detail::argument_loader<TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double>, TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double>(pybind11::detail::function_call&, pybind11::detail::function_ref<unsigned long long (TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double)>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 11
+    },
+    {
+      "symbol": "std::condition_variable::__do_timed_wait(std::unique_lock<std::mutex>&, std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<long long, std::ratio<1l, 1000000000l>>>)  (in libc++.1.dylib)",
+      "samples": 11
+    },
+    {
+      "symbol": "PyErr_Occurred  (in python3.10)",
+      "samples": 10
+    },
+    {
+      "symbol": "PyTuple_GetItem  (in python3.10)",
+      "samples": 10
+    },
+    {
+      "symbol": "_append_char  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 10
+    },
+    {
+      "symbol": "long_sub  (in python3.10)",
+      "samples": 10
+    },
+    {
+      "symbol": "pybind11::detail::type_caster_generic::type_caster_generic(std::type_info const&)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 10
+    },
+    {
+      "symbol": "DYLD-STUB$$pthread_cond_signal  (in python3.10)",
+      "samples": 9
+    },
+    {
+      "symbol": "PyBytes_AsStringAndSize  (in python3.10)",
+      "samples": 9
+    },
+    {
+      "symbol": "__error  (in libsystem_kernel.dylib)",
+      "samples": 9
+    },
+    {
+      "symbol": "DYLD-STUB$$PyDict_GetItem  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "DYLD-STUB$$PyObject_RichCompareBool  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "DYLD-STUB$$operator delete(void*)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "_PyObject_Realloc  (in python3.10)",
+      "samples": 8
+    },
+    {
+      "symbol": "array_length  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "get_fields_traverse_function  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "npy_free_cache_dim  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "operator delete(void*)  (in libc++abi.dylib)",
+      "samples": 8
+    },
+    {
+      "symbol": "pybind11::cpp_function::initialize<pybind11::cpp_function::cpp_function<unsigned long long, TickRing>(unsigned long long (TickRing::*)() const)::'lambda'(TickRing const*), unsigned long long, TickRing const*>(unsigned long long&&, TickRing (*)())::'lambda'(pybind11::detail::function_call&)::__invoke(pybind11::detail::function_call&)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 8
+    },
+    {
+      "symbol": "tupledealloc  (in python3.10)",
+      "samples": 8
+    },
+    {
+      "symbol": "DYLD-STUB$$PyErr_Occurred  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "IsAligned  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "PyContextVar_Get  (in python3.10)",
+      "samples": 7
+    },
+    {
+      "symbol": "_PyLong_New  (in python3.10)",
+      "samples": 7
+    },
+    {
+      "symbol": "array_subscript  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "object_dealloc  (in python3.10)",
+      "samples": 7
+    },
+    {
+      "symbol": "prepare_index  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "pybind11::array::array(pybind11::dtype const&, pybind11::detail::any_container<long>, pybind11::detail::any_container<long>, void const*, pybind11::handle)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "pybind11::cpp_function::call_impl<unsigned long long, pybind11::detail::void_type, pybind11::detail::argument_loader<TickRing*, pybind11::array_t<TickRecord, 1>>, TickRing*, pybind11::array_t<TickRecord, 1>>(pybind11::detail::function_call&, pybind11::detail::function_ref<unsigned long long (TickRing*, pybind11::array_t<TickRecord, 1>)>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "pybind11::detail::small_vector<pybind11::handle, 6ul>::move_to_heap_vector_with_reserved_size(unsigned long)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 7
+    },
+    {
+      "symbol": "DYLD-STUB$$PyEval_RestoreThread  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "DYLD-STUB$$PyUnicode_Compare  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "DYLD-STUB$$_platform_bzero  (in libsystem_malloc.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "PyArray_FromArray  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "PyBuffer_Release  (in python3.10)",
+      "samples": 6
+    },
+    {
+      "symbol": "PyType_GenericAlloc  (in python3.10)",
+      "samples": 6
+    },
+    {
+      "symbol": "TickRing::capacity() const  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "TickRing::depth() const  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "__select  (in libsystem_kernel.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "_buffer_info_free  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "_get_field_view  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "_pthread_mutex_droplock  (in libsystem_pthread.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "_pthread_mutex_firstfit_lock_slow  (in libsystem_pthread.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "array_getbuffer  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "cfunction_call  (in python3.10)",
+      "samples": 6
+    },
+    {
+      "symbol": "nanov2_try_free_default  (in libsystem_malloc.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "pybind11::detail::function_ref<unsigned long long (TickRing*, pybind11::array_t<TickRecord, 1>)>::callback_fn<pybind11::cpp_function::cpp_function<unsigned long long, TickRing, pybind11::array_t<TickRecord, 1>, pybind11::name, pybind11::is_method, pybind11::sibling, pybind11::arg>(unsigned long long (TickRing::*)(pybind11::array_t<TickRecord, 1>), pybind11::name const&, pybind11::is_method const&, pybind11::sibling const&, pybind11::arg const&)::'lambda'(TickRing*, pybind11::array_t<TickRecord, 1>)>(long, TickRing*, pybind11::array_t<TickRecord, 1>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "std::condition_variable::wait_for[abi:ne190102]<double, std::ratio<1l, 1l>, TickRing::wait_for_data(unsigned long long, unsigned long long, double, double)::'lambda'()>(std::unique_lock<std::mutex>&, std::chrono::duration<double, std::ratio<1l, 1l>> const&, TickRing::wait_for_data(unsigned long long, unsigned long long, double, double)::'lambda'())  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 6
+    },
+    {
+      "symbol": "std::mutex::try_lock()  (in libc++.1.dylib)",
+      "samples": 6
+    },
+    {
+      "symbol": "tuple_iter  (in python3.10)",
+      "samples": 6
+    },
+    {
+      "symbol": "tupleiter_next  (in python3.10)",
+      "samples": 6
+    },
+    {
+      "symbol": "DYLD-STUB$$PyBytes_AsStringAndSize  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "DYLD-STUB$$PyFloat_AsDouble  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "DYLD-STUB$$TickRing::process_batch(TickFactorProcessor&, unsigned long long)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "DYLD-STUB$$swtch_pri  (in libsystem_pthread.dylib)",
+      "samples": 5
+    },
+    {
+      "symbol": "PyArray_CheckCastSafety  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "PyArray_DiscoverDTypeAndShape_Recursive  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "PyObject_Realloc  (in python3.10)",
+      "samples": 5
+    },
+    {
+      "symbol": "TickRing::validate_wait_arguments(double, double)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "_PyFunction_Vectorcall  (in python3.10)",
+      "samples": 5
+    },
+    {
+      "symbol": "_PyUnicode_AsUTF8String  (in python3.10)",
+      "samples": 5
+    },
+    {
+      "symbol": "operator new(unsigned long)  (in libc++abi.dylib)",
+      "samples": 5
+    },
+    {
+      "symbol": "pybind11::detail::argument_loader<TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double>::load_impl_sequence<0ul, 1ul, 2ul, 3ul, 4ul, 5ul, 6ul>(pybind11::detail::function_call&, pybind11::detail::index_sequence<0ul, 1ul, 2ul, 3ul, 4ul, 5ul, 6ul>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "pybind11::detail::function_ref<unsigned long long (TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double)>::callback_fn<pybind11::cpp_function::cpp_function<unsigned long long, TickRing, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double, pybind11::name, pybind11::is_method, pybind11::sibling, pybind11::arg, pybind11::arg, pybind11::arg_v, pybind11::arg_v, pybind11::arg_v, pybind11::arg_v>(unsigned long long (TickRing::*)(TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double), pybind11::name const&, pybind11::is_method const&, pybind11::sibling const&, pybind11::arg const&, pybind11::arg const&, pybind11::arg_v const&, pybind11::arg_v const&, pybind11::arg_v const&, pybind11::arg_v const&)::'lambda'(TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double)>(long, TickRing*, TickFactorProcessor&, unsigned long long, unsigned long long, double, unsigned long long, double)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 5
+    },
+    {
+      "symbol": "slice_dealloc  (in python3.10)",
+      "samples": 5
+    },
+    {
+      "symbol": "std::chrono::steady_clock::now()  (in libc++.1.dylib)",
+      "samples": 5
+    }
+  ]
+}

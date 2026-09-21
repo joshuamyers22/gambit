@@ -1,0 +1,116 @@
+{
+  "fused": {
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20260920,
+    "interpretation": "full-harness screening only; review correctness, CPU and tails separately",
+    "metrics": {
+      "cpu_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.034617999999999816,
+          "maximum": 0.5944569999999999,
+          "p50": 0.5598390000000001,
+          "p95": 0.592606,
+          "p99": 0.5944569999999999,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          0.08310931921135484,
+          0.09482760468074669
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.02307300000000012,
+          "maximum": 0.5330890000000001,
+          "p50": 0.510016,
+          "p95": 0.532069,
+          "p99": 0.5330890000000001,
+          "p99_9": null
+        },
+        "median_paired_reduction": 0.08917165455005432,
+        "p95_ratio": 0.8978461237314507
+      },
+      "execution_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.0038608340000000005,
+          "maximum": 0.022715293,
+          "p50": 0.018854459,
+          "p95": 0.020437751,
+          "p99": 0.022715293,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.015610709901034192,
+          0.0022925074081761587
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.0038568349999999994,
+          "maximum": 0.022893669999999998,
+          "p50": 0.019036835,
+          "p95": 0.020954704999999997,
+          "p99": 0.022893669999999998,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.005535687132391831,
+        "p95_ratio": 1.0252940746758288
+      },
+      "harness_seconds": {
+        "baseline": {
+          "count": 30,
+          "jitter": 0.04986291700000001,
+          "maximum": 0.631322583,
+          "p50": 0.581459666,
+          "p95": 0.61660425,
+          "p99": 0.631322583,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          0.07931084822159862,
+          0.09286620122728162
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 0.02791395799999996,
+          "maximum": 0.560595917,
+          "p50": 0.532681959,
+          "p95": 0.557426334,
+          "p99": 0.560595917,
+          "p99_9": null
+        },
+        "median_paired_reduction": 0.08511375605884303,
+        "p95_ratio": 0.9040260977766533
+      },
+      "peak_rss_bytes": {
+        "baseline": {
+          "count": 30,
+          "jitter": 27688960,
+          "maximum": 158973952,
+          "p50": 131284992,
+          "p95": 154484736,
+          "p99": 158973952,
+          "p99_9": null
+        },
+        "bootstrap_95_interval": [
+          -0.036833161576355855,
+          0.07022658287875183
+        ],
+        "candidate": {
+          "count": 30,
+          "jitter": 26820608,
+          "maximum": 150487040,
+          "p50": 123666432,
+          "p95": 138510336,
+          "p99": 150487040,
+          "p99_9": null
+        },
+        "median_paired_reduction": -0.03000091094953994,
+        "p95_ratio": 0.8965956092904868
+      }
+    },
+    "pairs": 30,
+    "performance_qualification": false,
+    "retention_signal": false
+  }
+}

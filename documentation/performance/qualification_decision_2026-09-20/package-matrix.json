@@ -1,0 +1,217 @@
+{
+  "310": {
+    "status": "pass",
+    "wheel": "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl",
+    "commands": [
+      [
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env"
+      ],
+      [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl",
+        "pytest"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/bin/python",
+        "-c",
+        "import gambit,gambit._factor_cache as n,sys; print(sys.version); print(gambit.__file__); print(n.__file__); assert '/lat09-2026-09-20/package-' in gambit.__file__"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/tools/release_smoke.py"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/bin/gambit-factor-cache",
+        "--help"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "/Users/jkm0607/Projects/gambit/tests/test_fifo_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_top_of_book_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_tick_ring.py"
+      ]
+    ]
+  },
+  "311": {
+    "status": "pass",
+    "wheel": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/dist/gambit_markets-1.1.0-cp311-cp311-macosx_11_0_arm64.whl",
+    "commands": [
+      [
+        "uv",
+        "build",
+        "--wheel",
+        "--python",
+        "/Users/jkm0607/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/bin/python3.11",
+        "--out-dir",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/dist",
+        "/Users/jkm0607/Projects/gambit"
+      ],
+      [
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jkm0607/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/bin/python3.11",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env"
+      ],
+      [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/dist/gambit_markets-1.1.0-cp311-cp311-macosx_11_0_arm64.whl",
+        "pytest"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/bin/python",
+        "-c",
+        "import gambit,gambit._factor_cache as n,sys; print(sys.version); print(gambit.__file__); print(n.__file__); assert '/lat09-2026-09-20/package-' in gambit.__file__"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/tools/release_smoke.py"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/bin/gambit-factor-cache",
+        "--help"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "/Users/jkm0607/Projects/gambit/tests/test_fifo_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_top_of_book_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_tick_ring.py"
+      ]
+    ]
+  },
+  "312": {
+    "status": "pass",
+    "commands": [
+      [
+        "uv",
+        "build",
+        "--wheel",
+        "--python",
+        "/Users/jkm0607/.local/share/uv/python/cpython-3.12.11-macos-aarch64-none/bin/python3.12",
+        "--out-dir",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist",
+        "/Users/jkm0607/Projects/gambit"
+      ],
+      [
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jkm0607/.local/share/uv/python/cpython-3.12.11-macos-aarch64-none/bin/python3.12",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env"
+      ],
+      [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist/gambit_markets-1.1.0-cp312-cp312-macosx_11_0_arm64.whl",
+        "pytest"
+      ]
+    ],
+    "offline_attempt": {
+      "status": "unverified",
+      "error": "Command '['uv', 'pip', 'install', '--python', '/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python', '/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist/gambit_markets-1.1.0-cp312-cp312-macosx_11_0_arm64.whl', 'pytest']' returned non-zero exit status 1."
+    },
+    "followup_commands": [
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python",
+        "-c",
+        "import gambit,gambit._factor_cache as n,sys; print(sys.version); print(gambit.__file__); print(n.__file__); assert '/lat09-2026-09-20/package-' in gambit.__file__"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/tools/release_smoke.py"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/gambit-factor-cache",
+        "--help"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "/Users/jkm0607/Projects/gambit/tests/test_fifo_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_top_of_book_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_tick_ring.py"
+      ]
+    ],
+    "dependency_resolution": {
+      "mode": "approved online download after offline cache miss",
+      "command": [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist/gambit_markets-1.1.0-cp312-cp312-macosx_11_0_arm64.whl",
+        "pytest"
+      ],
+      "returncode": 0,
+      "missing_offline_wheel": "PyYAML",
+      "resolved_pyyaml": "6.0.3"
+    }
+  },
+  "sdist": {
+    "status": "pass",
+    "followup_commands": [
+      [
+        "uv",
+        "venv",
+        "--python",
+        "/Users/jkm0607/Projects/gambit/.venv/bin/python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env"
+      ],
+      [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0.tar.gz",
+        "pytest"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/bin/python",
+        "-c",
+        "import gambit,gambit._factor_cache as n,sys; print(sys.version); print(gambit.__file__); print(n.__file__); assert '/lat09-2026-09-20/package-' in gambit.__file__"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/bin/python",
+        "/Users/jkm0607/Projects/gambit/tools/release_smoke.py"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/bin/gambit-factor-cache",
+        "--help"
+      ],
+      [
+        "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "/Users/jkm0607/Projects/gambit/tests/test_fifo_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_top_of_book_backtest.py",
+        "/Users/jkm0607/Projects/gambit/tests/test_tick_ring.py"
+      ]
+    ]
+  }
+}

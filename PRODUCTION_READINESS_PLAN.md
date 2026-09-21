@@ -93,7 +93,7 @@ the supported hosted interpreter/platform matrix before release approval.
 | P0.8 | Historical risk decisions reference mutable order identity | Capture immutable decision-time order identity and terms; use that snapshot for audit reports and persistence | Mutating, filling, cancelling, or reusing the original order cannot alter historical audit fields; persisted snapshots round-trip with explicit format compatibility | Core/risk owner | Before production release | Implemented locally 2026-09-11; CI/review pending |
 | P0.9 | Result bundles are read and materialized before resource and shape checks can bound allocation | Add bounded manifest reads, schema validation, and per-table/aggregate resource limits before Arrow materialization | Oversized or malformed bundles fail with bounded payload work and contextual errors; v2/v3/v4 bundles within the supported flat IPC profile still load | Data/storage owner | Before supporting untrusted result bundles | Implemented locally 2026-09-11 for flat IPC; CI/security review pending |
 | P1.1 | Data lifecycle, recovery, and reproducibility obligations are spread across feature docs | Define source-of-truth, retention/deletion, schema ownership, migration, cache rebuild, backup/restore, and corrupt/partial-write procedures for result bundles and factor stores | Version migration and empty-to-current tests pass; backup/restore and interrupted-write exercises meet documented RPO/RTO or explicitly state that data is reproducible and disposable | Data/storage owner | Before relying on persisted production research | In progress; repository contract, synthetic recovery, and storage-fault drills implemented 2026-09-12; owner approval and external-storage drill pending |
-| P1.2 | Experimental native replay has an incomplete acceptance contract and the FIFO path misses the proposed five-second target | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress; candidate latency/capacity budget implemented 2026-09-12, workload and threshold approval pending |
+| P1.2 | Experimental native replay lacks representative production acceptance and qualified performance evidence | Complete `LATENCY_BUDGET.md` from the template; approve a representative strategy, real/preprocessed data, host, capacity, and timer boundary; profile before optimizing | Controlled p50/p95/p99/max and jitter distributions, cold/warm/load/serialization breakdown, memory and saturation results, full reference parity, sanitizer/static-analysis evidence, and an explicit pass/retarget/keep-experimental decision | Native/performance owner | Before native replay promotion | In progress; synthetic engineering contract v1 approved under user delegation 2026-09-20 (LAT-01); LAT-04 synthetic full-volume parity and LAT-05 measured optimization complete; LAT-06 comparison complete with original ring retained; LAT-07 synthetic input preparation improved and retained experimental; LAT-08 bounded diagnostics/shutdown complete with probes opt-in; LAT-09 review complete with remain-experimental disposition; production corpus and performance qualification remain open |
 | P1.3 | Dependency and security automation do not fully match the current template | Change Dependabot to the `uv` ecosystem, review cadence/groups, add secret scanning and proportionate Python/C++ static analysis, and test workflow policy | Automated lock/action updates produce reviewable PRs; gitleaks and selected SAST/static-analysis jobs are required; workflow-policy tests enforce pins, permissions, timeouts, and credential handling | Build/security owner | Before ongoing production maintenance | Not started |
 | P1.4 | Option expiry/settlement timing is unresolved and pricing/IV validation is deferred | Characterize expiry behavior; implement the approved supported settlement model and independently validate pricing/IV, or retain experimental status | Hand-calculated expiry/settlement ledger cases and independent pricing/IV corpus pass, with exact event times and documented tolerances | Quant/accounting owner | Before representing options as production-supported | In progress; causal cutoff and post-expiry trade rejection implemented 2026-09-12; settlement model and numerical qualification pending |
 | P2.1 | Legacy duplicate interfaces and source-only test helpers create drift and artifact noise | Remove or delegate `build.sh`/`dist.sh`, retire unused requirements files or generate them from `uv.lock`, consolidate version authority, remove hard-coded developer paths and dormant test functions from `csv_reader.cpp`, and mark historical plans as superseded | `rg` finds no machine-specific source paths; one documented dependency/version/build authority remains; clean artifact contents and `make check` pass | Core/build owner | During hardening cycle | Not started |
@@ -316,6 +316,66 @@ reproduction before selecting its correction.
   experimental until both lifecycle and numerical acceptance pass.
 
 ### P1.2 — Native replay capability and performance
+
+The proposed [latency infrastructure improvement plan](LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md)
+expands this item and Milestone 5 with the 2026-09-20 HFT repository survey,
+prioritized experiments, measurement gates, and rollback criteria. LAT-01 is
+complete under the user-delegated synthetic engineering contract v1 in
+`LATENCY_BUDGET.md` (2026-09-20). Production qualification and measured acceptance
+remain open. LAT-02 is implemented and locally verified; the
+[runner evidence](documentation/performance/controlled_replay_2026-09-20.md)
+records a full-volume characterization and fault/storage checks. LAT-03 diagnosis
+is complete; the [profile and overhead report](documentation/performance/fifo_profile_2026-09-20.md)
+preserves separate FIFO/ring profiles and 60 paired comparisons across two workloads.
+The primary 1% probe-overhead target remains inconclusive. LAT-04
+[independent full-volume trace parity](documentation/performance/fifo_parity_2026-09-20.md)
+is complete for synthetic v1: all three full primary chunk variants and scaling/dense
+controls matched. LAT-05 is complete: [FIFO traversal specialization](documentation/performance/fifo_optimization_2026-09-20.md)
+reduced primary execution p50 from 9.663 to 4.138 seconds across 30 full pairs, with
+57.19% median paired reduction (95% interval 57.06–57.38%). Four control screens,
+six renewed full-volume parity cases and native validation passed. The dense maximum-RSS
+outlier and its allocation/replication follow-up are retained in the report. Keep the
+optimization experimental; development screening does not qualify a percentile or
+a production workload.
+
+LAT-06 is complete as an experiment: the [concurrent handoff comparison](documentation/performance/handoff_optimization_2026-09-20.md)
+covered three local variants, pinned Rigtorp and complete copy/lease/direct factor
+paths. The user rejected batch publication’s throughput/age tradeoff and retained
+the original ring. No concurrent latency improvement or new dependency is adopted;
+the controlled runner, concurrency tests and rejection evidence remain.
+
+LAT-07 is complete for engineering acceptance: the [fused input preparation](documentation/performance/input_preparation_2026-09-20.md)
+reduced full synthetic harness p50 from 57.164 to 33.004 seconds in 30 full primary
+pairs (42.32% paired median reduction; 95% interval 42.11–42.54%). Input/result
+controls and the native FIFO binary are unchanged. Dense/chunk controls and an
+explicit short-tail replication/longer follow-up passed review; 2,247 tests and
+28 ASan/UBSan input tests passed. The fused generator is an explicit experimental
+mode; the original storage loader remains default because buffered/mapped controls
+did not meet the full-harness threshold. Cold-cache and production decode/storage
+claims remain open.
+
+LAT-08 is complete for engineering acceptance: [bounded batch metrics and shutdown
+reporting](documentation/performance/batch_diagnostics_2026-09-20.md) add queue
+high-water/full/age and admission signals, failure accounting, bounded joins and
+process-group cleanup outcomes. Fault tests fixed traceback-held leases and an
+exited worker's helper retaining the protocol pipe. The final 30-pair handoff
+screen measured +13.90% saturated diagnostic overhead (95% interval +9.74–23.14%);
+probes stay opt-in. FIFO controls preserved input/result hashes, but full-volume
+probe qualification remains open. All 2,283 tests and `make check` passed.
+The original native ring/FIFO remain unchanged; no production promotion or new
+logging dependency is adopted.
+
+LAT-09 review is complete: [qualification evidence and disposition](documentation/performance/qualification_decision_2026-09-20.md)
+explicitly retain experimental status. Fresh checks passed 2,283 tests, 208
+ASan/UBSan tests, the 1.8-million-record standalone TSan probe and Clang analysis.
+Three macOS Python wheels plus a source-distribution install each passed 97 native
+tests. The existing six full-volume trace cases were audited against the unchanged
+native binary. Eight controlled checks preserved canonical controls, with primary
+execution 3.982–4.068 seconds; these are not qualified p95 observations. A reviewed
+committed candidate, Linux x86-64 release evidence, full-volume probe review,
+four attested sessions of 50 trials, representative production data/semantics and
+independent review remain required. The [runbook](documentation/operations/replay_qualification.md)
+records rollback and reopening steps. P1.2 promotion remains open.
 
 Evidence: the [FIFO benchmark](documentation/performance/fifo_backtest_2026-09-04.md)
 records three-year native execution of 9.08–9.15 seconds against the proposed
@@ -722,7 +782,20 @@ Exit: every P0 row is accepted with same-commit evidence and a named approver.
 
 - [x] Copy the template latency-budget structure into `LATENCY_BUDGET.md` and
   link it from the native replay ADR and performance reports. (Candidate budget
-  implemented 2026-09-12; proposed thresholds remain unapproved.)
+  implemented 2026-09-12; superseded by the approved synthetic engineering
+  contract v1 on 2026-09-20.)
+- [x] Define and approve the synthetic engineering workload, reference host,
+  timer boundaries, sample counts, resource limits and failure rules (LAT-01,
+  `gambit-fifo-latency-v1`, user-delegated approval 2026-09-20). This does not
+  close the representative production-corpus or measured acceptance gates.
+- [x] Implement the LAT-02 controlled runner, versioned workload/input manifests,
+  isolated worker time/resource limits, multi-session and paired reports, and
+  storage/failure smoke coverage (2026-09-20). See the runner evidence; full
+  qualification and changed-build/production oracle gates remain below.
+- [x] Complete LAT-03 diagnosis with separate FIFO and concurrent handoff profiles,
+  Python attribution, 30 paired instrumentation comparisons per sparse/dense
+  control, retained raw evidence and three ranked hypotheses (2026-09-20).
+  Primary probe-overhead qualification remains inconclusive; see the profile report.
 - [ ] Approve the representative strategy, order/fill rate, real or validated
   preprocessed corpus, execution semantics, hardware, compiler, repetition
   count, memory/audit capacities, overload policy, and measurement boundary.
@@ -730,17 +803,31 @@ Exit: every P0 row is accepted with same-commit evidence and a named approver.
   validate their complete order/fill traces before measuring performance.
 - [ ] Measure cold load, preprocessing, warm-up, execution, result materialization,
   verification, and peak resources separately and end-to-end.
-- [ ] Run full-volume independent trace/accounting parity for the accepted
-  workload, not only deterministic native hashes and terminal reconciliation.
+- [x] Run full-volume independent trace/accounting parity for approved synthetic
+  v1 (LAT-04, 2026-09-20): three complete primary chunk variants plus scaling/dense
+  controls, all audit fields and 3,230 portfolio checkpoints matched. Repeat for
+  changed native builds and the eventual representative production workload;
+  this does not complete production-corpus or performance qualification.
 - [ ] Add a reproducible optimized profile and native static analysis. Retain the
   existing C++11/setuptools build if it satisfies the equivalent build contract;
   a CMake/C++ standard migration is not required merely to match the template.
-- [ ] Profile the FIFO path, change one bottleneck at a time, and preserve
-  before/after distributions plus rollback evidence. If the approved target is
-  not met, retarget transparently or keep the capability experimental.
+- [x] Profile the FIFO path and retain one measured traversal optimization
+  (LAT-03/LAT-05, 2026-09-20), with 30 full primary pairs, control distributions,
+  renewed complete trace parity, native validation and preserved rollback builds.
+  See the [optimization report](documentation/performance/fifo_optimization_2026-09-20.md),
+  including the dense RSS outlier investigation. Keep the capability experimental;
+  approved multi-session performance and production qualification remain open.
+
+- [x] Complete LAT-09 evidence review and record **remain experimental** (2026-09-20),
+  with source-matched local checks, explicit unmet qualification gates and a
+  [rollback/reopening runbook](documentation/operations/replay_qualification.md).
+  This is a negative engineering disposition; it is not production approval or
+  independent reviewer signoff. The unchecked production and release gates above
+  remain open.
 
 Exit: an owner explicitly promotes, retargets, or retains the experimental
-status based on production-like correctness and performance evidence.
+status based on production-like correctness and performance evidence. LAT-09's
+engineering retention decision does not mark the production-like evidence complete.
 
 ### Milestone 6 — Research and portfolio workflow improvements
 

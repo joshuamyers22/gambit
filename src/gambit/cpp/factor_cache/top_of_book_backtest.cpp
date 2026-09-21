@@ -104,7 +104,7 @@ public:
         const auto* input = static_cast<const BookEvent*>(info.ptr);
         py::gil_scoped_release release;
         try {
-            for (std::uint64_t index = 0; index < count; ++index) process(input[index]);
+            for (std::uint64_t index = 0; index < count; ++index) process<false>(input[index], nullptr);
         } catch (...) {
             // Earlier events may have been applied. Never publish them as a valid run.
             failed_ = true;
@@ -133,7 +133,7 @@ public:
                      (event.aggressor != -1 && event.aggressor != 1)))) {
                     throw std::invalid_argument("invalid queue trade event");
                 }
-                process(event.book, &event);
+                process<true>(event.book, &event);
             }
         } catch (...) {
             failed_ = true;
@@ -190,7 +190,8 @@ private:
         return access;
     }
 
-    void process(const BookEvent& event, const QueueEvent* queue_event = nullptr) {
+    template <bool Fifo>
+    void process(const BookEvent& event, const QueueEvent* queue_event) {
         if (event.sequence != processed_ || processed_ == std::numeric_limits<std::uint64_t>::max() ||
             event.instrument_id >= instruments_.size() || event.flags ||
             event.event_time_ns < 0 || event.receive_time_ns < event.event_time_ns ||
@@ -204,32 +205,37 @@ private:
         if (state.pending) {
             auto& order = orders_[static_cast<std::size_t>(state.pending - 1)];
             // Difference cannot overflow: both receive times are nonnegative and ordered.
-            if (queue_event) {
+            if (Fifo) {
                 process_queue(*queue_event, state, order);
             } else if (event.receive_time_ns - order.timestamp_ns >= latency_ns_) {
                 const bool buy = order.remaining > 0;
                 fill(event, state, order, buy ? event.ask_size : event.bid_size, buy ? event.ask : event.bid);
             }
         }
-        if (--state.countdown == 0) {
-            state.countdown = interval_;
-            state.target_long = !state.target_long;
-            if (state.pending) {
-                orders_[static_cast<std::size_t>(state.pending - 1)].status = 2;
-                state.pending = 0;
-            }
-            const auto quantity = (state.target_long ? target_lots_ : 0) - state.position;
-            if (quantity) {
-                if (orders_.size() == audit_capacity_) throw std::runtime_error("order audit capacity exhausted");
-                const auto id = static_cast<std::uint64_t>(orders_.size()) + 1;
-                orders_.push_back({id, event.sequence, event.receive_time_ns, quantity, quantity, event.instrument_id, 0});
-                if (fifo_) queues_.push_back({quantity > 0 ? event.bid : event.ask, 0, 0,
-                                              std::numeric_limits<std::uint64_t>::max(), -1});
-                state.pending = id;
-            }
-        }
+        if (--state.countdown == 0) rebalance<Fifo>(event, state);
         last_receive_time_ = event.receive_time_ns;
         ++processed_;
+    }
+
+    // Keep the infrequent order lifecycle out of the validated per-event traversal.
+    // Specialize on the batch's execution model, fixed when the engine is created.
+    template <bool Fifo>
+    void rebalance(const BookEvent& event, InstrumentState& state) {
+        state.countdown = interval_;
+        state.target_long = !state.target_long;
+        if (state.pending) {
+            orders_[static_cast<std::size_t>(state.pending - 1)].status = 2;
+            state.pending = 0;
+        }
+        const auto quantity = (state.target_long ? target_lots_ : 0) - state.position;
+        if (quantity) {
+            if (orders_.size() == audit_capacity_) throw std::runtime_error("order audit capacity exhausted");
+            const auto id = static_cast<std::uint64_t>(orders_.size()) + 1;
+            orders_.push_back({id, event.sequence, event.receive_time_ns, quantity, quantity, event.instrument_id, 0});
+            if (Fifo) queues_.push_back({quantity > 0 ? event.bid : event.ask, 0, 0,
+                                          std::numeric_limits<std::uint64_t>::max(), -1});
+            state.pending = id;
+        }
     }
 
     void process_queue(const QueueEvent& event, InstrumentState& state, ReplayOrder& order) {

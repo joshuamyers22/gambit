@@ -1,0 +1,133 @@
+{
+  "method": "macOS sample collapsed leaf table; counts >=5; blocked stacks included",
+  "thread_entries": 2,
+  "thread_samples": 34028,
+  "largest_threads": [
+    {
+      "samples": 17014,
+      "name": "Thread_13712369   DispatchQueue_1: com.apple.main-thread  (serial)"
+    },
+    {
+      "samples": 17014,
+      "name": "Thread_13712376: polars-ooc-cleaner"
+    }
+  ],
+  "leaf_counts": [
+    {
+      "symbol": "semaphore_wait_trap  (in libsystem_kernel.dylib)",
+      "samples": 17014
+    },
+    {
+      "symbol": "sha256_block_armv8  (in python3.10)",
+      "samples": 6847
+    },
+    {
+      "symbol": "_aligned_contig_to_strided_size8  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 2081
+    },
+    {
+      "symbol": "(anonymous namespace)::TopOfBookBacktester::process((anonymous namespace)::BookEvent const&, (anonymous namespace)::QueueEvent const*)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 1651
+    },
+    {
+      "symbol": "__bzero  (in libsystem_platform.dylib)",
+      "samples": 989
+    },
+    {
+      "symbol": "ULONG_remainder  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 858
+    },
+    {
+      "symbol": "(anonymous namespace)::TopOfBookBacktester::process_queue_batch(pybind11::array_t<(anonymous namespace)::QueueEvent, 1>)  (in _factor_cache.cpython-310-darwin.so)",
+      "samples": 800
+    },
+    {
+      "symbol": "LONG_add  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 512
+    },
+    {
+      "symbol": "madvise  (in libsystem_kernel.dylib)",
+      "samples": 427
+    },
+    {
+      "symbol": "ULONG_bitwise_xor  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 397
+    },
+    {
+      "symbol": "ULONG_divide  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 397
+    },
+    {
+      "symbol": "ULONG_right_shift  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 264
+    },
+    {
+      "symbol": "PyArray_Where  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 252
+    },
+    {
+      "symbol": "_aligned_cast_long_to_int  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 225
+    },
+    {
+      "symbol": "_aligned_cast_ulong_to_uint  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 203
+    },
+    {
+      "symbol": "_aligned_contig_cast_ulong_to_long  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 181
+    },
+    {
+      "symbol": "_aligned_cast_uint_to_long  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 162
+    },
+    {
+      "symbol": "mapiter_get  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 161
+    },
+    {
+      "symbol": "run_binary_simd_equal_u32  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 158
+    },
+    {
+      "symbol": "ULONG_add  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 73
+    },
+    {
+      "symbol": "ULONG_multiply  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 44
+    },
+    {
+      "symbol": "ULONG_fill  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 30
+    },
+    {
+      "symbol": "LONG_multiply  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 29
+    },
+    {
+      "symbol": "_PyEval_EvalFrameDefault  (in python3.10)",
+      "samples": 22
+    },
+    {
+      "symbol": "simd_binary_scalar2_equal_u64  (in _multiarray_umath.cpython-310-darwin.so)",
+      "samples": 17
+    },
+    {
+      "symbol": "lookdict_unicode_nodummy  (in python3.10)",
+      "samples": 11
+    },
+    {
+      "symbol": "write  (in libsystem_kernel.dylib)",
+      "samples": 11
+    },
+    {
+      "symbol": "fetestexcept  (in libsystem_m.dylib)",
+      "samples": 10
+    },
+    {
+      "symbol": "_platform_memset  (in libsystem_platform.dylib)",
+      "samples": 7
+    }
+  ]
+}

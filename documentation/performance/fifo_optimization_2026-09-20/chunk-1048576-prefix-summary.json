@@ -1,0 +1,76 @@
+{
+  "bootstrap_resamples": 10000,
+  "bootstrap_seed": 20260920,
+  "comparisons": {
+    "execution_seconds": {
+      "baseline": {
+        "count": 30,
+        "jitter": 0.008471212999999977,
+        "maximum": 1.057695959,
+        "p50": 1.049224746,
+        "p95": 1.055551876,
+        "p99": 1.057695959,
+        "p99_9": null
+      },
+      "candidate": {
+        "count": 30,
+        "jitter": 0.006540845999999989,
+        "maximum": 0.457624129,
+        "p50": 0.451083283,
+        "p95": 0.45561345799999997,
+        "p99": 0.457624129,
+        "p99_9": null
+      },
+      "p95_ratio": 0.4316353069510342
+    },
+    "harness_seconds": {
+      "baseline": {
+        "count": 30,
+        "jitter": 0.2298373749999989,
+        "maximum": 9.107484084,
+        "p50": 8.877646709,
+        "p95": 9.082795916,
+        "p99": 9.107484084,
+        "p99_9": null
+      },
+      "candidate": {
+        "count": 30,
+        "jitter": 0.24913995899999897,
+        "maximum": 8.527541542,
+        "p50": 8.278401583,
+        "p95": 8.5031765,
+        "p99": 8.527541542,
+        "p99_9": null
+      },
+      "p95_ratio": 0.9361849125136723
+    },
+    "peak_rss_bytes": {
+      "baseline": {
+        "count": 30,
+        "jitter": 16596992,
+        "maximum": 486391808,
+        "p50": 469794816,
+        "p95": 479100928,
+        "p99": 486391808,
+        "p99_9": null
+      },
+      "candidate": {
+        "count": 30,
+        "jitter": 25165824,
+        "maximum": 494895104,
+        "p50": 469729280,
+        "p95": 486588416,
+        "p99": 494895104,
+        "p99_9": null
+      },
+      "p95_ratio": 1.0156282060050612
+    }
+  },
+  "interpretation": "screening only; requires session, instrumentation and correctness review",
+  "median_execution_reduction": 0.5700953982417823,
+  "paired_bootstrap_95_interval": [
+    0.5684637522131926,
+    0.5736571446013501
+  ],
+  "status": "retention_signal"
+}

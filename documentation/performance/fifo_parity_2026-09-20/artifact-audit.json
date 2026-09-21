@@ -1,0 +1,37 @@
+{
+  "schema": "gambit-parity-artifact-audit-v1",
+  "runs": [
+    {
+      "directory": "01-fifo-3y-sparse-v1-65521",
+      "status": "exact_trace_match",
+      "checkpoints": 851
+    },
+    {
+      "directory": "02-fifo-3y-sparse-v1-65536",
+      "status": "exact_trace_match",
+      "checkpoints": 904
+    },
+    {
+      "directory": "03-fifo-3y-sparse-v1-1048576",
+      "status": "exact_trace_match",
+      "checkpoints": 904
+    },
+    {
+      "directory": "04-fifo-2y-sparse-v1-65521",
+      "status": "exact_trace_match",
+      "checkpoints": 568
+    },
+    {
+      "directory": "05-fifo-1m-dense-v1-65521",
+      "status": "exact_trace_match",
+      "checkpoints": 1
+    },
+    {
+      "directory": "06-fifo-2m-dense-v1-65521",
+      "status": "exact_trace_match",
+      "checkpoints": 2
+    }
+  ],
+  "verifier_sha256": "1354972c9a5108be1a83097d1f1fdf47028b9b5fe18a0cbfd3f24323e0aad470",
+  "note": "Post-campaign comparator additionally rejects float coercion; all retained full traces pass"
+}

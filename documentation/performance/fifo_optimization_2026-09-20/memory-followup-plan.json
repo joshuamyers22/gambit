@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-09-20T22:04:40.741177+00:00",
+  "reason": "Original 2m-dense candidate trial 008 maximum RSS 154533888 bytes; baseline campaign maximum 144441344 bytes (+6.99%), despite p95 ratio 1.0116. Investigate rather than omit it.",
+  "normal_replication_pairs": 30,
+  "memory_diagnostic_pairs": 30,
+  "workload": "complete fifo-2m-dense-v1",
+  "qualification": false,
+  "policy": "Retain original and every follow-up observation. No selective extension; diagnostics are not timing acceptance."
+}

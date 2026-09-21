@@ -1,0 +1,211 @@
+{
+  "schema": 1,
+  "artifacts": {
+    "batch-publication-build.json": {
+      "sha256": "fcbe92665db5147c4f96145043484501100ff9195a9a40f9db88a7795dc17195",
+      "bytes": 1032
+    },
+    "cached-tail-build.json": {
+      "sha256": "467a291852374249bd9ed08e9779b88b1a4cd428b3d44632cd5fd76fb5521d86",
+      "bytes": 4757
+    },
+    "candidate-fifo-parity/01-fifo-3y-sparse-v1-65521/reference-process.json": {
+      "sha256": "9fba1960d39533fc62ac8112487e83e3e57b9b639662a83413db60b0430a53e3",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/01-fifo-3y-sparse-v1-65521/request.json": {
+      "sha256": "2ec6f9a14f3129c9777fd4953fe5966d2d1890bde7d5dfc16cbf3df66c0dff6b",
+      "bytes": 757
+    },
+    "candidate-fifo-parity/01-fifo-3y-sparse-v1-65521/trial.json": {
+      "sha256": "ffc88824b90f15ea5dd20131ec1fb98373a982d80059071af176c5c55c78df6d",
+      "bytes": 3692
+    },
+    "candidate-fifo-parity/01-fifo-3y-sparse-v1-65521/worker-result.json": {
+      "sha256": "4fee494e2725c0923352cf4dbd3d8a302835564aaf7794dba2bbc41f689cd190",
+      "bytes": 6754
+    },
+    "candidate-fifo-parity/02-fifo-3y-sparse-v1-65536/reference-process.json": {
+      "sha256": "6f0950f348272c17d69ca07d7758b097613c054b835c5d9354195b9d4799df1e",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/02-fifo-3y-sparse-v1-65536/request.json": {
+      "sha256": "6978ea1851fe0f8f9288bf63b49404052ff81af6703cdc5b4eb421d1e56e54e7",
+      "bytes": 762
+    },
+    "candidate-fifo-parity/02-fifo-3y-sparse-v1-65536/trial.json": {
+      "sha256": "ccb7c82a3f2f65456d18242c56c7b8511518d367746bb85de246c46a6ccda744",
+      "bytes": 3696
+    },
+    "candidate-fifo-parity/02-fifo-3y-sparse-v1-65536/worker-result.json": {
+      "sha256": "5ba22536e6b2e4205deb53eba3a8bce3873b250beea7494d8ee980005c5394ae",
+      "bytes": 6753
+    },
+    "candidate-fifo-parity/03-fifo-3y-sparse-v1-1048576/reference-process.json": {
+      "sha256": "246ed31fc0ef7e1c0a712adcee1114279f289833e766aa47baeca98f37bb56fe",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/03-fifo-3y-sparse-v1-1048576/request.json": {
+      "sha256": "e7753babb017ef583349f1b3385f22773ef172b8f4c46428a41d0ef2fea6415d",
+      "bytes": 763
+    },
+    "candidate-fifo-parity/03-fifo-3y-sparse-v1-1048576/trial.json": {
+      "sha256": "f15ec55d31507097aabcfb7741c2f46ea94ad344fc6315a94b937456f1f1e269",
+      "bytes": 3698
+    },
+    "candidate-fifo-parity/03-fifo-3y-sparse-v1-1048576/worker-result.json": {
+      "sha256": "e450d69d806487a1a5a29ce2aa44d04785a2fa9944729ebd6c3f871bfa5da83c",
+      "bytes": 6766
+    },
+    "candidate-fifo-parity/04-fifo-2y-sparse-v1-65521/reference-process.json": {
+      "sha256": "5361073c0d13087752070434eb235e66b5171542dfe7c1d43f842c662c483d81",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/04-fifo-2y-sparse-v1-65521/request.json": {
+      "sha256": "589dc0b048921d4300d79a63de48eddab9c4eb37c3436d0538bee340d6890ec9",
+      "bytes": 762
+    },
+    "candidate-fifo-parity/04-fifo-2y-sparse-v1-65521/trial.json": {
+      "sha256": "53de2ac8b6cd8141afed84d11998f4ca8fb3923113c862b6f11155ba8a1d249a",
+      "bytes": 3690
+    },
+    "candidate-fifo-parity/04-fifo-2y-sparse-v1-65521/worker-result.json": {
+      "sha256": "3d56256cb8d78badea06a554b25cf7143a662aaf8562371063ba7ef9ea67fb36",
+      "bytes": 6762
+    },
+    "candidate-fifo-parity/05-fifo-1m-dense-v1-65521/reference-process.json": {
+      "sha256": "da17d30aeeb79ac5961733515d2c99448be2f0249cebccee1744063b92c67157",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/05-fifo-1m-dense-v1-65521/request.json": {
+      "sha256": "d3f03ab823fa8335fb49521229fb42ad01168f82d3ee052299590b0349f6cf0c",
+      "bytes": 756
+    },
+    "candidate-fifo-parity/05-fifo-1m-dense-v1-65521/trial.json": {
+      "sha256": "5bddbf2ac27d6b369b95b0f0e6f1cf144a255b54fbf9e373099a35387b1639a9",
+      "bytes": 3673
+    },
+    "candidate-fifo-parity/05-fifo-1m-dense-v1-65521/worker-result.json": {
+      "sha256": "f38adb696bff010621bf3f94eb904fd91c0b4292723d621cde130c5a0cc7e7e7",
+      "bytes": 6759
+    },
+    "candidate-fifo-parity/06-fifo-2m-dense-v1-65521/reference-process.json": {
+      "sha256": "2d9c744d3b92c3244c7c6e8961e984daad739665240b77ee6fce0a5030039440",
+      "bytes": 19
+    },
+    "candidate-fifo-parity/06-fifo-2m-dense-v1-65521/request.json": {
+      "sha256": "313f26239d824425a29dc74f8556ab01593147b4950ec3b47bf390df9ae96715",
+      "bytes": 755
+    },
+    "candidate-fifo-parity/06-fifo-2m-dense-v1-65521/trial.json": {
+      "sha256": "ec4cbc2011df36c6e8488720f5bc9ed35179e09319d5ebad72bae70dd3b13230",
+      "bytes": 3685
+    },
+    "candidate-fifo-parity/06-fifo-2m-dense-v1-65521/worker-result.json": {
+      "sha256": "b1ad6eba11d4707ce5aa6aedf9db90aec7c320e9d1f24886a1c2fb192be7f12f",
+      "bytes": 6747
+    },
+    "candidate-fifo-parity/campaign.json": {
+      "sha256": "e294df2522dc43090ab301b0c735fdffc1da038db2adb9084f9cb93779839494",
+      "bytes": 3412
+    },
+    "candidate-fifo-parity/summary.json": {
+      "sha256": "21d47ccea088b89e30612ff4481aee0cd4de476ef60a9c74d4c4d9c6ee457852",
+      "bytes": 4096
+    },
+    "close-probe.json": {
+      "sha256": "46653534e95bd705a883a07c6becbb52e4c44154d91da9df9b1ff902fec9c323",
+      "bytes": 8317
+    },
+    "close_probe.py": {
+      "sha256": "9c2da8cf0d8acb75c6cc2017337f7c73353e5339e8d21426cf0eb8509e8ea048",
+      "bytes": 1460
+    },
+    "decision.json": {
+      "sha256": "2af2af27cd9bf9d9c1870824376ceb56c6a68e2f964264006527f6fcd025a27d",
+      "bytes": 759
+    },
+    "external-evidence-manifest.json": {
+      "sha256": "15b271fdeb74efc32c32e99d6a2d54cce4457ea18a98c1d84c80d9ef5626fe19",
+      "bytes": 32445
+    },
+    "final-docs.log": {
+      "sha256": "a740ad01f55217ce0afcca910a612e36af9357e163709e1665f784e88afcad17",
+      "bytes": 1249
+    },
+    "final-make-check.log": {
+      "sha256": "3f91ccc7ccf6392f1d9764f32ec0fb23b8dbbe0d95a80d07c710ce8d2c498659",
+      "bytes": 66684
+    },
+    "final-sanitized-tests.log": {
+      "sha256": "c02d9b10c3fbd84aae48c5e8abd59babd4fa80c4bc78472df589b4d5e6f246d3",
+      "bytes": 99
+    },
+    "final-tsan.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "local-cursor-build.json": {
+      "sha256": "1be17d5da32f3927a89594b3472e7f2d4cc9864d8c9ff032332a68904d7b6ea9",
+      "bytes": 1074
+    },
+    "retained-baseline-identity.json": {
+      "sha256": "78c8d2eafaa6ce048657297fac15bbea591107816c54fcb8bc7494361b78306f",
+      "bytes": 593
+    },
+    "retained-baseline-tsan.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "retained-sanitized-build.json": {
+      "sha256": "38edb5394926636cee51e7261beadcca87e9707f2770a36e1f52fde44ae44442",
+      "bytes": 6040
+    },
+    "rigtorp-build.json": {
+      "sha256": "5ee6bdae65a6ccd65c64786cc531959b1bfc5687bb365af7a69cd4f50226a82f",
+      "bytes": 4900
+    },
+    "rigtorp-pin.json": {
+      "sha256": "5b632598a417c444e8aa526ff772c409360645d4993bb8b31819556374e5de9b",
+      "bytes": 187
+    },
+    "round1-summary.json": {
+      "sha256": "428f4aca1737cc0e26c3233ed1a84c547b66cb72e917700f843e881eea5d4cd1",
+      "bytes": 26788
+    },
+    "round1-trials.tar.gz": {
+      "sha256": "70c1ead1f72b5ae563111a4e2ce51aacd3e2b8cc4881bbfdfa80cdf492cf8d52",
+      "bytes": 58713
+    },
+    "round2-summary.json": {
+      "sha256": "c25b2e032db0b592689dd22b28751c8f687562ebe7fb433ad56462937adff9c1",
+      "bytes": 26872
+    },
+    "round2-trials.tar.gz": {
+      "sha256": "dcaeb5558b00e8eb0512f1ddd9a4121f08a045a09300a0a293911035bd828cdc",
+      "bytes": 58042
+    },
+    "variant-sources.tar.gz": {
+      "sha256": "e6c2839f89ec852423883a756883c214be3f1c80f13ca67072be64a5ac634a10",
+      "bytes": 10796
+    },
+    "variant3-sanitized-tests-direct.log": {
+      "sha256": "8570a20aa47ea271ecc5f38bcc944238b4048608417d0b88d31e50410eb00570",
+      "bytes": 99
+    }
+  },
+  "repository_files": {
+    "LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md": "c9ca1cdae53078f4b76d98b70a0fa757177a9f8c01db48ca319e19f5b0220987",
+    "PRODUCTION_READINESS_PLAN.md": "98275670bd2c0822cc4b6ac99ed6ca1431637a7ebf73aad350c7aede13fd60c9",
+    "Makefile": "7e8bc0b267baae620e0b1ef0a0300acb87539de7daa5d33ca4a3ebbd575ea904",
+    "tools/check_native_warnings.py": "07c1843524da2c3f464e50e2ae462c02bb4cedfd82f3c3db739a6dc6ce61bb09",
+    "benchmarks/controlled_handoff.py": "b74a805aa4ce3685cd3ec3d6151242c37c75829311e104666c8503f045927a38",
+    "benchmarks/build_handoff_variant.py": "04248e758a9e0e9a27789e3a9c59a4e1bf7e1ecfaa00228017054de267991343",
+    "benchmarks/rigtorp_ring_adapter.hpp": "e4f9730a498616ef0693bdccc39cfb3bfad69bc8747cfec18dbe96b6eefcf7fb",
+    "tests/test_controlled_handoff.py": "816b95b2447c64a2f88f38f7915e63d32191375bf31af9c9f7981b155efc9513",
+    "tests/test_tick_ring.py": "86c6e38819f686a0287196bb8182423a42b5a7b4de2ea5f8bd0436a7af4affb0",
+    "tests/cpp/tick_ring_tsan.cpp": "9955faaeafa97b88bb8d73219e703caa9324018b93b451d7169d21b46b0f1730",
+    "documentation/operations/controlled_handoff.md": "1e7ca190e39288e6fd876f573128cb255b130f944c19ee3e930fcee0394c51dc",
+    "documentation/performance/handoff_optimization_2026-09-20.md": "844597d6a0c2ee888e1cf382c9cb2125fe52dccb3c113b2a228f4aa64bc535c6"
+  }
+}

@@ -56,6 +56,54 @@ def test_ring_rejects_newest_records_when_full() -> None:
     assert ring.pop_batch(2)["sequence"].tolist() == [0, 1]
 
 
+def test_partial_batch_counters_refresh_after_lease_and_close() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    ring = TickRing(2)
+    assert ring.push_batch(_ticks(0, 3)) == 2
+    lease = ring.lease_batch(2)
+    view = lease.values
+    lease.close()
+    assert ring.push_batch(_ticks(2, 2)) == 0
+    assert view["sequence"].tolist() == [0, 1]
+    del view
+    assert ring.push_batch(_ticks(2, 3)) == 2
+    ring.close()
+    assert ring.push_batch(_ticks(4, 3)) == 0
+    assert ring.pop_batch(2)["sequence"].tolist() == [2, 3]
+    metrics = ring.metrics
+    assert (metrics["pushed"], metrics["popped"], metrics["dropped"], metrics["depth"]) == (4, 4, 7, 0)
+
+
+def test_close_racing_batch_publication_drains_exact_accepted_prefix() -> None:
+    if TickRing is None:
+        pytest.skip("native factor cache extension is not built")
+    records = _ticks(0, 8192)
+    for _ in range(30):
+        ring = TickRing(4096)
+        gate = threading.Barrier(2)
+        accepted = []
+
+        def produce():
+            gate.wait(timeout=1)
+            accepted.append(ring.push_batch(records))
+
+        producer = threading.Thread(target=produce, daemon=True)
+        producer.start()
+        gate.wait(timeout=1)
+        ring.close()
+        producer.join(timeout=1)
+        assert not producer.is_alive()
+        assert len(accepted) == 1
+        count = accepted[0]
+        assert ring.pop_batch(8192)["sequence"].tolist() == list(range(count))
+        assert ring.push_batch(records[:1]) == 0
+        metrics = ring.metrics
+        assert metrics["closed"] and metrics["depth"] == 0
+        assert metrics["pushed"] == metrics["popped"] == count
+        assert metrics["dropped"] == 8193 - count
+
+
 def test_zero_copy_lease_is_read_only_and_defers_release_until_view_dies() -> None:
     if TickRing is None:
         pytest.skip("native factor cache extension is not built")

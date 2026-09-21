@@ -1,15 +1,18 @@
 # Native multi-instrument tick backtest: brief and execution budget
 
-Status: proposed product contract; replay infrastructure under development.
-Owner/decision authority: Josh Myers. Review date: 2026-09-04.
+Status: experimental product brief; engineering contract v1 approved 2026-09-20.
+Owner/decision authority: Josh Myers. Original brief date: 2026-09-04.
 
 Reference baseline: `production-project-template` commit `e132c6e`, specifically
 `docs/LATENCY_SENSITIVE_CPP_GUIDE.md`, `templates/PROJECT_BRIEF.md`,
 `templates/LATENCY_BUDGET.md`, and `docs/CPP_SOURCE_REVIEW.md`. The executable
 C++ archetype is an ownership/validation/build reference, not an execution model.
-Gambit's candidate measurement contract is the repository
-[`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md); its proposed thresholds remain
-unapproved and do not promote this experimental path.
+Gambit's governing engineering contract is
+[`LATENCY_BUDGET.md`](../../LATENCY_BUDGET.md), `gambit-fifo-latency-v1`, approved
+under user delegation on 2026-09-20. It fixes the synthetic FIFO workload, M4 host,
+prepared-chunk execution sum, full-harness timer, statistical gates and resources.
+The original product proposal below remains context; v1 supersedes its unresolved
+engineering choices. Production qualification and measured acceptance remain open.
 
 ## Outcome and measurement boundary
 
@@ -18,24 +21,23 @@ in a few seconds after reusable order-book preprocessing. The initial workload
 is 10 **aggregate** events/second across eight instruments, not 10 per instrument:
 631,584,000 events for 2023–2024 and 946,944,000 events for 2023–2025.
 
-Proposed acceptance objective: repeated warm runs have a p95 complete execution
-time at or below **5 seconds** on a named reference host. This translates to
-189,388,800 events/second at three years. The number is a target, not demonstrated
-capability, and must be approved with the strategy and execution model.
+Approved v1 engineering objective: p95 **prepared-chunk execution sum ≤5 seconds**
+on `m4-local-v1`; see the governing contract for the 200-trial decision rule.
+This translates to 189,388,800 events/second at three years. The objective is
+not demonstrated capability or a continuous storage-to-result wall-time promise.
 
-The timer starts with validated, preprocessed input resident and initialized
-configuration available. It includes event traversal, strategy decisions,
-order/risk state transitions, fills, fees, cash/positions/P&L, and final immutable
-result construction. Report per-run state initialization separately until its
-cost is measured, then include it in the accepted run boundary. Never reuse a
-previous trial's terminal portfolio state.
+The accepted execution sum includes fresh initialization, timed batch calls
+(validation, traversal, strategy, FIFO, cash/fees/accounting), and immutable result
+materialization. Input generation/loading and hashes are outside batch timers
+and inside their separately defined full-harness boundaries. Never reuse a
+previous trial's terminal portfolio state or imply that the 83.3 GB is resident.
 
 Report preprocessing, cold data loading, warm-up, execution, and serialization
 separately. Disk loading, Python-oracle validation, and reusable preprocessing
 are not hidden inside a claimed five-second execution time. A memory mapping
 alone does not establish residency; cold faults must be measured separately.
 
-## Proposed five-second stage budget
+## Five-second diagnostic stage budget
 
 These allocations are planning constraints, not independent p95 values that can
 be added to manufacture an end-to-end percentile. Measure the full distribution.
@@ -52,8 +54,8 @@ Record p50/p95/p99/max, run count, warm-up, CPU and wall time, memory, compiler
 flags, CPU topology, input/configuration hashes, order/fill counts, and build
 identity. Do not label a tiny sample's extreme percentiles statistically robust.
 Shared CI validates benchmark correctness; timing acceptance belongs on a
-controlled reference host. The currently measured host is Apple Silicon/macOS
-15.5; precise hardware and compiler identity remain acceptance prerequisites.
+controlled reference host. The v1 host and compiler identity are fixed in `LATENCY_BUDGET.md`; the
+full qualification campaign has not run.
 
 ## Invariants and preprocessing limits
 
@@ -87,9 +89,11 @@ per-tick Python containers. Audit volume and result materialization count toward
 the workload and execution budget. Cancellation ends at a defined safe boundary
 and cannot publish an incomplete run as a valid backtest.
 
-The immutable input mapping, memory budget, maximum instruments/active orders,
-audit capacity, cancellation bound, and cold-load performance remain to be set
-from the chosen strategy and data. No hard real-time or live-trading claim is made.
+V1 sets eight instruments, eight active orders, one-million-row audit bounds,
+a 512 MiB replay-process RSS budget, bounded chunks and cancellation/watchdogs
+in `LATENCY_BUDGET.md`. LAT-02 runner enforcement is implemented and locally
+verified; qualification evidence remains open. Absolute cold-load
+performance and representative production data remain outside synthetic v1. No hard real-time or live-trading claim is made.
 
 ## Small, reversible delivery sequence
 
@@ -108,9 +112,9 @@ from the chosen strategy and data. No hard real-time or live-trading claim is ma
 | Decision | Status / authority |
 | --- | --- |
 | Execution model | User selected top-of-book execution, then approved opt-in conservative FIFO queue-position testing on 2026-09-04; see `fifo_queue_execution.md` |
-| Representative strategy, expected order/fill frequency, active-order bounds | Required before end-to-end acceptance |
-| Fee/funding, accounting precision, and market-impact assumptions | Required before execution-policy implementation |
-| Reference hardware, complete timer boundary, repetition count, approved threshold | Proposed above; not yet accepted |
+| Synthetic strategy, order/fill mix and active-order bounds | Approved in v1; representative production strategy/data remain open |
+| Fee/funding, accounting precision, and market-impact assumptions | V1 fixes integer units/rounded fees and excludes funding/impact; production calibration remains open |
+| Reference hardware, timer boundary, repetition count and thresholds | Approved in v1; measured attainment remains open |
 
 ## Existing evidence and limitations
 
@@ -151,6 +155,15 @@ The prototype's sequence is a global, contiguous replay ordinal starting at
 zero, not a substitute for validating per-venue feed sequence during preprocessing.
 Inputs use one common price-tick and quantity-lot scale and quote currency.
 Reference tests compare every order and fill as well as cash, positions, fees,
-and P&L using exact integer equality. Large synthetic runs currently reconcile
-the entire fill ledger; independent Python trace parity at the complete
-three-year volume remains separate, outstanding evidence.
+and P&L using exact integer equality. LAT-04 completed
+[independent full-volume trace parity](../performance/fifo_parity_2026-09-20.md)
+using a standalone reference cross-checked against the Python oracle and hand-derived
+cases. Three complete primary chunk-size variants and scaling/dense controls matched
+every audit field and checkpoint portfolio value. This covers synthetic v1;
+changed native builds and representative production workloads require new evidence.
+
+The [LAT-05 optimization evidence](../performance/fifo_optimization_2026-09-20.md)
+records the current private traversal specialization, 30 full baseline/candidate
+pairs, four control screens and renewed independent parity for the changed native
+binary. Public APIs and execution semantics are unchanged; production and multi-session
+performance qualification remain open.

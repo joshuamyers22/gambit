@@ -1,0 +1,23 @@
+{
+  "command": [
+    "c++",
+    "-std=c++11",
+    "-O1",
+    "-g",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-fsanitize=thread",
+    "-fno-omit-frame-pointer",
+    "-pthread",
+    "-Isrc/gambit/cpp/factor_cache",
+    "tests/cpp/tick_ring_tsan.cpp",
+    "-o",
+    "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/tick-ring-tsan"
+  ],
+  "returncode": 0,
+  "binary_sha256": "28ae9bd932cdbaaa2ef4ec2eab02764d40812e64d33a3134e51b9daaf896e3f5",
+  "record_count": 1800000,
+  "scope": "standalone SPSC primitive; not Python wrapper TSan"
+}

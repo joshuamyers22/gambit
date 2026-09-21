@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-20",
+  "lat06_status": "experiment_complete",
+  "decision": "retain_original_ring",
+  "authority": "User explicitly selected existing factor pipeline, then Retain the original ring (Recommended).",
+  "native_optimization_adopted": false,
+  "rigtorp_dependency_adopted": false,
+  "reason": "Primary wall gain below 10%; batch throughput gains carry rejected saturated queue-age regression.",
+  "trials_per_build": 30,
+  "independent_workers": 180,
+  "measured_cases": 1440,
+  "source_variants": 3,
+  "final_tests_passed": 2208,
+  "asan_ubsan_tests_passed": 27,
+  "baseline_tsan_records": 1800000,
+  "candidate_tsan_records": 3600000,
+  "candidate_fifo_parity_events": 3475416000,
+  "performance_qualification": false,
+  "next": "LAT-07"
+}

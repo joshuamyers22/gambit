@@ -1,0 +1,52 @@
+{
+  "schema": "gambit-controlled-replay-v1",
+  "contract": "gambit-fifo-latency-v1",
+  "trials": 3,
+  "successful_trials": 3,
+  "failed_trials": 0,
+  "sessions": {
+    "lat09-development-check": 3
+  },
+  "execution_seconds": {
+    "count": 3,
+    "p50": 4.029753145,
+    "p95": 4.068324025000001,
+    "p99": 4.068324025000001,
+    "maximum": 4.068324025000001,
+    "jitter": 0.03857088000000086,
+    "p99_9": null
+  },
+  "harness_seconds": {
+    "count": 3,
+    "p50": 55.183684791,
+    "p95": 55.476848416,
+    "p99": 55.476848416,
+    "maximum": 55.476848416,
+    "jitter": 0.29316362500000537,
+    "p99_9": null
+  },
+  "peak_rss_bytes": {
+    "count": 3,
+    "p50": 218300416,
+    "p95": 224100352,
+    "p99": 224100352,
+    "maximum": 224100352,
+    "jitter": 5799936,
+    "p99_9": null
+  },
+  "timing_gate": "ineligible",
+  "ineligibility_reasons": [
+    "requires exactly four distinct sessions of 50 trials",
+    "reference host/runtime does not match or could not be observed",
+    "session conditions not supplied"
+  ],
+  "qualification": "pending_independent_evidence",
+  "remaining_evidence": [
+    "independent full-volume trace parity",
+    "same-commit platform/sanitizer gates",
+    "instrumentation overhead and session independence review",
+    "owner disposition"
+  ],
+  "p99_descriptive_only": true,
+  "p99_9_qualified": false
+}

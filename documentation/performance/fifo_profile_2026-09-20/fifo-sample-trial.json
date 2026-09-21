@@ -1,0 +1,157 @@
+{
+  "build_attested": false,
+  "build_manifest": null,
+  "conditions_after": {
+    "load_average": [
+      2.673828125,
+      1.9580078125,
+      2.09765625
+    ],
+    "observed_at": "2026-09-20T18:36:24.568873+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "conditions_before": {
+    "load_average": [
+      1.4853515625,
+      1.64892578125,
+      2.0107421875
+    ],
+    "observed_at": "2026-09-20T18:35:19.990228+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "contract": "gambit-fifo-latency-v1",
+  "diagnostic": {
+    "instrumentation": "full"
+  },
+  "failure_reason": null,
+  "identity": {
+    "contract_code_sha256": "154710532075209944e2ab283271a9de3bf2e1c34ff9327c44720e24aeb9ac16",
+    "dirty_state": "M .github/workflows/performance.yml\n M LATENCY_BUDGET.md\n M Makefile\n M PRODUCTION_READINESS_PLAN.md\n M documentation/architecture/adr_native_tick_replay.md\n M documentation/architecture/native_tick_backtest.md\n M pyproject.toml\n M tests/test_latency_budget_contract.py\n M uv.lock\n?? GAMBIT_MCP_PROJECT_PLAN.md\n?? LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md\n?? benchmarks/controlled_replay.py\n?? benchmarks/profile_replay.py\n?? benchmarks/replay_contract.py\n?? documentation/operations/controlled_replay.md\n?? documentation/performance/controlled_replay_2026-09-20.md\n?? documentation/performance/controlled_replay_2026-09-20/\n?? tests/test_controlled_replay.py\n?? tests/test_replay_profiling.py",
+    "files": {
+      "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+      "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "015888396d9f0685c3fe6e0e58d805a2d5105790dd47d31dfedd76111dc2c702",
+      "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+      "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+    },
+    "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "host": {
+      "cpu": "Apple M4",
+      "logical_cpus": 10,
+      "machine": "arm64",
+      "macos": "15.5",
+      "memory_bytes": 25769803776,
+      "numpy": "2.2.6",
+      "os_build": "24F74",
+      "python": "3.10.20",
+      "release": "24.5.0",
+      "system": "Darwin"
+    },
+    "native_extension_sha256": "593537a814f3364f384df5cb1a33df86aa8b8870edd88c020756026111d5b7d2",
+    "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+    "runner_sha256": "7073b6caee4dbca20f28630eda7a0a95f232dda953b6985a0af7330335b22a63"
+  },
+  "limits": {
+    "batch": 5.0,
+    "cleanup": 2.0,
+    "harness": 120.0,
+    "progress": 30.0,
+    "rss": 536870912,
+    "setup": 10.0,
+    "stop_grace": 1.0,
+    "storage_total": 600.0
+  },
+  "measurement": {
+    "controls": {
+      "fill_count": 595838,
+      "input_sha256": "8e03b1e7d62ff6683a055718ef7818cf5188a56bf48084a1df1fb7095369465f",
+      "order_count": 88776,
+      "result_sha256": "5e663f1117533205af50d1297faae98a791b720dff2215386fecb09272c8b2d6"
+    },
+    "execution_seconds": 9.505864717000001,
+    "harness_seconds": 63.836204291,
+    "peak_rss_bytes": 223625216,
+    "persistence_seconds": 0.000450459
+  },
+  "reference_host_matches": true,
+  "schema": "gambit-controlled-replay-v1",
+  "session_evidence": null,
+  "session_id": "lat03-native-sample",
+  "source": {
+    "cache_evidence": null,
+    "cache_state": "generated-chunks",
+    "kind": "synthetic",
+    "manifest_sha256": null
+  },
+  "status": "ok",
+  "supervisor": {
+    "build_attested": false,
+    "cleanup": null,
+    "complete": {
+      "at_ns": 1048678402042375,
+      "harness_before_exit_seconds": 63.805155875,
+      "peak_rss_bytes": 223526912,
+      "persistence_seconds": 0.000450459,
+      "phase": "complete",
+      "start_ns": 1048614596883750
+    },
+    "failure_reason": null,
+    "harness_seconds": 63.836204291,
+    "identity": {
+      "contract_code_sha256": "154710532075209944e2ab283271a9de3bf2e1c34ff9327c44720e24aeb9ac16",
+      "dirty_state": "M .github/workflows/performance.yml\n M LATENCY_BUDGET.md\n M Makefile\n M PRODUCTION_READINESS_PLAN.md\n M documentation/architecture/adr_native_tick_replay.md\n M documentation/architecture/native_tick_backtest.md\n M pyproject.toml\n M tests/test_latency_budget_contract.py\n M uv.lock\n?? GAMBIT_MCP_PROJECT_PLAN.md\n?? LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md\n?? benchmarks/controlled_replay.py\n?? benchmarks/profile_replay.py\n?? benchmarks/replay_contract.py\n?? documentation/operations/controlled_replay.md\n?? documentation/performance/controlled_replay_2026-09-20.md\n?? documentation/performance/controlled_replay_2026-09-20/\n?? tests/test_controlled_replay.py\n?? tests/test_replay_profiling.py",
+      "files": {
+        "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+        "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "015888396d9f0685c3fe6e0e58d805a2d5105790dd47d31dfedd76111dc2c702",
+        "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+        "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+      },
+      "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+      "host": {
+        "cpu": "Apple M4",
+        "logical_cpus": 10,
+        "machine": "arm64",
+        "macos": "15.5",
+        "memory_bytes": 25769803776,
+        "numpy": "2.2.6",
+        "os_build": "24F74",
+        "python": "3.10.20",
+        "release": "24.5.0",
+        "system": "Darwin"
+      },
+      "native_extension_sha256": "593537a814f3364f384df5cb1a33df86aa8b8870edd88c020756026111d5b7d2",
+      "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+      "runner_sha256": "7073b6caee4dbca20f28630eda7a0a95f232dda953b6985a0af7330335b22a63"
+    },
+    "peak_rss_bytes": 223625216,
+    "process_seconds": 64.54477375,
+    "python_startup_seconds": 0.611337167,
+    "returncode": 0,
+    "setup_warmup_seconds": 0.708569459,
+    "status": "ok"
+  },
+  "trial_id": "/private/tmp/gambit-lat03-fifo-sample/trial",
+  "variant": "candidate",
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 10000,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-3y-sparse-v1",
+    "seed": 20260904,
+    "ticks": 946944000
+  }
+}

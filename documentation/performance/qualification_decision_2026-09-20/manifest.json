@@ -1,0 +1,74 @@
+{
+  "artifacts": {
+    "README.md": {
+      "bytes": 1752,
+      "sha256": "389a3b8510b9ef283346c1739c40daa0e52f834c76ccef82c06fadbe9cedbbdf"
+    },
+    "controlled-checks.tar.gz": {
+      "bytes": 18388,
+      "sha256": "2f4bbcba215869d97af0eecfd6e6fe2e545fcd1cfb8a637f7cd2d56b45fdfacc"
+    },
+    "decision.json": {
+      "bytes": 24457,
+      "sha256": "b1237cd79e624521b30868c9439aa5a6112f46136ce2af65dcafe0231ebd7df8"
+    },
+    "external-evidence-manifest.json": {
+      "bytes": 22942,
+      "sha256": "9d3fd25deb82e9637beccff454f397aca908786dda2b36c282301b082350fe76"
+    },
+    "linux-probe.json": {
+      "bytes": 413,
+      "sha256": "372e7b7812c059d6cb12c29539032ce17a7fb4864ab2b3a588733a64d6e16fc2"
+    },
+    "package-identities.json": {
+      "bytes": 8332,
+      "sha256": "ef8aa30b7ca2ba7fee8fcfae36f4389b26bdb7da6ea648aaab25f9528d5e6fa5"
+    },
+    "package-matrix.json": {
+      "bytes": 8268,
+      "sha256": "68874c7ba8f7ab68a695b1ba7dedabb57cd7879dff01f858e7f2f637b83da0d0"
+    },
+    "primary-disposition.json": {
+      "bytes": 1348,
+      "sha256": "cf3b6a5694d7352fe5c126a8ebec7510053a739ef9a77ae648f651b4a2bd268f"
+    },
+    "prior-evidence-audit.json": {
+      "bytes": 19838,
+      "sha256": "ce8fe700e24eb8b00b2b6529b50e07a5b3e4657d67eaf9195f20e820df00639e"
+    },
+    "retained-native-build.json": {
+      "bytes": 4757,
+      "sha256": "69e173bf114bb10f705dd40aba4f537fdc6b4adc20b320f2331fef10a248a436"
+    },
+    "runtime-source-identity.json": {
+      "bytes": 27146,
+      "sha256": "6f0c849d6fa9afc8dbe82793593a2866a81f3e276bfe4185446d2d7a20e3ce99"
+    },
+    "source-snapshot.tar.gz": {
+      "bytes": 724531,
+      "sha256": "eec8c3197499d606f11b1850c0105e50a5da2202c99017f99ee437d15220e254"
+    },
+    "static-analysis.json": {
+      "bytes": 3150,
+      "sha256": "1442237625d7c99ba6466c79253a4e9452ca70f66c35202f84a34937380551bb"
+    },
+    "tsan-result.json": {
+      "bytes": 565,
+      "sha256": "dc91c09a48b910fecf9c276fc211036da3a7bcf1fbf2e87d418b0154a24fe348"
+    },
+    "validation-and-reproduction.tar.gz": {
+      "bytes": 81235,
+      "sha256": "0327c8957f0a69ef11d2c2b0bccd6e01273e2b726f1b80df0ebdcc1d80d41586"
+    }
+  },
+  "review_documents": {
+    "LATENCY_BUDGET.md": "da6b1ca191c32c7019d0c132e67d61c91dadae87f9e70cfbd8ba5d322fff50b1",
+    "LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md": "e22cf2cbf6af54bfbe805edcc7acc292567da68151f975872d83651aa53706f1",
+    "PRODUCTION_READINESS_PLAN.md": "41e50fa8ccbfb9d2e1dea9096ee42507d28adf4c6d9aa794f87e3e774d3f4c58",
+    "documentation/architecture/adr_native_tick_replay.md": "302b3d1f2e6c578a9e44a9aae9237f6c68c9b20cb92ba55c01a4024cdfa5bc95",
+    "documentation/operations/replay_qualification.md": "26567ca3b4f2921753376734f68229640823c44685580794f37b7e4a15a160fa",
+    "documentation/performance/qualification_decision_2026-09-20.md": "e5f4392df314aee97d084db612749684bef648865545d4e6a3cb898c0310938f"
+  },
+  "runtime_source_fingerprint": "41e566e6023022891c9360e29d5ba3a7cb28ec76de47b44faea55e77b930f00b",
+  "schema": "gambit-lat09-bundle-v1"
+}

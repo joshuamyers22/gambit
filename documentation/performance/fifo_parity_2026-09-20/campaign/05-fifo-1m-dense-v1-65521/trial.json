@@ -1,0 +1,106 @@
+{
+  "comparison": {
+    "audit_fields": {
+      "fills": [
+        "order_id",
+        "sequence",
+        "timestamp_ns",
+        "quantity",
+        "price",
+        "fee",
+        "instrument_id",
+        "reserved"
+      ],
+      "orders": [
+        "id",
+        "sequence",
+        "timestamp_ns",
+        "quantity",
+        "remaining",
+        "instrument_id",
+        "status"
+      ],
+      "queues": [
+        "limit_price",
+        "ahead",
+        "initial_ahead",
+        "arrival_sequence",
+        "arrival_time_ns"
+      ]
+    },
+    "checkpoints": 1,
+    "fills": 95485,
+    "method": "direct equality of every field of every audit row and portfolio checkpoint",
+    "orders": 55365,
+    "processed": 1000000,
+    "queues": 55365,
+    "scalar_fields": [
+      "processed",
+      "cash",
+      "equity",
+      "net_pnl",
+      "total_fees"
+    ],
+    "shared_portfolio_preserved": true,
+    "state_reset_at_chunk_boundaries": false
+  },
+  "conditions_after": {
+    "load_average": [
+      3.20849609375,
+      2.84033203125,
+      2.380859375
+    ],
+    "observed_at": "2026-09-20T20:18:40.615382+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Error:Failed to get thermal warning level with error code 0xe00002bc\nError: Failed to get performance warning level with error code 0xe00002bc\nError: No CPU power status with error code 0xe00002bc"
+  },
+  "conditions_before": {
+    "load_average": [
+      3.20849609375,
+      2.84033203125,
+      2.380859375
+    ],
+    "observed_at": "2026-09-20T20:18:39.887103+00:00",
+    "power": "Now drawing from 'AC Power'",
+    "power_settings": "AC Power:\n Sleep On Power Button 1\n lowpowermode         0\n standby              0\n powernap             1\n ttyskeepawake        1\n womp                 1\n displaysleep         10\n networkoversleep     0\n sleep                1\n autorestart          0\n tcpkeepalive         1\n disksleep            10",
+    "thermal": "Error:Failed to get thermal warning level with error code 0xe00002bc\nError: Failed to get performance warning level with error code 0xe00002bc\nError: No CPU power status with error code 0xe00002bc"
+  },
+  "controls": {
+    "fill_count": 95485,
+    "input_sha256": "96530b9ef5198f10e8adb20b5625f30870c66315459e61ea3d4ce3310e0e6c48",
+    "order_count": 55365,
+    "result_sha256": "4b1ffefc0e49767189903b42dcec606073770705de34f8de9222deecfd720747"
+  },
+  "elapsed_seconds": 0.7282666668761522,
+  "limits": {
+    "cpu_seconds": 86018.448261,
+    "progress_seconds": 120.0,
+    "rss_bytes": 4294967296,
+    "wall_seconds": 86036.66022437508
+  },
+  "observed_peak_group_rss_bytes": 138297344,
+  "performance_qualification": false,
+  "schema": "gambit-independent-fifo-parity-v1",
+  "status": "exact_trace_match",
+  "worker_result_sha256": "4c8bbe34df3f75bd55a5693417739b9e640e14ef29d0b1d56d6d808205369606",
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 16,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-1m-dense-v1",
+    "seed": 20260904,
+    "ticks": 1000000
+  }
+}

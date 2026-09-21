@@ -1,0 +1,158 @@
+{
+  "pairs": 30,
+  "diagnostic_only": true,
+  "performance_qualification": false,
+  "workload": {
+    "scenario": "fifo-2m-dense-v1",
+    "ticks": 2000000,
+    "chunk_size": 65521,
+    "seed": 20260904,
+    "record_bytes": 88,
+    "aggregate_records_per_second": 10,
+    "configuration": {
+      "instruments": 8,
+      "cash": 10000000000000,
+      "target_lots": 100,
+      "rebalance_events": 16,
+      "fee_ppm": 100,
+      "latency_ns": 1000000,
+      "audit_capacity": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "execution_model": "fifo"
+    }
+  },
+  "measured_ticks": 2000000,
+  "identity": {
+    "batch_metrics_sha256": "0877452b103b53fd0aa903060140641241f0e6724cd796823b9e0b12087dda84",
+    "contract_code_sha256": "008648954b623b1fea7e35d4d305b9947c229969f51a0f10ec2e577926492e40",
+    "files": {
+      "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+      "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "f105edf624b52419ce35d1951f3554842b9f0168eb83cbb0c857812f1eeaca37",
+      "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+      "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+    },
+    "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "host": {
+      "cpu": null,
+      "logical_cpus": 10,
+      "machine": "arm64",
+      "macos": "15.5",
+      "memory_bytes": 25769803776,
+      "numpy": "2.2.6",
+      "os_build": "24F74",
+      "python": "3.10.20",
+      "release": "24.5.0",
+      "system": "Darwin"
+    },
+    "input_reader_sha256": "81244a23a6d946cc6d7c64aae8580aa2418e0e133c758b3200cde0855e0a94af",
+    "native_extension_sha256": "9bb6074a0149a302edd4a1f8ab3063f3ae830b15418342738dcacfde450ffb39",
+    "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+    "runner_sha256": "78a1a6f4fed8cf97ede21c4c609cbb12359e593fc00421eeef1efdd0ed92f2fd"
+  },
+  "metrics": {
+    "execution_seconds": {
+      "off": {
+        "count": 30,
+        "p50": 0.018166876000000002,
+        "p95": 0.020175916999999998,
+        "p99": 0.022752539999999998,
+        "maximum": 0.022752539999999998,
+        "jitter": 0.004585663999999996,
+        "p99_9": null
+      },
+      "on": {
+        "count": 30,
+        "p50": 0.018430333,
+        "p95": 0.021015334,
+        "p99": 0.023251626,
+        "maximum": 0.023251626,
+        "jitter": 0.004821293000000001,
+        "p99_9": null
+      },
+      "median_relative_overhead": 0.02446051746718525,
+      "bootstrap_95_interval": [
+        -0.0027839825933851925,
+        0.03708888807243127
+      ],
+      "one_percent_target": "inconclusive"
+    },
+    "harness_seconds": {
+      "off": {
+        "count": 30,
+        "p50": 0.576778667,
+        "p95": 0.622772334,
+        "p99": 0.636365792,
+        "maximum": 0.636365792,
+        "jitter": 0.05958712499999996,
+        "p99_9": null
+      },
+      "on": {
+        "count": 30,
+        "p50": 0.574012209,
+        "p95": 0.632334666,
+        "p99": 0.664894666,
+        "maximum": 0.664894666,
+        "jitter": 0.09088245699999997,
+        "p99_9": null
+      },
+      "median_relative_overhead": -0.001795329153053693,
+      "bootstrap_95_interval": [
+        -0.014098937509978482,
+        0.003921749803983965
+      ],
+      "one_percent_target": "within"
+    },
+    "cpu_seconds": {
+      "off": {
+        "count": 30,
+        "p50": 0.55535,
+        "p95": 0.5965069999999999,
+        "p99": 0.612,
+        "maximum": 0.612,
+        "jitter": 0.05664999999999998,
+        "p99_9": null
+      },
+      "on": {
+        "count": 30,
+        "p50": 0.551281,
+        "p95": 0.6101880000000001,
+        "p99": 0.636124,
+        "maximum": 0.636124,
+        "jitter": 0.084843,
+        "p99_9": null
+      },
+      "median_relative_overhead": -0.005052422020332903,
+      "bootstrap_95_interval": [
+        -0.01177598699944532,
+        0.003373445378322404
+      ],
+      "one_percent_target": "within"
+    },
+    "peak_rss_bytes": {
+      "off": {
+        "count": 30,
+        "p50": 131252224.0,
+        "p95": 146866176.0,
+        "p99": 164708352.0,
+        "maximum": 164708352.0,
+        "jitter": 33456128.0,
+        "p99_9": null
+      },
+      "on": {
+        "count": 30,
+        "p50": 131891200.0,
+        "p95": 145571840.0,
+        "p99": 146145280.0,
+        "maximum": 146145280.0,
+        "jitter": 14254080.0,
+        "p99_9": null
+      },
+      "median_relative_overhead": 0.013462648116700837,
+      "bootstrap_95_interval": [
+        -0.008606910119267175,
+        0.096657715797416
+      ],
+      "one_percent_target": "inconclusive"
+    }
+  }
+}

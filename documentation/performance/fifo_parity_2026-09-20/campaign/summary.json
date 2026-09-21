@@ -1,0 +1,156 @@
+{
+  "elapsed_seconds": 365.3209410000127,
+  "limits": {
+    "cpu_seconds": 86400.0,
+    "progress_seconds": 120.0,
+    "rss_bytes": 4294967296,
+    "wall_seconds": 86400.0
+  },
+  "performance_qualification": false,
+  "planned": [
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 65521,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 10000,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-3y-sparse-v1",
+      "seed": 20260904,
+      "ticks": 946944000
+    },
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 65536,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 10000,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-3y-sparse-v1",
+      "seed": 20260904,
+      "ticks": 946944000
+    },
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 1048576,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 10000,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-3y-sparse-v1",
+      "seed": 20260904,
+      "ticks": 946944000
+    },
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 65521,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 10000,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-2y-sparse-v1",
+      "seed": 20260904,
+      "ticks": 631584000
+    },
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 65521,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 16,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-1m-dense-v1",
+      "seed": 20260904,
+      "ticks": 1000000
+    },
+    {
+      "aggregate_records_per_second": 10,
+      "chunk_size": 65521,
+      "configuration": {
+        "audit_capacity": 1000000,
+        "cash": 10000000000000,
+        "execution_model": "fifo",
+        "fee_ppm": 100,
+        "instruments": 8,
+        "latency_ns": 1000000,
+        "maximum_feed_age_ns": 1000000000,
+        "rebalance_events": 16,
+        "target_lots": 100
+      },
+      "record_bytes": 88,
+      "scenario": "fifo-2m-dense-v1",
+      "seed": 20260904,
+      "ticks": 2000000
+    }
+  ],
+  "primary_chunk_controls_equal": true,
+  "schema": "gambit-independent-fifo-parity-v1",
+  "status": "exact_trace_match",
+  "total_cpu_seconds": 383.380874,
+  "trials": [
+    {
+      "directory": "01-fifo-3y-sparse-v1-65521",
+      "status": "exact_trace_match"
+    },
+    {
+      "directory": "02-fifo-3y-sparse-v1-65536",
+      "status": "exact_trace_match"
+    },
+    {
+      "directory": "03-fifo-3y-sparse-v1-1048576",
+      "status": "exact_trace_match"
+    },
+    {
+      "directory": "04-fifo-2y-sparse-v1-65521",
+      "status": "exact_trace_match"
+    },
+    {
+      "directory": "05-fifo-1m-dense-v1-65521",
+      "status": "exact_trace_match"
+    },
+    {
+      "directory": "06-fifo-2m-dense-v1-65521",
+      "status": "exact_trace_match"
+    }
+  ]
+}

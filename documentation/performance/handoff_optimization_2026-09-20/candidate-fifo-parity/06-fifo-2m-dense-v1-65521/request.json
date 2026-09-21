@@ -1,0 +1,28 @@
+{
+  "limits": {
+    "cpu_seconds": 86033.24398,
+    "progress_seconds": 120.0,
+    "rss_bytes": 4294967296,
+    "wall_seconds": 86051.37360224989
+  },
+  "reference_executable": "/Users/jkm0607/Projects/gambit-evidence/lat04-2026-09-20/reference-build/fifo-reference",
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 16,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-2m-dense-v1",
+    "seed": 20260904,
+    "ticks": 2000000
+  }
+}

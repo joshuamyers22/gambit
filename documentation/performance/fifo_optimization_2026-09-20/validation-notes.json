@@ -1,0 +1,30 @@
+{
+  "validation": {
+    "full_suite": "2199 passed",
+    "focused": "141 passed",
+    "asan_ubsan": "141 passed, including supervised 2m-dense parity",
+    "financial_mutations": "10/10 killed",
+    "lint": "pass",
+    "mypy": "58 source files pass",
+    "native_warnings": "pass",
+    "docs": "pass",
+    "package_build": "wheel/sdist/twine/inventory pass",
+    "final_contract": "3 passed",
+    "baseline_new_failure_order_tests": "6 passed",
+    "final_lint_and_docs": "pass"
+  },
+  "failures_retained": [
+    "Initial build lacked setuptools; installed Cython/setuptools from local cache.",
+    "Initial native replacement exited 137; atomic inode replacement of Mach-O extensions resolved it. Both attempts retained.",
+    "Initial sanitizer suite: 139 passed, 2 supervised tests failed because macOS removed DYLD_INSERT_LIBRARIES from the parent environment. Re-exported before child creation; all 141 passed. No production-code workaround.",
+    "make check completed all checks before package build DNS failure in sandbox. make build rerun with network permission passed."
+  ],
+  "limits": [
+    "macOS ASan/UBSan, detect_leaks=0; not Linux LSan or cross-platform CI qualification",
+    "Baseline binary preserved from LAT04; historical exact compile/link attestation absent",
+    "Thirty pairs are development screening, not four-session 200-trial qualification",
+    "LAT03 primary instrumentation-overhead target remains inconclusive",
+    "Chunk-size timing controls use prefixes; full chunk correctness uses complete streams"
+  ],
+  "memory_followup": "Original dense maximum +6.99% retained; complete 30-pair replication and 30 diagnostic pairs support fresh-process allocation/residency variability; identical median replay live-allocation delta and exact result-copy allocation delta. See memory-followup/summary.json."
+}

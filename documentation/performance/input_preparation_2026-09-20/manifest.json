@@ -1,0 +1,93 @@
+{
+  "artifacts": {
+    "README.md": {
+      "bytes": 1347,
+      "sha256": "645c52b22deae46bef11c942d982ecd209a53ed30cdd5abe8dd488289292c39d"
+    },
+    "build-validation-and-reproduction.tar.gz": {
+      "bytes": 69903,
+      "sha256": "63f148a6b89b51a026426e961e145069b14be3e44be1e681007d3cb2984193ed"
+    },
+    "chunk-1048576-prefix-summary.json": {
+      "bytes": 3202,
+      "sha256": "0df3f2f5b615d507fbd98c2b44e85ab17b525a10397ae67440dd6c953bbdde11"
+    },
+    "chunk-65536-long-control-summary.json": {
+      "bytes": 3209,
+      "sha256": "db237bf8c4178cecaa4b8ca456281a08ade8620282b76e0d6d77ebd1cc390454"
+    },
+    "chunk-65536-prefix-summary.json": {
+      "bytes": 3220,
+      "sha256": "0490b9766a9465aef8be6c6bbd7a235299e0dc1dd6277293b3deca80ad02fcf5"
+    },
+    "chunk-65536-replication-summary.json": {
+      "bytes": 3228,
+      "sha256": "753a0bc8484e730122754b891980860dad413e2d9b786369c46320b9abe0e021"
+    },
+    "decision.json": {
+      "bytes": 4291,
+      "sha256": "d8d4ecd78199cdff8bfa8687c5aa5105617dfac5142731208ad3f2c0ec7cd03e"
+    },
+    "dense-1m-summary.json": {
+      "bytes": 3223,
+      "sha256": "6460088c5cbf8632fcb4055d3db6802d8deb9efb3817fd3b3bb6142f36c87f02"
+    },
+    "dense-2m-summary.json": {
+      "bytes": 3241,
+      "sha256": "9b2145dadf61d7d5cb988920b4891785accd7e76dbc07256f06aa2a1d399d1ca"
+    },
+    "external-evidence-manifest.json": {
+      "bytes": 398538,
+      "sha256": "9526a796d986e4bcfcb2901d386787dcc3ac1cc3c5311a3c05e09344b6d2ae7e"
+    },
+    "measured-trials.tar.gz": {
+      "bytes": 423662,
+      "sha256": "fa2d149fc08b5dda0e523d3713253f8e8e25ff9c30f655c12cbd4d0d5ea56c7a"
+    },
+    "preliminary-trials.tar.gz": {
+      "bytes": 7570,
+      "sha256": "2cb0e8c88a5be812392ddbdefea36f4f2d75128af435f1c68a603befc9b7ae8d"
+    },
+    "primary-summary.json": {
+      "bytes": 3191,
+      "sha256": "64d99578fb796d5e4cd22d250e3be4de54c0466fecd0038bd0f1df3cd0eb4bf7"
+    },
+    "source-snapshot.tar.gz": {
+      "bytes": 90211,
+      "sha256": "504eab8af8e802c860b1d3ad76d77d1eebdd2b6bb03625fae31e6008ccd65daa"
+    },
+    "storage-1m-uncontrolled-summary.json": {
+      "bytes": 6206,
+      "sha256": "423d3ec97e2da423fa3d5fb480e9d71f8b6506596998468ef763bfb715c4e4fc"
+    },
+    "storage-1m-warm-summary.json": {
+      "bytes": 6518,
+      "sha256": "5fd1ba6a38ed05c7f1aa56546e32bd2030a844cebb2b96059da1bcaff910f5c8"
+    },
+    "storage-2m-uncontrolled-summary.json": {
+      "bytes": 6238,
+      "sha256": "33176c15b29f84dd4916f3bdc82e2fa95e13e73874ecddc9f4ed53cde70748d8"
+    },
+    "storage-2m-warm-summary.json": {
+      "bytes": 6503,
+      "sha256": "8c16e7a3db9b8d350d8f76220d602ba5e6fe37b200fa54d6ec0c467e863920d5"
+    }
+  },
+  "repository_sources": {
+    "LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md": "298282b681387ea290af3512ec9e9e4e3b88a8dca59705d1a900a16bc4c0bd6c",
+    "Makefile": "043a24aaa8e3956c370fa04639f2422754cc88c573da00f4dc3d016e0a4382f4",
+    "PRODUCTION_READINESS_PLAN.md": "0cbe0f4d75268e5af5cd251e893cb8eeacd57a60a309bf7192624d6215ca1392",
+    "benchmarks/controlled_replay.py": "530a8709fdf4c169bd1f14d5e8278188efc70c494983ee60d73e413856e18996",
+    "benchmarks/fused_queue_input.cpp": "81dd4a986892061b229a9372f5c28001da7785db9b5e30a3933dfa2415a2cb85",
+    "benchmarks/input_comparison.py": "35540337ea012f08dd122f88c002e6935e8d696f18bf79091fded5175942165a",
+    "benchmarks/replay_contract.py": "008648954b623b1fea7e35d4d305b9947c229969f51a0f10ec2e577926492e40",
+    "benchmarks/replay_input.py": "81244a23a6d946cc6d7c64aae8580aa2418e0e133c758b3200cde0855e0a94af",
+    "benchmarks/top_of_book_backtest.py": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "documentation/operations/replay_input.md": "5092ed485e56ebb6e17b08f0f2bd140486d06107b1338d0f1d83547fc76a8fa7",
+    "documentation/performance/input_preparation_2026-09-20.md": "e2a67a26074f29d18909ae369d1e81bb15681f2fefad58e73306aa6c48bd81cc",
+    "tests/test_input_comparison.py": "4b8a8433b3ee12512e7af9b97096cee9a209c14c47f407cfefb3abc4ba55c4c9",
+    "tests/test_replay_input.py": "8ec278da385bedbffeef69dd6a110504a5d7a6da2502435c5b589b8d7f142190",
+    "tools/check_native_warnings.py": "ff45b35f69bbf46f0ee795c8d4a6c1c0f91ffbf0c87dfbb4202c81b0ebae1b1f"
+  },
+  "schema": "gambit-lat07-evidence-v1"
+}

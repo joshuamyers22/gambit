@@ -1,0 +1,115 @@
+{
+  "contract": "gambit-fifo-latency-v1",
+  "controls": {
+    "fill_count": 595838,
+    "input_sha256": "8e03b1e7d62ff6683a055718ef7818cf5188a56bf48084a1df1fb7095369465f",
+    "order_count": 88776,
+    "result_sha256": "5e663f1117533205af50d1297faae98a791b720dff2215386fecb09272c8b2d6"
+  },
+  "diagnostic": {
+    "instrumentation": "full"
+  },
+  "identity": {
+    "contract_code_sha256": "154710532075209944e2ab283271a9de3bf2e1c34ff9327c44720e24aeb9ac16",
+    "dirty_state": "M .github/workflows/performance.yml\n M LATENCY_BUDGET.md\n M Makefile\n M PRODUCTION_READINESS_PLAN.md\n M documentation/architecture/adr_native_tick_replay.md\n M documentation/architecture/native_tick_backtest.md\n M pyproject.toml\n M tests/test_latency_budget_contract.py\n M uv.lock\n?? GAMBIT_MCP_PROJECT_PLAN.md\n?? LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md\n?? benchmarks/controlled_replay.py\n?? benchmarks/profile_replay.py\n?? benchmarks/replay_contract.py\n?? documentation/operations/controlled_replay.md\n?? documentation/performance/controlled_replay_2026-09-20.md\n?? documentation/performance/controlled_replay_2026-09-20/\n?? tests/test_controlled_replay.py\n?? tests/test_replay_profiling.py",
+    "files": {
+      "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+      "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "015888396d9f0685c3fe6e0e58d805a2d5105790dd47d31dfedd76111dc2c702",
+      "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+      "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+    },
+    "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "host": {
+      "cpu": "Apple M4",
+      "logical_cpus": 10,
+      "machine": "arm64",
+      "macos": "15.5",
+      "memory_bytes": 25769803776,
+      "numpy": "2.2.6",
+      "os_build": "24F74",
+      "python": "3.10.20",
+      "release": "24.5.0",
+      "system": "Darwin"
+    },
+    "native_extension_sha256": "593537a814f3364f384df5cb1a33df86aa8b8870edd88c020756026111d5b7d2",
+    "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+    "runner_sha256": "7073b6caee4dbca20f28630eda7a0a95f232dda953b6985a0af7330335b22a63"
+  },
+  "measured_ticks": 946944000,
+  "order_status_counts": {
+    "0": 0,
+    "1": 82864,
+    "2": 0,
+    "3": 0,
+    "4": 5912
+  },
+  "peak_rss_bytes": 223510528,
+  "portfolio": {
+    "cash": 9966405721267,
+    "equity": 9966405721267,
+    "net_pnl": -33594278733,
+    "processed": 946944000,
+    "total_fees": 33602509933
+  },
+  "positions": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "resources": {
+    "allocation_count": null,
+    "cpu_seconds": 62.856623,
+    "hardware_counters": null,
+    "input_bytes": 83331072000,
+    "involuntary_context_switches": 19094,
+    "major_faults": 0,
+    "minor_faults": 6939,
+    "result_array_bytes": 41179280,
+    "voluntary_context_switches": 0
+  },
+  "schema": "gambit-controlled-replay-v1",
+  "status": "ledger_reconciled",
+  "timing": {
+    "execution_seconds": 9.505864717000001,
+    "generation_seconds": 26.417665186000004,
+    "initialization_seconds": 1.5833e-05,
+    "input_hash_seconds": 25.61788655300012,
+    "ledger_verification_seconds": 1.425375,
+    "load_decode_seconds": 0.0,
+    "manifest_verification_seconds": 2.09e-07,
+    "processing_seconds": 9.498932925,
+    "result_hash_seconds": 0.0125355,
+    "result_materialization_seconds": 0.006915959
+  },
+  "timing_boundary": "prepared-chunk execution sum",
+  "validation": {
+    "canonical_controls_checked": true,
+    "full_volume_independent_trace_parity": false,
+    "ledger_reconciled": true
+  },
+  "warmup_seconds": 0.054448583,
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 65521,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 10000,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-3y-sparse-v1",
+    "seed": 20260904,
+    "ticks": 946944000
+  }
+}

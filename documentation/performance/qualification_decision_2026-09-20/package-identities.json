@@ -1,0 +1,176 @@
+{
+  "310": {
+    "python": "3.10.20 (main, Aug  7 2026, 02:15:13) [Clang 22.1.3 ]",
+    "package_path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/__init__.py",
+    "numpy": "2.2.6",
+    "native": {
+      "gambit._factor_cache": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_factor_cache.cpython-310-darwin.so",
+        "sha256": "38ec1efb75c004a70ccd898397214578f6508e54429fb805674c7e80a80e3a0b"
+      },
+      "gambit._io": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_io.cpython-310-darwin.so",
+        "sha256": "f11db9eaa3749e616a8195e2e0cf38e6d8877b417f1bb595d69a7bafc616c9d4"
+      },
+      "gambit._options": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/_options.cpython-310-darwin.so",
+        "sha256": "b9b99f9c63e4ad793e4dbaf715322804a84b12a45ac6e3c612557be563308683"
+      },
+      "gambit.compute_pnl": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-310/env/lib/python3.10/site-packages/gambit/compute_pnl.cpython-310-darwin.so",
+        "sha256": "393cb1411948301b18d2f6739bdc174a0be114a70d3cdd472d6fc4902c4e526f"
+      }
+    },
+    "dependencies": {
+      "gambit-markets": "1.1.0",
+      "exceptiongroup": "1.3.1",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "iniconfig": "2.3.0",
+      "Pygments": "2.21.0",
+      "tomli": "2.4.1",
+      "pytest": "9.1.1",
+      "python-dateutil": "2.9.0.post0",
+      "polars": "1.44.2",
+      "PyYAML": "6.0.3",
+      "sortedcontainers": "2.4.0",
+      "polars-runtime-32": "1.44.2",
+      "pluggy": "1.6.0",
+      "typing_extensions": "4.16.0",
+      "six": "1.17.0"
+    },
+    "artifact": {
+      "path": "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0-cp310-cp310-macosx_11_0_arm64.whl",
+      "sha256": "62cd9e8e710b4f55c2525ab61668e166224aa197e36bf7e283c5b3b1589874c7"
+    }
+  },
+  "311": {
+    "python": "3.11.15 (main, Aug  7 2026, 02:15:53) [Clang 22.1.3 ]",
+    "package_path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/__init__.py",
+    "numpy": "2.4.6",
+    "native": {
+      "gambit._factor_cache": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_factor_cache.cpython-311-darwin.so",
+        "sha256": "f2cce93fb5796a9029df04fea4a9cbb32eda0d60c427d60d6867c6c0239cef4b"
+      },
+      "gambit._io": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_io.cpython-311-darwin.so",
+        "sha256": "5055f972b5db7b38cc584f57653c7fb45cc4c704fcc778bde8005bb0510e9b1e"
+      },
+      "gambit._options": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/_options.cpython-311-darwin.so",
+        "sha256": "6a39c3cc7aa66c2d1205650791dcfc1227223edb1ff1658be71eb20641f50b9c"
+      },
+      "gambit.compute_pnl": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/env/lib/python3.11/site-packages/gambit/compute_pnl.cpython-311-darwin.so",
+        "sha256": "f60c82bb8787b03f04d6f39b7ca7baad14e60071bbc34876d064203d3bf00a78"
+      }
+    },
+    "dependencies": {
+      "gambit-markets": "1.1.0",
+      "packaging": "26.3",
+      "iniconfig": "2.3.0",
+      "Pygments": "2.21.0",
+      "numpy": "2.4.6",
+      "pytest": "9.1.1",
+      "python-dateutil": "2.9.0.post0",
+      "polars": "1.44.2",
+      "PyYAML": "6.0.3",
+      "sortedcontainers": "2.4.0",
+      "polars-runtime-32": "1.44.2",
+      "pluggy": "1.6.0",
+      "six": "1.17.0"
+    },
+    "artifact": {
+      "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-311/dist/gambit_markets-1.1.0-cp311-cp311-macosx_11_0_arm64.whl",
+      "sha256": "ee58a2311a61b98c03e0272835fb20e0204a60611256b3dd7c1d25a487fe9f1a"
+    }
+  },
+  "312": {
+    "python": "3.12.11 (main, Sep  2 2025, 14:12:30) [Clang 20.1.4 ]",
+    "package_path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/__init__.py",
+    "numpy": "2.5.3",
+    "native": {
+      "gambit._factor_cache": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_factor_cache.cpython-312-darwin.so",
+        "sha256": "ea6cd60932947dc862f860a1566ad64d60adbba57fe5aa90f4599ec8feb63a93"
+      },
+      "gambit._io": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_io.cpython-312-darwin.so",
+        "sha256": "6370bd0fa3a9f5a146ebf6e3ba18b81aae10c8d9b751c09ae5a6f192bde93c53"
+      },
+      "gambit._options": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/_options.cpython-312-darwin.so",
+        "sha256": "b6f7153d328533b4a361894266eabf0f02332e9ebe805a4b90f70306c0e52a3b"
+      },
+      "gambit.compute_pnl": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/env/lib/python3.12/site-packages/gambit/compute_pnl.cpython-312-darwin.so",
+        "sha256": "8e0ca432e69bc504631f9ee8076a35b0502965eccd6f29324524172134cdd882"
+      }
+    },
+    "dependencies": {
+      "numpy": "2.5.3",
+      "gambit-markets": "1.1.0",
+      "packaging": "26.3",
+      "iniconfig": "2.3.0",
+      "Pygments": "2.21.0",
+      "pytest": "9.1.1",
+      "python-dateutil": "2.9.0.post0",
+      "polars": "1.44.2",
+      "PyYAML": "6.0.3",
+      "sortedcontainers": "2.4.0",
+      "polars-runtime-32": "1.44.2",
+      "pluggy": "1.6.0",
+      "six": "1.17.0"
+    },
+    "artifact": {
+      "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-312/dist/gambit_markets-1.1.0-cp312-cp312-macosx_11_0_arm64.whl",
+      "sha256": "084cc83d83713bbeb79afa417357a426da4bde0a5150da8beeda96eb5f0f02a4"
+    }
+  },
+  "sdist": {
+    "python": "3.10.20 (main, Aug  7 2026, 02:15:13) [Clang 22.1.3 ]",
+    "package_path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/__init__.py",
+    "numpy": "2.2.6",
+    "native": {
+      "gambit._factor_cache": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_factor_cache.cpython-310-darwin.so",
+        "sha256": "ba4944e7d7784ed033c88a75a423128e9948b6a356d6650cbc6d5590c4e51134"
+      },
+      "gambit._io": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_io.cpython-310-darwin.so",
+        "sha256": "5d93cccc14d5caff0c0ac8bb9bbd7f859a71c33fc99186013c9c6d3aebe8e242"
+      },
+      "gambit._options": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/_options.cpython-310-darwin.so",
+        "sha256": "d9a630463b1beeac14ab1ac40cae8f2e915aa9ae4703894e0c6e6bb5e05cc9aa"
+      },
+      "gambit.compute_pnl": {
+        "path": "/Users/jkm0607/Projects/gambit-evidence/lat09-2026-09-20/package-sdist/env/lib/python3.10/site-packages/gambit/compute_pnl.cpython-310-darwin.so",
+        "sha256": "130e4a837002e9e02aac6ebadd01dc3021500ddf7d4eec9303acf44b554a5683"
+      }
+    },
+    "dependencies": {
+      "gambit-markets": "1.1.0",
+      "exceptiongroup": "1.3.1",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "iniconfig": "2.3.0",
+      "Pygments": "2.21.0",
+      "tomli": "2.4.1",
+      "pytest": "9.1.1",
+      "python-dateutil": "2.9.0.post0",
+      "polars": "1.44.2",
+      "PyYAML": "6.0.3",
+      "sortedcontainers": "2.4.0",
+      "polars-runtime-32": "1.44.2",
+      "pluggy": "1.6.0",
+      "typing_extensions": "4.16.0",
+      "six": "1.17.0"
+    },
+    "artifact": {
+      "path": "/Users/jkm0607/Projects/gambit/dist/gambit_markets-1.1.0.tar.gz",
+      "sha256": "4912f5e54dd72eb0511ad17d04f70d42730cd7ca5023a628a985073d8c51e1ef"
+    }
+  }
+}

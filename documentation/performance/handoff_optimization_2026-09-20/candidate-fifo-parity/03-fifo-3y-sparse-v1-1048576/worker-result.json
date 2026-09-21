@@ -1,0 +1,168 @@
+{
+  "canonical_controls_checked": true,
+  "checkpoints_sha256": "d54d1452a83a837251de704b6c1933029d7a8b09dbfe3d7a17f13083f0494351",
+  "comparison": {
+    "audit_fields": {
+      "fills": [
+        "order_id",
+        "sequence",
+        "timestamp_ns",
+        "quantity",
+        "price",
+        "fee",
+        "instrument_id",
+        "reserved"
+      ],
+      "orders": [
+        "id",
+        "sequence",
+        "timestamp_ns",
+        "quantity",
+        "remaining",
+        "instrument_id",
+        "status"
+      ],
+      "queues": [
+        "limit_price",
+        "ahead",
+        "initial_ahead",
+        "arrival_sequence",
+        "arrival_time_ns"
+      ]
+    },
+    "checkpoints": 904,
+    "fills": 595838,
+    "method": "direct equality of every field of every audit row and portfolio checkpoint",
+    "orders": 88776,
+    "processed": 946944000,
+    "queues": 88776,
+    "scalar_fields": [
+      "processed",
+      "cash",
+      "equity",
+      "net_pnl",
+      "total_fees"
+    ],
+    "shared_portfolio_preserved": true,
+    "state_reset_at_chunk_boundaries": false
+  },
+  "controls": {
+    "fill_count": 595838,
+    "input_sha256": "8e03b1e7d62ff6683a055718ef7818cf5188a56bf48084a1df1fb7095369465f",
+    "order_count": 88776,
+    "result_sha256": "5e663f1117533205af50d1297faae98a791b720dff2215386fecb09272c8b2d6"
+  },
+  "driver_sha256": "1354972c9a5108be1a83097d1f1fdf47028b9b5fe18a0cbfd3f24323e0aad470",
+  "identity": {
+    "contract_code_sha256": "154710532075209944e2ab283271a9de3bf2e1c34ff9327c44720e24aeb9ac16",
+    "dirty_state": "M .github/workflows/performance.yml\n M LATENCY_BUDGET.md\n M Makefile\n M PRODUCTION_READINESS_PLAN.md\n M documentation/architecture/adr_native_tick_replay.md\n M documentation/architecture/fifo_queue_execution.md\n M documentation/architecture/native_tick_backtest.md\n M pyproject.toml\n M src/gambit/cpp/factor_cache/spsc_ring.hpp\n M src/gambit/cpp/factor_cache/tick_ring.cpp\n M src/gambit/cpp/factor_cache/top_of_book_backtest.cpp\n M tests/cpp/tick_ring_tsan.cpp\n M tests/test_fifo_backtest.py\n M tests/test_latency_budget_contract.py\n M tests/test_tick_ring.py\n M tools/check_native_warnings.py\n M uv.lock\n?? GAMBIT_MCP_PROJECT_PLAN.md\n?? LATENCY_INFRASTRUCTURE_PROJECT_PLAN.md\n?? benchmarks/build_handoff_variant.py\n?? benchmarks/controlled_handoff.py\n?? benchmarks/controlled_replay.py\n?? benchmarks/fifo_parity.py\n?? benchmarks/fifo_reference.cpp\n?? benchmarks/profile_replay.py\n?? benchmarks/replay_contract.py\n?? benchmarks/rigtorp_ring_adapter.hpp\n?? documentation/operations/controlled_handoff.md\n?? documentation/operations/controlled_replay.md\n?? documentation/operations/fifo_parity.md\n?? documentation/performance/controlled_replay_2026-09-20.md\n?? documentation/performance/controlled_replay_2026-09-20/\n?? documentation/performance/fifo_optimization_2026-09-20.md\n?? documentation/performance/fifo_optimization_2026-09-20/\n?? documentation/performance/fifo_parity_2026-09-20.md\n?? documentation/performance/fifo_parity_2026-09-20/\n?? documentation/performance/fifo_profile_2026-09-20.md\n?? documentation/performance/fifo_profile_2026-09-20/\n?? tests/test_controlled_handoff.py\n?? tests/test_controlled_replay.py\n?? tests/test_fifo_parity.py\n?? tests/test_replay_profiling.py",
+    "files": {
+      "setup.py": "7b6f0f9bc0af939b1f33ea315e2062513895f508976717671fe7804fd7c2fd58",
+      "src/gambit/cpp/factor_cache/top_of_book_backtest.cpp": "f105edf624b52419ce35d1951f3554842b9f0168eb83cbb0c857812f1eeaca37",
+      "src/gambit/tick_backtest.py": "016afcd6d041f15854422f239e2cf0325e6e48b1248ae3cb70dde1110a2a2d5d",
+      "uv.lock": "36d271e9ede8d8974079901a3748e09e3f4ae12e51ce935cba984834f8a40138"
+    },
+    "generator_sha256": "e572922f98383d72a5dc7cb7c11938cf17cf0e0f9ee496c308aa1387f7a528ba",
+    "host": {
+      "cpu": null,
+      "logical_cpus": 10,
+      "machine": "arm64",
+      "macos": "15.5",
+      "memory_bytes": 25769803776,
+      "numpy": "2.2.6",
+      "os_build": "24F74",
+      "python": "3.10.20",
+      "release": "24.5.0",
+      "system": "Darwin"
+    },
+    "native_extension_sha256": "12c420806b9d10b563013626687eb6e52dd3498941c17e22809f0944902f357f",
+    "revision": "9c550bdae592e975f12046ebbb8d690889fd9206",
+    "runner_sha256": "c94fd6f1e0c5243a741a321eb67116f1b8c136dcea8f571e3c0876d209f1e535"
+  },
+  "order_status_counts": {
+    "0": 0,
+    "1": 82864,
+    "2": 0,
+    "3": 0,
+    "4": 5912
+  },
+  "performance_qualification": false,
+  "portfolio": {
+    "cash": 9966405721267,
+    "equity": 9966405721267,
+    "net_pnl": -33594278733,
+    "processed": 946944000,
+    "total_fees": 33602509933
+  },
+  "positions": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "python_oracle_sha256": "b8f65a63cb89f507b70134582e35e89cb5a21bb163d380bb388e3ace53bd3dea",
+  "reference_build": {
+    "command": [
+      "c++",
+      "-std=c++11",
+      "-O2",
+      "-g",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "/Users/jkm0607/Projects/gambit/benchmarks/fifo_reference.cpp",
+      "-o",
+      "/private/tmp/gambit-lat04-reference/fifo-reference"
+    ],
+    "compiler_version": "Apple clang version 17.0.0 (clang-1700.0.13.5)\nTarget: arm64-apple-darwin24.5.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+    "executable_sha256": "69a0b5348027c1dc08b74e211d92b481079614686ef96f3db533b274d8e44f27",
+    "sanitized": false,
+    "schema": "gambit-independent-fifo-parity-v1",
+    "source_sha256": "a10cf510ac588d4afdd90367498145f0807255a780ede686fee1629a7fe6c5ba"
+  },
+  "resources": {
+    "elapsed_seconds": 112.11076349997893,
+    "logical_input_bytes": 83331072000,
+    "peak_rss_upper_bound_bytes": 1917927424,
+    "reference_peak_rss_bytes": 921894912,
+    "total_cpu_seconds": 117.43254700000001,
+    "worker_peak_rss_bytes": 996032512
+  },
+  "schema": "gambit-independent-fifo-parity-v1",
+  "status": "exact_trace_match",
+  "traces": {
+    "native": {
+      "bytes": 10235994,
+      "path": "native-trace.npz",
+      "sha256": "1d4cf35dd8e88995687422230010fae6f791ed20a4d998ac5388b7016055430d"
+    },
+    "reference": {
+      "bytes": 10378861,
+      "path": "reference-trace.npz",
+      "sha256": "2b57033ddf7c2c22f6c3ef6a034f31da027dc93c33555990754cb4f19695ecc6"
+    }
+  },
+  "workload": {
+    "aggregate_records_per_second": 10,
+    "chunk_size": 1048576,
+    "configuration": {
+      "audit_capacity": 1000000,
+      "cash": 10000000000000,
+      "execution_model": "fifo",
+      "fee_ppm": 100,
+      "instruments": 8,
+      "latency_ns": 1000000,
+      "maximum_feed_age_ns": 1000000000,
+      "rebalance_events": 10000,
+      "target_lots": 100
+    },
+    "record_bytes": 88,
+    "scenario": "fifo-3y-sparse-v1",
+    "seed": 20260904,
+    "ticks": 946944000
+  }
+}
