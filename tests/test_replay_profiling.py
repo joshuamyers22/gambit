@@ -3,11 +3,41 @@
 import copy
 import importlib
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from gambit.tick_backtest import TopOfBookBacktester
+
+
+def isolated_trial(output, spec, **options):
+    """Keep the measured worker's parent independent of pytest coverage memory.
+
+    Linux can carry the forking process's RSS high-water across exec. A small
+    controller matches the standalone benchmark CLI and preserves the worker's
+    unchanged 512 MiB bound, including its imports and disposable warmup.
+    """
+    script = (
+        "import json,resource,sys\n"
+        f"sys.path.insert(0, {str(Path(__file__).parents[1] / 'benchmarks')!r})\n"
+        "import psutil\n"
+        "from controlled_replay import run_trial\n"
+        "payload=json.loads(sys.argv[1])\n"
+        "trial=run_trial(payload['output'],payload['spec'],**payload['options'])\n"
+        "print(json.dumps(dict(trial=trial,controller_rss=psutil.Process().memory_info().rss,"
+        "controller_maxrss=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)))\n"
+    )
+    result = subprocess.run([sys.executable, "-c", script,
+                             json.dumps(dict(output=str(output), spec=spec, options=options))],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    record = json.loads(result.stdout)
+    (output / "test-controller.json").write_text(json.dumps(record, indent=2) + "\n")
+    trial = record["trial"]
+    assert trial["status"] == "ok", (trial["failure_reason"], (output / "stderr.txt").read_text(), record)
+    return trial
 
 
 @pytest.fixture
@@ -30,9 +60,8 @@ def test_probe_modes_and_python_profile_preserve_prefix_results(modules, tmp_pat
     spec = contract.workload("fifo-smoke-v1")
     trials = []
     for mode in ("full", "timers_only"):
-        trial = runner.run_trial(tmp_path / mode, spec, session_id="diagnostic-test",
-                                 diagnostic=dict(instrumentation=mode, prefix_ticks=10003))
-        assert trial["status"] == "ok", (trial["failure_reason"], (tmp_path / mode / "stderr.txt").read_text())
+        trial = isolated_trial(tmp_path / mode, spec, session_id="diagnostic-test",
+                               diagnostic=dict(instrumentation=mode, prefix_ticks=10003))
         trials.append(trial)
     assert trials[0]["measurement"]["controls"] == trials[1]["measurement"]["controls"]
     report = json.loads((tmp_path / "timers_only/worker-result.json").read_text())
@@ -43,8 +72,8 @@ def test_probe_modes_and_python_profile_preserve_prefix_results(modules, tmp_pat
     assert not report["validation"]["canonical_controls_checked"]
     assert contract.summarize(trials)["timing_gate"] == "ineligible"
     assert "diagnostic profiling/probe modes cannot qualify" in contract.summarize(trials)["ineligibility_reasons"]
-    profile = runner.run_trial(tmp_path / "python", spec, session_id="diagnostic-test",
-                               diagnostic=dict(prefix_ticks=10003, cprofile=True))
+    profile = isolated_trial(tmp_path / "python", spec, session_id="diagnostic-test",
+                             diagnostic=dict(prefix_ticks=10003, cprofile=True))
     assert profile["measurement"]["controls"] == trials[0]["measurement"]["controls"]
     assert (tmp_path / "python/python-profile.pstats").stat().st_size > 0
 
@@ -56,9 +85,8 @@ def test_fifo_batch_metrics_preserve_hashes_and_stay_ineligible(modules, tmp_pat
     trials = []
     for enabled in (False, True):
         path = tmp_path / str(enabled)
-        trial = runner.run_trial(path, spec, session_id="batch-metrics",
-                                 diagnostic=dict(batch_metrics=enabled))
-        assert trial["status"] == "ok", (trial["failure_reason"], (path / "stderr.txt").read_text())
+        trial = isolated_trial(path, spec, session_id="batch-metrics",
+                               diagnostic=dict(batch_metrics=enabled))
         report = json.loads((path / "worker-result.json").read_text())
         if enabled:
             assert report["batch_metrics"]["records"] == spec["ticks"]
