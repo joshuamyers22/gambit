@@ -198,6 +198,32 @@ def test_watchdog_retains_last_confirmed_progress_on_native_hang(runner, contrac
     assert result["shutdown"]["cleanup_seconds"] < 1
 
 
+def test_protocol_traffic_does_not_multiply_resource_queries(runner, contract, tmp_path, monkeypatch):
+    process_type = runner.psutil.Process
+    queries = []
+
+    class ObservedProcess:
+        def __init__(self, pid):
+            self.process = process_type(pid)
+
+        def memory_info(self):
+            queries.append(runner.time.monotonic_ns())
+            return self.process.memory_info()
+
+    monkeypatch.setattr(runner.psutil, "Process", ObservedProcess)
+    code = 'print(json.dumps(dict(phase="harness", at_ns=time.monotonic_ns(), start_ns=time.monotonic_ns())), flush=True)\n'
+    code += 'for n in range(1000):\n'
+    code += ' print(json.dumps(dict(phase="progress", at_ns=time.monotonic_ns(), processed=n)), flush=True)\n'
+    code += ' time.sleep(.0002)\n'
+    code += 'print(json.dumps(dict(phase="complete", at_ns=time.monotonic_ns(), peak_rss_bytes=0)), flush=True)\n'
+    result = runner.supervise(fake_worker(tmp_path, code), tmp_path, contract.LIMITS)
+    assert result["status"] == "ok", result
+    assert len(queries) == result["rss_poll_count"]
+    assert 2 <= len(queries) < 100
+    assert result["rss_poll_interval_seconds"] == .02
+    assert result["shutdown"]["status"] == "exited"
+
+
 def test_exited_worker_cannot_leave_helper_holding_protocol_pipe_open(runner, contract, tmp_path):
     # The parent exits immediately; its child inherits stdout and ignores TERM.
     # Run the supervisor in an outer subprocess so a regression cannot hang pytest.

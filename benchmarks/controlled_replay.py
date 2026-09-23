@@ -451,6 +451,12 @@ def supervise(command_args, output, limits=None, cancel_file=None):
     pending = b""
     cleanup = None
     last_processed = 0
+    # Message arrivals must not turn the nominal 20 ms RSS poll into two
+    # expensive process queries per batch. Keep watchdog messages immediate,
+    # with a separate deadline for resource sampling in both probe modes.
+    rss_interval_ns = 20_000_000
+    next_rss_at = launched
+    rss_polls = 0
     with (output / "stderr.txt").open("xb") as errors, selectors.DefaultSelector() as selector:
         process = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=errors, start_new_session=True)
         assert process.stdout is not None
@@ -459,7 +465,8 @@ def supervise(command_args, output, limits=None, cancel_file=None):
         probe = psutil.Process(process.pid)
         try:
             while True:
-                for key, _ in selector.select(timeout=.02):
+                poll_wait = max(0., (next_rss_at - time.monotonic_ns()) / 1e9)
+                for key, _ in selector.select(timeout=min(.02, poll_wait)):
                     block = os.read(key.fd, 65536)
                     if not block:
                         selector.unregister(key.fileobj)
@@ -486,10 +493,13 @@ def supervise(command_args, output, limits=None, cancel_file=None):
                         elif phase == "error":
                             reason = f"worker {event['error']}: {event['message']}"
                 now = time.monotonic_ns()
-                try:
-                    peak = max(peak, probe.memory_info().rss)
-                except psutil.NoSuchProcess:
-                    pass
+                if now >= next_rss_at:
+                    next_rss_at = now + rss_interval_ns
+                    rss_polls += 1
+                    try:
+                        peak = max(peak, probe.memory_info().rss)
+                    except psutil.NoSuchProcess:
+                        pass
                 if cancel_file and Path(cancel_file).exists():
                     reason = "cancelled by stop file"
                 elif peak > limits["rss"]:
@@ -529,6 +539,7 @@ def supervise(command_args, output, limits=None, cancel_file=None):
         reason = f"{reason}; worker cleanup deadline exceeded"
     return dict(status="failed" if reason else "ok", failure_reason=reason, returncode=process.returncode,
                 identity=observed, build_attested=attested, peak_rss_bytes=peak, complete=complete,
+                rss_poll_count=rss_polls, rss_poll_interval_seconds=rss_interval_ns / 1e9,
                 python_startup_seconds=(worker_started - launched) / 1e9 if worker_started else None,
                 setup_warmup_seconds=(harness_start - launched) / 1e9 if harness_start else None,
                 harness_seconds=(ended - harness_start) / 1e9 if harness_start else None,
