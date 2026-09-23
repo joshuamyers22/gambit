@@ -186,6 +186,18 @@ def emit(phase, **extra):
     print(json.dumps(dict(phase=phase, at_ns=time.monotonic_ns(), **extra), allow_nan=False), flush=True)
 
 
+def emit_batch_event(processed, *, completed):
+    """Emit the fixed integer-only batch protocol without a general JSON encoder.
+
+    Keep both messages and immediate flushing: the parent must observe native
+    entry even when that call hangs, and completion before the next input load.
+    Rich lifecycle/error events still use emit's general JSON serialization.
+    """
+    phase = "progress" if completed else "batch"
+    sys.stdout.write(f'{{"phase":"{phase}","at_ns":{time.monotonic_ns()},"processed":{processed}}}\n')
+    sys.stdout.flush()
+
+
 def rss_bytes():
     value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return value if sys.platform == "darwin" else value * 1024
@@ -289,7 +301,7 @@ def run_worker(request, output):
             input_hash.update(memoryview(events).cast("B"))
             timing["input_hash_seconds"] += (stage_clock() - before) / 1e9
             if probes:
-                emit("batch", processed=offset)
+                emit_batch_event(offset, completed=False)
             before = time.monotonic_ns()
             processed = engine.process_queue_batch(events)
             native_end = time.monotonic_ns()
@@ -298,7 +310,7 @@ def run_worker(request, output):
             if batch_metrics is not None:
                 batch_metrics.add(elapsed_ns, processed)
             if probes or native_end - last_heartbeat >= 1_000_000_000:
-                emit("progress", processed=offset + processed)
+                emit_batch_event(offset + processed, completed=True)
                 last_heartbeat = native_end
             if elapsed_ns / 1e9 > LIMITS["batch"]:
                 raise TimeoutError("native batch exceeded five seconds")

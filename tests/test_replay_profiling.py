@@ -54,6 +54,50 @@ def test_diagnostic_admission_rejects_unbounded_or_unknown_modes(modules, option
         runner.diagnostic_options(contract.workload("fifo-smoke-v1"), options)
 
 
+@pytest.mark.parametrize("completed", [False, True])
+@pytest.mark.parametrize("processed", [0, 65521, 946944000])
+def test_batch_protocol_preserves_payload_and_immediate_flush(modules, monkeypatch, completed, processed):
+    import io
+
+    runner, _, _ = modules
+
+    class Pipe(io.StringIO):
+        def flush(self):
+            self.flushed = self.getvalue()
+
+    pipe = Pipe()
+    monkeypatch.setattr(runner.sys, "stdout", pipe)
+    monkeypatch.setattr(runner.time, "monotonic_ns", lambda: 123456789)
+    runner.emit_batch_event(processed, completed=completed)
+    assert pipe.getvalue() == pipe.flushed
+    assert pipe.getvalue().endswith("\n")
+    assert json.loads(pipe.flushed) == dict(phase="progress" if completed else "batch",
+                                          at_ns=123456789, processed=processed)
+
+
+@pytest.mark.skipif(TopOfBookBacktester is None, reason="native extension required")
+def test_optimized_batch_protocol_still_stops_native_hang(modules, tmp_path):
+    runner, contract, _ = modules
+    script = (
+        "import signal,sys,time\n"
+        f"sys.path.insert(0, {str(Path(runner.__file__).parent)!r})\n"
+        "from controlled_replay import emit,emit_batch_event\n"
+        "signal.signal(signal.SIGTERM,signal.SIG_IGN)\n"
+        "emit('harness',start_ns=time.monotonic_ns())\n"
+        "emit_batch_event(65521,completed=True)\n"
+        "emit_batch_event(65521,completed=False)\n"
+        "time.sleep(10)\n"
+    )
+    result = runner.supervise([sys.executable, "-c", script], tmp_path,
+                              dict(contract.LIMITS, setup=3, batch=.05, stop_grace=.05, cleanup=.5))
+    assert result["status"] == "failed"
+    assert result["failure_reason"] == "native batch timeout"
+    assert result["failure_summary"]["last_reported_processed"] == 65521
+    assert result["failure_summary"]["last_phase"] == "batch"
+    assert result["shutdown"]["forced_kill"]
+    assert result["shutdown"]["status"] == "terminated"
+
+
 @pytest.mark.skipif(TopOfBookBacktester is None, reason="native extension required")
 def test_probe_modes_and_python_profile_preserve_prefix_results(modules, tmp_path):
     runner, contract, _ = modules
