@@ -136,9 +136,26 @@ def test_acceptance_worker_keeps_immediate_batch_watchdog(modules, tmp_path):
         "r.TopOfBookBacktester=engine\n"
         f"raise SystemExit(r.worker_main({str(request)!r}))\n"
     )
-    result = runner.supervise([sys.executable, "-c", script], tmp_path,
-                              dict(contract.LIMITS, setup=3, progress=3, harness=3,
-                                   batch=.05, stop_grace=.05, cleanup=.5))
+    # Match the standalone CLI's small parent, as isolated_trial does above.
+    # Linux workers can inherit pytest/coverage's RSS high-water across exec,
+    # which would trip the real memory guard before reaching the injected hang.
+    controller = (
+        "import json,sys\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(Path(runner.__file__).parent)!r})\n"
+        "from controlled_replay import supervise\n"
+        "payload=json.loads(sys.argv[1])\n"
+        "result=supervise([sys.executable,'-c',payload['script']],"
+        "Path(payload['output']),payload['limits'])\n"
+        "print(json.dumps(result))\n"
+    )
+    payload = dict(script=script, output=str(tmp_path),
+                   limits=dict(contract.LIMITS, setup=3, progress=3, harness=3,
+                               batch=.05, stop_grace=.05, cleanup=.5))
+    completed = subprocess.run([sys.executable, "-c", controller, json.dumps(payload)],
+                               capture_output=True, text=True, timeout=30)
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout)
+    (tmp_path / "test-controller.json").write_text(json.dumps(result, indent=2) + "\n")
     assert result["failure_reason"] == "native batch timeout", result
     assert result["failure_summary"]["last_phase"] == "batch"
     assert result["shutdown"]["forced_kill"]
