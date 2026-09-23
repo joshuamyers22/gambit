@@ -107,6 +107,7 @@ def compatibility_key(trial):
     """Exact runtime/workload/build identity; session notes are evidence, not identity."""
     values = {key: trial[key] for key in ("workload", "source", "identity", "variant")}
     values["diagnostic"] = trial.get("diagnostic", {})
+    values["measurement_profile"] = trial.get("measurement_profile")
     return json.dumps(values, sort_keys=True)
 
 
@@ -126,6 +127,8 @@ def summarize(trials):
         reasons.append("experimental input pipelines require separate qualification")
     if any(t.get("diagnostic") for t in trials):
         reasons.append("diagnostic profiling/probe modes cannot qualify")
+    if any(t.get("measurement_profile") != "acceptance-v1" for t in trials):
+        reasons.append("requires explicit acceptance-v1 measurement profile")
     if len({t["trial_id"] for t in trials}) != len(trials):
         reasons.append("duplicate trial IDs")
     if len(keys) != 1:
@@ -159,5 +162,5 @@ def summarize(trials):
                 peak_rss_bytes=distribution(rss), timing_gate=timing, ineligibility_reasons=reasons,
                 qualification="pending_independent_evidence",
                 remaining_evidence=["independent full-volume trace parity", "same-commit platform/sanitizer gates",
-                                    "instrumentation overhead and session independence review", "owner disposition"],
+                                    "acceptance-profile and session independence review", "owner disposition"],
                 p99_descriptive_only=True, p99_9_qualified=False)

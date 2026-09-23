@@ -231,9 +231,12 @@ def run_worker(request, output):
     validate_workload(spec)
     diagnostic = diagnostic_options(spec, request.get("diagnostic"))
     total_ticks = diagnostic.get("prefix_ticks", spec["ticks"])
-    probes = diagnostic.get("instrumentation", "full") == "full"
-    # The compulsory native-call timer remains in both modes. Optional stage
-    # clocks and per-batch telemetry/RSS are disabled only in diagnostic runs.
+    measurement_profile = "diagnostic" if diagnostic else "acceptance-v1"
+    probes = bool(diagnostic) and diagnostic.get("instrumentation", "full") == "full"
+    # Acceptance excludes optional per-batch stage clocks, but keeps the full
+    # watchdog protocol and RSS checks. Only the diagnostic timers-only control
+    # weakens supervision; it can never become an acceptance measurement.
+    batch_supervision = not diagnostic or probes
     stage_clock = time.monotonic_ns if probes else lambda: 0
     if TopOfBookBacktester is None:
         raise RuntimeError("native extension required")
@@ -284,7 +287,7 @@ def run_worker(request, output):
     try:
         last_heartbeat = start
         for offset in range(0, total_ticks, spec["chunk_size"]):
-            if probes:
+            if batch_supervision:
                 checkpoint()
             elif CANCELLED:
                 raise InterruptedError("benchmark cancelled")
@@ -300,7 +303,7 @@ def run_worker(request, output):
             before = stage_clock()
             input_hash.update(memoryview(events).cast("B"))
             timing["input_hash_seconds"] += (stage_clock() - before) / 1e9
-            if probes:
+            if batch_supervision:
                 emit_batch_event(offset, completed=False)
             before = time.monotonic_ns()
             processed = engine.process_queue_batch(events)
@@ -309,7 +312,7 @@ def run_worker(request, output):
             processing_ns += elapsed_ns
             if batch_metrics is not None:
                 batch_metrics.add(elapsed_ns, processed)
-            if probes or native_end - last_heartbeat >= 1_000_000_000:
+            if batch_supervision or native_end - last_heartbeat >= 1_000_000_000:
                 emit_batch_event(offset + processed, completed=True)
                 last_heartbeat = native_end
             if elapsed_ns / 1e9 > LIMITS["batch"]:
@@ -366,7 +369,8 @@ def run_worker(request, output):
         for name in ("generation_seconds", "load_decode_seconds", "input_hash_seconds"):
             timing[name] = None
     report = dict(schema=SCHEMA, contract=CONTRACT, status="ledger_reconciled", workload=spec,
-                  diagnostic=diagnostic, measured_ticks=total_ticks, input_mode=input_mode,
+                  diagnostic=diagnostic, measurement_profile=measurement_profile,
+                  measured_ticks=total_ticks, input_mode=input_mode,
                   batch_metrics=batch_metrics.snapshot() if batch_metrics is not None else None,
                   input_build=reader.library_identity if reader else None,
                   identity=observed, controls=controls, portfolio=scalars, positions=result["positions"].tolist(),
@@ -584,7 +588,8 @@ def run_trial(output, spec, *, session_id, variant="candidate", python=sys.execu
     if outcome["status"] == "ok":
         try:
             report = read_json(output / "worker-result.json")
-            if report["schema"] != SCHEMA or report["workload"] != spec or report["identity"] != outcome["identity"]:
+            if (report["schema"] != SCHEMA or report["workload"] != spec or report["identity"] != outcome["identity"] or
+                    report.get("measurement_profile") != ("diagnostic" if diagnostic else "acceptance-v1")):
                 raise ValueError("worker report identity mismatch")
             measurement = dict(execution_seconds=report["timing"]["execution_seconds"],
                                harness_seconds=outcome["harness_seconds"],
@@ -595,7 +600,8 @@ def run_trial(output, spec, *, session_id, variant="candidate", python=sys.execu
             outcome.update(status="failed", failure_reason=f"invalid worker report: {error}")
     trial = dict(schema=SCHEMA, contract=CONTRACT, trial_id=str(output.resolve()),
                  session_id=session_id, variant=variant, status=outcome["status"],
-                 diagnostic=diagnostic, input_mode=input_mode,
+                 diagnostic=diagnostic, measurement_profile="diagnostic" if diagnostic else "acceptance-v1",
+                 input_mode=input_mode,
                  failure_reason=outcome["failure_reason"], workload=spec, source=source,
                  identity=outcome["identity"], reference_host_matches=bool(outcome["identity"] and reference_matches(outcome["identity"])),
                  build_attested=outcome["build_attested"], build_manifest=build_manifest,

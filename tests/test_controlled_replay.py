@@ -47,6 +47,7 @@ def primary_trials(contract):
     return [dict(trial_id=f"trial-{i}", status="ok", session_id=f"session-{i // 50}", variant="candidate",
                  workload=contract.workload("fifo-3y-sparse-v1"), source=dict(kind="synthetic"),
                  identity=dict(binary="test"), build_attested=True, reference_host_matches=True,
+                 measurement_profile="acceptance-v1",
                  session_evidence=dict(operator="test"),
                  measurement=dict(execution_seconds=4., harness_seconds=60., peak_rss_bytes=256 * 1024**2,
                                   controls=contract.EXPECTED["fifo-3y-sparse-v1"])) for i in range(200)]
@@ -67,7 +68,8 @@ def test_qualification_four_misses_pass_five_fail_without_promotion(contract):
     assert contract.summarize(trials)["timing_gate"] == "fail"
 
 
-@pytest.mark.parametrize("mutation", ["failed", "host", "build", "duplicate", "session", "identity", "smoke", "hash"])
+@pytest.mark.parametrize("mutation", ["failed", "host", "build", "duplicate", "session", "identity", "smoke", "hash",
+                                     "missing_profile", "diagnostic_profile"])
 def test_ineligible_evidence_cannot_qualify(contract, mutation):
     trials = primary_trials(contract)
     if mutation == "failed":
@@ -85,6 +87,10 @@ def test_ineligible_evidence_cannot_qualify(contract, mutation):
         trials[0]["identity"] = dict(binary="other")
     elif mutation == "smoke":
         trials[0]["workload"] = contract.workload("fifo-smoke-v1")
+    elif mutation == "missing_profile":
+        del trials[0]["measurement_profile"]
+    elif mutation == "diagnostic_profile":
+        trials[0]["measurement_profile"] = "diagnostic"
     else:
         trials[0]["measurement"]["controls"] = dict(input_sha256="changed")
     report = contract.summarize(trials)
@@ -104,8 +110,9 @@ def test_isolated_synthetic_and_storage_replay_match(runner, contract, tmp_path)
     assert first["status"] == second["status"] == "ok", (first, second)
     assert first["measurement"]["controls"] == second["measurement"]["controls"]
     result = json.loads((tmp_path / "storage/worker-result.json").read_text())
-    assert result["timing"]["generation_seconds"] == 0
-    assert result["timing"]["load_decode_seconds"] > 0
+    assert result["measurement_profile"] == second["measurement_profile"] == "acceptance-v1"
+    assert result["timing"]["generation_seconds"] is None
+    assert result["timing"]["load_decode_seconds"] is None
     assert second["measurement"]["harness_seconds"] >= result["timing"]["execution_seconds"]
     assert result["validation"]["full_volume_independent_trace_parity"] is False
     assert first["measurement"]["peak_rss_bytes"] <= contract.RSS_LIMIT

@@ -99,6 +99,53 @@ def test_optimized_batch_protocol_still_stops_native_hang(modules, tmp_path):
 
 
 @pytest.mark.skipif(TopOfBookBacktester is None, reason="native extension required")
+def test_acceptance_profile_preserves_results_without_optional_stage_probes(modules, tmp_path):
+    _, contract, _ = modules
+    spec = contract.workload("fifo-smoke-v1")
+    acceptance = isolated_trial(tmp_path / "acceptance", spec, session_id="acceptance-test")
+    diagnosis = isolated_trial(tmp_path / "diagnostic", spec, session_id="acceptance-test",
+                               diagnostic=dict(instrumentation="full"))
+    assert acceptance["measurement_profile"] == "acceptance-v1"
+    assert not acceptance["diagnostic"]
+    assert diagnosis["measurement_profile"] == "diagnostic"
+    assert acceptance["measurement"]["controls"] == diagnosis["measurement"]["controls"]
+    a = json.loads((tmp_path / "acceptance/worker-result.json").read_text())
+    d = json.loads((tmp_path / "diagnostic/worker-result.json").read_text())
+    for stage in ("generation_seconds", "input_hash_seconds", "load_decode_seconds"):
+        assert a["timing"][stage] is None
+        assert d["timing"][stage] is not None
+    assert a["batch_metrics"] is None
+    assert a["timing"]["execution_seconds"] > 0
+    assert acceptance["supervisor"]["rss_poll_count"] > 0
+
+
+@pytest.mark.skipif(TopOfBookBacktester is None, reason="native extension required")
+def test_acceptance_worker_keeps_immediate_batch_watchdog(modules, tmp_path):
+    runner, contract, _ = modules
+    request = tmp_path / "request.json"
+    request.write_text(json.dumps(dict(workload=contract.workload("fifo-smoke-v1"))))
+    script = (
+        "import sys,time\n"
+        f"sys.path.insert(0, {str(Path(runner.__file__).parent)!r})\n"
+        "import controlled_replay as r\n"
+        "observed=r.identity()\nr.identity=lambda:observed\n"
+        "original=r.TopOfBookBacktester\ncreated=0\n"
+        "class Hung:\n def process_queue_batch(self,events): time.sleep(10)\n"
+        "def engine(**config):\n global created\n created+=1\n"
+        " return Hung() if created==2 else original(**config)\n"
+        "r.TopOfBookBacktester=engine\n"
+        f"raise SystemExit(r.worker_main({str(request)!r}))\n"
+    )
+    result = runner.supervise([sys.executable, "-c", script], tmp_path,
+                              dict(contract.LIMITS, setup=3, progress=3, harness=3,
+                                   batch=.05, stop_grace=.05, cleanup=.5))
+    assert result["failure_reason"] == "native batch timeout", result
+    assert result["failure_summary"]["last_phase"] == "batch"
+    assert result["shutdown"]["forced_kill"]
+    assert result["shutdown"]["status"] == "terminated"
+
+
+@pytest.mark.skipif(TopOfBookBacktester is None, reason="native extension required")
 def test_probe_modes_and_python_profile_preserve_prefix_results(modules, tmp_path):
     runner, contract, _ = modules
     spec = contract.workload("fifo-smoke-v1")
