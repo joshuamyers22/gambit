@@ -20,7 +20,7 @@ def test_factor_cache_benchmark_smoke(tmp_path) -> None:
 
     names = {measurement["name"] for measurement in result["measurements"]}
     assert "polars_factor_dag" in names
-    assert "polars_ipc_mmap_read" in names
+    assert "polars_ipc_read" in names
     assert "polars_parquet_read" in names
     assert "numpy_raw_mmap_reopen_read" in names
     if benchmark.MappedFloat64Column is not None:
