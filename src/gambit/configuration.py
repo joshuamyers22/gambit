@@ -123,7 +123,7 @@ def load_run_configuration(
 def fingerprint_polars_frame(frame: pl.DataFrame) -> str:
     """Return a deterministic fingerprint incorporating schema, order, and values."""
     schema = [(name, str(dtype)) for name, dtype in frame.schema.items()]
-    row_hashes = frame.hash_rows(seed=0, seed_1=1, seed_2=2, seed_3=3).to_numpy().tobytes()
+    row_hashes = frame.hash_rows(seed=0).to_numpy().tobytes()
     digest = hashlib.sha256(_canonical_json(schema).encode())
     digest.update(row_hashes)
     return digest.hexdigest()

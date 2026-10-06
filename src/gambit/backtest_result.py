@@ -432,7 +432,7 @@ class BacktestResult:
             # writer can substitute unchecked content between preflight and use.
             for name in _FRAME_NAMES:
                 metadata = frame_manifest[name]
-                frame = pl.read_ipc(payloads.pop(name), memory_map=False)
+                frame = pl.read_ipc(payloads.pop(name))
                 if frame.height != metadata["rows"] or _frame_schema(frame) != metadata["schema"]:
                     raise BacktestBundleError(f"shape or schema mismatch for frame: {name}")
                 frames[name] = frame

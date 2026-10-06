@@ -5,6 +5,8 @@ have not yet been released are collected below.
 
 ## Unreleased
 
+- Support Polars 2.0 IPC readers and single-seed frame hashing; rename the IPC read benchmark to avoid claiming memory mapping.
+
 ## 1.1.0 — 2026-09-13
 
 ### Added

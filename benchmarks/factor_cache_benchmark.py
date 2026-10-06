@@ -253,22 +253,22 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
                 rows,
                 columns,
                 byte_count,
-                lambda: sum_frame(pl.read_ipc(ipc_path, memory_map=True)),
+                lambda: sum_frame(pl.read_ipc(ipc_path)),
                 repeats,
                 lambda: _request_page_cache_eviction([ipc_path]),
             )
         )
     measurements.append(
         _measure(
-            "polars_ipc_mmap_read",
+            "polars_ipc_read",
             rows,
             columns,
             byte_count,
-            lambda: sum_frame(pl.read_ipc(ipc_path, memory_map=True)),
+            lambda: sum_frame(pl.read_ipc(ipc_path)),
             repeats,
         )
     )
-    resident_ipc = pl.read_ipc(ipc_path, memory_map=True)
+    resident_ipc = pl.read_ipc(ipc_path)
     measurements.append(
         _measure(
             "polars_ipc_resident_read",
@@ -481,7 +481,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             _measure("cost_aware_factor_dag", rows, columns, byte_count, cost_aware_dag, repeats)
         )
 
-    ipc_equal = factors.equals(pl.read_ipc(ipc_path, memory_map=True))
+    ipc_equal = factors.equals(pl.read_ipc(ipc_path))
     parquet_equal = factors.equals(pl.read_parquet(parquet_path))
     raw_equal = all(
         np.array_equal(series.to_numpy(), np.memmap(path, mode="r", dtype=np.float64, shape=(rows,)), equal_nan=True)
@@ -519,7 +519,7 @@ def run_benchmark(rows: int, repeats: int, cache_directory: Path) -> dict[str, o
             )
     measurement_by_name = {measurement.name: measurement for measurement in measurements}
     recompute_seconds = measurement_by_name["polars_factor_dag"].median_seconds
-    ipc_reuse_seconds = measurement_by_name["polars_ipc_mmap_read"].median_seconds
+    ipc_reuse_seconds = measurement_by_name["polars_ipc_read"].median_seconds
     native_reuse = measurement_by_name.get("native_committed_mmap_reopen_read")
     native_resident_reuse = measurement_by_name.get("native_committed_mmap_resident_read")
     fast_native_reuse = measurement_by_name.get("native_fast_chunked_mmap_reopen_read")
